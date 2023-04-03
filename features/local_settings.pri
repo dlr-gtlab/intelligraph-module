@@ -47,6 +47,7 @@ MINPACK_PATH        = $${DEV_TOOLS}/ThirdPartyLibraries/minpack
 NLOPT_PATH          = $${DEV_TOOLS}/ThirdPartyLibraries/NLopt
 HDF5_PATH           = $${DEV_TOOLS}/ThirdPartyLibraries/hdf5
 GOOGLE_TEST_PATH    = $${DEV_TOOLS}/ThirdPartyLibraries/GoogleTest
+QT_NODES_PATH       = $${PWD}
 
 # Deployment
 GTLAB_ENVIRONMENT_PATH = "$${GTLAB_DIR}/"

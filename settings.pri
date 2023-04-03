@@ -122,22 +122,9 @@ LIBS        += -L$${GTLAB_MINPACK_PATH}/lib
 DEPENDPATH  += $${GTLAB_MINPACK_PATH}/lib
 
 ## QWT
-INCLUDEPATH += $${GTLAB_QWT_PATH}/include
-LIBS        += -L$${GTLAB_QWT_PATH}/lib
-DEPENDPATH  += $${GTLAB_QWT_PATH}/lib
-win32 {
-    CONFIG(debug, debug|release){
-        LIBS        += -L$${QWT_PATH}/libDebug
-        DEPENDPATH  += $${QWT_PATH}/libDebug
-    } else {
-        LIBS        += -L$${QWT_PATH}/lib
-        DEPENDPATH  += $${QWT_PATH}/lib
-    }
-}
-unix {
-    LIBS        += -L$${QWT_PATH}/lib
-    DEPENDPATH  += $${QWT_PATH}/lib
-}
+INCLUDEPATH += $${QWT_PATH}/include
+LIBS        += -L$${QWT_PATH}/lib
+DEPENDPATH  += $${QWT_PATH}/lib
 
 ## NLOPT
 INCLUDEPATH += $${GTLAB_NLOPT_PATH}/include
@@ -145,9 +132,9 @@ LIBS        += -L$${GTLAB_NLOPT_PATH}/lib
 DEPENDPATH  += $${GTLAB_NLOPT_PATH}/lib
 
 ## QTNODES
-INCLUDEPATH += C:/devel/NodesModule/NodesModule/qtnodes/include
-LIBS        += -LC:/devel/NodesModule/NodesModule/qtnodes/lib
-DEPENDPATH  += C:/devel/NodesModule/NodesModule/qtnodes/lib
+INCLUDEPATH += $${QT_NODES_PATH}/qtnodes/include
+LIBS        += -L$${QT_NODES_PATH}/qtnodes/lib
+DEPENDPATH  += $${QT_NODES_PATH}/qtnodes/lib
 
 
 ######################################################################

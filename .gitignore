@@ -1,5 +1,8 @@
 Makefile*
 
+include/
+lib/
+meta/
 build/
 debug/
 release/
