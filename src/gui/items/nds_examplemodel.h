@@ -37,6 +37,14 @@ public:
 
     bool resizable() const override { return false; }
 
+    void setInPortData(std::vector<NodeDataType> inDt);
+
+    void setOutPortData(std::vector<NodeDataType> outDt);
+
+private:
+    std::vector<NodeDataType> m_inDt;
+    std::vector<NodeDataType> m_outDt;
+
 };
 
 #endif // NDSEXAMPLEMODEL_H

@@ -16,11 +16,11 @@ NdsExampleModel::nPorts(PortType portType) const
 
     switch (portType) {
     case PortType::In:
-        result = 4;
+        result = m_inDt.size();
         break;
 
     case PortType::Out:
-        result = 1;
+        result = m_outDt.size();
 
     default:
         break;
@@ -34,20 +34,22 @@ NdsExampleModel::dataType(PortType const portType, PortIndex const portIndex) co
 {
     switch (portType) {
     case PortType::In:
-        switch (portIndex) {
-        case 0:
-            return NdsShapeSettingsData().type();
-        case 1:
-            return NdsObjectData().type();
-        case 2:
-            return NdsShapeSettingsData().type();
-        case 3:
-            return NdsObjectData().type();
-        }
+        return m_inDt[portIndex];
+//        switch (portIndex) {
+//        case 0:
+//            return NdsShapeSettingsData().type();
+//        case 1:
+//            return NdsObjectData().type();
+//        case 2:
+//            return NdsShapeSettingsData().type();
+//        case 3:
+//            return NdsObjectData().type();
+//        }
         break;
 
     case PortType::Out:
-       return NdsShapeData().type();
+       return m_outDt[portIndex];
+//       return NdsShapeData().type();
 
     case PortType::None:
         break;
@@ -59,11 +61,32 @@ NdsExampleModel::dataType(PortType const portType, PortIndex const portIndex) co
 std::shared_ptr<NodeData>
 NdsExampleModel::outData(PortIndex)
 {
-    return std::make_shared<NdsShapeData>();
+    return {};
+//    return std::make_shared<NdsShapeData>();
 }
 
 void
 NdsExampleModel::setInData(std::shared_ptr<NodeData> nodeData, PortIndex portIndex)
 {
 
+}
+
+void
+NdsExampleModel::setInPortData(std::vector<QtNodes::NodeDataType> inDt)
+{
+    if (inDt.empty()) return;
+
+    portsAboutToBeInserted(PortType::In, 0, inDt.size() - 1);
+    m_inDt = inDt;
+    portsInserted();
+}
+
+void
+NdsExampleModel::setOutPortData(std::vector<QtNodes::NodeDataType> outDt)
+{
+    if (outDt.empty()) return;
+
+    portsAboutToBeInserted(PortType::Out, 0, outDt.size() - 1);
+    m_outDt = outDt;
+    portsInserted();
 }

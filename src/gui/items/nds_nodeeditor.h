@@ -12,8 +12,10 @@
 #include "gt_mdiitem.h"
 
 #include <QtNodes/DataFlowGraphModel>
+#include <QtNodes/DataFlowGraphicsScene>
 
 using QtNodes::DataFlowGraphModel;
+using QtNodes::DataFlowGraphicsScene;
 
 /**
  * @generated 1.2.0
@@ -33,6 +35,13 @@ public:
 
 private:
     DataFlowGraphModel m_graphModel;
+
+    DataFlowGraphicsScene* m_scene;
+
+private slots:
+    void onSelectionChanged();
+
+    void onNodeContextMenu();
 };
 
 #endif // NDSNODEEDITOR_H

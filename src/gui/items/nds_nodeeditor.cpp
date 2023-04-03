@@ -10,7 +10,6 @@
 
 #include <QtNodes/ConnectionStyle>
 #include <QtNodes/DataFlowGraphModel>
-#include <QtNodes/DataFlowGraphicsScene>
 #include <QtNodes/GraphicsView>
 #include <QtNodes/NodeData>
 #include <QtNodes/NodeDelegateModelRegistry>
@@ -50,6 +49,10 @@ using QtNodes::GraphicsView;
 using QtNodes::GraphicsViewStyle;
 using QtNodes::NodeDelegateModelRegistry;
 using QtNodes::NodeStyle;
+using QtNodes::NodeId;
+using QtNodes::NodeRole;
+using QtNodes::ConnectionId;
+using QtNodes::PortRole;
 
 
 static void setStyle()
@@ -178,9 +181,13 @@ NdsNodeEditor::NdsNodeEditor() :
 
     QVBoxLayout* l = new QVBoxLayout(widget());
 
-    auto scene = new DataFlowGraphicsScene(m_graphModel);
+    m_scene = new DataFlowGraphicsScene(m_graphModel);
 
-    auto view = new GraphicsView(scene);
+    connect(m_scene, SIGNAL(selectionChanged()), SLOT(onSelectionChanged()));
+    connect(m_scene, SIGNAL(nodeContextMenu(NodeId,QPointF)),
+            SLOT(onNodeContextMenu()));
+
+    auto view = new GraphicsView(m_scene);
     l->addWidget(view);
     l->setContentsMargins(0, 0, 0, 0);
 }
@@ -205,6 +212,188 @@ NdsNodeEditor::showEvent()
 //        m_graphModel.setNodeData(id2, NodeRole::Position, QPointF(300, 300));
 
 //        m_graphModel.addConnection(ConnectionId{id1, 0, id2, 0});
-//    }
+    //    }
+}
+
+void
+NdsNodeEditor::onSelectionChanged()
+{
+    gtInfo() << "selected items: " << m_scene->selectedNodes().size();
+}
+
+void NdsNodeEditor::onNodeContextMenu()
+{
+    std::vector<NodeId> nodes = m_scene->selectedNodes();
+
+    if (nodes.size() < 2)
+    {
+        return;
+    }
+
+    gtInfo() << "Multiple selection. Grouping possible!";
+
+    QMenu menu;
+
+    QAction* act = menu.addAction("Group Selected Nodes");
+
+    if (menu.exec(QCursor::pos()) != act)
+    {
+        return;
+    }
+
+    std::unordered_set<ConnectionId> connections;
+    std::unordered_set<ConnectionId> connectionsIn;
+    std::unordered_set<ConnectionId> connectionsOut;
+
+    for (NodeId nodeId: nodes)
+    {
+        if (m_graphModel.nodeExists(nodeId))
+        {
+            gtInfo() << "------------------------";
+            gtInfo() << "NODE (" << nodeId << "):";
+            gtInfo() << m_graphModel.nodeData(nodeId, NodeRole::Type);
+            gtInfo() << m_graphModel.nodeData(nodeId, NodeRole::Position);
+            gtInfo() << m_graphModel.nodeData(nodeId, NodeRole::Size);
+            gtInfo() << m_graphModel.nodeData(nodeId, NodeRole::CaptionVisible);
+            gtInfo() << m_graphModel.nodeData(nodeId, NodeRole::Caption);
+            gtInfo() << m_graphModel.nodeData(nodeId, NodeRole::InternalData);
+            gtInfo() << m_graphModel.nodeData(nodeId, NodeRole::InPortCount);
+            gtInfo() << m_graphModel.nodeData(nodeId, NodeRole::OutPortCount);
+
+            // check connections
+
+            std::unordered_set<ConnectionId> tmpConnections =
+                    m_graphModel.allConnectionIds(nodeId);
+            gtInfo() << "found " << tmpConnections.size() << " connections...";
+
+            for (ConnectionId tmpConnection: tmpConnections)
+            {
+                if(std::find(nodes.begin(), nodes.end(), tmpConnection.inNodeId) == nodes.end())
+                {
+                    connectionsOut.insert(tmpConnection);
+                    continue;
+                }
+
+                if(std::find(nodes.begin(), nodes.end(), tmpConnection.outNodeId) == nodes.end())
+                {
+                    connectionsIn.insert(tmpConnection);
+                    continue;
+                }
+
+                connections.insert(tmpConnection);
+            }
+        }
+    }
+
+    gtInfo() << "connections to transfer: " << connections.size();
+    gtInfo() << "InPorts to connect: " << connectionsIn.size();
+
+    std::vector<NodeDataType> inDt;
+    std::vector<NodeDataType> outDt;
+
+    // eval in ports
+    for (ConnectionId c: connectionsIn)
+    {
+        NodeId cni = c.inNodeId;
+        PortIndex cpi = c.inPortIndex;
+        auto pdtv = m_graphModel.portData(cni, PortType::In, cpi, PortRole::DataType);
+        QtNodes::NodeDataType ndt = pdtv.value<NodeDataType>();
+        gtInfo() << "in port type: " << ndt.id << "; " << ndt.name;
+
+        inDt.push_back(ndt);
+    }
+
+    gtInfo() << "OutPorts to connect: " << connectionsOut.size();
+    // eval out ports
+    for (ConnectionId c: connectionsOut)
+    {
+        NodeId cni = c.outNodeId;
+        PortIndex cpi = c.outPortIndex;
+
+        auto pdtv = m_graphModel.portData(cni, PortType::Out, cpi, PortRole::DataType);
+        QtNodes::NodeDataType ndt = pdtv.value<NodeDataType>();
+        gtInfo() << "out port type: " << ndt.id << "; " << ndt.name;
+
+        outDt.push_back(ndt);
+    }
+
+    // create group node:
+    NodeId newNodeId = m_graphModel.addNode("IntelliGraph Node");
+
+    if (!m_graphModel.nodeExists(newNodeId))
+    {
+        gtError() << "could not create IntelliGraph Node!";
+        return;
+    }
+
+    gtInfo() << "IntelliGraph Node created (" << newNodeId << ")";
+
+    auto delMod = m_graphModel.delegateModel<NdsExampleModel>(newNodeId);
+
+    delMod->setInPortData(inDt);
+    m_graphModel.nodeUpdated(newNodeId);
+    delMod->setOutPortData(outDt);
+    m_graphModel.nodeUpdated(newNodeId);
+
+    // delete connections
+    for (ConnectionId c: connectionsIn)
+    {
+        m_graphModel.deleteConnection(c);
+    }
+
+    for (ConnectionId c: connectionsOut)
+    {
+        m_graphModel.deleteConnection(c);
+    }
+
+    // make connections
+    int it = 0;
+    for (ConnectionId c: connectionsIn)
+    {
+        gtInfo() << "creating new connection...";
+
+        ConnectionId newIn;
+        newIn.inNodeId = newNodeId;
+        newIn.inPortIndex = it;
+        newIn.outNodeId = c.outNodeId;
+        newIn.outPortIndex = c.outPortIndex;
+
+        gtInfo() << "inNodeId = " << newIn.inNodeId << "(" << m_graphModel.nodeData(newIn.inNodeId, NodeRole::Type).toString() << ")";
+        gtInfo() << "inPortIndex = " << newIn.inPortIndex;
+        gtInfo() << "outNodeId = " << newIn.outNodeId << "(" << m_graphModel.nodeData(newIn.outNodeId, NodeRole::Type).toString() << ")";
+        gtInfo() << "outPortIndex = " << newIn.outPortIndex;
+
+        m_graphModel.addConnection(newIn);
+
+        it++;
+    }
+
+    it = 0;
+    for (ConnectionId c: connectionsOut)
+    {
+        gtInfo() << "creating new connection...";
+
+        ConnectionId newOut;
+        newOut.inNodeId = c.inNodeId;
+        newOut.inPortIndex = c.inPortIndex;
+        newOut.outNodeId =newNodeId;
+        newOut.outPortIndex = it;
+
+        gtInfo() << "inNodeId = " << newOut.inNodeId << "(" << m_graphModel.nodeData(newOut.inNodeId, NodeRole::Type).toString() << ")";
+        gtInfo() << "inPortIndex = " << newOut.inPortIndex;
+        gtInfo() << "outNodeId = " << newOut.outNodeId << "(" << m_graphModel.nodeData(newOut.outNodeId, NodeRole::Type).toString() << ")";
+        gtInfo() << "outPortIndex = " << newOut.outPortIndex;
+
+        m_graphModel.addConnection(newOut);
+
+        it++;
+    }
+
+    // delete nodes
+    for (NodeId nodeId: nodes)
+    {
+        m_graphModel.deleteNode(nodeId);
+    }
+
 }
 
