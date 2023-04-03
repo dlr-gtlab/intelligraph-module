@@ -1,7 +1,7 @@
 # GTlab-IntelliGraph
 
 ## Next Step
-- [ ] QtNodes als neues Projekt in GTlab-CoreDev-Sandbox (Fork)
+- [x] QtNodes als neues Projekt in GTlab-CoreDev-Sandbox (Fork)
 - [ ] Einbindung des QtNodes Repo als Submodule im GTlab-IntelliGraph (statisch gelinkt)
 - [ ] Aufbau GTlab Klassenstruktur (GtIntelliGraph; GtNodeCollection; GtIntelliGraphNode; GtIgObjectSourceNode...)
 - [ ] Aufbau entsprechender NodeDelegateModels (z.B. NdsObjectLoaderModel (GtIgObjectSourceNode))
