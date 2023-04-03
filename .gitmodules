@@ -1,0 +1,3 @@
+[submodule "gtnodes"]
+	path = gtnodes
+	url = https://gitlab.dlr.de/gtlab-coredev/sandbox/gt-nodes

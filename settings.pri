@@ -132,9 +132,9 @@ LIBS        += -L$${GTLAB_NLOPT_PATH}/lib
 DEPENDPATH  += $${GTLAB_NLOPT_PATH}/lib
 
 ## QTNODES
-INCLUDEPATH += $${QT_NODES_PATH}/qtnodes/include
-LIBS        += -L$${QT_NODES_PATH}/qtnodes/lib
-DEPENDPATH  += $${QT_NODES_PATH}/qtnodes/lib
+INCLUDEPATH += $${QT_NODES_PATH}/gtnodes/include
+LIBS        += -L$${QT_NODES_PATH}/gtnodes/lib
+DEPENDPATH  += $${QT_NODES_PATH}/gtnodes/lib
 
 
 ######################################################################
