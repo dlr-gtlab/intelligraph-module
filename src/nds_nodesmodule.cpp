@@ -13,7 +13,12 @@
 #include "nds_nodesmodule.h"
 
 #include "nds_package.h"
-#include "nds_nodeeditor.h"
+#include "gt_intelligraph.h"
+#include "gt_intelligraphcategory.h"
+#include "gt_intelligraphconnection.h"
+#include "gt_intelligraphobjectui.h"
+#include "gt_intelligrapheditor.h"
+
 #include "nds_projectui.h"
 #include "nds_3dplot.h"
 
@@ -28,13 +33,14 @@ NdsNodesModule::version()
 QString
 NdsNodesModule::description() const
 {
-    return QStringLiteral("Nds Nodes Module");
+    return QStringLiteral("GTlab Nodes Module");
 }
 
 void
 NdsNodesModule::init()
 {
-    // TODO: code to execute on init
+    gtDebug() << "REGISTERED NODES:"
+              << GtIntelliGraphNodeFactory::instance().knownClasses();
 }
 
 NdsNodesModule::MetaInformation
@@ -42,8 +48,8 @@ NdsNodesModule::metaInformation() const
 {
     MetaInformation m;
 
-    m.author =    QStringLiteral("S. Reitenbach");
-    m.authorContact = QStringLiteral("");
+    m.author =    QStringLiteral("S. Reitenbach, M. Bröcker");
+    m.authorContact = QStringLiteral("AT-TWK");
 
     // TODO: set license
     // m.licenseShort = ...;
@@ -62,13 +68,27 @@ NdsNodesModule::data()
 {
     QList<QMetaObject> list;
 
+    list << GT_METADATA(GtIntelliGraph);
+    list << GT_METADATA(GtIntelliGraphCategory);
+    list << GT_METADATA(GtIntelliGraphConnection);
+
+    /* nodes */
+    auto& factory = GtIntelliGraphNodeFactory::instance();
+    auto const nodes = factory.knownClasses();
+    list.reserve(list.size() + nodes.size());
+
+    for (auto const& node : nodes)
+    {
+        if (auto* m = factory.metaObject(node)) list << *m;
+    }
+
     return list;
 }
 
 bool
 NdsNodesModule::standAlone()
 {
-    return false;
+    return true;
 }
 
 QList<GtCalculatorData>
@@ -92,7 +112,7 @@ NdsNodesModule::mdiItems()
 {
     QList<QMetaObject> list;
 
-    list << GT_METADATA(NdsNodeEditor);
+    list << GT_METADATA(GtIntelliGraphEditor);
     list << GT_METADATA(Nds3DPlot);
 
     return list;
@@ -114,6 +134,13 @@ NdsNodesModule::uiItems()
     map.insert(GT_CLASSNAME(GtProject),
                GT_METADATA(NdsProjectUI));
 
+    map.insert(GT_CLASSNAME(NdsPackage),
+               GT_METADATA(GtIntelliGraphObjectUI));
+    map.insert(GT_CLASSNAME(GtIntelliGraph),
+               GT_METADATA(GtIntelliGraphObjectUI));
+    map.insert(GT_CLASSNAME(GtIntelliGraphCategory),
+               GT_METADATA(GtIntelliGraphObjectUI));
+
     return map;
 }
 
@@ -131,4 +158,16 @@ NdsNodesModule::postPlots()
     QList<QMetaObject> list;
 
     return list;
+}
+
+QMap<const char*, QMetaObject>
+NdsNodesModule::propertyItems()
+{
+    QMap<const char*, QMetaObject> map;
+
+    // not exported by default...
+//    map.insert(GT_CLASSNAME(GtIgObjectLinkProperty),
+//               GT_METADATA(GtPropertyObjectLinkItem));
+
+    return map;
 }

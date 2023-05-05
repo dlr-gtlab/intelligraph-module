@@ -13,6 +13,7 @@
 #include "gt_datamodelinterface.h"
 #include "gt_processinterface.h"
 #include "gt_mdiinterface.h"
+#include "gt_propertyinterface.h"
 
 /**
  * @generated 1.2.0
@@ -22,7 +23,8 @@ class NdsNodesModule : public QObject,
         public GtModuleInterface,
         public GtDatamodelInterface,
         public GtProcessInterface,
-        public GtMdiInterface
+        public GtMdiInterface,
+        public GtPropertyInterface
 {
     Q_OBJECT
 
@@ -32,6 +34,7 @@ class NdsNodesModule : public QObject,
     Q_INTERFACES(GtDatamodelInterface)
     Q_INTERFACES(GtProcessInterface)
     Q_INTERFACES(GtMdiInterface)
+    Q_INTERFACES(GtPropertyInterface)
     
 public:
 
@@ -123,6 +126,12 @@ public:
      * @return
      */
     QList<QMetaObject> postPlots() override;
+
+    /**
+     * @brief Returns static meta objects of property item classes.
+     * @return list of meta objects of property item classes.
+     */
+    QMap<const char*, QMetaObject> propertyItems() override;;
 };
 
 #endif // NDS_NODESMODULE_H

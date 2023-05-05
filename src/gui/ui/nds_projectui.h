@@ -24,8 +24,8 @@ public:
     Q_INVOKABLE NdsProjectUI();
 
 public slots:
-    void openNodeEditor(GtObject* obj);
 
+    void openNodeEditor(GtObject* obj);
 };
 
 #endif // NDSPROJECTUI_H

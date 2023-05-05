@@ -1,7 +1,0 @@
-<RCC>
-    <qresource prefix="/qml">
-        <file>piechart.qml</file>
-		<file>barchart.qml</file>
-		<file>linechart.qml</file>
-    </qresource>
-</RCC>

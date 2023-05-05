@@ -24,6 +24,6 @@ NdsProjectUI::NdsProjectUI()
 void
 NdsProjectUI::openNodeEditor(GtObject* /*obj*/)
 {
-    gtMdiLauncher->open("NdsNodeEditor");
+    gtMdiLauncher->open("GtIntelliGraphEditor");
 }
 
