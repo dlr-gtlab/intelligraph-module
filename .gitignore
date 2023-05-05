@@ -7,9 +7,12 @@ build/
 debug/
 release/
 .qtc_clangd/
+.cmake/
 
 local_settings.pri
 !features/local_settings.pri
+
+CMakeLists.txt.user
 
 *.pro.user
 *.autosave

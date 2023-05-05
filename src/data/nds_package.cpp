@@ -14,6 +14,5 @@
 
 NdsPackage::NdsPackage()
 {
-    setObjectName("Nodes Module");
+    setObjectName("IntelliGraphs");
 }
-

@@ -46,61 +46,62 @@ DESTDIR = ../$${LIB_BUILD_DEST}
 INCLUDEPATH += . \
     data \
     gui/items \
-    gui/ui 
+    gui/ui
 
 HEADERS += \
+    gt_igglobals.h \
+    data/gt_intelligraph.h \
+    data/gt_intelligraphconnection.h \
+    data/gt_intelligraphnode.h \
+    data/nodes/gt_igobjectsourcenode.h \
+    gui/items/gt_intelligrapheditor.h \
     gui/items/nds_3dplot.h \
-    gui/items/nds_abstractqwtmodel.h \
-    gui/items/nds_abstractshapemodel.h \
     gui/items/nds_barchartwidget.h \
-    gui/items/nds_combineshapesmodel.h \
-#    gui/items/nds_helloqmlmodel.h \
-    gui/items/nds_examplemodel.h \
-    gui/items/nds_objectdata.h \
-    gui/items/nds_objectloadermodel.h \
-    gui/items/nds_objectmementomodel.h \
-#    gui/items/nds_qmlbarchartmodel.h \
-#    gui/items/nds_qmlpiechartmodel.h \
-    gui/items/nds_qwtbarchartmodel.h \
-    gui/items/nds_shapedata.h \
-    gui/items/nds_shapegenmodel.h \
-    gui/items/nds_shapesettingsdata.h \
-    gui/items/nds_shapesettingsmodel.h \
-    gui/items/nds_shapevisualizationmodel.h \
-    gui/items/nds_simplemodel.h \
-    gui/items/nds_wireframemodel.h \
-#    gui/items/ndsqmllinechartmodel.h \
-    gui/items/ndsshapecolormodel.h \
+    gui/items/models/nds_abstractqwtmodel.h \
+    gui/items/models/nds_abstractshapemodel.h \
+    gui/items/models/nds_combineshapesmodel.h \
+    gui/items/models/nds_examplemodel.h \
+    gui/items/models/nds_objectloadermodel.h \
+    gui/items/models/nds_objectmementomodel.h \
+    gui/items/models/nds_qwtbarchartmodel.h \
+    gui/items/models/nds_shapegenmodel.h \
+    gui/items/models/nds_shapesettingsmodel.h \
+    gui/items/models/nds_shapevisualizationmodel.h \
+    gui/items/models/nds_simplemodel.h \
+    gui/items/models/nds_wireframemodel.h \
+    gui/items/models/ndsshapecolormodel.h \
+    gui/items/models/data/nds_shapedata.h \
+    gui/items/models/data/nds_shapesettingsdata.h \
+    gui/items/models/data/nds_objectdata.h \
     nds_nodesmodule.h \
     data/nds_package.h \
-    gui/items/nds_nodeeditor.h \
     gui/ui/nds_projectui.h 
 
 SOURCES += \
+    data/gt_intelligraph.cpp \
+    data/gt_intelligraphconnection.cpp \
+    data/gt_intelligraphnode.cpp \
+    data/nodes/gt_igobjectsourcenode.cpp \
+    gui/items/gt_intelligrapheditor.cpp \
     gui/items/nds_3dplot.cpp \
-    gui/items/nds_abstractqwtmodel.cpp \
-    gui/items/nds_abstractshapemodel.cpp \
     gui/items/nds_barchartwidget.cpp \
-    gui/items/nds_combineshapesmodel.cpp \
-#    gui/items/nds_helloqmlmodel.cpp \
-    gui/items/nds_examplemodel.cpp \
-    gui/items/nds_objectloadermodel.cpp \
-    gui/items/nds_objectmementomodel.cpp \
-#    gui/items/nds_qmlbarchartmodel.cpp \
-#    gui/items/nds_qmlpiechartmodel.cpp \
-    gui/items/nds_qwtbarchartmodel.cpp \
-    gui/items/nds_shapegenmodel.cpp \
-    gui/items/nds_shapesettingsmodel.cpp \
-    gui/items/nds_shapevisualizationmodel.cpp \
-    gui/items/nds_simplemodel.cpp \
-    gui/items/nds_wireframemodel.cpp \
-#    gui/items/ndsqmllinechartmodel.cpp \
-    gui/items/ndsshapecolormodel.cpp \
+    gui/items/models/nds_abstractqwtmodel.cpp \
+    gui/items/models/nds_abstractshapemodel.cpp \
+    gui/items/models/nds_combineshapesmodel.cpp \
+    gui/items/models/nds_examplemodel.cpp \
+    gui/items/models/nds_objectloadermodel.cpp \
+    gui/items/models/nds_objectmementomodel.cpp \
+    gui/items/models/nds_qwtbarchartmodel.cpp \
+    gui/items/models/nds_shapegenmodel.cpp \
+    gui/items/models/nds_shapesettingsmodel.cpp \
+    gui/items/models/nds_shapevisualizationmodel.cpp \
+    gui/items/models/nds_simplemodel.cpp \
+    gui/items/models/nds_wireframemodel.cpp \
+    gui/items/models/ndsshapecolormodel.cpp \
     nds_nodesmodule.cpp \
     data/nds_package.cpp \
-    gui/items/nds_nodeeditor.cpp \
-    gui/ui/nds_projectui.cpp 
-	
+    gui/ui/nds_projectui.cpp
+
 RESOURCES += \
     qml/qml.qrc
 
