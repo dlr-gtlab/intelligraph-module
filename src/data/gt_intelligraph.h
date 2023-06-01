@@ -12,6 +12,7 @@
 #include <QtNodes/Definitions>
 
 #include "gt_object.h"
+#include "gt_intelligraphexports.h"
 
 #include <QPointer>
 
@@ -22,7 +23,7 @@ class QJsonObject;
 class GtIntelliGraphNode;
 class GtIntelliGraphConnection;
 class GtIntelliGraphObjectModel;
-class GtIntelliGraph : public GtObject
+class GT_IG_EXPORT GtIntelliGraph : public GtObject
 {
     Q_OBJECT
 
@@ -125,6 +126,9 @@ public:
      * @param model Model
      */
     void setActiveGraphModel(DataFlowGraphModel& model);
+
+    DataFlowGraphModel* activeGraphModel();
+    DataFlowGraphModel const* activeGraphModel() const;
 
     /**
      * @brief Clears the active graph model. Must not be called explicitly as

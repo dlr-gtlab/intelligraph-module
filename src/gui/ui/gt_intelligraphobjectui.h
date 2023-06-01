@@ -25,6 +25,8 @@ public:
 
     static void addNodeGraph(GtObject* obj);
 
+    static void addNodeGroup(GtObject* obj);
+
     static void clearNodeGraph(GtObject* obj);
 
     static void loadNodeGraph(GtObject* obj);

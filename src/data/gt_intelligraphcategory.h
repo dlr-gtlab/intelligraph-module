@@ -10,8 +10,9 @@
 #define GTINTELLIGRAPHCATEGORY_H
 
 #include "gt_object.h"
+#include "gt_intelligraphexports.h"
 
-class GtIntelliGraphCategory : public GtObject
+class GT_IG_EXPORT GtIntelliGraphCategory : public GtObject
 {
     Q_OBJECT
 

@@ -11,7 +11,8 @@
 #include "gt_intelligraph.h"
 #include "gt_intelligrapheditor.h"
 #include "gt_intelligraphcategory.h"
-#include "nds_package.h"
+#include "gt_intelligraphnodegroup.h"
+#include "gt_igpackage.h"
 
 #include "gt_utilities.h"
 #include "gt_logging.h"
@@ -62,8 +63,12 @@ GtIntelliGraphObjectUI::GtIntelliGraphObjectUI()
             .setVisibilityMethod(isPackageObject);
 
     addSingleAction(tr("Add Intelli Graph"), addNodeGraph)
-            .setIcon(gt::gui::icon::add())
-            .setVisibilityMethod(isCategoryObject);
+        .setIcon(gt::gui::icon::add())
+        .setVisibilityMethod(isCategoryObject);
+
+    addSingleAction(tr("Add Node Group"), addNodeGroup)
+        .setIcon(gt::gui::icon::add())
+        .setVisibilityMethod(isGraphObject);
 
     addSingleAction(tr("Clear Intelli Graph"), clearNodeGraph)
             .setIcon(gt::gui::icon::clear())
@@ -77,7 +82,7 @@ GtIntelliGraphObjectUI::GtIntelliGraphObjectUI()
 QIcon
 GtIntelliGraphObjectUI::icon(GtObject* obj) const
 {
-    if (qobject_cast<NdsPackage*>(obj))
+    if (qobject_cast<GtIgPackage*>(obj))
     {
         return gt::gui::icon::applicationVar();
     }
@@ -92,7 +97,7 @@ GtIntelliGraphObjectUI::icon(GtObject* obj) const
 void
 GtIntelliGraphObjectUI::addNodeCategory(GtObject* obj)
 {
-    if (!qobject_cast<NdsPackage*>(obj)) return;
+    if (!qobject_cast<GtIgPackage*>(obj)) return;
 
     addNamedChild<GtIntelliGraphCategory>(*obj);
 }
@@ -105,6 +110,16 @@ GtIntelliGraphObjectUI::addNodeGraph(GtObject* obj)
     if (!cat) return;
 
     addNamedChild<GtIntelliGraph>(*cat);
+}
+
+void
+GtIntelliGraphObjectUI::addNodeGroup(GtObject* obj)
+{
+    auto graph = qobject_cast<GtIntelliGraph*>(obj);
+
+    if (!graph) return;
+
+    graph->appendNode(std::make_unique<GtIntelliGraphNodeGroup>());
 }
 
 void
@@ -157,7 +172,7 @@ GtIntelliGraphObjectUI::isCategoryObject(GtObject* obj)
 bool
 GtIntelliGraphObjectUI::isPackageObject(GtObject* obj)
 {
-    return qobject_cast<NdsPackage*>(obj);
+    return qobject_cast<GtIgPackage*>(obj);
 }
 
 bool

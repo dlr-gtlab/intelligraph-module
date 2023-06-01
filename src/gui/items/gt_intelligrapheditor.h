@@ -17,7 +17,7 @@
  * @generated 1.2.0
  * @brief The NdsNodeEditor class
  */
-class GtIntelliGraphEditor : public GtMdiItem
+class GT_IG_EXPORT GtIntelliGraphEditor : public GtMdiItem
 {
     Q_OBJECT
 

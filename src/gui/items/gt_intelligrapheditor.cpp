@@ -10,19 +10,10 @@
 #include "gt_intelligrapheditor.h"
 
 #include "gt_intelligraph.h"
-#include "gt_intelligraphnode.h"
 #include "gt_intelligraphconnection.h"
+#include "gt_intelligraphnodefactory.h"
 
-#include "nodes/gt_igobjectsourcenode.h"
-#include "nodes/gt_igstringlistinputnode.h"
-#include "nodes/gt_igobjectmementonode.h"
-#include "nodes/gt_igshapecolornode.h"
-#include "nodes/gt_igshapegeneratornode.h"
-#include "nodes/gt_igshapevisualizationnode.h"
-#include "nodes/gt_igwireframenode.h"
-#include "nodes/gt_igcombineshapesnode.h"
-#include "nodes/gt_igshapesettingsnode.h"
-#include "nodes/gt_igqwtbarchartnode.h"
+#include "gt_intelligraphnodegroup.h"
 
 #include "models/gt_intelligraphobjectmodel.h"
 
@@ -60,7 +51,7 @@
     }, CAT); \
 }
 
-static void setStyle()
+static void setStyleDark()
 {
     using QtNodes::GraphicsViewStyle;
     using QtNodes::NodeStyle;
@@ -158,43 +149,19 @@ static void setStyleBright()
   )");
 }
 
-static std::shared_ptr<QtNodes::NodeDelegateModelRegistry> registerDataModels()
-{
-    QString catInput  = QStringLiteral("Input");
-    QString catObject = QStringLiteral("Object");
-    QString catPlot   = QStringLiteral("Plot");
-    QString cat3D = QStringLiteral("3D Shaped");
-
-    auto ret = std::make_shared<QtNodes::NodeDelegateModelRegistry>();
-
-    GT_REGISTER_NODE_MODEL(ret, GtIgStringListInputNode, catInput);
-
-    GT_REGISTER_NODE_MODEL(ret, GtIgObjectSourceNode, catObject);
-
-    GT_REGISTER_NODE_MODEL(ret, GtIgObjectMementoNode, catObject);
-    GT_REGISTER_NODE_MODEL(ret, GtIgQwtBarChartNode, catPlot);
-
-    GT_REGISTER_NODE_MODEL(ret, GtIgCombineShapesNode, cat3D);
-    GT_REGISTER_NODE_MODEL(ret, GtIgShapeGeneratorNode, cat3D);
-    GT_REGISTER_NODE_MODEL(ret, GtIgShapeVisualizationNode, cat3D);
-    GT_REGISTER_NODE_MODEL(ret, GtIgWireframeNode, cat3D);
-    GT_REGISTER_NODE_MODEL(ret, GtIGShapeSettingsNode, cat3D);
-    GT_REGISTER_NODE_MODEL(ret, GtIgShapeColorNode, cat3D);
-
-    return ret;
-}
-
 struct GtIntelliGraphEditor::Impl
 {
     int _init_style_once = [](){
-        gtApp->inDarkMode() ? setStyle() : setStyleBright();
+        gtApp->inDarkMode() ? setStyleDark() : setStyleBright();
         return 0;
     }();
 
     QPointer<GtIntelliGraph> igGraph = nullptr;
 
     /// model
-    QtNodes::DataFlowGraphModel model{registerDataModels()};
+    QtNodes::DataFlowGraphModel model{
+        GtIntelliGraphNodeFactory::instance().makeRegistry()
+    };
     /// scene
     QtNodes::DataFlowGraphicsScene* scene{new QtNodes::DataFlowGraphicsScene(model, &model)};
     /// view
@@ -209,12 +176,12 @@ GtIntelliGraphEditor::GtIntelliGraphEditor() :
     pimpl->view->setFrameShape(QFrame::NoFrame);
 
     // hacky way to disable undo/redo actions
+    // TODO: Add switch to QtNodes lib for disabling undo/redo actions
     for (auto* action : pimpl->view->actions())
     {
         auto shortcut = action->shortcut();
         if (shortcut == QKeySequence::Undo || shortcut == QKeySequence::Redo)
         {
-            gtDebug() << action;
             action->setEnabled(false);
             action->setShortcut(QKeySequence{});
         }

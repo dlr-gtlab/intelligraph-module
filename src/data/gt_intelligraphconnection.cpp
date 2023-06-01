@@ -9,6 +9,7 @@
 #include "gt_intelligraphconnection.h"
 
 #include "gt_igglobals.h"
+#include "gt_qtutilities.h"
 
 #include <QtNodes/ConnectionIdUtils>
 
@@ -90,14 +91,9 @@ GtIntelliGraphConnection::isValid() const
 void
 GtIntelliGraphConnection::updateObjectName()
 {
-    if (!isValid())
-    {
-        return gt::ig::setUniqueName(
-                    *this, QStringLiteral("NodeConnection[N/A]"));
-    }
-
-    return gt::ig::setUniqueName(
-                *this, QStringLiteral("NodeConnection[%1:%2/%3:%4]")
-                           .arg(m_inNodeId).arg(m_inPortIdx)
-                           .arg(m_outNodeId).arg(m_outPortIdx));
+    return gt::setUniqueName(
+        *this, !isValid() ? QStringLiteral("NodeConnection[N/A]") :
+                            QStringLiteral("NodeConnection[%1:%2/%3:%4]")
+                                .arg(m_inNodeId).arg(m_inPortIdx)
+                                .arg(m_outNodeId).arg(m_outPortIdx));
 }

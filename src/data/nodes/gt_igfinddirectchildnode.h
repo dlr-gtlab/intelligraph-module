@@ -1,35 +1,36 @@
 /* GTlab - Gas Turbine laboratory
  * copyright 2009-2023 by DLR
  *
- *  Created on: 6.4.2023
+ *  Created on: 5.5.2023
  *  Author: Marius Bröcker (AT-TWK)
  *  E-Mail: marius.broecker@dlr.de
  */
 
-#ifndef GT_IGSTRINGLISTINPUTNODE_H
-#define GT_IGSTRINGLISTINPUTNODE_H
+#ifndef GT_IGFINDDIRECTCHILDNODE_H
+#define GT_IGFINDDIRECTCHILDNODE_H
 
 #include "gt_intelligraphnode.h"
 #include "gt_igvolatileptr.h"
 
-#include "gt_propertystructcontainer.h"
+#include "gt_stringproperty.h"
+#include "gt_lineedit.h"
 
-#include <QTextEdit>
-
-class GtIgStringListData;
-class GT_IG_EXPORT GtIgStringListInputNode : public GtIntelliGraphNode
+class GtIgObjectData;
+class GT_IG_EXPORT GtIgFindDirectChildNode : public GtIntelliGraphNode
 {
     Q_OBJECT
 
 public:
 
-    Q_INVOKABLE GtIgStringListInputNode();
+    Q_INVOKABLE GtIgFindDirectChildNode();
 
     unsigned int nPorts(PortType const type) const override;
 
     NodeDataType dataType(PortType const type, PortIndex const idx) const override;
 
     NodeData outData(PortIndex const port) override;
+
+    void setInData(NodeData data, PortIndex const port) override;
 
     QWidget* embeddedWidget() override;
 
@@ -38,14 +39,13 @@ public slots:
     void updateNode() override;
 
 private:
+    std::shared_ptr<GtIgObjectData> m_parent;
 
-    GtPropertyStructContainer m_values;
+    gt::ig::volatile_ptr<GtLineEdit> m_editor;
 
-    gt::ig::volatile_ptr<QTextEdit> m_editor;
-
-    QStringList values() const;
+    GtStringProperty m_childClassName;
 
     void initWidget();
 };
 
-#endif // GT_IGSTRINGLISTINPUTNODE_H
+#endif // GT_IGFINDDIRECTCHILDNODE_H

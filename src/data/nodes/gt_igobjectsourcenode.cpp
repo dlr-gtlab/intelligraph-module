@@ -1,4 +1,5 @@
 #include "gt_igobjectsourcenode.h"
+#include "gt_intelligraphnodefactory.h"
 
 #include "gt_objectfactory.h"
 #include "gt_application.h"
@@ -9,7 +10,7 @@
 
 #include <QEvent>
 
-GTIG_REGISTER_NODE(GtIgObjectSourceNode);
+GTIG_REGISTER_NODE(GtIgObjectSourceNode, "Object");
 
 GtIgObjectSourceNode::GtIgObjectSourceNode() :
     GtIntelliGraphNode(tr("Object Source")),
