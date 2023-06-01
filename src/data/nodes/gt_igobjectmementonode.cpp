@@ -1,14 +1,14 @@
 #include "gt_igobjectmementonode.h"
+#include "gt_intelligraphnodefactory.h"
 
 #include "gt_object.h"
 #include "gt_objectmemento.h"
 #include "gt_xmlhighlighter.h"
-
 #include "gt_codeeditor.h"
 
 #include "models/data/gt_igobjectdata.h"
 
-GTIG_REGISTER_NODE(GtIgObjectMementoNode);
+GTIG_REGISTER_NODE(GtIgObjectMementoNode, "Object");
 
 GtIgObjectMementoNode::GtIgObjectMementoNode() :
     GtIntelliGraphNode(tr("Memento Viewer"))

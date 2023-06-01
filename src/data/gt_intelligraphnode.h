@@ -10,15 +10,11 @@
 #define GT_INTELLIGRAPHNODE_H
 
 #include "gt_igglobals.h"
-#include "gt_intelligraphnodefactory.h"
+#include "gt_intelligraphexports.h"
 
 #include "gt_object.h"
 #include "gt_intproperty.h"
 #include "gt_doubleproperty.h"
-#include "gt_stringproperty.h"
-#include "gt_enumproperty.h"
-
-namespace QtNodes { class DataFlowGraphModel; }
 
 namespace gt
 {
@@ -36,7 +32,7 @@ enum NodeFlag
 
 } // namespace gt
 
-class GtIntelliGraphNode : public GtObject
+class GT_IG_EXPORT GtIntelliGraphNode : public GtObject
 {
     Q_OBJECT
 
@@ -87,12 +83,6 @@ public:
     virtual bool portCaptionVisible(PortType type, PortIndex idx) const { return false; }
 
     virtual QString portCaption(PortType type, PortIndex idx) const { return {}; }
-
-    virtual ConnectionPolicy portConnectionPolicy(PortType type, PortIndex idx) const
-    {
-        return (type == PortType::In) ? ConnectionPolicy::One :
-                                        ConnectionPolicy::Many;
-    }
 
     virtual NodeData outData(PortIndex const port) { return {}; }
 

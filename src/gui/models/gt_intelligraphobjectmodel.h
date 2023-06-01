@@ -14,7 +14,7 @@
 #include <QtNodes/NodeDelegateModel>
 
 class GtIntelliGraph;
-class GtIntelliGraphObjectModel final : public QtNodes::NodeDelegateModel
+class GT_IG_EXPORT GtIntelliGraphObjectModel final : public QtNodes::NodeDelegateModel
 {
     Q_OBJECT
 
@@ -78,12 +78,6 @@ public:
     {
         return m_node ? m_node->portCaption(type, idx) : QString{};
     }
-
-    ConnectionPolicy portConnectionPolicy(PortType type, PortIndex idx) const override
-    {
-        return m_node ? m_node->portConnectionPolicy(type, idx) : ConnectionPolicy::One;
-    }
-
 
     NodeData outData(PortIndex const port) override
     {

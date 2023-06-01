@@ -8,7 +8,7 @@
 
 #include "gt_intelligraphobjectmodel.h"
 
-#include "gt_intelligraph.h"
+#include "gt_intelligraphnodefactory.h"
 
 /// macro to setup singals in such a way that they will be forwarded but wont
 /// start an infinite loop

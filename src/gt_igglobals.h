@@ -10,8 +10,6 @@
 #define GT_IGGLOBALS_H
 
 #include "gt_intproperty.h"
-#include "gt_logging.h"
-#include "gt_qtutilities.h"
 #include "gt_typetraits.h"
 
 #include <QtNodes/Definitions>
@@ -33,41 +31,6 @@ inline unsigned fromInt(GtIntProperty const& p)
     return p.get() >= 0 ? static_cast<unsigned>(p) : std::numeric_limits<NodeId>::max();
 }
 
-inline auto makeUniqueName(QObject const& obj, QString const& name = {})
-{
-    auto objectName = name.isEmpty() ? obj.objectName() : name;
-
-    if (auto* parent = obj.parent())
-    {
-        auto list = parent->findChildren<QObject const*>(
-                        QString{}, Qt::FindDirectChildrenOnly);
-
-        list.removeOne(&obj);
-
-        return gt::detail::makeUniqueNameImpl(objectName, list,
-                                              [](QObject const* o){
-            return o->objectName();
-        });
-    }
-
-    return objectName;
-}
-
-inline auto makeUniqueName(QString const& str, QObject const* obj)
-{
-    return obj ? gt::makeUniqueName(str, *obj) : str;
-}
-
-inline auto makeUniqueName(QString const& str, QObject const& obj)
-{
-    return gt::makeUniqueName(str, obj);
-}
-
-inline void setUniqueName(QObject& obj, QString const& name = {})
-{
-    obj.setObjectName(makeUniqueName(obj, name));
-}
-
 template <typename T, typename U,
           gt::trait::enable_if_base_of<QtNodes::NodeData, U> = true,
           gt::trait::enable_if_base_of<QtNodes::NodeData, T> = true>
@@ -81,6 +44,21 @@ inline std::shared_ptr<T> nodedata_cast(std::shared_ptr<U> ptr)
 }
 
 } // namespace ig
+
+namespace re
+{
+
+namespace ig
+{
+
+inline QRegExp forClassNames()
+{
+    return QRegExp(R"(^([a-zA-Z_][a-zA-Z0-9_]*::)*[a-zA-Z_][a-zA-Z0-9_]*$)");
+}
+
+} // namespace ig
+
+} // namespace re
 
 } // namespace gt
 

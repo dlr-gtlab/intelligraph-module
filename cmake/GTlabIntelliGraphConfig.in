@@ -1,0 +1,4 @@
+# - Config file for the GTlabNodesModule package
+include("${CMAKE_CURRENT_LIST_DIR}/GTlabIntelliGraph-targets.cmake")
+
+add_library(GTlab::IntelliGraph ALIAS GTlabIntelliGraph)

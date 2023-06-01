@@ -10,11 +10,12 @@
 #define GT_INTELLIGRAPHCONNECTION_H
 
 #include "gt_igglobals.h"
+#include "gt_intelligraphexports.h"
 
 #include "gt_object.h"
 #include "gt_intproperty.h"
 
-class GtIntelliGraphConnection : public GtObject
+class GT_IG_EXPORT GtIntelliGraphConnection : public GtObject
 {
     Q_OBJECT
 

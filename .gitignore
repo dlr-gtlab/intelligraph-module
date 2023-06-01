@@ -8,6 +8,7 @@ debug/
 release/
 .qtc_clangd/
 .cmake/
+.cache/
 
 local_settings.pri
 !features/local_settings.pri

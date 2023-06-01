@@ -9,6 +9,7 @@
 #include "gt_intelligraph.h"
 #include "gt_intelligraphnode.h"
 #include "gt_intelligraphconnection.h"
+#include "gt_intelligraphnodegroup.h"
 #include "models/gt_intelligraphobjectmodel.h"
 
 #include "gt_coredatamodel.h"
@@ -400,6 +401,18 @@ void
 GtIntelliGraph::setActiveGraphModel(DataFlowGraphModel& model)
 {
     m_activeGraphModel = &model;
+}
+
+GtIntelliGraph::DataFlowGraphModel*
+GtIntelliGraph::activeGraphModel()
+{
+    return m_activeGraphModel;
+}
+
+GtIntelliGraph::DataFlowGraphModel const*
+GtIntelliGraph::activeGraphModel() const
+{
+    return m_activeGraphModel;
 }
 
 void

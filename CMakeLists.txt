@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.15.0)
 
-project(GTlabNodesModule)
+project(GTlabIntelliGraph)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 set(CMAKE_AUTOMOC ON)
@@ -13,11 +13,6 @@ find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui Xml)
 
 find_package(GTlabLogging REQUIRED)
 find_package(GTlabCore REQUIRED)
-
-# temp
-find_package(GTlabCadKernel REQUIRED)
-find_package(GTlabPreDesign REQUIRED)
-find_package(Qwt REQUIRED)
 
 add_subdirectory(thirdparty)
 add_subdirectory(src)

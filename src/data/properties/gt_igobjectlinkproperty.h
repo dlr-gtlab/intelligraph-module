@@ -6,12 +6,13 @@
  *  E-Mail: marius.broecker@dlr.de
  */
 
-#ifndef GTIGOBJECTLINKPROPERTY_H
-#define GTIGOBJECTLINKPROPERTY_H
+#ifndef GT_IGOBJECTLINKPROPERTY_H
+#define GT_IGOBJECTLINKPROPERTY_H
 
 #include "gt_objectlinkproperty.h"
+#include "gt_intelligraphexports.h"
 
-class GtIgObjectLinkProperty : public GtObjectLinkProperty
+class GT_IG_EXPORT GtIgObjectLinkProperty : public GtObjectLinkProperty
 {
     Q_OBJECT
 
@@ -27,4 +28,4 @@ public:
     }
 };
 
-#endif // GTIGOBJECTLINKPROPERTY_H
+#endif // GT_IGOBJECTLINKPROPERTY_H

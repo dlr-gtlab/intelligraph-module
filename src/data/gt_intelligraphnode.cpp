@@ -8,6 +8,7 @@
 
 #include "gt_intelligraphnode.h"
 
+#include "gt_intelligraphnodefactory.h"
 #include "gt_objectfactory.h"
 #include "gt_objectmemento.h"
 #include "gt_qtutilities.h"
@@ -138,5 +139,5 @@ GtIntelliGraphNode::isValid(const QString& modelName)
 void
 GtIntelliGraphNode::updateObjectName()
 {
-    gt::ig::setUniqueName(*this, m_caption);
+    gt::setUniqueName(*this, m_caption);
 }

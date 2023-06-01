@@ -7,13 +7,14 @@
  */
 
 #include "gt_igstringlistinputnode.h"
+#include "gt_intelligraphnodefactory.h"
 
 #include "models/data/gt_igstringlistdata.h"
 
 #include "gt_structproperty.h"
 #include "gt_stringproperty.h"
 
-GTIG_REGISTER_NODE(GtIgStringListInputNode)
+GTIG_REGISTER_NODE(GtIgStringListInputNode, "Input")
 
 GtIgStringListInputNode::GtIgStringListInputNode() :
     GtIntelliGraphNode(tr("Stringlist Input")),

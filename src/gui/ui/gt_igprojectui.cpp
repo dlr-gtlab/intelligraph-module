@@ -12,9 +12,9 @@
  
 #include "gt_mdilauncher.h"
 
-#include "nds_projectui.h"
+#include "gt_igprojectui.h"
 
-NdsProjectUI::NdsProjectUI()
+GtIgProjectUI::GtIgProjectUI()
 {
     setObjectName("ProjectUI");
 
@@ -22,7 +22,7 @@ NdsProjectUI::NdsProjectUI()
 }
 
 void
-NdsProjectUI::openNodeEditor(GtObject* /*obj*/)
+GtIgProjectUI::openNodeEditor(GtObject* /*obj*/)
 {
     gtMdiLauncher->open("GtIntelliGraphEditor");
 }

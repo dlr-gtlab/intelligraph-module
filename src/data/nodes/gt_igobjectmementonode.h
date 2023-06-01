@@ -7,7 +7,7 @@
 #include "gt_codeeditor.h"
 
 class GtIgObjectData;
-class GtIgObjectMementoNode : public GtIntelliGraphNode
+class GT_IG_EXPORT GtIgObjectMementoNode : public GtIntelliGraphNode
 {
     Q_OBJECT
 

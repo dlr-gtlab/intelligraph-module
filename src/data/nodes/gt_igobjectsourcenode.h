@@ -10,7 +10,7 @@
 
 class GtIgObjectData;
 class GtIgStringListData;
-class GtIgObjectSourceNode : public GtIntelliGraphNode
+class GT_IG_EXPORT GtIgObjectSourceNode : public GtIntelliGraphNode
 {
     Q_OBJECT
 

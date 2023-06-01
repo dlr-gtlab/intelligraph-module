@@ -6,26 +6,26 @@
  * Email: 
  */
 
-#ifndef NDSPROJECTUI_H
-#define NDSPROJECTUI_H
+#ifndef GT_IGPROJECTUI_H
+#define GT_IGPROJECTUI_H
 
 #include "gt_objectui.h"
 
 /**
  * @generated 1.2.0
- * @brief The NdsProjectUI class
+ * @brief The GtIgProjectUI class
  */
-class NdsProjectUI : public GtObjectUI
+class GtIgProjectUI : public GtObjectUI
 {
     Q_OBJECT
 
 public:
 
-    Q_INVOKABLE NdsProjectUI();
+    Q_INVOKABLE GtIgProjectUI();
 
 public slots:
 
     void openNodeEditor(GtObject* obj);
 };
 
-#endif // NDSPROJECTUI_H
+#endif // GT_IGPROJECTUI_H

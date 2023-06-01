@@ -10,41 +10,49 @@
  * generated 1.2.0
  */
  
-#include "nds_nodesmodule.h"
+#include "gt_intelligraphmodule.h"
 
-#include "nds_package.h"
+#include "gt_igpackage.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligraphcategory.h"
 #include "gt_intelligraphconnection.h"
 #include "gt_intelligraphobjectui.h"
 #include "gt_intelligrapheditor.h"
+#include "gt_intelligraphnodefactory.h"
+#include "gt_igobjectlinkproperty.h"
+#include "gt_igobjectlinkpropertyitem.h"
 
-#include "nds_projectui.h"
-#include "nds_3dplot.h"
+#include "gt_igprojectui.h"
 
 #include "gt_project.h"
 
 GtVersionNumber
-NdsNodesModule::version()
+GtIntelliGraphModule::version()
 {
     return GtVersionNumber{0, 0, 1};
 }
 
 QString
-NdsNodesModule::description() const
+GtIntelliGraphModule::description() const
 {
     return QStringLiteral("GTlab Nodes Module");
 }
 
 void
-NdsNodesModule::init()
+GtIntelliGraphModule::init()
 {
-    gtDebug() << "REGISTERED NODES:"
-              << GtIntelliGraphNodeFactory::instance().knownClasses();
+    if (gt::log::Logger::instance().verbosity() < gt::log::Everything) return;
+
+    gtDebug() << "REGISTERED NODES:";
+
+    for (auto const& n : GtIntelliGraphNodeFactory::instance().knownClasses())
+    {
+        gtDebug() << " ->" << n;
+    }
 }
 
-NdsNodesModule::MetaInformation
-NdsNodesModule::metaInformation() const
+GtIntelliGraphModule::MetaInformation
+GtIntelliGraphModule::metaInformation() const
 {
     MetaInformation m;
 
@@ -58,13 +66,13 @@ NdsNodesModule::metaInformation() const
 }
 
 QMetaObject
-NdsNodesModule::package()
+GtIntelliGraphModule::package()
 {
-    return GT_METADATA(NdsPackage);
+    return GT_METADATA(GtIgPackage);
 }
 
 QList<QMetaObject>
-NdsNodesModule::data()
+GtIntelliGraphModule::data()
 {
     QList<QMetaObject> list;
 
@@ -72,27 +80,17 @@ NdsNodesModule::data()
     list << GT_METADATA(GtIntelliGraphCategory);
     list << GT_METADATA(GtIntelliGraphConnection);
 
-    /* nodes */
-    auto& factory = GtIntelliGraphNodeFactory::instance();
-    auto const nodes = factory.knownClasses();
-    list.reserve(list.size() + nodes.size());
-
-    for (auto const& node : nodes)
-    {
-        if (auto* m = factory.metaObject(node)) list << *m;
-    }
-
     return list;
 }
 
 bool
-NdsNodesModule::standAlone()
+GtIntelliGraphModule::standAlone()
 {
     return true;
 }
 
 QList<GtCalculatorData>
-NdsNodesModule::calculators()
+GtIntelliGraphModule::calculators()
 {
     QList<GtCalculatorData> list;
 
@@ -100,7 +98,7 @@ NdsNodesModule::calculators()
 }
 
 QList<GtTaskData>
-NdsNodesModule::tasks()
+GtIntelliGraphModule::tasks()
 {
     QList<GtTaskData> list;
 
@@ -108,18 +106,17 @@ NdsNodesModule::tasks()
 }
 
 QList<QMetaObject>
-NdsNodesModule::mdiItems()
+GtIntelliGraphModule::mdiItems()
 {
     QList<QMetaObject> list;
 
     list << GT_METADATA(GtIntelliGraphEditor);
-    list << GT_METADATA(Nds3DPlot);
 
     return list;
 }
 
 QList<QMetaObject>
-NdsNodesModule::dockWidgets()
+GtIntelliGraphModule::dockWidgets()
 {
     QList<QMetaObject> list;
 
@@ -127,14 +124,13 @@ NdsNodesModule::dockWidgets()
 }
 
 QMap<const char*, QMetaObject>
-NdsNodesModule::uiItems()
+GtIntelliGraphModule::uiItems()
 {
     QMap<const char*, QMetaObject> map;
 
     map.insert(GT_CLASSNAME(GtProject),
-               GT_METADATA(NdsProjectUI));
-
-    map.insert(GT_CLASSNAME(NdsPackage),
+               GT_METADATA(GtIgProjectUI));
+    map.insert(GT_CLASSNAME(GtIgPackage),
                GT_METADATA(GtIntelliGraphObjectUI));
     map.insert(GT_CLASSNAME(GtIntelliGraph),
                GT_METADATA(GtIntelliGraphObjectUI));
@@ -145,7 +141,7 @@ NdsNodesModule::uiItems()
 }
 
 QList<QMetaObject>
-NdsNodesModule::postItems()
+GtIntelliGraphModule::postItems()
 {
     QList<QMetaObject> list;
 
@@ -153,7 +149,7 @@ NdsNodesModule::postItems()
 }
 
 QList<QMetaObject>
-NdsNodesModule::postPlots()
+GtIntelliGraphModule::postPlots()
 {
     QList<QMetaObject> list;
 
@@ -161,13 +157,13 @@ NdsNodesModule::postPlots()
 }
 
 QMap<const char*, QMetaObject>
-NdsNodesModule::propertyItems()
+GtIntelliGraphModule::propertyItems()
 {
     QMap<const char*, QMetaObject> map;
 
     // not exported by default...
-//    map.insert(GT_CLASSNAME(GtIgObjectLinkProperty),
-//               GT_METADATA(GtPropertyObjectLinkItem));
+    map.insert(GT_CLASSNAME(GtIgObjectLinkProperty),
+               GT_METADATA(GtIgObjectLinkPropertyItem));
 
     return map;
 }

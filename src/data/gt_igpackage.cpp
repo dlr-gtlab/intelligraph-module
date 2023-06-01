@@ -10,9 +10,9 @@
  * generated 1.2.0
  */
  
-#include "nds_package.h"
+#include "gt_igpackage.h"
 
-NdsPackage::NdsPackage()
+GtIgPackage::GtIgPackage()
 {
     setObjectName("IntelliGraphs");
 }

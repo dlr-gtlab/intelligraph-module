@@ -17,9 +17,9 @@
 
 /**
  * @generated 1.2.0
- * @brief The NdsNodesModule class
+ * @brief The GtIntelliGraphModule class
  */
-class NdsNodesModule : public QObject,
+class GtIntelliGraphModule : public QObject,
         public GtModuleInterface,
         public GtDatamodelInterface,
         public GtProcessInterface,
@@ -28,7 +28,7 @@ class NdsNodesModule : public QObject,
 {
     Q_OBJECT
 
-    GT_MODULE("nds_nodesmodule.json")
+    GT_MODULE("gt_intelligraphmodule.json")
 
     Q_INTERFACES(GtModuleInterface)
     Q_INTERFACES(GtDatamodelInterface)
