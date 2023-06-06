@@ -10,13 +10,13 @@
 #define GT_IGPACKAGE_H
 
 #include "gt_package.h"
-#include "gt_intelligraphexports.h"
+#include "gt_intelligraph_exports.h"
 
 /**
  * @generated 1.2.0
  * @brief The GtIgPackage class
  */
-class GT_IG_EXPORT GtIgPackage : public GtPackage
+class GtIgPackage : public GtPackage
 {
     Q_OBJECT
 

@@ -16,7 +16,7 @@
 #include "gt_lineedit.h"
 
 class GtIgObjectData;
-class GT_IG_EXPORT GtIgFindDirectChildNode : public GtIntelliGraphNode
+class GtIgFindDirectChildNode : public GtIntelliGraphNode
 {
     Q_OBJECT
 

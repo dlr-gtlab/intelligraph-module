@@ -14,7 +14,7 @@
 #include <QtNodes/NodeDelegateModel>
 
 class GtIntelliGraph;
-class GT_IG_EXPORT GtIntelliGraphObjectModel final : public QtNodes::NodeDelegateModel
+class GtIntelliGraphObjectModel final : public QtNodes::NodeDelegateModel
 {
     Q_OBJECT
 

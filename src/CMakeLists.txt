@@ -10,7 +10,7 @@ add_library(GTlabIntelliGraph SHARED
     gt_intelligraphmodule.h
     gt_igglobals.h
     gt_igvolatileptr.h
-    gt_intelligraphexports.h
+    gt_intelligraph_exports.h
     gt_intelligraphnodefactory.h
     data/gt_igpackage.h
     data/gt_intelligraph.h

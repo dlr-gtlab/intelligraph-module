@@ -12,7 +12,7 @@
 #include "gt_abstractobjectfactory.h"
 
 #include "gt_object.h"
-#include "gt_intelligraphexports.h"
+#include "gt_intelligraph_exports.h"
 
 #include <QtNodes/NodeDelegateModelRegistry>
 

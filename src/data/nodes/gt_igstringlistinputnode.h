@@ -17,7 +17,7 @@
 #include <QTextEdit>
 
 class GtIgStringListData;
-class GT_IG_EXPORT GtIgStringListInputNode : public GtIntelliGraphNode
+class GtIgStringListInputNode : public GtIntelliGraphNode
 {
     Q_OBJECT
 

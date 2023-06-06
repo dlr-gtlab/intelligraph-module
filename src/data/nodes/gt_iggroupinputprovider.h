@@ -11,7 +11,7 @@
 
 #include "gt_intelligraphnode.h"
 
-class GT_IG_EXPORT GtIgGroupInputProvider : public GtIntelliGraphNode
+class GtIgGroupInputProvider : public GtIntelliGraphNode
 {
     Q_OBJECT
 

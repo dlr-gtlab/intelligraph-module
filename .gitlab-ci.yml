@@ -1,0 +1,144 @@
+# Variables that are defined globally for the pipeline
+variables:
+  PIPELINEVERSION: "2.1.0"
+  GIT_SUBMODULE_STRATEGY: "recursive"
+  GIT_STRATEGY: "clone"
+  
+  # Regulare expression pattern
+  # enclose the branch name with ^ and $
+  # separete severl branch names with |
+  # e.g. /^main$|^main_1_0$/
+  STABLE_BRANCHES: /^main$/
+  
+  # Name of the unstable branch (if it exists)
+  # UNSTABLE_BRANCH: unstable_master
+
+include:
+  - project: 'at-twk/gitlab-templates'
+    file: '/ci-templates/.ci-templates-cmake-1.0.yml'
+
+stages:
+  - update
+  - build
+  - test
+  - regressionTest
+  - unstableBuild
+  - unstableTest
+  - deploy
+  - codequality
+  - package
+  - badges
+
+windowsBuildDebug:
+  stage: build
+  extends: 
+    - .build-win_20
+    - .run-always
+  script:
+    # sync submodules
+    - git submodule sync
+    - git submodule update --init
+    # build
+    - cmake -B build -S . -G "Ninja" -DGTLAB_DEVTOOLS_DIR="$env:GTLAB_DEV_TOOLS"  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install-msvc2019-dbg -DBUILD_UNITTESTS=ON
+    - cmake --build build --target install
+
+windowsBuildRelease:
+  stage: build
+  extends: 
+    - .build-win_20
+    - .run-master-and-tags
+  script:
+    # sync submodules
+    - git submodule sync
+    - git submodule update --init
+    # build
+    - cmake -B build -S . -G "Ninja" -DGTLAB_DEVTOOLS_DIR="$env:GTLAB_DEV_TOOLS"  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install-msvc2019
+    - cmake --build build --target install
+    
+# build on Linux system
+linuxBuildDebug:
+  stage: build
+  extends: 
+    - .build-linux_20
+    - .run-always
+  script: 
+    - git config --global credential.helper store
+    - echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.dlr.de" > ~/.git-credentials
+    # sync submodules
+    - git submodule sync
+    - git submodule update --init
+    # build
+    - cmake -B build -S . -G "Ninja" -DGTLAB_DEVTOOLS_DIR=$GTLAB_DEV_TOOLS -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install-linux-dbg -DBUILD_UNITTESTS=ON
+    - cmake --build build --target install
+
+linuxBuildRelease:
+  extends: 
+  stage: build
+  extends: 
+    - .build-linux_20
+    - .run-master-and-tags
+  script: 
+    - git config --global credential.helper store
+    - echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.dlr.de" > ~/.git-credentials
+    # sync submodules
+    - git submodule sync
+    - git submodule update --init
+    # build
+    - cmake -B build -S . -G "Ninja" -DGTLAB_DEVTOOLS_DIR=$GTLAB_DEV_TOOLS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install-linux -DBUILD_UNITTESTS=ON
+    - cmake --build build --target install
+
+.package:
+  stage: package
+  tags: ["docker", "linux"]
+  extends: [".run-master-and-tags"]
+  image: debian:buster
+  script:
+    - cp -r install-$toolchain-dbg/* install-$toolchain
+    - mv install-$toolchain gtlab-intelligraph-$toolchain
+    - tar czf gtlab-intelligraph-$toolchain.tar.gz gtlab-intelligraph-$toolchain
+  artifacts:
+    name: "gtlab-intelligraph-$toolchain"
+    paths: ["gtlab-intelligraph-$toolchain.tar.gz"]
+  variables:
+    toolchain: msvc2019
+    GIT_STRATEGY: "none"
+
+package-win-gtlab_2.0:
+  extends: [".package"]
+  needs: ["windowsBuildDebug", "windowsBuildRelease"]
+  variables:
+    toolchain: msvc2019
+
+package-linux-gtlab_2.0:
+  extends: [".package"]
+  needs: ["linuxBuildDebug", "linuxBuildRelease"]
+  variables:
+    toolchain: linux
+
+# code quality
+codingstyle:
+  stage: codequality
+  extends: .codingStyleTemplate
+ 
+cppcheck:
+  stage: codequality
+  extends: .cppCheckReportTemplate
+  allow_failure: true
+
+pages:
+  stage: badges
+  extends: .pageTemplate
+
+# badges
+badges:
+  stage: badges
+  extends: 
+    - .stable-only-master
+    - .badgeTemplate
+  dependencies:
+    - windowsBuildDebug
+    - linuxBuildDebug
+    #- testWin
+    #- testLinux
+    - codingstyle
+

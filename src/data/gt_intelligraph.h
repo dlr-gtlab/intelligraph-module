@@ -12,7 +12,6 @@
 #include <QtNodes/Definitions>
 
 #include "gt_object.h"
-#include "gt_intelligraphexports.h"
 
 #include <QPointer>
 
@@ -23,7 +22,7 @@ class QJsonObject;
 class GtIntelliGraphNode;
 class GtIntelliGraphConnection;
 class GtIntelliGraphObjectModel;
-class GT_IG_EXPORT GtIntelliGraph : public GtObject
+class GtIntelliGraph : public GtObject
 {
     Q_OBJECT
 
