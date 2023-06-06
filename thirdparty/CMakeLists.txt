@@ -6,5 +6,5 @@ set(BUILD_SHARED_LIBS OFF)
 
 # make sure, that qtnodes does not overwrite
 # BUILD_SHARED_LIBS variable
-cmake_policy(SET CMP0077 NEW)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 add_subdirectory(gtnodes EXCLUDE_FROM_ALL)
