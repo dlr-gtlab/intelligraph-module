@@ -29,7 +29,7 @@
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber{0, 0, 1};
+    return GtVersionNumber{0, 1, 0};
 }
 
 QString
