@@ -1,7 +1,7 @@
 set(CMAKE_DEBUG_POSTFIX -d)
 
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX};${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_INSTALL_PREFIX}/libDebug")
+set(CMAKE_INSTALL_RPATH "$ORIGIN:$ORIGIN/..")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set(INTELLIGRAPH_VERSION 0.0.1)
@@ -118,23 +118,32 @@ install (TARGETS GTlabIntelliGraph
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/intelligraph
 )
 
-if (IS_DIRECTORY ${CMAKE_INSTALL_PREFIX}/src)
-  message(STATUS "Deploying into GTlab build dir")
+if (IS_DIRECTORY ${CMAKE_INSTALL_PREFIX}/build)
+    message(STATUS "Deploying into GTlab build dir")
 
-  install (TARGETS GTlabIntelliGraph
-      RUNTIME DESTINATION "build/modules"
-  )
+    if (UNIX)
+        install (TARGETS GTlabIntelliGraph
+            LIBRARY DESTINATION build/modules
+        )
 
+    else(UNIX)
+        install (TARGETS GTlabIntelliGraph
+            RUNTIME DESTINATION build/modules
+        )
+    endif(UNIX)
 else ()
-    install (TARGETS GTlabIntelliGraph
-        CONFIGURATIONS RELEASE
-        RUNTIME DESTINATION bin/modules
-    )
+    if (UNIX)
+        install (TARGETS GTlabIntelliGraph
+            LIBRARY DESTINATION
+            $<IF:$<CONFIG:Debug>,binDebug/modules,bin/modules>
+        )
 
-    install (TARGETS GTlabIntelliGraph
-        CONFIGURATIONS DEBUG
-        RUNTIME DESTINATION binDebug/modules
-    )
+    else(UNIX)
+        install (TARGETS GTlabIntelliGraph
+            RUNTIME DESTINATION
+            $<IF:$<CONFIG:Debug>,binDebug/modules,bin/modules>
+        )
+    endif(UNIX)
 endif ()
 
 
