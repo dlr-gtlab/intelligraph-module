@@ -10,11 +10,13 @@
 #define GT_INTELLIGRAPHNODE_H
 
 #include "gt_igglobals.h"
-#include "gt_intelligraphexports.h"
+#include "gt_intelligraph_exports.h"
 
 #include "gt_object.h"
 #include "gt_intproperty.h"
 #include "gt_doubleproperty.h"
+
+#include <QPointF>
 
 namespace gt
 {
@@ -136,7 +138,7 @@ protected slots:
 
     virtual void outputConnectionCreated(GtIntelliGraphNode::ConnectionId const& id) {}
 
-    virtual void outputConnectionDeleted(GtIntelliGraphNode::ConnectionId const & id) {}
+    virtual void outputConnectionDeleted(GtIntelliGraphNode::ConnectionId const& id) {}
 
 private:
 

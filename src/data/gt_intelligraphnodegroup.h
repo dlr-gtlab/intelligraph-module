@@ -15,7 +15,7 @@ class GtIntelliGraph;
 class GtIgGroupInputProvider;
 class GtIgGroupOutputProvider;
 
-class GT_IG_EXPORT GtIntelliGraphNodeGroup : public GtIntelliGraphNode
+class GtIntelliGraphNodeGroup : public GtIntelliGraphNode
 {
     Q_OBJECT
 

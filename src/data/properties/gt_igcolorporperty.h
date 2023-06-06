@@ -10,7 +10,7 @@
 #define GT_IGCOLORPORPERTY_H
 
 #include "gt_property.h"
-#include "gt_intelligraphexports.h"
+#include "gt_intelligraph_exports.h"
 
 #include <QColor>
 

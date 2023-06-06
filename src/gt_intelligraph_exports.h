@@ -6,8 +6,8 @@
  *  E-Mail: marius.broecker@dlr.de
  */
 
-#ifndef GT_INTELLIGRAPHEXPORTS_H
-#define GT_INTELLIGRAPHEXPORTS_H
+#ifndef GT_INTELLIGRAPH_EXPORTS_H
+#define GT_INTELLIGRAPH_EXPORTS_H
 
 #if GT_INTELLIGRAPH_STATIC
   #define GT_IG_EXPORT
@@ -19,8 +19,8 @@
       #define GT_IG_EXPORT __declspec (dllimport)
     #endif
   #else
-    #define GENH5_EXPORT
+    #define GT_IG_EXPORT
   #endif
 #endif
 
-#endif // GT_INTELLIGRAPHEXPORTS_H
+#endif // GT_INTELLIGRAPH_EXPORTS_H

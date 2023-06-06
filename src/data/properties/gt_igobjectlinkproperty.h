@@ -10,7 +10,7 @@
 #define GT_IGOBJECTLINKPROPERTY_H
 
 #include "gt_objectlinkproperty.h"
-#include "gt_intelligraphexports.h"
+#include "gt_intelligraph_exports.h"
 
 class GT_IG_EXPORT GtIgObjectLinkProperty : public GtObjectLinkProperty
 {
