@@ -12,8 +12,7 @@
 #include "gt_intproperty.h"
 #include "gt_typetraits.h"
 
-#include <QtNodes/Definitions>
-#include <QtNodes/NodeData>
+#include <QPointF>
 
 namespace gt
 {
@@ -22,25 +21,40 @@ namespace ig
 
 using NodeId = unsigned;
 
-using PortIdx = unsigned;
+using PortIndex = unsigned;
+
+using PortId = unsigned;
 
 using Position = QPointF;
 
+enum PortType
+{
+    In = 0,
+    Out,
+    None
+};
+
+template<typename T>
+constexpr inline T invalid() noexcept { return std::numeric_limits<T>::max(); }
+
 inline unsigned fromInt(GtIntProperty const& p)
 {
-    return p.get() >= 0 ? static_cast<unsigned>(p) : std::numeric_limits<NodeId>::max();
+    return p.get() >= 0 ? static_cast<unsigned>(p) : invalid<NodeId>();
 }
 
-template <typename T, typename U,
-          gt::trait::enable_if_base_of<QtNodes::NodeData, U> = true,
-          gt::trait::enable_if_base_of<QtNodes::NodeData, T> = true>
-inline std::shared_ptr<T> nodedata_cast(std::shared_ptr<U> ptr)
+template<typename Derived, typename Base>
+inline std::shared_ptr<Derived>
+shared_qobject_cast(std::shared_ptr<Base>&& basePtr) noexcept
 {
-    if (ptr && ptr->type().id == T::staticType().id)
+    auto derivedPtr = std::shared_ptr<Derived>(
+        qobject_cast<Derived*>(basePtr.get()));
+
+    if (derivedPtr)
     {
-        return std::static_pointer_cast<T>(ptr);
+        return derivedPtr;
     }
-    return {};
+
+    return nullptr;
 }
 
 } // namespace ig
@@ -61,17 +75,5 @@ inline QRegExp forClassNames()
 } // namespace re
 
 } // namespace gt
-
-inline gt::log::Stream& operator<<(gt::log::Stream& s, QtNodes::ConnectionId const& con)
-{
-    {
-        gt::log::StreamStateSaver saver(s);
-        s.nospace()
-          << "NodeConnection["
-          << con.inNodeId  << ":" << con.inPortIndex << "/"
-          << con.outNodeId << ":" << con.outPortIndex << "]";
-    }
-    return s;
-}
 
 #endif // GT_IGGLOBALS_H

@@ -15,6 +15,8 @@
 #include "gt_object.h"
 #include "gt_intproperty.h"
 
+#include <QtNodes/Definitions>
+
 class GtIntelliGraphConnection : public GtObject
 {
     Q_OBJECT
@@ -39,12 +41,12 @@ public:
     QJsonObject toJson() const;
 
     gt::ig::NodeId inNodeId() const { return gt::ig::fromInt(m_inNodeId); }
-
-    gt::ig::PortIdx inPortIdx() const { return gt::ig::fromInt(m_inPortIdx); }
+    
+    gt::ig::PortIndex inPortIdx() const { return gt::ig::fromInt(m_inPortIdx); }
 
     gt::ig::NodeId outNodeId() const { return gt::ig::fromInt(m_outNodeId); }
-
-    gt::ig::PortIdx outPortIdx() const { return gt::ig::fromInt(m_outPortIdx); }
+    
+    gt::ig::PortIndex outPortIdx() const { return gt::ig::fromInt(m_outPortIdx); }
 
     bool isValid() const;
 

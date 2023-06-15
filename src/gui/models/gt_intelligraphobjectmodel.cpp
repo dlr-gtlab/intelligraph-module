@@ -12,14 +12,14 @@
 
 /// macro to setup singals in such a way that they will be forwarded but wont
 /// start an infinite loop
-#define GTIG_SETUP_SIGNALS(SIG) \
-    connect(this, &GtIntelliGraphObjectModel::SIG, \
+#define GTIG_SETUP_SIGNALS(SIG_A, SIG_B) \
+    connect(this, &GtIntelliGraphObjectModel::SIG_A, \
             m_node, [=](auto&& ...args){ \
-                    if (sender() != m_node) m_node->SIG(args...); \
+                    if (sender() != m_node) m_node->SIG_B(args...); \
             }); \
-    connect(m_node, &GtIntelliGraphNode::SIG, \
+    connect(m_node, &GtIntelliGraphNode::SIG_B, \
             this, [=](auto&& ...args){ \
-                    if (sender() != this) this->SIG(args...);\
+                    if (sender() != this) this->SIG_A(args...);\
             });
 
 GtIntelliGraphObjectModel::GtIntelliGraphObjectModel(const QString& className)
@@ -46,22 +46,119 @@ GtIntelliGraphObjectModel::init(GtIntelliGraphNode& node)
     }
 
     m_node = &node;
+    
+    GTIG_SETUP_SIGNALS(dataUpdated, outDataUpdated);
+    GTIG_SETUP_SIGNALS(dataInvalidated, outDataInvalidated);
+//    GTIG_SETUP_SIGNALS(computingStarted);
+//    GTIG_SETUP_SIGNALS(computingFinished);
+//    GTIG_SETUP_SIGNALS(embeddedWidgetSizeUpdated);
+//    GTIG_SETUP_SIGNALS(portsAboutToBeDeleted);
+//    GTIG_SETUP_SIGNALS(portsDeleted);
+//    GTIG_SETUP_SIGNALS(portsAboutToBeInserted);
+//    GTIG_SETUP_SIGNALS(portsInserted);
 
-    GTIG_SETUP_SIGNALS(dataUpdated);
-    GTIG_SETUP_SIGNALS(dataInvalidated);
-    GTIG_SETUP_SIGNALS(computingStarted);
-    GTIG_SETUP_SIGNALS(computingFinished);
-    GTIG_SETUP_SIGNALS(embeddedWidgetSizeUpdated);
-    GTIG_SETUP_SIGNALS(portsAboutToBeDeleted);
-    GTIG_SETUP_SIGNALS(portsDeleted);
-    GTIG_SETUP_SIGNALS(portsAboutToBeInserted);
-    GTIG_SETUP_SIGNALS(portsInserted);
-
-    connect(this, &GtIntelliGraphObjectModel::nodeInitialized,
-            m_node, &GtIntelliGraphNode::updateNode);
+//    connect(this, &GtIntelliGraphObjectModel::nodeInitialized,
+//            m_node, &GtIntelliGraphNode::updateNode);
 
     gtDebug().verbose() << "INITIALIZED" << m_node->objectName();
+
     emit nodeInitialized();
+}
+
+bool
+GtIntelliGraphObjectModel::resizable() const
+{
+    return m_node ? m_node->nodeFlags() & NodeFlag::Resizable : false;
+}
+
+bool
+GtIntelliGraphObjectModel::captionVisible() const
+{
+    return m_node ? !(m_node->nodeFlags() & NodeFlag::HideCaption) : false;
+}
+
+QString
+GtIntelliGraphObjectModel::caption() const
+{
+    return m_node ? m_node->caption() : QString{};
+}
+
+QString
+GtIntelliGraphObjectModel::name() const
+{
+    return m_node ? m_node->modelName() : QStringLiteral("<invalid_node>");
+}
+
+unsigned int
+GtIntelliGraphObjectModel::nPorts(const PortType type) const
+{
+    if (!m_node) return 0;
+
+    return m_node->ports(cast_port_type(type)).size();
+}
+
+GtIntelliGraphObjectModel::NodeDataType
+GtIntelliGraphObjectModel::dataType(const PortType type, const PortIndex idx) const
+{
+    if (!m_node) return {};
+
+    auto const& data = m_node->ports(cast_port_type(type));
+
+    if (data.size() <= idx) return {};
+
+    auto const& typeId = data.at(idx).typeId;
+
+    return NodeDataType{typeId, typeId};
+}
+
+bool
+GtIntelliGraphObjectModel::portCaptionVisible(PortType type, PortIndex idx) const
+{
+    if (!m_node) return false;
+
+    auto const& data = m_node->ports(cast_port_type(type));
+    if (data.size() <= idx) return false;
+
+    return data.at(idx).captionVisible;
+}
+
+QString
+GtIntelliGraphObjectModel::portCaption(PortType type, PortIndex idx) const
+{
+    if (!m_node) return {};
+
+    auto const& data = m_node->ports(cast_port_type(type));
+    if (data.size() <= idx) return {};
+
+    return data.at(idx).caption;
+}
+
+GtIntelliGraphObjectModel::NodeData
+GtIntelliGraphObjectModel::outData(const PortIndex port)
+{
+    if (!m_node) return {};
+
+    auto data = m_node->outData(port);
+    return std::make_shared<GtIgObjectModelData>(std::move(data));
+}
+
+void
+GtIntelliGraphObjectModel::setInData(NodeData nodeData, const PortIndex port)
+{
+    if (!m_node) return;
+
+    if (auto data = std::dynamic_pointer_cast<GtIgObjectModelData>(nodeData))
+    {
+        return m_node->setInData(port, data->data());
+    }
+
+    return m_node->setInData(port, nullptr);
+}
+
+QWidget*
+GtIntelliGraphObjectModel::embeddedWidget()
+{
+    return m_node ? m_node->embeddedWidget() : nullptr;
 }
 
 QJsonObject
@@ -97,4 +194,24 @@ GtIntelliGraphObjectModel::load(const QJsonObject& json)
     gtDebug() << "Object loaded!" << m_node->objectName();
 
     m_node->updateNode();
+}
+
+void
+GtIntelliGraphObjectModel::outputConnectionCreated(const ConnectionId&)
+{
+    if (!m_node) return;
+
+    auto const& ports = m_node->ports(cast_port_type(PortType::In));
+
+    if (ports.size() == 0) m_node->updateNode();
+}
+
+void
+GtIntelliGraphObjectModel::outputConnectionDeleted(const ConnectionId&)
+{
+    if (!m_node) return;
+
+//    auto const& ports = m_node->ports(cast_port_type(PortType::In));
+
+//    if (ports.size() == 0) m_node->updateNode();
 }

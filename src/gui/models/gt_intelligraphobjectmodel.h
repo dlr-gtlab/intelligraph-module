@@ -13,23 +13,24 @@
 
 #include <QtNodes/NodeDelegateModel>
 
-class GtIntelliGraph;
+
 class GtIntelliGraphObjectModel final : public QtNodes::NodeDelegateModel
 {
     Q_OBJECT
 
 public:
 
-    using NodeFlag         = GtIntelliGraphNode::NodeFlag;
-    using NodeFlags        = GtIntelliGraphNode::NodeFlags;
-    using PortType         = GtIntelliGraphNode::PortType;
-    using PortIndex        = GtIntelliGraphNode::PortIndex;
-    using NodeDataType     = GtIntelliGraphNode::NodeDataType;
-    using NodeData         = GtIntelliGraphNode::NodeData;
-    using ConnectionPolicy = GtIntelliGraphNode::ConnectionPolicy;
-    using ConnectionId     = GtIntelliGraphNode::ConnectionId;
+    using NodeFlag         = gt::ig::NodeFlag;
+    using PortType         = QtNodes::PortType;
+    using PortIndex        = QtNodes::PortIndex;
+    using NodeDataType     = QtNodes::NodeDataType;
+    using NodeData         = std::shared_ptr<QtNodes::NodeData>;
+    using ConnectionPolicy = QtNodes::ConnectionPolicy;
+    using ConnectionId     = QtNodes::ConnectionId;
 
     explicit GtIntelliGraphObjectModel(QString const& className);
+
+    static gt::ig::PortType cast_port_type(PortType type) { return static_cast<gt::ig::PortType>(type); }
 
     /// initializes the model with a new node object
     void init(GtIntelliGraphNode& node);
@@ -37,62 +38,27 @@ public:
     GtIntelliGraphNode& node() { assert(m_node); return *m_node; }
     GtIntelliGraphNode const& node() const { assert(m_node); return *m_node; }
 
-    bool resizable() const override
-    {
-        return m_node ? m_node->nodeFlags() & NodeFlag::Resizable :
-                        false;
-    }
+    bool resizable() const override;
 
-    bool captionVisible() const override
-    {
-        return m_node ? !(m_node->nodeFlags() & NodeFlag::CaptionInvisble) :
-                        false;
-    }
+    bool captionVisible() const override;
 
-    QString caption() const override
-    {
-        return m_node ? m_node->caption() : QString{};
-    }
+    QString caption() const override;
 
-    QString name() const override
-    {
-        return m_node ? m_node->modelName() : QStringLiteral("<invalid_node>");
-    }
+    QString name() const override;
 
-    unsigned nPorts(PortType const type) const override
-    {
-        return m_node ? m_node->nPorts(type) : 0;
-    }
+    unsigned nPorts(PortType const type) const override;
 
-    NodeDataType dataType(PortType const type, PortIndex const idx) const override
-    {
-        return m_node ? m_node->dataType(type, idx) : NodeDataType{};
-    }
+    NodeDataType dataType(PortType const type, PortIndex const idx) const override;
 
-    bool portCaptionVisible(PortType type, PortIndex idx) const override
-    {
-        return m_node ? m_node->portCaptionVisible(type, idx) : false;
-    }
+    bool portCaptionVisible(PortType type, PortIndex idx) const override;
 
-    QString portCaption(PortType type, PortIndex idx) const override
-    {
-        return m_node ? m_node->portCaption(type, idx) : QString{};
-    }
+    QString portCaption(PortType type, PortIndex idx) const override;
 
-    NodeData outData(PortIndex const port) override
-    {
-        return m_node ? m_node->outData(port) : NodeData{};
-    }
+    NodeData outData(PortIndex const port) override;
 
-    void setInData(NodeData nodeData, PortIndex const port) override
-    {
-        if (m_node) m_node->setInData(nodeData, port);
-    }
+    void setInData(NodeData nodeData, PortIndex const port) override;
 
-    QWidget* embeddedWidget() override
-    {
-        return m_node ? m_node->embeddedWidget() : nullptr;
-    }
+    QWidget* embeddedWidget() override;
 
     QJsonObject save() const override;
 
@@ -100,25 +66,9 @@ public:
 
 public slots:
 
-    void inputConnectionCreated(GtIntelliGraphNode::ConnectionId const& id) override
-    {
-        if (m_node) m_node->inputConnectionCreated(id);
-    }
+    void outputConnectionCreated(ConnectionId const &) override;
 
-    void inputConnectionDeleted(GtIntelliGraphNode::ConnectionId const& id) override
-    {
-        if (m_node) m_node->inputConnectionDeleted(id);
-    }
-
-    void outputConnectionCreated(GtIntelliGraphNode::ConnectionId const& id) override
-    {
-        if (m_node) m_node->outputConnectionCreated(id);
-    }
-
-    void outputConnectionDeleted(GtIntelliGraphNode::ConnectionId const& id) override
-    {
-        if (m_node) m_node->outputConnectionDeleted(id);
-    }
+    void outputConnectionDeleted(ConnectionId const &) override;
 
 signals:
 
@@ -129,4 +79,25 @@ private:
     QPointer<GtIntelliGraphNode> m_node;
 };
 
+class GtIgObjectModelData : public QtNodes::NodeData
+{
+public:
+
+    explicit GtIgObjectModelData(GtIntelliGraphNode::NodeData data = nullptr)
+        : m_data(std::move(data))
+    { }
+
+    QtNodes::NodeDataType type() const override
+    {
+        if (!m_data) return {};
+
+        return {m_data->typeId(), m_data->typeId()};
+    }
+
+    GtIntelliGraphNode::NodeData const& data() const { return m_data; }
+
+private:
+
+    GtIntelliGraphNode::NodeData m_data;
+};
 #endif // GT_INTELLIGRAPHOBJECTMODEL_H

@@ -6,44 +6,35 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set(INTELLIGRAPH_VERSION 0.1.0)
 
-add_library(GTlabIntelliGraph SHARED
-    gt_intelligraphmodule.h
+set(PUBLIC_HEADERS
     gt_igglobals.h
     gt_igvolatileptr.h
     gt_intelligraph_exports.h
     gt_intelligraphnodefactory.h
+    data/gt_intelligraphnode.h
+    data/node_data/gt_ignodedata.h
+    data/node_data/gt_igobjectdata.h
+    data/node_data/gt_igstringlistdata.h
+    data/properties/gt_igobjectlinkproperty.h
+    data/properties/gt_igcolorproperty.h
+)
+
+add_library(GTlabIntelliGraph SHARED
+    ${PUBLIC_HEADERS}
+    gt_intelligraphmodule.h
     data/gt_igpackage.h
     data/gt_intelligraph.h
     data/gt_intelligraphconnection.h
-    data/gt_intelligraphnode.h
     data/gt_intelligraphnodegroup.h
     data/gt_intelligraphcategory.h
-    #data/nodes/gt_igabstractqwtnode.h
-    #data/nodes/gt_igabstractshapenode.h
-    #data/nodes/gt_igcombineshapesnode.h
     data/nodes/gt_igfinddirectchildnode.h
     data/nodes/gt_iggroupinputprovider.h
     data/nodes/gt_iggroupoutputprovider.h
     data/nodes/gt_igobjectmementonode.h
     data/nodes/gt_igobjectsourcenode.h
-    #data/nodes/gt_igqwtbarchartnode.h
-    #data/nodes/gt_igshapecolornode.h
-    #data/nodes/gt_igshapegeneratornode.h
-    #data/nodes/gt_igshapesettingsnode.h
-    #data/nodes/gt_igshapevisualizationnode.h
     data/nodes/gt_igstringlistinputnode.h
-    #data/nodes/gt_igwireframenode.h
-    data/properties/gt_igobjectlinkproperty.h
-    data/properties/gt_igcolorporperty.h
     gui/items/gt_intelligrapheditor.h
-    #gui/nds_3dplot.h
-    #gui/nds_barchartwidget.h
     gui/models/gt_intelligraphobjectmodel.h
-    #gui/models/nds_examplemodel.h
-    gui/models/data/gt_igobjectdata.h
-    #gui/models/data/gt_igshapedata.h
-    #gui/models/data/gt_igshapesettingsdata.h
-    gui/models/data/gt_igstringlistdata.h
     gui/property_items/gt_igobjectlinkpropertyitem.h
     gui/ui/gt_intelligraphobjectui.h
     gui/ui/gt_igprojectui.h
@@ -56,28 +47,19 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_intelligraphnode.cpp
     data/gt_intelligraphnodegroup.cpp
     data/gt_intelligraphcategory.cpp
-    #data/nodes/gt_igabstractqwtnode.cpp
-    #data/nodes/gt_igabstractshapenode.cpp
-    #data/nodes/gt_igcombineshapesnode.cpp
     data/nodes/gt_iggroupinputprovider.cpp
     data/nodes/gt_igfinddirectchildnode.cpp
     data/nodes/gt_iggroupoutputprovider.cpp
     data/nodes/gt_igobjectmementonode.cpp
     data/nodes/gt_igobjectsourcenode.cpp
-    #data/nodes/gt_igqwtbarchartnode.cpp
-    #data/nodes/gt_igshapecolornode.cpp
-    #data/nodes/gt_igshapegeneratornode.cpp
-    #data/nodes/gt_igshapesettingsnode.cpp
-    #data/nodes/gt_igshapevisualizationnode.cpp
     data/nodes/gt_igstringlistinputnode.cpp
-    #data/nodes/gt_igwireframenode.cpp
+    data/node_data/gt_ignodedata.cpp
+    data/node_data/gt_igobjectdata.cpp
+    data/node_data/gt_igstringlistdata.cpp
     data/properties/gt_igobjectlinkproperty.cpp
-    data/properties/gt_igcolorporperty.cpp
+    data/properties/gt_igcolorproperty.cpp
     gui/items/gt_intelligrapheditor.cpp
-    #gui/nds_3dplot.cpp
-    #gui/nds_barchartwidget.cpp
     gui/models/gt_intelligraphobjectmodel.cpp
-    #gui/models/nds_examplemodel.cpp
     gui/property_items/gt_igobjectlinkpropertyitem.cpp
     gui/ui/gt_intelligraphobjectui.cpp
     gui/ui/gt_igprojectui.cpp
@@ -106,6 +88,8 @@ target_compile_definitions(GTlabIntelliGraph PRIVATE
 target_include_directories(GTlabIntelliGraph PRIVATE
     .
     data
+    data/nodes
+    data/node_data
     data/properties
     gui
     gui/items
@@ -151,7 +135,7 @@ file(GLOB_RECURSE HEADERS
     "*.h"
 )
 
-install (FILES ${HEADERS} DESTINATION include/intelligraph)
+install (FILES ${PUBLIC_HEADERS} DESTINATION include/intelligraph)
 
 # cmake configuration export
 set(CMAKE_INSTALL_INCLUDE_DIR "include")

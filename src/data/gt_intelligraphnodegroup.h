@@ -32,13 +32,9 @@ public:
     GtIgGroupOutputProvider* outputProvider();
     GtIgGroupOutputProvider const* outputProvider() const;
 
-    unsigned nPorts(PortType type) const override;
+protected:
 
-    NodeDataType dataType(PortType type, PortIndex port) const override;
-
-    NodeData outData(PortIndex const port) override;
-
-    void setInData(NodeData data, PortIndex const port) override;
+    NodeData eval(PortId id) override;
 };
 
 #endif // GT_INTELLIGRAPHNODEGROUP_H

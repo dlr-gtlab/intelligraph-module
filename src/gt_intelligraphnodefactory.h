@@ -9,12 +9,10 @@
 #ifndef GTINTELLIGRAPHNODEFACTORY_H
 #define GTINTELLIGRAPHNODEFACTORY_H
 
-#include "gt_abstractobjectfactory.h"
-
-#include "gt_object.h"
 #include "gt_intelligraph_exports.h"
 
-#include <QtNodes/NodeDelegateModelRegistry>
+#include "gt_abstractobjectfactory.h"
+#include "gt_object.h"
 
 /// Helper macro for registering a node class. The node class does should not be
 /// listed as a "data" object of your module
@@ -26,6 +24,8 @@
         } \
     }; \
     static RegisterNodeOnce ## CLASS s_register_node_once_##CLASS;
+
+namespace QtNodes { class NodeDelegateModelRegistry; }
 
 class GtIntelliGraphNode;
 class GT_IG_EXPORT GtIntelliGraphNodeFactory : public GtAbstractObjectFactory

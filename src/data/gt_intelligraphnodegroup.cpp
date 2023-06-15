@@ -9,8 +9,9 @@
 #include "gt_intelligraphnodegroup.h"
 #include "gt_intelligraphnodefactory.h"
 #include "gt_intelligraph.h"
-#include "nodes/gt_iggroupinputprovider.h"
-#include "nodes/gt_iggroupoutputprovider.h"
+
+#include "gt_iggroupinputprovider.h"
+#include "gt_iggroupoutputprovider.h"
 
 GTIG_REGISTER_NODE(GtIntelliGraphNodeGroup, "Group")
 
@@ -23,16 +24,27 @@ GtIntelliGraphNodeGroup::GtIntelliGraphNodeGroup() :
 
     auto input = std::make_unique<GtIgGroupInputProvider>();
     input->setDefault(true);
+
+    for (auto const& data : input->ports(PortType::Out))
+    {
+        addInPort(data);
+    }
+
     input.release()->setParent(graph);
 
     auto output = std::make_unique<GtIgGroupOutputProvider>();
     output->setDefault(true);
     output->setParent(graph);
 
-    connect(output.get(), &GtIntelliGraphNode::dataUpdated,
-            this, &GtIntelliGraphNode::dataUpdated);
-    connect(output.get(), &GtIntelliGraphNode::dataInvalidated,
-            this, &GtIntelliGraphNode::dataInvalidated);
+    for (auto const& data : output->ports(PortType::In))
+    {
+        addOutPort(data);
+    }
+    
+    connect(output.get(), &GtIntelliGraphNode::outDataUpdated,
+            this, &GtIntelliGraphNode::outDataUpdated);
+    connect(output.get(), &GtIntelliGraphNode::outDataInvalidated,
+            this, &GtIntelliGraphNode::outDataInvalidated);
 
     output.release();
 }
@@ -75,67 +87,31 @@ GtIntelliGraphNodeGroup::outputProvider() const
     return const_cast<GtIntelliGraphNodeGroup*>(this)->outputProvider();
 }
 
-unsigned
-GtIntelliGraphNodeGroup::nPorts(PortType type) const
-{
-    switch (type)
-    {
-    case PortType::In:
-        if (auto* provider = this->inputProvider())
-        {
-            return provider->nPorts(PortType::Out);
-        }
-        return 0;
-    case PortType::Out:
-        if (auto* provider  = this->outputProvider())
-        {
-            return provider->nPorts(PortType::In);
-        }
-        return 0;
-    case PortType::None:
-        return 0;
-    }
-    throw std::logic_error{"Unhandled enum value!"};
-}
-
-GtIntelliGraphNode::NodeDataType
-GtIntelliGraphNodeGroup::dataType(PortType type, PortIndex port) const
-{
-    switch (type)
-    {
-    case PortType::In:
-        if (auto* inputProvider = this->inputProvider())
-        {
-            return inputProvider->dataType(PortType::Out, port);
-        }
-        return {};
-    case PortType::Out:
-        if (auto* outputProvider = this->outputProvider())
-        {
-            return outputProvider->dataType(PortType::In, port);
-        }
-        return {};
-    case PortType::None:
-        return {};
-    }
-    throw std::logic_error{"Unhandled enum value!"};
-}
-
 GtIntelliGraphNode::NodeData
-GtIntelliGraphNodeGroup::outData(const PortIndex port)
+GtIntelliGraphNodeGroup::eval(PortId id)
 {
-    auto provider = outputProvider();
-    if (!provider) return {};
+//    auto out = outputProvider();
+//    if (!out)
+//    {
+//        gtError().medium() << tr("Invalid output provider!");
+//        return {};
+//    };
 
-    return provider->outData(port);
-}
+//    auto in = inputProvider();
+//    if (!in)
+//    {
+//        gtError().medium() << tr("Invalid input provider!");
+//        return {};
+//    }
 
-void
-GtIntelliGraphNodeGroup::setInData(NodeData data, const PortIndex port)
-{
-    auto provider = inputProvider();
-    if (!provider) return;
+//    auto* inPort = in->port(portIndex(PortType::In, id));
+//    if (!inPort)
+//    {
+//        gtError().medium() << tr("Invalid input port!") << id;
+//        return {};
+//    }
 
-    provider->setInData(data, port);
+//    in->eval(inPort->id(), data);
+    return {};
 }
 

@@ -6,7 +6,7 @@
  *  E-Mail: marius.broecker@dlr.de
  */
 
-#include "gt_igcolorporperty.h"
+#include "gt_igcolorproperty.h"
 
 GtIgColorPorperty::GtIgColorPorperty(QString const& ident,
                                      QString const& name,

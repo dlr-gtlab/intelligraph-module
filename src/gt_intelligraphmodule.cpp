@@ -18,7 +18,6 @@
 #include "gt_intelligraphconnection.h"
 #include "gt_intelligraphobjectui.h"
 #include "gt_intelligrapheditor.h"
-#include "gt_intelligraphnodefactory.h"
 #include "gt_igobjectlinkproperty.h"
 #include "gt_igobjectlinkpropertyitem.h"
 
@@ -41,14 +40,7 @@ GtIntelliGraphModule::description() const
 void
 GtIntelliGraphModule::init()
 {
-    if (gt::log::Logger::instance().verbosity() < gt::log::Everything) return;
-
-    gtDebug() << "REGISTERED NODES:";
-
-    for (auto const& n : GtIntelliGraphNodeFactory::instance().knownClasses())
-    {
-        gtDebug() << " ->" << n;
-    }
+    // nothing to do here
 }
 
 GtIntelliGraphModule::MetaInformation

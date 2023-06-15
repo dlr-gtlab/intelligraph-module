@@ -15,21 +15,15 @@ class GtIgGroupInputProvider : public GtIntelliGraphNode
 {
     Q_OBJECT
 
+    friend class GtIntelliGraphNodeGroup;
+
 public:
 
     Q_INVOKABLE GtIgGroupInputProvider();
 
-    unsigned nPorts(PortType type) const override;
+protected:
 
-    NodeDataType dataType(PortType type, PortIndex idx) const override;
-
-    NodeData outData(PortIndex const port) override;
-
-    void setInData(NodeData data, PortIndex const port) override;
-
-private:
-
-    std::vector<NodeData> m_data;
+    NodeData eval(PortId id) override;
 };
 
 #endif // GT_IGGROUPINPUTPROVIDER_H

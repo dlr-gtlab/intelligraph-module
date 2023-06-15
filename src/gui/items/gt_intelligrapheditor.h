@@ -12,6 +12,7 @@
 #include "gt_mdiitem.h"
 
 #include "gt_intelligraphnode.h"
+#include <QtNodes/Definitions>
 
 /**
  * @generated 1.2.0
@@ -23,8 +24,8 @@ class GtIntelliGraphEditor : public GtMdiItem
 
 public:
 
-    using NodeId       = GtIntelliGraphNode::NodeId;
-    using ConnectionId = GtIntelliGraphNode::ConnectionId;
+    using NodeId       = gt::ig::NodeId;
+    using ConnectionId = QtNodes::ConnectionId;
 
     Q_INVOKABLE GtIntelliGraphEditor();
 

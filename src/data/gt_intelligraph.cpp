@@ -9,7 +9,6 @@
 #include "gt_intelligraph.h"
 #include "gt_intelligraphnode.h"
 #include "gt_intelligraphconnection.h"
-#include "gt_intelligraphnodegroup.h"
 #include "models/gt_intelligraphobjectmodel.h"
 
 #include "gt_coredatamodel.h"
@@ -19,6 +18,18 @@
 
 #include <QtNodes/DataFlowGraphModel>
 #include <QtNodes/NodeDelegateModel>
+
+inline gt::log::Stream& operator<<(gt::log::Stream& s, QtNodes::ConnectionId const& con)
+{
+    {
+        gt::log::StreamStateSaver saver(s);
+        s.nospace()
+          << "NodeConnection["
+          << con.inNodeId  << ":" << con.inPortIndex << "/"
+          << con.outNodeId << ":" << con.outPortIndex << "]";
+    }
+    return s;
+}
 
 template <typename ObjectList, typename T = gt::trait::value_t<ObjectList>>
 inline T findNode(ObjectList const& nodes,
@@ -470,7 +481,7 @@ GtIntelliGraph::setupNode(GtIntelliGraphNode& node)
     connect(&node, &QObject::destroyed, this, [this, nodeId = node.id()](){
         gtTrace().verbose() << "Deleting model no." << nodeId;
         m_activeGraphModel->deleteNode(nodeId);
-    }, Qt::UniqueConnection);
+    });
 }
 
 void
@@ -480,7 +491,7 @@ GtIntelliGraph::setupConnection(GtIntelliGraphConnection& connection)
             [this, conId = connection.toConnectionId()](){
         gtTrace().verbose() << "Deleting model connection..." << conId;
         m_activeGraphModel->deleteConnection(conId);
-    }, Qt::UniqueConnection);
+    });
 }
 
 bool

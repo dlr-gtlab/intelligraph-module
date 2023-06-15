@@ -13,6 +13,8 @@
 #include "gt_qtutilities.h"
 #include "models/gt_intelligraphobjectmodel.h"
 
+#include <QtNodes/NodeDelegateModelRegistry>
+
 GtIntelliGraphNodeFactory::GtIntelliGraphNodeFactory()
 {
 

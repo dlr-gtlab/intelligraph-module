@@ -15,7 +15,7 @@
 #include "gt_stringproperty.h"
 #include "gt_lineedit.h"
 
-class GtIgObjectData;
+class GtIgObjectData2;
 class GtIgFindDirectChildNode : public GtIntelliGraphNode
 {
     Q_OBJECT
@@ -24,28 +24,15 @@ public:
 
     Q_INVOKABLE GtIgFindDirectChildNode();
 
-    unsigned int nPorts(PortType const type) const override;
+protected:
 
-    NodeDataType dataType(PortType const type, PortIndex const idx) const override;
-
-    NodeData outData(PortIndex const port) override;
-
-    void setInData(NodeData data, PortIndex const port) override;
-
-    QWidget* embeddedWidget() override;
-
-public slots:
-
-    void updateNode() override;
+    NodeData eval(PortId outId) override;
 
 private:
-    std::shared_ptr<GtIgObjectData> m_parent;
-
-    gt::ig::volatile_ptr<GtLineEdit> m_editor;
 
     GtStringProperty m_childClassName;
 
-    void initWidget();
+    PortId m_inPort = gt::ig::invalid<PortId>();
 };
 
 #endif // GT_IGFINDDIRECTCHILDNODE_H
