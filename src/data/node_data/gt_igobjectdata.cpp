@@ -9,6 +9,10 @@
 
 #include "gt_igobjectdata.h"
 
+#include "gt_intelligraphdatafactory.h"
+
+GTIG_REGISTER_DATA(GtIgObjectData)
+
 GtIgObjectData::GtIgObjectData(GtObject const* obj) :
     GtIgNodeData("object"),
     m_obj(std::unique_ptr<GtObject>(obj ? obj->clone() : nullptr))

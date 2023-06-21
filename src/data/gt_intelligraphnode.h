@@ -82,7 +82,7 @@ public:
         // cppcheck-suppress noExplicitConstructor
         PortData(QString _typeId) : PortData(std::move(_typeId), {}) {}
 
-        PortData(QString _typeId, QString _caption, bool _captionVisible = false) :
+        PortData(QString _typeId, QString _caption, bool _captionVisible = true) :
             typeId(std::move(_typeId)),
             caption(std::move(_caption)),
             captionVisible(_captionVisible),
@@ -197,10 +197,10 @@ protected:
 
     void setModelName(QString name);
 
-    PortId addInPort(PortData port, PortPolicy policy = PortPolicy::Required) noexcept(false);
+    PortId addInPort(PortData port, PortPolicy policy = PortPolicy::Optional) noexcept(false);
     PortId addOutPort(PortData port) noexcept(false);
 
-    PortId insertInPort(PortData port, int idx, PortPolicy policy = PortPolicy::Required) noexcept(false);
+    PortId insertInPort(PortData port, int idx, PortPolicy policy = PortPolicy::Optional) noexcept(false);
     PortId insertOutPort(PortData port, int idx) noexcept(false);
 
     bool removePort(PortId id);

@@ -11,7 +11,9 @@ set(PUBLIC_HEADERS
     gt_igvolatileptr.h
     gt_intelligraph_exports.h
     gt_intelligraphnodefactory.h
+    gt_intelligraphdatafactory.h
     data/gt_intelligraphnode.h
+    data/node_data/gt_igdoubledata.h
     data/node_data/gt_ignodedata.h
     data/node_data/gt_igobjectdata.h
     data/node_data/gt_igstringlistdata.h
@@ -41,6 +43,7 @@ add_library(GTlabIntelliGraph SHARED
 
     gt_intelligraphmodule.cpp
     gt_intelligraphnodefactory.cpp
+    gt_intelligraphdatafactory.cpp
     data/gt_igpackage.cpp
     data/gt_intelligraph.cpp
     data/gt_intelligraphconnection.cpp
@@ -53,6 +56,7 @@ add_library(GTlabIntelliGraph SHARED
     data/nodes/gt_igobjectmementonode.cpp
     data/nodes/gt_igobjectsourcenode.cpp
     data/nodes/gt_igstringlistinputnode.cpp
+    data/node_data/gt_igdoubledata.cpp
     data/node_data/gt_ignodedata.cpp
     data/node_data/gt_igobjectdata.cpp
     data/node_data/gt_igstringlistdata.cpp
@@ -109,7 +113,6 @@ if (IS_DIRECTORY ${CMAKE_INSTALL_PREFIX}/build)
         install (TARGETS GTlabIntelliGraph
             LIBRARY DESTINATION build/modules
         )
-
     else(UNIX)
         install (TARGETS GTlabIntelliGraph
             RUNTIME DESTINATION build/modules
@@ -121,7 +124,6 @@ else ()
             LIBRARY DESTINATION
             $<IF:$<CONFIG:Debug>,binDebug/modules,bin/modules>
         )
-
     else(UNIX)
         install (TARGETS GTlabIntelliGraph
             RUNTIME DESTINATION
@@ -129,7 +131,6 @@ else ()
         )
     endif(UNIX)
 endif ()
-
 
 file(GLOB_RECURSE HEADERS
     "*.h"

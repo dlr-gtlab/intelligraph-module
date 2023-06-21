@@ -12,14 +12,25 @@
 
 #include "gt_ignodedata.h"
 
+/**
+ * @brief The GtIgObjectData class. Represents a GtObject as node data.
+ */
 class GT_IG_EXPORT GtIgObjectData : public GtIgNodeData
 {
     Q_OBJECT
 
 public:
 
+    /**
+     * @brief constructor
+     * @param obj Object to hold. Ownership isno transfered. A copy will  be made
+     */
     Q_INVOKABLE GtIgObjectData(GtObject const* obj = nullptr);
 
+    /**
+     * @brief getter
+     * @return object
+     */
     GtObject const* object() const { return m_obj.get(); }
 
 private:

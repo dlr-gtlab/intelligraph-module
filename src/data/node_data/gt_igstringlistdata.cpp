@@ -9,9 +9,12 @@
 
 #include "gt_igstringlistdata.h"
 
+#include "gt_intelligraphdatafactory.h"
+
+GTIG_REGISTER_DATA(GtIgStringListData)
+
 GtIgStringListData::GtIgStringListData(QStringList list) :
-    GtIgNodeData("string list"),
-    m_list(std::move(list))
+    GtIgTemplateData("string list", std::move(list))
 {
 
 }

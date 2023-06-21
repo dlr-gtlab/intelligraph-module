@@ -41,25 +41,23 @@ public:
      */
     static GtIntelliGraphNodeFactory& instance();
 
-    bool registerNode(QMetaObject const& meta, QString const& category);
+    bool registerNode(QMetaObject const& meta, QString const& category) noexcept;
 
     std::unique_ptr<GtIntelliGraphNode> newNode(QString const& className
-                                                ) noexcept(false);
+                                                ) const noexcept(false);
 
-    std::unique_ptr<NodeDelegateModelRegistry> makeRegistry();
+    std::unique_ptr<NodeDelegateModelRegistry> makeRegistry() noexcept;
 
 private:
 
     // hide some functions
     using GtAbstractObjectFactory::newObject;
+    using GtAbstractObjectFactory::registerClass;
 
     using ClassName = QString;
     using NodeCategory = QString;
 
     QHash<ClassName, NodeCategory> m_categories;
-
-    /// hide default register class method
-    bool registerClass(QMetaObject metaObj) final;
 };
 
 #endif // GTINTELLIGRAPHNODEFACTORY_H

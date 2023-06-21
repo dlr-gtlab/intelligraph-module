@@ -223,6 +223,11 @@ GtIntelliGraphNode::portData(PortId inId) const
 {
     PortIndex idx = portIndex(PortType::In, inId);
 
+    if (idx == gt::ig::invalid<PortIndex>())
+    {
+        idx = portIndex(PortType::Out, inId);
+    }
+
     if (idx >= m_inData.size())
     {
         gtWarning() << tr("PortId out of bound!") << inId << idx;

@@ -14,7 +14,7 @@ GTIG_REGISTER_NODE(GtIgObjectSourceNode, "Object");
 GtIgObjectSourceNode::GtIgObjectSourceNode() :
     GtIntelliGraphNode(tr("Object Source")),
     m_object("target", tr("Target"), tr("Target Object"),
-             this, QStringList{})
+             this, gtObjectFactory->knownClasses())
 {
     registerProperty(m_object);
 
@@ -50,17 +50,13 @@ GtIgObjectSourceNode::eval(PortId outId)
     m_object.revert();
 
     auto* filterData = qobject_cast<GtIgStringListData const*>(portData(m_inPort));
-    if (!filterData)
+    if (filterData)
     {
-        gtDebug() << "HERE 1" << linkedObject << m_object.allowedClasses();
-        return {};
+        m_object.setAllowedClasses(filterData->value());
     }
-
-    m_object.setAllowedClasses(filterData->values());
 
     if (!linkedObject || !m_object.allowedClasses().contains(linkedObject->metaObject()->className()))
     {
-        gtDebug() << "HERE 2" << linkedObject << m_object.allowedClasses();
         return {};
     }
 
@@ -70,8 +66,6 @@ GtIgObjectSourceNode::eval(PortId outId)
             this, &GtIgObjectSourceNode::updateNode, Qt::UniqueConnection);
     connect(linkedObject, qOverload<GtObject*, GtAbstractProperty*>(&GtObject::dataChanged),
             this, &GtIgObjectSourceNode::updateNode, Qt::UniqueConnection);
-
-    gtDebug() << "HERE 3" << linkedObject;
 
     return std::make_shared<GtIgObjectData>(linkedObject);
 }

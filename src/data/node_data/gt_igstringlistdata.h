@@ -12,19 +12,13 @@
 
 #include "gt_ignodedata.h"
 
-class GT_IG_EXPORT GtIgStringListData : public GtIgNodeData
+class GT_IG_EXPORT GtIgStringListData : public GtIgTemplateData<QStringList>
 {
     Q_OBJECT
 
 public:
 
     Q_INVOKABLE GtIgStringListData(QStringList list = {});
-
-    QStringList const& values() const { return m_list; }
-
-private:
-
-    QStringList m_list;
 };
 
 #endif // GT_IGSTRINGLISTDATA_H

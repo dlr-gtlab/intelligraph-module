@@ -31,6 +31,7 @@ GtIgFindDirectChildNode::GtIgFindDirectChildNode() :
     registerWidgetFactory([this](GtIntelliGraphNode&) {
         auto w = std::make_unique<GtLineEdit>();
         w->setValidator(new QRegExpValidator(gt::re::ig::forClassNames()));
+        w->setPlaceholderText(QStringLiteral("class name"));
 
         auto const updateProp = [this, w_ = w.get()](){
             m_childClassName = w_->text();

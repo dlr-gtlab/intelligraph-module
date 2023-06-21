@@ -9,6 +9,7 @@
 #include "gt_intelligraphobjectmodel.h"
 
 #include "gt_intelligraphnodefactory.h"
+#include "gt_intelligraphdatafactory.h"
 
 /// macro to setup singals in such a way that they will be forwarded but wont
 /// start an infinite loop
@@ -104,33 +105,59 @@ GtIntelliGraphObjectModel::dataType(const PortType type, const PortIndex idx) co
 
     auto const& data = m_node->ports(cast_port_type(type));
 
-    if (data.size() <= idx) return {};
+    if (idx >= data.size()) return {};
 
-    auto const& typeId = data.at(idx).typeId;
+    QString const& typeId = data.at(idx).typeId;
 
-    return NodeDataType{typeId, typeId};
+    QString typeName = GtIntelliGraphDataFactory::instance().typeName(typeId);
+
+    if (typeName.isEmpty())
+    {
+        return NodeDataType{
+            QStringLiteral("__unkown__"),
+            QStringLiteral("<unkown>")
+        };
+    }
+
+    return NodeDataType{typeId, typeName};
 }
 
 bool
 GtIntelliGraphObjectModel::portCaptionVisible(PortType type, PortIndex idx) const
 {
+    // this method indicates whether the custom port caption should be visible
+    // therefore we have to return false by default
+
     if (!m_node) return false;
 
     auto const& data = m_node->ports(cast_port_type(type));
-    if (data.size() <= idx) return false;
+    if (idx >= data.size()) return false;
 
-    return data.at(idx).captionVisible;
+    return true;
 }
 
 QString
 GtIntelliGraphObjectModel::portCaption(PortType type, PortIndex idx) const
 {
+    // returning an empty string will show the defualt port caption
+
     if (!m_node) return {};
 
     auto const& data = m_node->ports(cast_port_type(type));
-    if (data.size() <= idx) return {};
+    if (idx >= data.size()) return {};
 
-    return data.at(idx).caption;
+    auto& port = data.at(idx);
+
+    QString typeName = GtIntelliGraphDataFactory::instance().typeName(port.typeId);
+
+    if (port.captionVisible)
+    {
+        return port.caption.isEmpty() ?
+                   typeName :
+                   QStringLiteral("%1 (%2)").arg(port.caption, typeName);
+    }
+
+    return {};
 }
 
 GtIntelliGraphObjectModel::NodeData
@@ -203,7 +230,7 @@ GtIntelliGraphObjectModel::outputConnectionCreated(const ConnectionId&)
 
     auto const& ports = m_node->ports(cast_port_type(PortType::In));
 
-    if (ports.size() == 0) m_node->updateNode();
+    if (ports.empty()) m_node->updateNode();
 }
 
 void
