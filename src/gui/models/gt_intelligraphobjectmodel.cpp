@@ -61,7 +61,7 @@ GtIntelliGraphObjectModel::init(GtIntelliGraphNode& node)
 //    connect(this, &GtIntelliGraphObjectModel::nodeInitialized,
 //            m_node, &GtIntelliGraphNode::updateNode);
 
-    gtDebug().verbose() << "INITIALIZED" << m_node->objectName();
+    gtDebug().verbose() << "INITIALIZED:" << m_node->objectName();
 
     emit nodeInitialized();
 }
@@ -218,7 +218,7 @@ GtIntelliGraphObjectModel::load(const QJsonObject& json)
 
     m_node->mergeJsonMemento(json);
 
-    gtDebug() << "Object loaded!" << m_node->objectName();
+    gtDebug().verbose() << "NODE LOADED:" << m_node->objectName();
 
     m_node->updateNode();
 }

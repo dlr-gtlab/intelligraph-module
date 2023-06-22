@@ -292,12 +292,19 @@ GtIntelliGraphNode::eval(PortId)
     return {};
 }
 
+gt::log::Stream& operator<<(gt::log::Stream& s, GtIntelliGraphNode::NodeData const& data)
+{
+    return s << (data ? data->metaObject()->className() : "nullptr");
+}
+
 void
 GtIntelliGraphNode::setInData(PortIndex idx, NodeData data)
 {
     if (idx >= m_inData.size()) return;
 
-    gtDebug() << "SET IN DATA: " << idx << metaObject()->className() << (data ? data->metaObject()->className() : "<nullptr>");
+    gtDebug().verbose().nospace()
+        << "### Setting in data:  " << metaObject()->className()
+        << " at " << idx << ": " << data;
 
     m_inData.at(idx) = std::move(data);
 
@@ -313,7 +320,9 @@ GtIntelliGraphNode::outData(PortIndex idx)
 {
     if (idx >= m_outData.size()) return {};
 
-    gtDebug() << "OUT DATA:    " << idx << metaObject()->className();
+    gtDebug().verbose().nospace()
+        << "### Getting out data: " << metaObject()->className()
+        << " at " << idx << ": " << m_outData.at(idx);
 
     // trigger node update if no input data is available
     if (m_state == EvalRequired) updatePort(idx);
@@ -327,41 +336,69 @@ GtIntelliGraphNode::updateNode()
     updatePort(gt::ig::invalid<PortIndex>());
 }
 
+#include "gt_intelligraph.h"
+
 void
 GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
 {
     if (m_state == Evaluating)
     {
-        gtWarning() << tr("Node already evaluating!") << metaObject()->className();
+        gtWarning().medium()
+            << tr("Node already evaluating!")
+            << gt::brackets(QString{metaObject()->className()});
+        return;
+    }
+
+    bool isActive = false;
+    if (auto* p = qobject_cast<GtIntelliGraph const*>(parentObject()))
+    {
+        isActive = p->activeGraphModel();
+    }
+
+    if (!isActive)
+    {
+        gtWarning().verbose()
+            << tr("Node is not active!")
+            << gt::brackets(QString{metaObject()->className()});
         return;
     }
 
     bool canEval = canEvaluate();
+    // mark node for evaluation
+    if (!canEval)
+    {
+        m_state = EvalRequired;
+        gtWarning().medium()
+            << tr("Node not ready for evaluation!")
+            << gt::brackets(QString{metaObject()->className()});
+    }
 
-    // update helper
-    const auto updateOutData = [=](PortIndex idx, PortData const& port){
-        auto& out = m_outData.at(idx);
-
-        if (!canEval)
-        {
-            m_state = EvalRequired;
-            emit outDataInvalidated(idx);
-            gtWarning() << tr("Node cannot evaluate!") << metaObject()->className();
-            return;
-        }
-
+    // eval helper
+    const auto evalPort = [=](PortId id){
         m_state = Evaluating;
 
-        gtDebug() << "EVALUATING:  BEFORE " << metaObject()->className() << out;
+        gtDebug().verbose()
+            << "### Evaluating node: " << metaObject()->className()
+            << "at" << id;
 
-        out = eval(port.m_id);
-
-        gtDebug() << "EVALUATING:  AFTER " << metaObject()->className() << out;
+        auto out = eval(id);
 
         m_state = Evaluated;
 
-        emit (out ?  outDataUpdated(idx) : outDataInvalidated(idx));
+        return out;
+    };
 
+    // update helper
+    const auto updateOutData = [=](PortIndex idx, PortData const& port){
+
+        // invalidate out data
+        if (!canEval) return emit outDataInvalidated(idx);
+
+        auto& out = m_outData.at(idx);
+
+        out = evalPort(port.m_id);
+
+        out ? emit outDataUpdated(idx) : emit outDataInvalidated(idx);
     };
 
     // update single port
@@ -370,6 +407,13 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
         if (idx >= m_outPorts.size()) return;
 
         return updateOutData(idx, m_outPorts.at(idx));
+    }
+
+    // trigger eval if no outport exists
+    if (m_outPorts.empty())
+    {
+        evalPort(gt::ig::invalid<PortId>());
+        return;
     }
 
     // update all ports

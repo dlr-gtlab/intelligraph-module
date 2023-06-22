@@ -31,7 +31,8 @@ private:
     /// object changes
     QPointer<GtObject> m_lastObject;
 
-    PortId m_inPort = gt::ig::invalid<PortId>();
+    PortId m_inPort  = gt::ig::invalid<PortId>();
+    PortId m_outPort = gt::ig::invalid<PortId>();
 };
 
 #endif // GT_IGOBJECTSOURCENODE_H

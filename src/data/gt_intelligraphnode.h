@@ -27,9 +27,9 @@ namespace ig
 
 enum NodeFlag
 {
-    NoFlag = 0x0,
-    Resizable = 0x1,
-    HideCaption = 0x4,
+    NoFlag      = 0b000,
+    Resizable   = 0b001,
+    HideCaption = 0b100,
 };
 
 using NodeFlags  = int;
@@ -63,8 +63,8 @@ public:
     enum State
     {
         EvalRequired = 0,
-        Evaluated,
-        Evaluating
+        Evaluated    = 1,
+        Evaluating   = 2
     };
 
     /// enum for defining whether a port is optional

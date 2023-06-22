@@ -251,7 +251,8 @@ GtIntelliGraph::createNode(NodeId nodeId)
     // update node in model
     if (node && node->isValid(model->name()))
     {
-        gtWarning() << tr("Node no. %1 already exists!").arg(nodeId);
+        gtWarning().medium()
+            << tr("Node '%1' already exists!").arg(nodeId);
 
         model->init(*node);
     }
@@ -267,13 +268,13 @@ GtIntelliGraph::createNode(NodeId nodeId)
 
         node->setId(nodeId);
 
-        gtTrace() << "Creating node..." << node;
+        gtDebug().verbose() << "Creating node:" << node;
 
         node->setParent(nullptr); // to avoid disconnect-error msg (see #520)
 
         if (!gtDataModel->appendChild(node, this).isValid())
         {
-            gtFatal() << tr("Failed to append node:") << node;
+            gtError() << tr("Failed to append node:") << node;
             node->deleteLater();
             return nullptr;
         }
@@ -321,7 +322,8 @@ GtIntelliGraph::deleteNode(NodeId nodeId)
 {
     if (auto* node = findNode(nodeId))
     {
-        gtTrace() << "Deleting node..." << node;
+        gtDebug().verbose()
+            << "Deleting node:" << node;
         return gtDataModel->deleteFromModel(node);
     }
     return false;
@@ -339,7 +341,8 @@ GtIntelliGraph::createConnection(const ConnectionId& connectionId)
         return nullptr;
     }
 
-    gtTrace() << "Creating connection..." << connectionId;
+    gtDebug().verbose()
+        << "Creating connection:" << connectionId;
 
     auto connection = std::make_unique<GtIntelliGraphConnection>();
     connection->fromConnectionId(connectionId);
@@ -374,7 +377,7 @@ GtIntelliGraph::deleteConnection(const ConnectionId& connectionId)
 {
     if (auto* connection = findConnection(connectionId))
     {
-        gtTrace() << "Deleting connection..." << connectionId;
+        gtDebug().verbose() << "Deleting connection:" << connectionId;
         return gtDataModel->deleteFromModel(connection);
     }
     return false;
@@ -400,8 +403,8 @@ GtIntelliGraph::updateNodePosition(NodeId nodeId)
     // the node should be the correct one
 //    assert(&node == findNode(nodeId));
 
-    gtTrace() << "Updating node position to"
-              << pos << gt::brackets(node.objectName());
+    gtDebug().verbose()
+        << "Updating node position to" << pos << gt::brackets(node.objectName());
 
     node.setPos(pos);
 
@@ -437,25 +440,27 @@ GtIntelliGraph::onObjectDataMerged()
 {
     if (!m_activeGraphModel) return;
 
-    auto const nodes = this->nodes();
-    auto const connections = this->connections();
+    auto const& nodes = this->nodes();
+    auto const& connections = this->connections();
 
-    auto const nodeIds = m_activeGraphModel->allNodeIds();
+    auto const& modelNodes = m_activeGraphModel->allNodeIds();
 
     for (auto* node : nodes)
     {
-        if (nodeIds.find(node->id()) == nodeIds.end())
+        if (modelNodes.find(node->id()) == modelNodes.end())
         {
-            gtDebug() << "Node created!" << node->modelName() << node->id();
+            gtDebug().verbose().nospace()
+                << "### Merging node " << node->modelName()
+                << "(" << node->id() << ")";
 
             // update graph model
             appendNodeToModel(*node);
         }
 
-        auto const connectionIds = m_activeGraphModel->allConnectionIds(node->id());
+        auto const& modelConnections = m_activeGraphModel->allConnectionIds(node->id());
 
         // find connections that belong to node
-        QList<GtIntelliGraphConnection*> nodeConnections;
+        std::vector<GtIntelliGraphConnection*> nodeConnections;
         std::copy_if(std::cbegin(connections), std::cend(connections),
                      std::back_inserter(nodeConnections),
                      [id = node->id()](auto const* con){
@@ -465,9 +470,10 @@ GtIntelliGraph::onObjectDataMerged()
         for (auto* con : qAsConst(nodeConnections))
         {
             auto conId = con->toConnectionId();
-            if (connectionIds.find(conId) == connectionIds.end())
+            if (modelConnections.find(conId) == modelConnections.end())
             {
-                gtDebug() << "Connection created!" << conId;
+                gtDebug().verbose().nospace()
+                    << "### Merging connection " << conId;
                 // update graph model
                 appendConnectionToModel(*con);
             }
@@ -478,8 +484,10 @@ GtIntelliGraph::onObjectDataMerged()
 void
 GtIntelliGraph::setupNode(GtIntelliGraphNode& node)
 {
-    connect(&node, &QObject::destroyed, this, [this, nodeId = node.id()](){
-        gtTrace().verbose() << "Deleting model no." << nodeId;
+    connect(&node, &QObject::destroyed, this,
+            [this, model = node.modelName(), nodeId = node.id()](){
+        gtDebug().verbose() << "Deleting node from model:" << model
+                            << "(" << nodeId << ")";;
         m_activeGraphModel->deleteNode(nodeId);
     });
 }
@@ -489,7 +497,7 @@ GtIntelliGraph::setupConnection(GtIntelliGraphConnection& connection)
 {
     connect(&connection, &QObject::destroyed, this,
             [this, conId = connection.toConnectionId()](){
-        gtTrace().verbose() << "Deleting model connection..." << conId;
+        gtDebug().verbose() << "Deleting connection from model:" << conId;
         m_activeGraphModel->deleteConnection(conId);
     });
 }

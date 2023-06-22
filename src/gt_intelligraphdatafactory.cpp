@@ -38,7 +38,7 @@ GtIntelliGraphDataFactory::registerData(const QMetaObject& meta) noexcept
     if (!tmp)
     {
         gtError()
-            << QObject::tr("Failed to register node data %1! (not invokable?)")
+            << QObject::tr("Failed to register node data '%1'! (not invokable?)")
                .arg(className);
         unregisterClass(meta);
         return false;
@@ -48,7 +48,7 @@ GtIntelliGraphDataFactory::registerData(const QMetaObject& meta) noexcept
     if (typeName.isEmpty())
     {
         gtError()
-            << QObject::tr("Failed to register node data %1! (invalid type name)")
+            << QObject::tr("Failed to register node data '%1'! (invalid type name)")
                .arg(className);
         unregisterClass(meta);
         return false;
