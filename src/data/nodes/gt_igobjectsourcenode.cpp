@@ -51,7 +51,7 @@ GtIgObjectSourceNode::eval(PortId outId)
 
     m_object.revert();
 
-    auto* filterData = qobject_cast<GtIgStringListData const*>(portData(m_inPort));
+    auto* filterData = portData<GtIgStringListData*>(m_inPort);
     if (filterData)
     {
         m_object.setAllowedClasses(filterData->value());

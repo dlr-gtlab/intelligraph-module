@@ -186,7 +186,7 @@ GtIntelliGraph::fromJson(const QJsonObject& json)
             gtWarning() << tr("Failed to restore connection:") << obj->objectName();
             success = false; break;
         }
-        gtTrace() << "added connection:" << obj->objectName();
+        gtDebug() << "Restored connection:" << obj->objectName();
     }
 
     auto const nodes = json["nodes"].toArray();
@@ -201,7 +201,7 @@ GtIntelliGraph::fromJson(const QJsonObject& json)
                 gtWarning() << tr("Failed to restore node:") << obj->objectName();
                 success = false; break;
             }
-            gtTrace() << "added node:" << obj->objectName();
+            gtDebug() << "Restored node:" << obj->objectName();
             obj.release()->setParent(this);
         }
     }

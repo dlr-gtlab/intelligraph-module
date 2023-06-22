@@ -53,7 +53,7 @@ GtIgFindDirectChildNode::GtIgFindDirectChildNode() :
 GtIntelliGraphNode::NodeData
 GtIgFindDirectChildNode::eval(PortId outId)
 {
-    if (auto* parent = qobject_cast<GtIgObjectData const*>(portData(m_inPort)))
+    if (auto* parent = portData<GtIgObjectData*>(m_inPort))
     {
         auto const children = parent->object()->findDirectChildren();
 

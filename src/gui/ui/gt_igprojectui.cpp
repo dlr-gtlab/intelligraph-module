@@ -18,7 +18,7 @@ GtIgProjectUI::GtIgProjectUI()
 {
     setObjectName("ProjectUI");
 
-    addSingleAction("Open Node Editor", "openNodeEditor");
+//    addSingleAction("Open Node Editor", "openNodeEditor");
 }
 
 void

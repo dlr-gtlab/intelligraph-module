@@ -25,7 +25,7 @@ GtIgObjectMementoNode::GtIgObjectMementoNode() :
         
         connect(this, &GtIntelliGraphNode::inputDataRecieved, w.get(), [=, w_ = w.get()](){
             w_->clear();
-            if (auto* data = qobject_cast<GtIgObjectData const*>(portData(inPort)))
+            if (auto* data = portData<GtIgObjectData*>(inPort))
             {
                 if (auto* obj = data->object())
                 {

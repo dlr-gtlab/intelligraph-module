@@ -10,6 +10,7 @@
 
 #include "gt_igglobals.h"
 #include "gt_qtutilities.h"
+#include "gt_application.h"
 
 #include <QtNodes/ConnectionIdUtils>
 
@@ -34,6 +35,7 @@ GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
     updateObjectName();
 
     setFlag(UserDeletable);
+    if (!gtApp || !gtApp->devMode()) setFlag(UserHidden);
 }
 
 bool

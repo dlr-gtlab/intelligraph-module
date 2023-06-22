@@ -31,7 +31,7 @@ enum PortType
 {
     In = 0,
     Out,
-    None
+    NoType
 };
 
 template<typename T>
@@ -40,21 +40,6 @@ constexpr inline T invalid() noexcept { return std::numeric_limits<T>::max(); }
 inline unsigned fromInt(GtIntProperty const& p)
 {
     return p.get() >= 0 ? static_cast<unsigned>(p) : invalid<NodeId>();
-}
-
-template<typename Derived, typename Base>
-inline std::shared_ptr<Derived>
-shared_qobject_cast(std::shared_ptr<Base>&& basePtr) noexcept
-{
-    auto derivedPtr = std::shared_ptr<Derived>(
-        qobject_cast<Derived*>(basePtr.get()));
-
-    if (derivedPtr)
-    {
-        return derivedPtr;
-    }
-
-    return nullptr;
 }
 
 } // namespace ig

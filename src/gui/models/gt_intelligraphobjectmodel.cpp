@@ -176,10 +176,11 @@ GtIntelliGraphObjectModel::setInData(NodeData nodeData, const PortIndex port)
 
     if (auto data = std::dynamic_pointer_cast<GtIgObjectModelData>(nodeData))
     {
-        return m_node->setInData(port, data->data());
+        m_node->setInData(port, data->data());
+        return;
     }
 
-    return m_node->setInData(port, nullptr);
+    m_node->setInData(port, nullptr);
 }
 
 QWidget*
