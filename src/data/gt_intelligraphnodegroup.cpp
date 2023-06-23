@@ -38,6 +38,7 @@ GtIntelliGraphNodeGroup::GtIntelliGraphNodeGroup() :
 
     for (auto const& data : output->ports(PortType::In))
     {
+        m_outData.push_back(NodeData{});
         addOutPort(data);
     }
     
@@ -87,31 +88,69 @@ GtIntelliGraphNodeGroup::outputProvider() const
     return const_cast<GtIntelliGraphNodeGroup*>(this)->outputProvider();
 }
 
-GtIntelliGraphNode::NodeData
-GtIntelliGraphNodeGroup::eval(PortId id)
+bool
+GtIntelliGraphNodeGroup::setOutData(PortIndex idx, NodeData data)
 {
-//    auto out = outputProvider();
-//    if (!out)
-//    {
-//        gtError().medium() << tr("Invalid output provider!");
-//        return {};
-//    };
+    if (idx >= m_outData.size())
+    {
+        gtError().medium() << tr("Failed to set out data! (Index out of bounds)");
+        return false;
+    }
 
-//    auto in = inputProvider();
-//    if (!in)
+    gtDebug().verbose() << "Setting group output data:" << data;
+
+    m_outData.at(idx) = std::move(data);
+
+    updatePort(idx);
+
+    return true;
+}
+
+GtIntelliGraphNode::NodeData
+GtIntelliGraphNodeGroup::eval(PortId outId)
+{
+    auto out = outputProvider();
+    if (!out)
+    {
+        gtError().medium() << tr("Failed to evaluate group node! (Invalid output provider)");
+        return {};
+    };
+
+    auto in = inputProvider();
+    if (!in)
+    {
+        gtError().medium() << tr("Failed to evaluate group node! (Invalid input provider)");
+        return {};
+    }
+
+    PortIndex idx{0};
+
+    in->updateNode();
+
+//    for (auto const& _ : ports(PortType::In))
 //    {
-//        gtError().medium() << tr("Invalid input provider!");
-//        return {};
+//        if (!in->setOutData(idx, inData(idx)))
+//        {
+//            gtWarning().medium()
+//                << tr("Failed to forward input data idx '%1'")
+//                       .arg(idx) << in->ports(PortType::In);
+//        }
+//        idx++;
 //    }
 
-//    auto* inPort = in->port(portIndex(PortType::In, id));
-//    if (!inPort)
-//    {
-//        gtError().medium() << tr("Invalid input port!") << id;
-//        return {};
-//    }
+    // idealy now the data should have been set
 
-//    in->eval(inPort->id(), data);
-    return {};
+    if (m_outData.size() != out->ports(PortType::In).size())
+    {
+        gtWarning().medium()
+            << tr("Group out data mismatches output provider! (%1 vs %2)")
+               .arg(out->ports(PortType::In).size())
+               .arg(m_outData.size());
+        return {};
+    }
+
+    idx = portIndex(PortType::Out, outId);
+
+    return m_outData.at(idx);
 }
 

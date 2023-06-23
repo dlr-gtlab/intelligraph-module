@@ -31,7 +31,7 @@ private:
     /// object changes
     QPointer<GtObject> m_lastObject;
 
-    PortId m_inPort, m_outPort;
+    PortId m_in, m_out;
 };
 
 #endif // GT_IGOBJECTSOURCENODE_H

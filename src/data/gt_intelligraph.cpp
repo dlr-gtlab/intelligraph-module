@@ -306,7 +306,7 @@ GtIntelliGraph::appendNode(std::unique_ptr<GtIntelliGraphNode> node)
     {
         // generate a new one
         auto maxId = *std::max_element(std::begin(ids), std::end(ids)) + 1;
-        node->setId(gt::ig::NodeId{static_cast<unsigned>(maxId)});
+        node->setId(gt::ig::NodeId::fromValue(maxId));
         assert(node->id() != QtNodes::InvalidNodeId);
     }
 

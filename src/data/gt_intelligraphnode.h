@@ -88,18 +88,22 @@ public:
 
         // type id for port data (classname)
         QString typeId;
-        // optional custom caption
+        // custom port caption (optional)
         QString caption;
-         // whether caption is visible
+        // whether port caption should be visible
         bool captionVisible;
         // whether the port is required for the node evaluation
         bool optional;
 
+        /**
+         * @brief Returns the port id
+         * @return port id
+         */
         inline PortId id() const { return m_id; }
 
     private:
 
-        PortId m_id = gt::ig::invalid<PortId>();
+        PortId m_id{};
 
         friend class GtIntelliGraphNode;
     };
@@ -384,9 +388,9 @@ protected:
     /**
      * @brief Returns the specified port data
      * @param id Port id (output or input)
-     * @return Port data
+     * @return Port data (may be null)
      */
-    GtIgNodeData const* portData(PortId id) const;
+    NodeData const& portData(PortId id) const;
 
     /**
      * @brief Overload that casts the port data to the desired type.
@@ -396,7 +400,7 @@ protected:
     template <typename T, typename U = std::remove_pointer_t<T>>
     U const* portData(PortId id) const
     {
-        return qobject_cast<U const*>(portData(id));
+        return qobject_cast<U const*>(portData(id).get());
     }
 
 private:

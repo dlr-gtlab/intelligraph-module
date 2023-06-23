@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 ### Changed
+- Lots of internal refactoring, better stability and ease of use - #8
+
 ### Deprecated
 ### Removed
 ### Fixed

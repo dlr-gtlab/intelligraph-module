@@ -18,8 +18,8 @@ GtIgObjectSourceNode::GtIgObjectSourceNode() :
 {
     registerProperty(m_object);
 
-    m_inPort  = addInPort(gt::ig::typeId<GtIgStringListData>());
-    m_outPort = addOutPort(gt::ig::typeId<GtIgObjectData>());
+    m_in  = addInPort(gt::ig::typeId<GtIgStringListData>());
+    m_out = addOutPort(gt::ig::typeId<GtIgObjectData>());
 
     registerWidgetFactory([this](GtIntelliGraphNode&) {
         auto w = std::make_unique<GtPropertyObjectLinkEditor>();
@@ -43,7 +43,7 @@ GtIgObjectSourceNode::GtIgObjectSourceNode() :
 GtIntelliGraphNode::NodeData
 GtIgObjectSourceNode::eval(PortId outId)
 {
-    if (m_outPort != outId) return {};
+    if (m_out != outId) return {};
 
     auto* linkedObject = m_object.linkedObject();
 
@@ -51,7 +51,7 @@ GtIgObjectSourceNode::eval(PortId outId)
 
     m_object.revert();
 
-    auto* filterData = portData<GtIgStringListData*>(m_inPort);
+    auto* filterData = portData<GtIgStringListData*>(m_in);
     if (filterData)
     {
         m_object.setAllowedClasses(filterData->value());

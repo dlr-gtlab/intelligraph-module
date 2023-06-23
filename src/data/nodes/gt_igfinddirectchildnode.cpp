@@ -23,10 +23,10 @@ GtIgFindDirectChildNode::GtIgFindDirectChildNode() :
                      tr("Target class name for child"))
 {
     registerProperty(m_childClassName);
+    
+    m_in = addInPort(gt::ig::typeId<GtIgObjectData>(), PortPolicy::Required);
 
-    m_inPort = addInPort(gt::ig::typeId<GtIgObjectData>(), PortPolicy::Required);
-
-    addOutPort(gt::ig::typeId<GtIgObjectData>());
+    m_out = addOutPort(gt::ig::typeId<GtIgObjectData>());
 
     registerWidgetFactory([this](GtIntelliGraphNode&) {
         auto w = std::make_unique<GtLineEdit>();
@@ -53,7 +53,9 @@ GtIgFindDirectChildNode::GtIgFindDirectChildNode() :
 GtIntelliGraphNode::NodeData
 GtIgFindDirectChildNode::eval(PortId outId)
 {
-    if (auto* parent = portData<GtIgObjectData*>(m_inPort))
+    if (m_out != outId) return {};
+
+    if (auto* parent = portData<GtIgObjectData*>(m_in))
     {
         auto const children = parent->object()->findDirectChildren();
 

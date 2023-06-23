@@ -36,6 +36,9 @@ public:
     StrongType& operator=(StrongType&& value) = default;
     ~StrongType() = default;
 
+    template<typename U>
+    static StrongType fromValue(U value) { return StrongType{static_cast<T>(value)}; }
+
     // Overload comparison operators as needed
     constexpr inline bool
     operator==(StrongType const& other) const noexcept { return m_value == other.m_value; }

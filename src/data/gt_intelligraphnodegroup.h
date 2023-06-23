@@ -19,6 +19,8 @@ class GtIntelliGraphNodeGroup : public GtIntelliGraphNode
 {
     Q_OBJECT
 
+    friend class GtIgGroupInputProvider;
+
 public:
 
     Q_INVOKABLE GtIntelliGraphNodeGroup();
@@ -32,9 +34,15 @@ public:
     GtIgGroupOutputProvider* outputProvider();
     GtIgGroupOutputProvider const* outputProvider() const;
 
+    bool setOutData(PortIndex idx, NodeData data);
+
 protected:
 
-    NodeData eval(PortId id) override;
+    NodeData eval(PortId outId) override;
+
+private:
+
+    std::vector<NodeData> m_outData;
 };
 
 #endif // GT_INTELLIGRAPHNODEGROUP_H

@@ -8,6 +8,7 @@
 
 #include "gt_iggroupinputprovider.h"
 #include "gt_intelligraphnodefactory.h"
+#include "gt_intelligraphnodegroup.h"
 
 #include "gt_igobjectdata.h"
 
@@ -25,6 +26,17 @@ GtIgGroupInputProvider::GtIgGroupInputProvider() :
 GtIntelliGraphNode::NodeData
 GtIgGroupInputProvider::eval(PortId outId)
 {
-    return {};
-//    return portData(portId(PortType::In, portIndex(PortType::Out, outId)));
+    PortIndex idx = portIndex(PortType::Out, outId);
+
+    if (idx == gt::ig::invalid<PortIndex>()) return {};
+
+    auto* group = findParent<GtIntelliGraphNodeGroup*>();
+    if (!group)
+    {
+        gtWarning().medium()
+            << tr("Group input evaluation failed! (Cannot access parent group node)");
+        return {};
+    }
+
+    return group->portData(group->portId(PortType::In, idx));
 }

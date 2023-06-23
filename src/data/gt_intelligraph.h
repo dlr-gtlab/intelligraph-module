@@ -56,11 +56,12 @@ public:
     /// attemps to restore the intelli graph using the json data
     bool fromJson(QJsonObject const& json);
 
+    /// serializes the whole intelli graph tree as a json object
     QJsonObject toJson() const;
 
     /**
-     * @brief Creates a new node from the node in the active graph model as a
-     * child object and returns a pointer to it. Returns null if the process
+     * @brief Creates a new node using the node id in the active graph model as
+     * a child object and returns a pointer to it. Returns null if the process
      * failed. The ownership is taken care of. Make sure to set
      * the active graph model beforehand.
      * @param nodeId Node id to create/move
@@ -69,7 +70,7 @@ public:
     GtIntelliGraphNode* createNode(QtNodeId nodeId);
 
     /**
-     * @brief Appends the node  to the intelli graph. Use this function instead
+     * @brief Appends the node to the intelli graph. Use this function instead
      * of appending the child directly. Node may change its nodeid if its
      * already occupied
      * @param node Node to append
@@ -87,8 +88,9 @@ public:
 
     /**
      * @brief Creates a new connection base on the connection details and
-     * returns a poiinter to it. Returns null if the process failed. The
-     * ownership is taken care of. The graph model must not be set beforehand.
+     * returns a pointer to the newly created object (null if the process
+     * failed). The ownership is taken care of. The graph model must not be set
+     * beforehand.
      * @param connectionId Connection details to be used for creating the node.
      * @return Connection (may be null)
      */

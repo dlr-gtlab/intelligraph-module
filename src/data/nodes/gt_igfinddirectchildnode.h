@@ -32,7 +32,7 @@ private:
 
     GtStringProperty m_childClassName;
 
-    PortId m_inPort;
+    PortId m_in, m_out;
 };
 
 #endif // GT_IGFINDDIRECTCHILDNODE_H

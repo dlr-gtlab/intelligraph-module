@@ -15,15 +15,13 @@ class GtIgGroupInputProvider : public GtIntelliGraphNode
 {
     Q_OBJECT
 
-    friend class GtIntelliGraphNodeGroup;
-
 public:
 
     Q_INVOKABLE GtIgGroupInputProvider();
 
 protected:
 
-    NodeData eval(PortId id) override;
+    NodeData eval(PortId outId) override;
 };
 
 #endif // GT_IGGROUPINPUTPROVIDER_H

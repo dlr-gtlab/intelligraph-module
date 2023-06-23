@@ -252,7 +252,7 @@ GtIntelliGraphNode::insertPort(PortType type, PortData port, int idx) noexcept(f
     if (port.typeId.isEmpty())
     {
         gtWarning() << tr("Invalid port typeId specified!");
-        return gt::ig::invalid<PortId>();
+        return PortId{};
     }
 
     auto& ports = ports_(type);
@@ -300,10 +300,10 @@ GtIntelliGraphNode::removePort(PortId id)
     return false;
 }
 
-GtIgNodeData const*
+GtIntelliGraphNode::NodeData const&
 GtIntelliGraphNode::portData(PortId id) const
 {
-    PortIndex idx = gt::ig::invalid<PortIndex>();
+    PortIndex idx;
     PortType type = PortType::In;
 
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
@@ -312,9 +312,7 @@ GtIntelliGraphNode::portData(PortId id) const
 
         if (iter != ports->end())
         {
-            idx = PortIndex{
-                static_cast<unsigned>(std::distance(ports->begin(), iter))
-            };
+            idx = PortIndex::fromValue(std::distance(ports->begin(), iter));
             break;
         }
         // switch type
@@ -325,10 +323,11 @@ GtIntelliGraphNode::portData(PortId id) const
     if (idx >= data.size())
     {
         gtWarning() << tr("PortId out of bound!") << id << idx;
-        return {};
+        static const NodeData dummy{};
+        return dummy;
     }
 
-    return data.at(idx).get();
+    return data.at(idx);
 }
 
 GtIntelliGraphNode::PortData*
@@ -359,12 +358,10 @@ GtIntelliGraphNode::portIndex(PortType type, PortId id) const noexcept(false)
 
     if (iter != ports.end())
     {
-        return PortIndex{
-            static_cast<unsigned>(std::distance(ports.begin(), iter))
-        };
+        return PortIndex::fromValue(std::distance(ports.begin(), iter));
     }
 
-    return gt::ig::invalid<PortIndex>();
+    return PortIndex{};
 }
 
 GtIntelliGraphNode::PortId
@@ -372,7 +369,7 @@ GtIntelliGraphNode::portId(PortType type, PortIndex idx) const noexcept(false)
 {
     auto& ports = this->ports(type);
 
-    if (idx >= ports.size()) return gt::ig::invalid<PortId>();
+    if (idx >= ports.size()) return PortId{};
 
     return ports.at(idx).m_id;
 }
@@ -384,13 +381,14 @@ GtIntelliGraphNode::eval(PortId)
     return {};
 }
 
-bool GtIntelliGraphNode::setInData(PortIndex idx, NodeData data)
+bool
+GtIntelliGraphNode::setInData(PortIndex idx, NodeData data)
 {
     if (idx >= pimpl->inData.size()) return false;
 
     gtDebug().verbose().nospace()
         << "### Setting in data:  " << metaObject()->className()
-        << " at " << idx << ": " << data;
+        << " at idx '" << idx << "': " << data;
 
     pimpl->inData.at(idx) = std::move(data);
 
@@ -410,7 +408,7 @@ GtIntelliGraphNode::outData(PortIndex idx)
 
     gtDebug().verbose().nospace()
         << "### Getting out data: " << metaObject()->className()
-        << " at " << idx << ": " << pimpl->outData.at(idx);
+        << " at idx '" << idx << "': " << pimpl->outData.at(idx);
 
     // trigger node update if no input data is available
     if (pimpl->state == EvalRequired) updatePort(idx);
@@ -464,9 +462,9 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
     const auto evalPort = [=](PortId id, NodeData* out = nullptr){
         pimpl->state = Evaluating;
 
-        gtDebug().verbose()
-            << "### Evaluating node: " << metaObject()->className()
-            << "at" << id;
+        gtDebug().verbose().nospace()
+            << "### Evaluating node:  " << metaObject()->className()
+            << " at output id '" << id << "'";
 
         auto tmp = eval(id);
 

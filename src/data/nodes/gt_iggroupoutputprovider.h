@@ -15,8 +15,6 @@ class GtIgGroupOutputProvider : public GtIntelliGraphNode
 {
     Q_OBJECT
 
-    friend class GtIntelliGraphNodeGroup;
-
 public:
 
     Q_INVOKABLE GtIgGroupOutputProvider();
