@@ -8,73 +8,42 @@
 
 #include "gt_iggroupoutputprovider.h"
 #include "gt_intelligraphnodefactory.h"
+#include "gt_intelligraphnodegroup.h"
 
-#include "models/data/gt_igobjectdata.h"
+#include "gt_igobjectdata.h"
 
 GTIG_REGISTER_NODE(GtIgGroupOutputProvider, "Group")
 
 GtIgGroupOutputProvider::GtIgGroupOutputProvider() :
     GtIntelliGraphNode("Output Provider")
 {
-    setId(std::numeric_limits<int>::max() - 1);
+    setId(NodeId{std::numeric_limits<int>::max() - 1});
     setPos({200, 0});
-}
 
-unsigned
-GtIgGroupOutputProvider::nPorts(PortType type) const
-{
-    switch (type)
-    {
-    case PortType::In:
-        return 1;
-    case PortType::Out:
-    case PortType::None:
-        return 0;
-    }
-    throw std::logic_error{"Unhandled enum value!"};
-}
-
-
-GtIntelliGraphNode::NodeDataType
-GtIgGroupOutputProvider::dataType(PortType type, PortIndex idx) const
-{
-    switch (type)
-    {
-    case PortType::In:
-        return GtIgObjectData::staticType();
-    case PortType::Out:
-    case PortType::None:
-        return {};
-    }
-    throw std::logic_error{"Unhandled enum value!"};
+    addInPort(gt::ig::typeId<GtIgObjectData>());
 }
 
 GtIntelliGraphNode::NodeData
-GtIgGroupOutputProvider::outData(const PortIndex port)
+GtIgGroupOutputProvider::eval(PortId outId)
 {
-    if (port >= m_data.size())
+    auto* group = findParent<GtIntelliGraphNodeGroup*>();
+    if (!group)
     {
-        gtWarningId("GtIgGroupOutputProvider") << tr("Output port out of bounds!") << port << m_data.size();
+        gtWarning().medium()
+            << tr("Group output evaluation failed! (Cannot access parent group node)");
         return {};
     }
 
-    return m_data[port];
-}
-
-void
-GtIgGroupOutputProvider::setInData(NodeData data, const PortIndex port)
-{
-    auto ports = nPorts(PortType::In);
-
-    if (port >= ports)
+    for (auto const& p : this->ports(PortType::In))
     {
-        gtWarningId("GtIgGroupOutputProvider") << tr("Input port out of bounds!") << port << ports;
-        return;
+        PortIndex idx = portIndex(PortType::In, p.id());
+        if (!group->setOutData(idx, portData(p.id())))
+        {
+            gtWarning().medium()
+                << tr("Failed to forward output data to group node for idx '%1'")
+                   .arg(idx);
+        }
     }
 
-    m_data.resize(ports);
-
-    m_data[port] = std::move(data);
-
-    emit dataUpdated(port);
+    return {};
 }

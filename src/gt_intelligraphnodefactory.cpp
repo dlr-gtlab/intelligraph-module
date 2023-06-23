@@ -13,10 +13,9 @@
 #include "gt_qtutilities.h"
 #include "models/gt_intelligraphobjectmodel.h"
 
-GtIntelliGraphNodeFactory::GtIntelliGraphNodeFactory()
-{
+#include <QtNodes/NodeDelegateModelRegistry>
 
-}
+GtIntelliGraphNodeFactory::GtIntelliGraphNodeFactory() = default;
 
 GtIntelliGraphNodeFactory&
 GtIntelliGraphNodeFactory::instance()
@@ -26,14 +25,8 @@ GtIntelliGraphNodeFactory::instance()
 }
 
 bool
-GtIntelliGraphNodeFactory::registerClass(QMetaObject metaObj)
-{
-    return GtAbstractObjectFactory::registerClass(metaObj);
-}
-
-bool
 GtIntelliGraphNodeFactory::registerNode(QMetaObject const& meta,
-                                        QString const& category)
+                                        QString const& category) noexcept
 {
     QString className = meta.className();
 
@@ -56,9 +49,11 @@ GtIntelliGraphNodeFactory::registerNode(QMetaObject const& meta,
 }
 
 std::unique_ptr<GtIntelliGraphNode>
-GtIntelliGraphNodeFactory::newNode(QString const& className) noexcept(false)
+GtIntelliGraphNodeFactory::newNode(QString const& className) const noexcept(false)
 {
-    std::unique_ptr<GtObject> obj{newObject(className)};
+    std::unique_ptr<GtObject> obj{
+        const_cast<GtIntelliGraphNodeFactory*>(this)->newObject(className)
+    };
 
     auto node = gt::unique_qobject_cast<GtIntelliGraphNode>(std::move(obj));
 
@@ -80,7 +75,7 @@ GtIntelliGraphNodeFactory::newNode(QString const& className) noexcept(false)
 }
 
 std::unique_ptr<GtIntelliGraphNodeFactory::NodeDelegateModelRegistry>
-GtIntelliGraphNodeFactory::makeRegistry()
+GtIntelliGraphNodeFactory::makeRegistry() noexcept
 {
     auto registry = std::make_unique<QtNodes::NodeDelegateModelRegistry>();
 

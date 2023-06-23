@@ -331,7 +331,7 @@ GtIntelliGraphEditor::saveToJson()
 }
 
 void
-GtIntelliGraphEditor::onNodeCreated(NodeId nodeId)
+GtIntelliGraphEditor::onNodeCreated(QtNodeId nodeId)
 {
     if (!pimpl->igGraph) return;
 
@@ -351,7 +351,7 @@ GtIntelliGraphEditor::onNodeCreated(NodeId nodeId)
 }
 
 void
-GtIntelliGraphEditor::onNodeDeleted(NodeId nodeId)
+GtIntelliGraphEditor::onNodeDeleted(QtNodeId nodeId)
 {
     if (!pimpl->igGraph) return;
 
@@ -359,7 +359,7 @@ GtIntelliGraphEditor::onNodeDeleted(NodeId nodeId)
 }
 
 void
-GtIntelliGraphEditor::onConnectionCreated(ConnectionId conId)
+GtIntelliGraphEditor::onConnectionCreated(QtConnectionId conId)
 {
     if (!pimpl->igGraph) return;
 
@@ -367,7 +367,7 @@ GtIntelliGraphEditor::onConnectionCreated(ConnectionId conId)
 }
 
 void
-GtIntelliGraphEditor::onConnectionDeleted(ConnectionId conId)
+GtIntelliGraphEditor::onConnectionDeleted(QtConnectionId conId)
 {
     if (!pimpl->igGraph) return;
 
@@ -375,7 +375,7 @@ GtIntelliGraphEditor::onConnectionDeleted(ConnectionId conId)
 }
 
 void
-GtIntelliGraphEditor::onNodePositionChanged(NodeId nodeId)
+GtIntelliGraphEditor::onNodePositionChanged(QtNodeId nodeId)
 {
     if (!pimpl->igGraph) return;
 
@@ -383,7 +383,7 @@ GtIntelliGraphEditor::onNodePositionChanged(NodeId nodeId)
 }
 
 void
-GtIntelliGraphEditor::onNodeSelected(NodeId nodeId)
+GtIntelliGraphEditor::onNodeSelected(QtNodeId nodeId)
 {
     if (!pimpl->igGraph) return;
 

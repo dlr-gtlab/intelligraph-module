@@ -9,12 +9,10 @@
 #ifndef GTINTELLIGRAPHNODEFACTORY_H
 #define GTINTELLIGRAPHNODEFACTORY_H
 
-#include "gt_abstractobjectfactory.h"
-
-#include "gt_object.h"
 #include "gt_intelligraph_exports.h"
 
-#include <QtNodes/NodeDelegateModelRegistry>
+#include "gt_abstractobjectfactory.h"
+#include "gt_object.h"
 
 /// Helper macro for registering a node class. The node class does should not be
 /// listed as a "data" object of your module
@@ -26,6 +24,8 @@
         } \
     }; \
     static RegisterNodeOnce ## CLASS s_register_node_once_##CLASS;
+
+namespace QtNodes { class NodeDelegateModelRegistry; }
 
 class GtIntelliGraphNode;
 class GT_IG_EXPORT GtIntelliGraphNodeFactory : public GtAbstractObjectFactory
@@ -41,25 +41,23 @@ public:
      */
     static GtIntelliGraphNodeFactory& instance();
 
-    bool registerNode(QMetaObject const& meta, QString const& category);
+    bool registerNode(QMetaObject const& meta, QString const& category) noexcept;
 
     std::unique_ptr<GtIntelliGraphNode> newNode(QString const& className
-                                                ) noexcept(false);
+                                                ) const noexcept(false);
 
-    std::unique_ptr<NodeDelegateModelRegistry> makeRegistry();
+    std::unique_ptr<NodeDelegateModelRegistry> makeRegistry() noexcept;
 
 private:
 
     // hide some functions
     using GtAbstractObjectFactory::newObject;
+    using GtAbstractObjectFactory::registerClass;
 
     using ClassName = QString;
     using NodeCategory = QString;
 
     QHash<ClassName, NodeCategory> m_categories;
-
-    /// hide default register class method
-    bool registerClass(QMetaObject metaObj) final;
 };
 
 #endif // GTINTELLIGRAPHNODEFACTORY_H

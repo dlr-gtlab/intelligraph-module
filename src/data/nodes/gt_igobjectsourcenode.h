@@ -8,8 +8,8 @@
 
 #include "gt_propertyobjectlinkeditor.h"
 
-class GtIgObjectData;
-class GtIgStringListData;
+class GtIgObjectData2;
+class GtIgStringListData2;
 class GtIgObjectSourceNode : public GtIntelliGraphNode
 {
     Q_OBJECT
@@ -18,31 +18,20 @@ public:
 
     Q_INVOKABLE GtIgObjectSourceNode();
 
-    unsigned int nPorts(PortType const type) const override;
+protected:
 
-    NodeDataType dataType(PortType const type, PortIndex const idx) const override;
-
-    NodeData outData(PortIndex const port) override;
-
-    void setInData(NodeData data, PortIndex const port) override;
-
-    QWidget* embeddedWidget() override;
-
-public slots:
-
-    void updateNode() override;
+    NodeData eval(PortId outId) override;
 
 private:
 
+    /// selected object
     GtIgObjectLinkProperty m_object;
 
     /// member to keep track of last object pointer. Used to disconnect if
     /// object changes
     QPointer<GtObject> m_lastObject;
 
-    gt::ig::volatile_ptr<GtPropertyObjectLinkEditor> m_editor;
-
-    void initWidget();
+    PortId m_in, m_out;
 };
 
 #endif // GT_IGOBJECTSOURCENODE_H

@@ -9,8 +9,9 @@
 #include "gt_intelligraphnodegroup.h"
 #include "gt_intelligraphnodefactory.h"
 #include "gt_intelligraph.h"
-#include "nodes/gt_iggroupinputprovider.h"
-#include "nodes/gt_iggroupoutputprovider.h"
+
+#include "gt_iggroupinputprovider.h"
+#include "gt_iggroupoutputprovider.h"
 
 GTIG_REGISTER_NODE(GtIntelliGraphNodeGroup, "Group")
 
@@ -23,16 +24,28 @@ GtIntelliGraphNodeGroup::GtIntelliGraphNodeGroup() :
 
     auto input = std::make_unique<GtIgGroupInputProvider>();
     input->setDefault(true);
+
+    for (auto const& data : input->ports(PortType::Out))
+    {
+        addInPort(data);
+    }
+
     input.release()->setParent(graph);
 
     auto output = std::make_unique<GtIgGroupOutputProvider>();
     output->setDefault(true);
     output->setParent(graph);
 
-    connect(output.get(), &GtIntelliGraphNode::dataUpdated,
-            this, &GtIntelliGraphNode::dataUpdated);
-    connect(output.get(), &GtIntelliGraphNode::dataInvalidated,
-            this, &GtIntelliGraphNode::dataInvalidated);
+    for (auto const& data : output->ports(PortType::In))
+    {
+        m_outData.push_back(NodeData{});
+        addOutPort(data);
+    }
+    
+    connect(output.get(), &GtIntelliGraphNode::outDataUpdated,
+            this, &GtIntelliGraphNode::outDataUpdated);
+    connect(output.get(), &GtIntelliGraphNode::outDataInvalidated,
+            this, &GtIntelliGraphNode::outDataInvalidated);
 
     output.release();
 }
@@ -75,67 +88,69 @@ GtIntelliGraphNodeGroup::outputProvider() const
     return const_cast<GtIntelliGraphNodeGroup*>(this)->outputProvider();
 }
 
-unsigned
-GtIntelliGraphNodeGroup::nPorts(PortType type) const
+bool
+GtIntelliGraphNodeGroup::setOutData(PortIndex idx, NodeData data)
 {
-    switch (type)
+    if (idx >= m_outData.size())
     {
-    case PortType::In:
-        if (auto* provider = this->inputProvider())
-        {
-            return provider->nPorts(PortType::Out);
-        }
-        return 0;
-    case PortType::Out:
-        if (auto* provider  = this->outputProvider())
-        {
-            return provider->nPorts(PortType::In);
-        }
-        return 0;
-    case PortType::None:
-        return 0;
+        gtError().medium() << tr("Failed to set out data! (Index out of bounds)");
+        return false;
     }
-    throw std::logic_error{"Unhandled enum value!"};
-}
 
-GtIntelliGraphNode::NodeDataType
-GtIntelliGraphNodeGroup::dataType(PortType type, PortIndex port) const
-{
-    switch (type)
-    {
-    case PortType::In:
-        if (auto* inputProvider = this->inputProvider())
-        {
-            return inputProvider->dataType(PortType::Out, port);
-        }
-        return {};
-    case PortType::Out:
-        if (auto* outputProvider = this->outputProvider())
-        {
-            return outputProvider->dataType(PortType::In, port);
-        }
-        return {};
-    case PortType::None:
-        return {};
-    }
-    throw std::logic_error{"Unhandled enum value!"};
+    gtDebug().verbose() << "Setting group output data:" << data;
+
+    m_outData.at(idx) = std::move(data);
+
+    updatePort(idx);
+
+    return true;
 }
 
 GtIntelliGraphNode::NodeData
-GtIntelliGraphNodeGroup::outData(const PortIndex port)
+GtIntelliGraphNodeGroup::eval(PortId outId)
 {
-    auto provider = outputProvider();
-    if (!provider) return {};
+    auto out = outputProvider();
+    if (!out)
+    {
+        gtError().medium() << tr("Failed to evaluate group node! (Invalid output provider)");
+        return {};
+    };
 
-    return provider->outData(port);
-}
+    auto in = inputProvider();
+    if (!in)
+    {
+        gtError().medium() << tr("Failed to evaluate group node! (Invalid input provider)");
+        return {};
+    }
 
-void
-GtIntelliGraphNodeGroup::setInData(NodeData data, const PortIndex port)
-{
-    auto provider = inputProvider();
-    if (!provider) return;
+    PortIndex idx{0};
 
-    provider->setInData(data, port);
+    in->updateNode();
+
+//    for (auto const& _ : ports(PortType::In))
+//    {
+//        if (!in->setOutData(idx, inData(idx)))
+//        {
+//            gtWarning().medium()
+//                << tr("Failed to forward input data idx '%1'")
+//                       .arg(idx) << in->ports(PortType::In);
+//        }
+//        idx++;
+//    }
+
+    // idealy now the data should have been set
+
+    if (m_outData.size() != out->ports(PortType::In).size())
+    {
+        gtWarning().medium()
+            << tr("Group out data mismatches output provider! (%1 vs %2)")
+               .arg(out->ports(PortType::In).size())
+               .arg(m_outData.size());
+        return {};
+    }
+
+    idx = portIndex(PortType::Out, outId);
+
+    return m_outData.at(idx);
 }
 

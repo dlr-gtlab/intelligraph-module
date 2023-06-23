@@ -6,8 +6,8 @@
  *  E-Mail: marius.broecker@dlr.de
  */
 
-#ifndef GT_IGCOLORPORPERTY_H
-#define GT_IGCOLORPORPERTY_H
+#ifndef GT_IGCOLORPROPERTY_H
+#define GT_IGCOLORPROPERTY_H
 
 #include "gt_property.h"
 #include "gt_intelligraph_exports.h"
@@ -51,4 +51,4 @@ public:
     GtIgColorPorperty& operator=(const QColor& val);
 };
 
-#endif // GT_IGCOLORPORPERTY_H
+#endif // GT_IGCOLORPROPERTY_H

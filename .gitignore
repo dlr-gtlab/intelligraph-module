@@ -3,7 +3,7 @@ Makefile*
 include/
 lib/
 meta/
-build/
+build*/
 debug/
 release/
 .qtc_clangd/

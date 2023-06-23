@@ -19,17 +19,9 @@ public:
 
     Q_INVOKABLE GtIgGroupInputProvider();
 
-    unsigned nPorts(PortType type) const override;
+protected:
 
-    NodeDataType dataType(PortType type, PortIndex idx) const override;
-
-    NodeData outData(PortIndex const port) override;
-
-    void setInData(NodeData data, PortIndex const port) override;
-
-private:
-
-    std::vector<NodeData> m_data;
+    NodeData eval(PortId outId) override;
 };
 
 #endif // GT_IGGROUPINPUTPROVIDER_H

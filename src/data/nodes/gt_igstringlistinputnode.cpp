@@ -9,7 +9,7 @@
 #include "gt_igstringlistinputnode.h"
 #include "gt_intelligraphnodefactory.h"
 
-#include "models/data/gt_igstringlistdata.h"
+#include "gt_igstringlistdata.h"
 
 #include "gt_structproperty.h"
 #include "gt_stringproperty.h"
@@ -20,15 +20,31 @@ GtIgStringListInputNode::GtIgStringListInputNode() :
     GtIntelliGraphNode(tr("Stringlist Input")),
     m_values("values", "Values")
 {
-    setNodeFlag(gt::ig::Resizable);
 
-    GtPropertyStructDefinition stringEntryDef(QStringLiteral("StringStruct"));
+    GtPropertyStructDefinition stringEntryDef{QStringLiteral("StringStruct")};
     stringEntryDef.defineMember(QStringLiteral("value"),
                                 gt::makeStringProperty());
 
     m_values.registerAllowedType(stringEntryDef);
 
     registerPropertyStructContainer(m_values);
+
+    setNodeFlag(gt::ig::Resizable);
+
+    addOutPort(gt::ig::typeId<GtIgStringListData>());
+
+    registerWidgetFactory([this](GtIntelliGraphNode&) {
+        auto w = std::make_unique<QTextEdit>();
+        w->setReadOnly(true);
+        w->setToolTip(tr("Use the properties dock to add entries."));
+        
+        connect(this, &GtIntelliGraphNode::outDataUpdated,
+                w.get(), [this, w_ = w.get()](){
+            w_->setPlainText(values().join("\n"));
+        });
+
+        return w;
+    });
 
     connect(&m_values, &GtPropertyStructContainer::entryAdded,
             this, &GtIntelliGraphNode::updateNode);
@@ -38,45 +54,10 @@ GtIgStringListInputNode::GtIgStringListInputNode() :
             this, &GtIntelliGraphNode::updateNode);
 }
 
-unsigned int
-GtIgStringListInputNode::nPorts(const PortType type) const
-{
-    switch (type)
-    {
-    case PortType::Out:
-        return 1;
-    case PortType::In:
-    case PortType::None:
-        return 0;
-    }
-    throw std::logic_error{"Unhandled enum value!"};
-}
-
-GtIgStringListInputNode::NodeDataType
-GtIgStringListInputNode::dataType(const PortType type, const PortIndex idx) const
-{
-    return GtIgStringListData::staticType();
-}
-
-GtIgStringListInputNode::NodeData
-GtIgStringListInputNode::outData(const PortIndex port)
+GtIntelliGraphNode::NodeData
+GtIgStringListInputNode::eval(PortId outId)
 {
     return std::make_shared<GtIgStringListData>(values());
-}
-
-QWidget*
-GtIgStringListInputNode::embeddedWidget()
-{
-    if (!m_editor) initWidget();
-    return m_editor;
-}
-
-void
-GtIgStringListInputNode::initWidget()
-{
-    m_editor = gt::ig::make_volatile<QTextEdit>();
-    m_editor->setReadOnly(true);
-    m_editor->setToolTip(tr("Use the properties dock to add entries."));
 }
 
 QStringList
@@ -91,12 +72,4 @@ GtIgStringListInputNode::values() const
         if (ok) data << value;
     }
     return data;
-}
-
-void
-GtIgStringListInputNode::updateNode()
-{
-    if (m_editor) m_editor->setPlainText(values().join("\n"));
-
-    emit dataUpdated(0);
 }

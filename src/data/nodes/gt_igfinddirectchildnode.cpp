@@ -10,7 +10,7 @@
 #include "gt_igfinddirectchildnode.h"
 #include "gt_intelligraphnodefactory.h"
 
-#include "models/data/gt_igobjectdata.h"
+#include "gt_igobjectdata.h"
 
 #include <QRegExpValidator>
 
@@ -23,96 +23,51 @@ GtIgFindDirectChildNode::GtIgFindDirectChildNode() :
                      tr("Target class name for child"))
 {
     registerProperty(m_childClassName);
+    
+    m_in = addInPort(gt::ig::typeId<GtIgObjectData>(), PortPolicy::Required);
+
+    m_out = addOutPort(gt::ig::typeId<GtIgObjectData>());
+
+    registerWidgetFactory([this](GtIntelliGraphNode&) {
+        auto w = std::make_unique<GtLineEdit>();
+        w->setValidator(new QRegExpValidator(gt::re::ig::forClassNames()));
+        w->setPlaceholderText(QStringLiteral("class name"));
+
+        auto const updateProp = [this, w_ = w.get()](){
+            m_childClassName = w_->text();
+        };
+
+        connect(w.get(), &GtLineEdit::focusOut, this, updateProp);
+        connect(w.get(), &GtLineEdit::clearFocusOut, this, updateProp);
+        connect(this, &GtIntelliGraphNode::outDataUpdated, w.get(),
+                [this, w_ = w.get()](){
+            w_->setText(m_childClassName);
+        });
+        return w;
+    });
 
     connect(&m_childClassName, &GtAbstractProperty::changed,
             this, &GtIgFindDirectChildNode::updateNode);
 }
 
-unsigned
-GtIgFindDirectChildNode::nPorts(const PortType type) const
-{
-    switch (type)
-    {
-    case PortType::In:
-    case PortType::Out:
-        return 1;
-    case PortType::None:
-        return 0;
-    }
-    throw std::logic_error{"Unhandled enum value!"};
-}
-
-GtIntelliGraphNode::NodeDataType
-GtIgFindDirectChildNode::dataType(const PortType type, const PortIndex idx) const
-{
-    switch (type)
-    {
-    case PortType::In:
-    case PortType::Out:
-        return GtIgObjectData::staticType();
-    case PortType::None:
-        return {};
-    }
-    throw std::logic_error{"Unhandled enum value!"};
-}
-
 GtIntelliGraphNode::NodeData
-GtIgFindDirectChildNode::outData(const PortIndex port)
+GtIgFindDirectChildNode::eval(PortId outId)
 {
-    if (!m_parent || !m_parent->object()) return {};
+    if (m_out != outId) return {};
 
-    auto const children = m_parent->object()->findDirectChildren();
-    auto iter = std::find_if(std::begin(children), std::end(children),
-                             [className = m_childClassName.get()](GtObject* c){
-        return className == c->metaObject()->className();
-    });
-
-    if (iter == std::end(children)) return {};
-
-    return std::make_shared<GtIgObjectData>(*iter);
-}
-
-void
-GtIgFindDirectChildNode::setInData(NodeData data, const PortIndex port)
-{
-    m_parent = gt::ig::nodedata_cast<GtIgObjectData>(std::move(data));
-
-    updateNode();
-}
-
-QWidget*
-GtIgFindDirectChildNode::embeddedWidget()
-{
-    if (!m_editor) initWidget();
-    return m_editor;
-}
-
-void
-GtIgFindDirectChildNode::updateNode()
-{
-    if (m_editor) m_editor->setText(m_childClassName);
-
-    if (m_parent || !m_childClassName.get().isEmpty())
+    if (auto* parent = portData<GtIgObjectData*>(m_in))
     {
-        emit dataUpdated(0);
+        auto const children = parent->object()->findDirectChildren();
+
+        auto iter = std::find_if(std::begin(children), std::end(children),
+                                 [this](GtObject const* c){
+            return m_childClassName.get() == c->metaObject()->className();
+        });
+
+        if (iter == std::end(children)) return {};
+
+        return std::make_shared<GtIgObjectData>(*iter);
     }
-    else
-    {
-        emit dataInvalidated(0);
-    }
+
+    return {};
 }
-
-void
-GtIgFindDirectChildNode::initWidget()
-{
-    m_editor = gt::ig::make_volatile<GtLineEdit>();
-    m_editor->setValidator(new QRegExpValidator(gt::re::ig::forClassNames()));
-
-    auto const updateProp = [this](){
-        m_childClassName = m_editor->text();
-    };
-
-    connect(m_editor, &GtLineEdit::focusOut, this, updateProp);
-    connect(m_editor, &GtLineEdit::clearFocusOut, this, updateProp);
-}
-

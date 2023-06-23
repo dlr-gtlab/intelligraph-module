@@ -12,35 +12,89 @@
 #include "gt_intproperty.h"
 #include "gt_typetraits.h"
 
-#include <QtNodes/Definitions>
-#include <QtNodes/NodeData>
+#include <QPointF>
 
 namespace gt
 {
 namespace ig
 {
 
-using NodeId = unsigned;
+// Base class for typesafe type aliases
+template <typename T, typename Tag>
+class StrongType
+{
+public:
 
-using PortIdx = unsigned;
+    using value_type = T;
+
+    constexpr inline explicit StrongType(T value = {}) noexcept :
+        m_value(std::move(value))
+    {}
+    StrongType(StrongType const&) = default;
+    StrongType(StrongType&&) = default;
+    StrongType& operator=(StrongType const& value) = default;
+    StrongType& operator=(StrongType&& value) = default;
+    ~StrongType() = default;
+
+    template<typename U>
+    static StrongType fromValue(U value) { return StrongType{static_cast<T>(value)}; }
+
+    // Overload comparison operators as needed
+    constexpr inline bool
+    operator==(StrongType const& other) const noexcept { return m_value == other.m_value; }
+
+    constexpr inline bool
+    operator!=(StrongType const& other) const noexcept { return !(*this == other); }
+
+    constexpr inline StrongType&
+    operator+=(StrongType const& o) noexcept { m_value + o.m_value; return *this; }
+    constexpr inline StrongType&
+    operator-=(StrongType const& o) noexcept { m_value - o.m_value; return *this; }
+    constexpr inline StrongType&
+    operator*=(StrongType const& o) noexcept { m_value * o.m_value; return *this; }
+    constexpr inline StrongType&
+    operator/=(StrongType const& o) noexcept { m_value / o.m_value; return *this; }
+
+    // pre increment
+    constexpr inline StrongType&
+    operator++() noexcept { ++m_value; return *this; }
+    // post increment
+    constexpr inline StrongType
+    operator++(int) noexcept { StrongType tmp(*this); operator++(); return tmp; }
+
+    operator T() const { return value(); }
+
+    // Access the underlying value
+    constexpr inline T
+    value() const { return m_value; }
+
+private:
+    T m_value = std::numeric_limits<T>::max();
+};
+
+using NodeId    = StrongType<unsigned, struct NodeId_>;
+using PortIndex = StrongType<unsigned, struct PortIndex_>;
+using PortId    = StrongType<unsigned, struct PortId_>;
 
 using Position = QPointF;
 
-inline unsigned fromInt(GtIntProperty const& p)
+enum PortType
 {
-    return p.get() >= 0 ? static_cast<unsigned>(p) : std::numeric_limits<NodeId>::max();
+    In = 0,
+    Out,
+    NoType
+};
+
+template<typename T>
+constexpr inline T invalid() noexcept
+{
+    return T{ std::numeric_limits<typename T::value_type>::max() };
 }
 
-template <typename T, typename U,
-          gt::trait::enable_if_base_of<QtNodes::NodeData, U> = true,
-          gt::trait::enable_if_base_of<QtNodes::NodeData, T> = true>
-inline std::shared_ptr<T> nodedata_cast(std::shared_ptr<U> ptr)
+inline unsigned fromInt(GtIntProperty const& p) noexcept
 {
-    if (ptr && ptr->type().id == T::staticType().id)
-    {
-        return std::static_pointer_cast<T>(ptr);
-    }
-    return {};
+    return p.get() >= 0 ? static_cast<unsigned>(p) :
+                          std::numeric_limits<unsigned>::max();
 }
 
 } // namespace ig
@@ -62,16 +116,30 @@ inline QRegExp forClassNames()
 
 } // namespace gt
 
-inline gt::log::Stream& operator<<(gt::log::Stream& s, QtNodes::ConnectionId const& con)
+template <typename T, typename Tag>
+constexpr inline bool
+operator+=(gt::ig::StrongType<T, Tag> const& a,
+           gt::ig::StrongType<T, Tag> const& b) noexcept { return a += b; }
+
+template <typename T, typename Tag>
+constexpr inline bool
+operator-=(gt::ig::StrongType<T, Tag> const& a,
+           gt::ig::StrongType<T, Tag> const& b) noexcept { return a -= b; }
+
+template <typename T, typename Tag>
+constexpr inline bool
+operator*=(gt::ig::StrongType<T, Tag> const& a,
+           gt::ig::StrongType<T, Tag> const& b) noexcept{ return a *= b; }
+
+template <typename T, typename Tag>
+constexpr inline bool
+operator/=(gt::ig::StrongType<T, Tag> const& a,
+           gt::ig::StrongType<T, Tag> const& b) noexcept { return a /= b; }
+
+template <typename T, typename Tag>
+inline gt::log::Stream& operator<<(gt::log::Stream& s, gt::ig::StrongType<T, Tag> const& t)
 {
-    {
-        gt::log::StreamStateSaver saver(s);
-        s.nospace()
-          << "NodeConnection["
-          << con.inNodeId  << ":" << con.inPortIndex << "/"
-          << con.outNodeId << ":" << con.outPortIndex << "]";
-    }
-    return s;
+    return s << t.value();
 }
 
 #endif // GT_IGGLOBALS_H

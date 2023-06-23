@@ -16,7 +16,7 @@
 
 #include <QTextEdit>
 
-class GtIgStringListData;
+class GtIgStringListData2;
 class GtIgStringListInputNode : public GtIntelliGraphNode
 {
     Q_OBJECT
@@ -25,27 +25,15 @@ public:
 
     Q_INVOKABLE GtIgStringListInputNode();
 
-    unsigned int nPorts(PortType const type) const override;
+protected:
 
-    NodeDataType dataType(PortType const type, PortIndex const idx) const override;
-
-    NodeData outData(PortIndex const port) override;
-
-    QWidget* embeddedWidget() override;
-
-public slots:
-
-    void updateNode() override;
+    NodeData eval(PortId outId) override;
 
 private:
 
     GtPropertyStructContainer m_values;
 
-    gt::ig::volatile_ptr<QTextEdit> m_editor;
-
     QStringList values() const;
-
-    void initWidget();
 };
 
 #endif // GT_IGSTRINGLISTINPUTNODE_H

@@ -11,12 +11,11 @@
 
 #include "gt_igglobals.h"
 #include "gt_intelligraph_exports.h"
+#include "gt_ignodedata.h"
 
 #include "gt_object.h"
-#include "gt_intproperty.h"
-#include "gt_doubleproperty.h"
 
-#include <QPointF>
+#include <QWidget>
 
 namespace gt
 {
@@ -25,10 +24,12 @@ namespace ig
 
 enum NodeFlag
 {
-    None = 0x0,
-    Resizable = 0x1,
-    CaptionInvisble = 0x4,
+    NoFlag      = 0x0,
+    Resizable   = 0x1,
+    HideCaption = 0x2,
 };
+
+using NodeFlags  = int;
 
 } // namespace ig
 
@@ -38,126 +39,396 @@ class GT_IG_EXPORT GtIntelliGraphNode : public GtObject
 {
     Q_OBJECT
 
-    friend class GtIntelliGraphObjectModel;
-
 public:
 
-    using NodeId     = gt::ig::NodeId;
-    using NodeFlag   = gt::ig::NodeFlag;
-    using NodeFlags  = int;
-    using PortType   = QtNodes::PortType;
-    using PortIndex  = QtNodes::PortIndex;
-    using NodeDataType = QtNodes::NodeDataType;
-    using NodeData     = std::shared_ptr<QtNodes::NodeData>;
-    using ConnectionPolicy = QtNodes::ConnectionPolicy;
-    using ConnectionId     = QtNodes::ConnectionId;
+    using NodeId    = gt::ig::NodeId;
+    using NodeFlag  = gt::ig::NodeFlag;
+    using NodeFlags = gt::ig::NodeFlags;
+    using PortType  = gt::ig::PortType;
+    using PortId    = gt::ig::PortId;
+    using PortIndex = gt::ig::PortIndex;
+    using Position  = gt::ig::Position;
 
-    void setNodeFlag(NodeFlag flag, bool enable = true);
+    using NodeData = std::shared_ptr<const GtIgNodeData>;
 
-    NodeFlags nodeFlags() const { return m_flags; }
+    /// widget factory function type. Parameter is guranteed to be of type
+    /// "this" and can be casted safely using static_cast.
+    using WidgetFactory =
+        std::function<std::unique_ptr<QWidget>(GtIntelliGraphNode& thisNode)>;
 
-    gt::ig::NodeId id() const { return gt::ig::fromInt(m_id); }
+    /// state enum
+    enum State
+    {
+        EvalRequired = 0,
+        Evaluated    = 1,
+        Evaluating   = 2
+    };
 
-    gt::ig::Position pos() const { return { m_posX, m_posY }; }
+    /// enum for defining whether a port is optional
+    enum PortPolicy
+    {
+        Required,
+        Optional
+    };
 
-    void setId(gt::ig::NodeId id);
+    /// port data struct
+    class PortData
+    {
+    public:
 
+        // cppcheck-suppress noExplicitConstructor
+        PortData(QString _typeId) : PortData(std::move(_typeId), {}) {}
+
+        PortData(QString _typeId, QString _caption, bool _captionVisible = true) :
+            typeId(std::move(_typeId)),
+            caption(std::move(_caption)),
+            captionVisible(_captionVisible),
+            optional(true)
+        {}
+
+        // type id for port data (classname)
+        QString typeId;
+        // custom port caption (optional)
+        QString caption;
+        // whether port caption should be visible
+        bool captionVisible;
+        // whether the port is required for the node evaluation
+        bool optional;
+
+        /**
+         * @brief Returns the port id
+         * @return port id
+         */
+        inline PortId id() const { return m_id; }
+
+    private:
+
+        PortId m_id{};
+
+        friend class GtIntelliGraphNode;
+    };
+
+    ~GtIntelliGraphNode();
+
+    /* node specifc methods */
+
+    /**
+     * @brief Sets the node id. handle with care, as this may result in
+     * undesired behaviour. Will be saved persistently.
+     * @param id New id
+     */
+    void setId(NodeId id);
+
+    /**
+     * @brief Returns the node id
+     * @return Node id
+     */
+    NodeId id() const;
+
+    /**
+     * @brief Sets the new node position. Will be saved persistently.
+     * @param pos new position
+     */
     void setPos(QPointF pos);
 
+    /**
+     * @brief pos
+     * @return
+     */
+    Position pos() const;
+
+    /**
+     * @brief Will create a unique object name based on the node caption
+     */
     void updateObjectName();
 
+    /**
+     * @brief Returns true if the node (id) is valid
+     * @return is valid
+     */
     bool isValid() const;
 
+    /**
+     * @brief Returns whether the node is valid and has the expected model name
+     * @param modelName Model anme
+     * @return is valid
+     */
     bool isValid(QString const& modelName);
 
-    /* model specifc methods */
+    /**
+     * @brief Returns the node flags
+     * @return node flags
+     */
+    NodeFlags nodeFlags() const;
 
-    QString caption() const { return m_caption; }
+    /**
+     * @brief Setter for the caption. Will be saved persistently
+     * @param caption New caption
+     */
+    void setCaption(QString caption);
 
-    void setCaption(QString caption) { m_caption = std::move(caption); }
+    /**
+     * @brief Caption of the node
+     * @return Caption
+     */
+    QString const& caption() const;
 
-    QString modelName() const { return metaObject()->className(); }
+    /**
+     * @brief Model name of the node
+     * @return Model name
+     */
+    QString const& modelName() const;
 
-    virtual unsigned nPorts(PortType type) const { return 0; }
+    /**
+     * @brief Returns a list of the input or output ports depending on the port
+     * type
+     * @param type Port type (input or output)
+     * @return Ports
+     */
+    std::vector<PortData> const& ports(PortType type) const noexcept(false);
 
-    virtual NodeDataType dataType(PortType type, PortIndex idx) const { return {}; }
+    /**
+     * @brief Returns the port for the port id
+     * @param id Port id
+     * @return Port. May be null
+     */
+    PortData* port(PortId id) noexcept;
+    PortData const* port(PortId id) const noexcept;
 
-    virtual bool portCaptionVisible(PortType type, PortIndex idx) const { return false; }
+    /**
+     * @brief Returns the port index for the port id and the port type.
+     * @param type Port type (input or output)
+     * @param id Port id
+     * @return Port index. May be invalid, check using "gt::ig::invalid<PortIndex>()"
+     */
+    PortIndex portIndex(PortType type, PortId id) const noexcept(false);
 
-    virtual QString portCaption(PortType type, PortIndex idx) const { return {}; }
+    /**
+     * @brief Attempts to find the port id by port index and the port type.
+     * @param type Port type (input or output)
+     * @param idx Port index
+     * @return Port id. May be invalid, check using "gt::ig::invalid<PortId>()"
+     */
+    PortId portId(PortType type, PortIndex idx) const noexcept(false);
 
-    virtual NodeData outData(PortIndex const port) { return {}; }
+    /**
+     * @brief Returns the embedded widget used in the intelli graph. Ownership
+     * may be transfered safely
+     * @return Embedded widget
+     */
+    QWidget* embeddedWidget();
 
-    virtual void setInData(NodeData data, PortIndex const port) { }
+    /**
+     * @brief Sets the node data at the input port specified by the index.
+     * Triggers the evaluation of all output ports
+     * @param idx Input port index
+     * @param data Node data.
+     */
+    bool setInData(PortIndex idx, NodeData data);
 
-    virtual QWidget* embeddedWidget() { return nullptr; }
+    /**
+     * @brief Returns the output node data specified by the index.
+     * @param idx Output port index
+     * @return Node data. Null if idx is invalid
+     */
+    NodeData outData(PortIndex idx);
 
     /* serialization */
 
-    static std::unique_ptr<GtIntelliGraphNode> fromJson(QJsonObject const& json) noexcept(false);
+    /**
+     * @brief Creates a new node from json data (see "toJson"). May be null.
+     * Method may throw if the node type described by the json data does not
+     * exists.
+     * @param json Json object to use for the node creation
+     * @return Node
+     */
+    static std::unique_ptr<GtIntelliGraphNode> fromJson(QJsonObject const& json
+                                                        ) noexcept(false);
 
+    /**
+     * @brief Serializes this node as a json object.
+     * @return Json object
+     */
     QJsonObject toJson() const;
+
+    /**
+     * @brief Will attempt to merge the json data.
+     * @param internals Json object describing the internal node data. Note:
+     * This is not the same as the object returned by "tojson".
+     */
+    bool mergeJsonMemento(QJsonObject const& internals);
+
+    /**
+     * @brief Will write the memento data to the internal node data json object.
+     * Note: This is not the same as the object returned by "tojson".
+     * @param internals
+     */
+    void toJsonMemento(QJsonObject& internals) const;
 
 public slots:
 
-    virtual void updateNode() {};
+    /**
+     * @brief This will schedule the evaluation of all output ports.
+     */
+    void updateNode();
+
+    /**
+     * @brief This will schedule the evaluation of the output port specified by
+     * idx.
+     * @param idx Output port index. May be calculated using an output port id.
+     */
+    void updatePort(gt::ig::PortIndex idx);
 
 signals:
 
-    void dataUpdated(GtIntelliGraphNode::PortIndex const idx);
+    /**
+     * @brief Emitted if the node has evaluated and the output data have changed.
+     * Will be called automatically and should not be triggered by the "user".
+     * @param idx Output port index. May be mapped to an output port id.
+     */
+    void evaluated(gt::ig::PortIndex idx = PortIndex{0});
 
-    void dataInvalidated(GtIntelliGraphNode::PortIndex const idx);
+    /**
+     * @brief Emitted if the output data has changed (may be invalid), jsut
+     * after evaluating. Will be called automatically and should not be triggered
+     * by the "user". Triggers the evaluation of all connected ports.
+     * @param idx Output port index. May be mapped to an output port id.
+     */
+    void outDataUpdated(gt::ig::PortIndex idx = PortIndex{0});
 
-    void computingStarted();
+    /**
+     * @brief Emitted if the output data was invalidated, jsut after evaluating.
+     * Will be called automatically and should not be triggered by the "user".
+     * Triggers the invalidation of all connected ports
+     * @param idx Output port index. May be mapped to an output port id.
+     */
+    void outDataInvalidated(gt::ig::PortIndex idx = PortIndex{0});
 
-    void computingFinished();
-
-    void embeddedWidgetSizeUpdated();
-
-    void portsAboutToBeDeleted(GtIntelliGraphNode::PortType const type,
-                               GtIntelliGraphNode::PortIndex const first,
-                               GtIntelliGraphNode::PortIndex const last);
-
-    void portsDeleted();
-
-    void portsAboutToBeInserted(GtIntelliGraphNode::PortType const type,
-                                GtIntelliGraphNode::PortIndex const first,
-                                GtIntelliGraphNode::PortIndex const last);
-
-    void portsInserted();
+    /**
+     * @brief Emitted if new input data was recieved, jsut before evaluating.
+     * Data may be invalid. Should not be triggered by the "user".
+     * @param idx Input port index. May be mapped to an input port id.
+     */
+    void inputDataRecieved(gt::ig::PortIndex idx = PortIndex{0});
 
 protected:
 
-    GtIntelliGraphNode(QString const& caption, GtObject* parent = nullptr);
+    /**
+     * @brief constructor. Must initialize the model name.
+     * @param modelName Model name. May not be altered later
+     * @param parent Parent object
+     */
+    GtIntelliGraphNode(QString const& modelName, GtObject* parent = nullptr);
 
-protected slots:
+    /**
+     * @brief Main evaluation method to override. Will be called for each output
+     * port. If no output ports are registered, but input ports are, an invalid
+     * port id will be passed and the returned data will be discarded. Will not
+     * be called if any required input port has no valid data associated
+     * (see PortPolicy)
+     * @param outId Output port id to evaluate the data for
+     * @return Node data on the output port
+     */
+    virtual NodeData eval(PortId outId);
 
-    virtual void inputConnectionCreated(GtIntelliGraphNode::ConnectionId const& id) {}
+    /**
+     * @brief Should be called within the constructor. Used to register
+     * the widget factory, used for creating the embedded widget within the
+     * intelli graphs.
+     * @param factory Widget factory
+     */
+    void registerWidgetFactory(WidgetFactory factory);
 
-    virtual void inputConnectionDeleted(GtIntelliGraphNode::ConnectionId const& id) {}
+    /**
+     * @brief Setts a node flag
+     * @param flag Flag to set
+     * @param enable Whether to enable or disable the flag
+     */
+    void setNodeFlag(NodeFlag flag, bool enable = true);
 
-    virtual void outputConnectionCreated(GtIntelliGraphNode::ConnectionId const& id) {}
+    /**
+     * @brief Appends the output port
+     * @param port Port data to append
+     * @param policy Input port policy
+     * @return Port id
+     */
+    PortId addInPort(PortData port, PortPolicy policy = PortPolicy::Optional) noexcept(false);
+    /**
+     * @brief Appends the output port
+     * @param port Port data to append
+     * @return Port id
+     */
+    PortId addOutPort(PortData port) noexcept(false);
 
-    virtual void outputConnectionDeleted(GtIntelliGraphNode::ConnectionId const& id) {}
+    /**
+     * @brief Inserts an input port at the given location
+     * (-1 will append to back)
+     * @param port Port data to append
+     * @param idx Where to insert the port
+     * @param policy Input port policy
+     * @return Port id
+     */
+    PortId insertInPort(PortData port, int idx, PortPolicy policy = PortPolicy::Optional) noexcept(false);
+    /**
+     * @brief Inserts an output port at the given location
+     * (-1 will append to back)
+     * @param port Port data to append
+     * @param idx Where to insert the port
+     * @return Port id
+     */
+    PortId insertOutPort(PortData port, int idx) noexcept(false);
+
+    /**
+     * @brief Removes the port specified by id
+     * @param id Port to remove
+     * @return Success
+     */
+    bool removePort(PortId id);
+
+    /**
+     * @brief Returns the specified port data
+     * @param id Port id (output or input)
+     * @return Port data (may be null)
+     */
+    NodeData const& portData(PortId id) const;
+
+    /**
+     * @brief Overload that casts the port data to the desired type.
+     * @param id Port id (output or input)
+     * @return Port data
+     */
+    template <typename T, typename U = std::remove_pointer_t<T>>
+    U const* portData(PortId id) const
+    {
+        return qobject_cast<U const*>(portData(id).get());
+    }
 
 private:
 
-    /// node id
-    GtIntProperty m_id;
-    /// x position of node
-    GtDoubleProperty m_posX;
-    /// y position of node
-    GtDoubleProperty m_posY;
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
 
-    QString m_caption;
+    /// initialzes the widgets
+    void initWidget();
 
-    NodeFlags m_flags = gt::ig::None;
+    /// helper method for inserting a port
+    PortId insertPort(PortType type, PortData port, int idx = -1) noexcept(false);
 
-    /// will attempt to load and merge memento from json
-    void mergeJsonMemento(QJsonObject const& internals);
-
-    /// will write memento data to json
-    void toJsonMemento(QJsonObject& internals) const;
+    /// internal use only
+    std::vector<PortData>& ports_(PortType type) const noexcept(false);
+    /// internal use only
+    std::vector<NodeData>& portData_(PortType type) const noexcept(false);
 };
+
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, GtIntelliGraphNode::PortData const& d)
+{
+    {
+        gt::log::StreamStateSaver saver(s);
+        s.nospace()
+            << "PortData[" << d.typeId << "]";
+    }
+    return s;
+}
 
 #endif // GT_INTELLIGRAPHNODE_H

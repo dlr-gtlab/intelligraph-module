@@ -12,6 +12,7 @@
 #include "gt_mdiitem.h"
 
 #include "gt_intelligraphnode.h"
+#include <QtNodes/Definitions>
 
 /**
  * @generated 1.2.0
@@ -23,8 +24,8 @@ class GtIntelliGraphEditor : public GtMdiItem
 
 public:
 
-    using NodeId       = GtIntelliGraphNode::NodeId;
-    using ConnectionId = GtIntelliGraphNode::ConnectionId;
+    using QtNodeId       = QtNodes::NodeId;
+    using QtConnectionId = QtNodes::ConnectionId;
 
     Q_INVOKABLE GtIntelliGraphEditor();
 
@@ -43,15 +44,15 @@ private slots:
 
     void saveToJson();
 
-    void onNodeCreated(NodeId nodeId);
-    void onNodeDeleted(NodeId nodeId);
+    void onNodeCreated(QtNodeId nodeId);
+    void onNodeDeleted(QtNodeId nodeId);
 
-    void onConnectionCreated(ConnectionId conId);
-    void onConnectionDeleted(ConnectionId conId);
+    void onConnectionCreated(QtConnectionId conId);
+    void onConnectionDeleted(QtConnectionId conId);
 
-    void onNodePositionChanged(NodeId nodeId);
+    void onNodePositionChanged(QtNodeId nodeId);
 
-    void onNodeSelected(NodeId nodeId);
+    void onNodeSelected(QtNodeId nodeId);
 
 private:
 
