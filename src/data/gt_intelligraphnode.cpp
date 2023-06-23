@@ -50,17 +50,17 @@ struct GtIntelliGraphNode::Impl
     /// factory for creating the widget
     WidgetFactory widgetFactory{};
     /// node flags
-    NodeFlags flags = gt::ig::NoFlag;
+    NodeFlags flags{gt::ig::NoFlag};
     /// iterator for the next port id
-    PortId nextPortId = 0;
+    PortId nextPortId{0};
 
-    State state = EvalRequired;
+    State state{EvalRequired};
 
     bool canEvaluate() const
     {
         assert(inData.size() == inPorts.size());
 
-        PortIndex idx = 0;
+        PortIndex idx{0};
         for (auto const& data : inData)
         {
             auto const& p = inPorts.at(idx++);
@@ -123,7 +123,7 @@ GtIntelliGraphNode::setPos(QPointF pos)
 
 GtIntelliGraphNode::NodeId GtIntelliGraphNode::id() const
 {
-    return gt::ig::fromInt(pimpl->id);
+    return NodeId{gt::ig::fromInt(pimpl->id)};
 }
 
 GtIntelliGraphNode::Position GtIntelliGraphNode::pos() const
@@ -134,7 +134,7 @@ GtIntelliGraphNode::Position GtIntelliGraphNode::pos() const
 bool
 GtIntelliGraphNode::isValid() const
 {
-    return id() != gt::ig::invalid<PortId>();
+    return id() != gt::ig::invalid<NodeId>();
 }
 
 bool
@@ -312,7 +312,9 @@ GtIntelliGraphNode::portData(PortId id) const
 
         if (iter != ports->end())
         {
-            idx = std::distance(ports->begin(), iter);
+            idx = PortIndex{
+                static_cast<unsigned>(std::distance(ports->begin(), iter))
+            };
             break;
         }
         // switch type
@@ -355,9 +357,14 @@ GtIntelliGraphNode::portIndex(PortType type, PortId id) const noexcept(false)
 
     auto iter = findPort(ports, id);
 
-    if (iter != ports.end()) return std::distance(ports.begin(), iter);
+    if (iter != ports.end())
+    {
+        return PortIndex{
+            static_cast<unsigned>(std::distance(ports.begin(), iter))
+        };
+    }
 
-    return gt::ig::invalid<PortId>();
+    return gt::ig::invalid<PortIndex>();
 }
 
 GtIntelliGraphNode::PortId
@@ -499,7 +506,7 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
     }
 
     // update all ports
-    idx = 0;
+    idx = PortIndex{0};
     for (auto const& port : pimpl->outPorts)
     {
         updateOutData(idx++, port);

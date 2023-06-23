@@ -32,7 +32,7 @@ private:
 
     GtStringProperty m_childClassName;
 
-    PortId m_inPort = gt::ig::invalid<PortId>();
+    PortId m_inPort;
 };
 
 #endif // GT_IGFINDDIRECTCHILDNODE_H

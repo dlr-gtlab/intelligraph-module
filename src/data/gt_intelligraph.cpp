@@ -33,7 +33,7 @@ inline gt::log::Stream& operator<<(gt::log::Stream& s, QtNodes::ConnectionId con
 
 template <typename ObjectList, typename T = gt::trait::value_t<ObjectList>>
 inline T findNode(ObjectList const& nodes,
-                  GtIntelliGraph::NodeId nodeId)
+                  QtNodes::NodeId nodeId)
 {
     auto iter = std::find_if(std::begin(nodes), std::end(nodes),
                              [=](GtIntelliGraphNode const* node) {
@@ -42,9 +42,10 @@ inline T findNode(ObjectList const& nodes,
 
     return iter == std::end(nodes) ? nullptr : *iter;
 }
+
 template <typename ObjectList, typename T = gt::trait::value_t<ObjectList>>
 inline T findConnection(ObjectList const& connections,
-                        GtIntelliGraph::ConnectionId conId)
+                        QtNodes::ConnectionId conId)
 {
     auto iter = std::find_if(std::begin(connections), std::end(connections),
                              [&](GtIntelliGraphConnection* connection){
@@ -105,7 +106,7 @@ GtIntelliGraph::clear()
 }
 
 GtIntelliGraphNode*
-GtIntelliGraph::findNode(NodeId nodeId)
+GtIntelliGraph::findNode(QtNodeId nodeId)
 {
     auto const nodes = findDirectChildren<GtIntelliGraphNode*>();
 
@@ -113,13 +114,13 @@ GtIntelliGraph::findNode(NodeId nodeId)
 }
 
 GtIntelliGraphNode const*
-GtIntelliGraph::findNode(NodeId nodeId) const
+GtIntelliGraph::findNode(QtNodeId nodeId) const
 {
     return const_cast<GtIntelliGraph*>(this)->findNode(nodeId);
 }
 
 GtIntelliGraphConnection*
-GtIntelliGraph::findConnection(ConnectionId const& conId)
+GtIntelliGraph::findConnection(QtConnectionId const& conId)
 {
     auto const connections = findDirectChildren<GtIntelliGraphConnection*>();
 
@@ -127,7 +128,7 @@ GtIntelliGraph::findConnection(ConnectionId const& conId)
 }
 
 GtIntelliGraphConnection const*
-GtIntelliGraph::findConnection(ConnectionId const& conId) const
+GtIntelliGraph::findConnection(QtConnectionId const& conId) const
 {
     return const_cast<GtIntelliGraph*>(this)->findConnection(conId);
 }
@@ -238,7 +239,7 @@ GtIntelliGraph::toJson() const
 }
 
 GtIntelliGraphNode*
-GtIntelliGraph::createNode(NodeId nodeId)
+GtIntelliGraph::createNode(QtNodeId nodeId)
 {
     if (!m_activeGraphModel) return nullptr;
 
@@ -266,7 +267,7 @@ GtIntelliGraph::createNode(NodeId nodeId)
 
         assert (node->parent() == model);
 
-        node->setId(nodeId);
+        node->setId(gt::ig::NodeId{nodeId});
 
         gtDebug().verbose() << "Creating node:" << node;
 
@@ -304,7 +305,8 @@ GtIntelliGraph::appendNode(std::unique_ptr<GtIntelliGraphNode> node)
     if (ids.contains(node->id()))
     {
         // generate a new one
-        node->setId(*std::max_element(std::begin(ids), std::end(ids)) + 1);
+        auto maxId = *std::max_element(std::begin(ids), std::end(ids)) + 1;
+        node->setId(gt::ig::NodeId{static_cast<unsigned>(maxId)});
         assert(node->id() != QtNodes::InvalidNodeId);
     }
 
@@ -318,7 +320,7 @@ GtIntelliGraph::appendNode(std::unique_ptr<GtIntelliGraphNode> node)
 }
 
 bool
-GtIntelliGraph::deleteNode(NodeId nodeId)
+GtIntelliGraph::deleteNode(QtNodeId nodeId)
 {
     if (auto* node = findNode(nodeId))
     {
@@ -330,7 +332,7 @@ GtIntelliGraph::deleteNode(NodeId nodeId)
 }
 
 GtIntelliGraphConnection*
-GtIntelliGraph::createConnection(const ConnectionId& connectionId)
+GtIntelliGraph::createConnection(const QtConnectionId& connectionId)
 {
     if (auto* connection = findConnection(connectionId))
     {
@@ -373,7 +375,7 @@ GtIntelliGraph::appendConnection(std::unique_ptr<GtIntelliGraphConnection> conne
 }
 
 bool
-GtIntelliGraph::deleteConnection(const ConnectionId& connectionId)
+GtIntelliGraph::deleteConnection(const QtConnectionId& connectionId)
 {
     if (auto* connection = findConnection(connectionId))
     {
@@ -384,7 +386,7 @@ GtIntelliGraph::deleteConnection(const ConnectionId& connectionId)
 }
 
 bool
-GtIntelliGraph::updateNodePosition(NodeId nodeId)
+GtIntelliGraph::updateNodePosition(QtNodeId nodeId)
 {
     if (!m_activeGraphModel) return false;
 

@@ -16,7 +16,7 @@ GTIG_REGISTER_NODE(GtIgGroupOutputProvider, "Group")
 GtIgGroupOutputProvider::GtIgGroupOutputProvider() :
     GtIntelliGraphNode("Output Provider")
 {
-    setId(std::numeric_limits<int>::max() - 1);
+    setId(NodeId{std::numeric_limits<int>::max() - 1});
     setPos({200, 0});
 
     addInPort(gt::ig::typeId<GtIgObjectData>());

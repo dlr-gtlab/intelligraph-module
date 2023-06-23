@@ -47,9 +47,27 @@ GtIntelliGraphObjectModel::init(GtIntelliGraphNode& node)
     }
 
     m_node = &node;
-    
-    GTIG_SETUP_SIGNALS(dataUpdated, outDataUpdated);
-    GTIG_SETUP_SIGNALS(dataInvalidated, outDataInvalidated);
+
+    connect(this, &GtIntelliGraphObjectModel::dataUpdated,
+            m_node, [=](unsigned idx){
+        if (sender() != m_node) m_node->outDataUpdated(gt::ig::PortIndex{idx});
+    });
+    connect(m_node, &GtIntelliGraphNode::outDataUpdated,
+            this, [=](gt::ig::PortIndex idx){
+        if (sender() != this) this->dataUpdated(idx);
+    });
+
+    connect(this, &GtIntelliGraphObjectModel::dataInvalidated,
+            m_node, [=](unsigned idx){
+        if (sender() != m_node) m_node->outDataInvalidated(gt::ig::PortIndex{idx});
+    });
+    connect(m_node, &GtIntelliGraphNode::outDataInvalidated,
+            this, [=](gt::ig::PortIndex idx){
+        if (sender() != this) this->dataInvalidated(idx);
+    });
+
+//    GTIG_SETUP_SIGNALS(dataUpdated, outDataUpdated);
+//    GTIG_SETUP_SIGNALS(dataInvalidated, outDataInvalidated);
 //    GTIG_SETUP_SIGNALS(computingStarted);
 //    GTIG_SETUP_SIGNALS(computingFinished);
 //    GTIG_SETUP_SIGNALS(embeddedWidgetSizeUpdated);
@@ -165,7 +183,7 @@ GtIntelliGraphObjectModel::outData(const PortIndex port)
 {
     if (!m_node) return {};
 
-    auto data = m_node->outData(port);
+    auto data = m_node->outData(gt::ig::PortIndex{port});
     return std::make_shared<GtIgObjectModelData>(std::move(data));
 }
 
@@ -176,11 +194,11 @@ GtIntelliGraphObjectModel::setInData(NodeData nodeData, const PortIndex port)
 
     if (auto data = std::dynamic_pointer_cast<GtIgObjectModelData>(nodeData))
     {
-        m_node->setInData(port, data->data());
+        m_node->setInData(gt::ig::PortIndex{port}, data->data());
         return;
     }
 
-    m_node->setInData(port, nullptr);
+    m_node->setInData(gt::ig::PortIndex{port}, nullptr);
 }
 
 QWidget*

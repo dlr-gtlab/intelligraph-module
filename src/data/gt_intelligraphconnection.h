@@ -10,7 +10,6 @@
 #define GT_INTELLIGRAPHCONNECTION_H
 
 #include "gt_igglobals.h"
-#include "gt_intelligraph_exports.h"
 
 #include "gt_object.h"
 #include "gt_intproperty.h"
@@ -21,32 +20,34 @@ class GtIntelliGraphConnection : public GtObject
 {
     Q_OBJECT
 
-    using ConnectionId = QtNodes::ConnectionId;
+    using QtConnectionId = QtNodes::ConnectionId;
+    using NodeId    = gt::ig::NodeId;
+    using PortIndex = gt::ig::PortIndex;
 
 public:
 
     Q_INVOKABLE GtIntelliGraphConnection(GtObject* parent = nullptr);
 
-    ConnectionId toConnectionId() const
+    QtConnectionId toConnectionId() const
     {
-        return ConnectionId{
+        return QtConnectionId{
             outNodeId(), outPortIdx(), inNodeId(), inPortIdx()
         };
     }
 
-    bool fromConnectionId(ConnectionId connection);
+    bool fromConnectionId(QtConnectionId connection);
 
     bool fromJson(QJsonObject const& json);
 
     QJsonObject toJson() const;
 
-    gt::ig::NodeId inNodeId() const { return gt::ig::fromInt(m_inNodeId); }
+    NodeId inNodeId() const { return NodeId{gt::ig::fromInt(m_inNodeId)}; }
     
-    gt::ig::PortIndex inPortIdx() const { return gt::ig::fromInt(m_inPortIdx); }
+    PortIndex inPortIdx() const { return PortIndex{gt::ig::fromInt(m_inPortIdx)}; }
 
-    gt::ig::NodeId outNodeId() const { return gt::ig::fromInt(m_outNodeId); }
+    NodeId outNodeId() const { return NodeId{gt::ig::fromInt(m_outNodeId)}; }
     
-    gt::ig::PortIndex outPortIdx() const { return gt::ig::fromInt(m_outPortIdx); }
+    PortIndex outPortIdx() const { return PortIndex{gt::ig::fromInt(m_outPortIdx)}; }
 
     bool isValid() const;
 

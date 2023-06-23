@@ -30,8 +30,8 @@ public:
 
     using DataFlowGraphModel = QtNodes::DataFlowGraphModel;
 
-    using NodeId = QtNodes::NodeId;
-    using ConnectionId = QtNodes::ConnectionId;
+    using QtNodeId = QtNodes::NodeId;
+    using QtConnectionId = QtNodes::ConnectionId;
 
     Q_INVOKABLE GtIntelliGraph();
 
@@ -41,11 +41,11 @@ public:
     QList<GtIntelliGraphConnection*> connections();
     QList<GtIntelliGraphConnection const*> connections() const;
 
-    GtIntelliGraphNode* findNode(NodeId nodeId);
-    GtIntelliGraphNode const* findNode(NodeId nodeId) const;
+    GtIntelliGraphNode* findNode(QtNodeId nodeId);
+    GtIntelliGraphNode const* findNode(QtNodeId nodeId) const;
 
-    GtIntelliGraphConnection* findConnection(ConnectionId const& conId);
-    GtIntelliGraphConnection const* findConnection(ConnectionId const& conId) const;
+    GtIntelliGraphConnection* findConnection(QtConnectionId const& conId);
+    GtIntelliGraphConnection const* findConnection(QtConnectionId const& conId) const;
 
     /// clears all nodes and connections
     void clear();
@@ -66,7 +66,7 @@ public:
      * @param nodeId Node id to create/move
      * @return Node (may be null)
      */
-    GtIntelliGraphNode* createNode(NodeId nodeId);
+    GtIntelliGraphNode* createNode(QtNodeId nodeId);
 
     /**
      * @brief Appends the node  to the intelli graph. Use this function instead
@@ -83,7 +83,7 @@ public:
      * @param nodeId Node to delete
      * @return True if successful else false
      */
-    bool deleteNode(NodeId nodeId);
+    bool deleteNode(QtNodeId nodeId);
 
     /**
      * @brief Creates a new connection base on the connection details and
@@ -92,7 +92,7 @@ public:
      * @param connectionId Connection details to be used for creating the node.
      * @return Connection (may be null)
      */
-    GtIntelliGraphConnection* createConnection(ConnectionId const& connectionId);
+    GtIntelliGraphConnection* createConnection(QtConnectionId const& connectionId);
 
     /**
      * @brief Appends the connection to intelli graph. Use this function instead
@@ -108,7 +108,7 @@ public:
      * @param nodeId Node to delete
      * @return True if successful else false
      */
-    bool deleteConnection(ConnectionId const& connectionId);
+    bool deleteConnection(QtConnectionId const& connectionId);
 
     /**
      * @brief Updates the node position of the node matgched by the node id.
@@ -117,7 +117,7 @@ public:
      * @param nodeId Node to update
      * @return True if successful else false
      */
-    bool updateNodePosition(NodeId nodeId);
+    bool updateNodePosition(QtNodeId nodeId);
 
     /**
      * @brief Sets the active graph model. This is required for synchronizing

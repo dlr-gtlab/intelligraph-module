@@ -39,7 +39,7 @@ GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
 }
 
 bool
-GtIntelliGraphConnection::fromConnectionId(ConnectionId connection)
+GtIntelliGraphConnection::fromConnectionId(QtConnectionId connection)
 {
     m_inNodeId   = connection.inNodeId;
     m_inPortIdx  = connection.inPortIndex;
