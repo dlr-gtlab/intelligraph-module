@@ -16,12 +16,15 @@
 #include "gt_intelligraph.h"
 #include "gt_intelligraphcategory.h"
 #include "gt_intelligraphconnection.h"
+#include "gt_iggroupinputprovider.h"
+#include "gt_iggroupoutputprovider.h"
+#include "gt_igprojectui.h"
 #include "gt_intelligraphobjectui.h"
 #include "gt_intelligrapheditor.h"
 #include "gt_igobjectlinkproperty.h"
 #include "gt_igobjectlinkpropertyitem.h"
-
-#include "gt_igprojectui.h"
+#include "gt_igstringselectionproperty.h"
+#include "gt_igstringselectionpropertyitem.h"
 
 #include "gt_project.h"
 
@@ -128,6 +131,10 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(GtIntelliGraphObjectUI));
     map.insert(GT_CLASSNAME(GtIntelliGraphCategory),
                GT_METADATA(GtIntelliGraphObjectUI));
+    map.insert(GT_CLASSNAME(GtIgGroupInputProvider),
+               GT_METADATA(GtIntelliGraphObjectUI));
+    map.insert(GT_CLASSNAME(GtIgGroupOutputProvider),
+               GT_METADATA(GtIntelliGraphObjectUI));
 
     return map;
 }
@@ -156,6 +163,8 @@ GtIntelliGraphModule::propertyItems()
     // not exported by default...
     map.insert(GT_CLASSNAME(GtIgObjectLinkProperty),
                GT_METADATA(GtIgObjectLinkPropertyItem));
+    map.insert(GT_CLASSNAME(GtIgStringSelectionProperty),
+               GT_METADATA(GtIgStringSelectionPropertyItem));
 
     return map;
 }

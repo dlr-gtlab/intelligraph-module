@@ -24,30 +24,76 @@ GtIntelliGraphNodeGroup::GtIntelliGraphNodeGroup() :
 
     auto input = std::make_unique<GtIgGroupInputProvider>();
     input->setDefault(true);
-
-    for (auto const& data : input->ports(PortType::Out))
-    {
-        addInPort(data);
-    }
-
-    input.release()->setParent(graph);
+    input->setParent(graph);
 
     auto output = std::make_unique<GtIgGroupOutputProvider>();
     output->setDefault(true);
     output->setParent(graph);
 
-    for (auto const& data : output->ports(PortType::In))
-    {
-        m_outData.push_back(NodeData{});
-        addOutPort(data);
-    }
-    
+    auto onPortInserted = [this](auto* provider, PortType type, PortIndex idx){
+        PortId id = provider->portId(provider->INVERSE_TYPE(), idx);
+        if (auto* port = provider->port(id))
+        {
+            provider->TYPE() == PortType::In ?
+                insertInPort(*port, idx) :
+                insertOutPort(*port, idx);
+            return true;
+        }
+        return false;
+    };
+
+    auto onPortChanged = [this](auto* provider, PortId id){
+        auto* inPort = provider->port(id);
+        auto  idx    = provider->portIndex(provider->INVERSE_TYPE(), id);
+        auto* port   = this->port(portId(provider->TYPE(), idx));
+
+        if (!inPort || !port) return;
+
+        port->typeId = inPort->typeId;
+        port->caption = inPort->caption;
+        emit portChanged(port->id());
+    };
+
+    auto onPortDeleted = [this](auto* provider, PortIndex idx){
+        removePort(portId(provider->INVERSE_TYPE(), idx));
+    };
+
+    connect(input.get(), &GtIntelliGraphNode::portInserted,
+            this, [=, in = input.get()](PortType type, PortIndex idx){
+        onPortInserted(in, type, idx);
+    });
+    connect(input.get(), &GtIntelliGraphNode::portChanged,
+            this, [=, in = input.get()](PortId id){
+        onPortChanged(in, id);
+    });
+    connect(input.get(), &GtIntelliGraphNode::portAboutToBeDeleted,
+            this, [=, in = input.get()](PortType, PortIndex idx){
+        onPortDeleted(in, idx);
+    });
+
+    connect(output.get(), &GtIntelliGraphNode::portInserted,
+            this, [=, out = output.get()](PortType type, PortIndex idx){
+        if (onPortInserted(out, type, idx))
+        {
+            m_outData.insert(std::next(m_outData.begin(), idx), NodeData{});
+        }
+    });
+    connect(output.get(), &GtIntelliGraphNode::portChanged,
+            this, [=, out = output.get()](PortId id){
+        onPortChanged(out, id);
+    });
+    connect(output.get(), &GtIntelliGraphNode::portAboutToBeDeleted,
+            this, [=, out = output.get()](PortType, PortIndex idx){
+        onPortDeleted(out, idx);
+    });
+
     connect(output.get(), &GtIntelliGraphNode::outDataUpdated,
             this, &GtIntelliGraphNode::outDataUpdated);
     connect(output.get(), &GtIntelliGraphNode::outDataInvalidated,
             this, &GtIntelliGraphNode::outDataInvalidated);
 
     output.release();
+    input.release();
 }
 
 GtIntelliGraph*
@@ -125,21 +171,10 @@ GtIntelliGraphNodeGroup::eval(PortId outId)
 
     PortIndex idx{0};
 
+    // this will trigger the evaluation
     in->updateNode();
 
-//    for (auto const& _ : ports(PortType::In))
-//    {
-//        if (!in->setOutData(idx, inData(idx)))
-//        {
-//            gtWarning().medium()
-//                << tr("Failed to forward input data idx '%1'")
-//                       .arg(idx) << in->ports(PortType::In);
-//        }
-//        idx++;
-//    }
-
     // idealy now the data should have been set
-
     if (m_outData.size() != out->ports(PortType::In).size())
     {
         gtWarning().medium()

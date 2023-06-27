@@ -12,15 +12,13 @@
 
 #include "gt_igobjectdata.h"
 
-GTIG_REGISTER_NODE(GtIgGroupInputProvider, "Group")
+GTIG_REGISTER_NODE(GtIgGroupInputProvider, "")
 
 GtIgGroupInputProvider::GtIgGroupInputProvider() :
-    GtIntelliGraphNode("Input Provider")
+    GtIgAbstractGroupProvider("Input Provider")
 {
-    setId(NodeId{std::numeric_limits<int>::max() - 2});
-    setPos({-200, 0});
-
-    addOutPort(gt::ig::typeId<GtIgObjectData>());
+    setId(NodeId{0});
+    setPos({-250, 0});
 }
 
 GtIntelliGraphNode::NodeData

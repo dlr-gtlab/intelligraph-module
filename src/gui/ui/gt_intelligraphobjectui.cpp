@@ -13,6 +13,9 @@
 #include "gt_intelligraphcategory.h"
 #include "gt_intelligraphnodegroup.h"
 #include "gt_igpackage.h"
+#include "gt_iggroupinputprovider.h"
+#include "gt_iggroupoutputprovider.h"
+#include "gt_igdoubledata.h"
 
 #include "gt_utilities.h"
 #include "gt_logging.h"
@@ -59,8 +62,8 @@ GtIntelliGraphObjectUI::GtIntelliGraphObjectUI()
     setObjectName(QStringLiteral("IntelliGraphObjectUI"));
 
     addSingleAction(tr("Add Category"), addNodeCategory)
-            .setIcon(gt::gui::icon::add())
-            .setVisibilityMethod(isPackageObject);
+        .setIcon(gt::gui::icon::add())
+        .setVisibilityMethod(isPackageObject);
 
     addSingleAction(tr("Add Intelli Graph"), addNodeGraph)
         .setIcon(gt::gui::icon::add())
@@ -71,12 +74,51 @@ GtIntelliGraphObjectUI::GtIntelliGraphObjectUI()
         .setVisibilityMethod(isGraphObject);
 
     addSingleAction(tr("Clear Intelli Graph"), clearNodeGraph)
-            .setIcon(gt::gui::icon::clear())
-            .setVisibilityMethod(isGraphObject);
+        .setIcon(gt::gui::icon::clear())
+        .setVisibilityMethod(isGraphObject);
 
     addSingleAction(tr("Load Intelli Graph..."), loadNodeGraph)
-            .setIcon(gt::gui::icon::import())
-            .setVisibilityMethod(isGraphObject);
+        .setIcon(gt::gui::icon::import())
+        .setVisibilityMethod(isGraphObject);
+
+
+    auto isProvider = [](GtObject* obj){
+        return qobject_cast<GtIgGroupInputProvider*>(obj) ||
+               qobject_cast<GtIgGroupOutputProvider*>(obj);
+    };
+
+    addSingleAction(tr("Insert port at front"), [=](GtObject* obj){
+        if (!isProvider(obj)) return;
+
+        GtInputDialog dialog;
+        dialog.setInitialTextValue(GT_CLASSNAME(GtIgDoubleData));
+        if (!dialog.exec()) return;
+
+        if (auto* in = qobject_cast<GtIgGroupInputProvider*>(obj))
+        {
+            in->insertPort(dialog.textValue(), 0);
+        }
+        else if (auto* out = qobject_cast<GtIgGroupOutputProvider*>(obj))
+        {
+            out->insertPort(dialog.textValue(), 0);
+        }
+    })
+        .setIcon(gt::gui::icon::add())
+        .setVisibilityMethod(isProvider);
+
+//    addSingleAction(tr("Remove Port at ..."), [](GtObject* obj){
+//        auto* in = qobject_cast<GtIgGroupInputProvider*>(obj);
+//        if (!in) return;
+
+//        GtInputDialog dialog(GtInputDialog::IntInput);
+//        dialog.setIntMaximum(in->ports(gt::ig::PortType::Out).size());
+//        dialog.setIntMinimum(0);
+
+//        if (!dialog.exec()) return;
+//        in->removePort(gt::ig::PortIndex::fromValue(dialog.textValue().toInt()));
+//    })
+//        .setIcon(gt::gui::icon::remove())
+//        .setVisibilityMethod(isInputProvider);
 }
 
 QIcon

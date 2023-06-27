@@ -15,12 +15,14 @@
 #include "gt_intproperty.h"
 #include "gt_doubleproperty.h"
 #include "gt_stringproperty.h"
+#include "gt_regexp.h"
 #include "gt_objectfactory.h"
 #include "gt_objectmemento.h"
 #include "gt_qtutilities.h"
 #include "gt_exceptions.h"
 
 #include <QJsonObject>
+#include <QRegExpValidator>
 
 gt::log::Stream& operator<<(gt::log::Stream& s, GtIntelliGraphNode::NodeData const& data)
 {
@@ -40,7 +42,10 @@ struct GtIntelliGraphNode::Impl
     /// caption string
     QString modelName;
     /// model name string
-    GtStringProperty caption{"caption", tr("Caption"), tr("Node Capton"), modelName};
+    GtStringProperty caption{
+        "caption", tr("Caption"), tr("Node Capton"), modelName,
+        new QRegExpValidator{gt::re::woUmlauts()}
+    };
     /// ports
     std::vector<PortData> inPorts, outPorts{};
     /// data
@@ -100,6 +105,13 @@ GtIntelliGraphNode::GtIntelliGraphNode(QString const& modelName, GtObject* paren
     pimpl->posY.setReadOnly(true);
 
     updateObjectName();
+
+    connect(this, &GtIntelliGraphNode::portInserted,
+            this, &GtIntelliGraphNode::nodeChanged);
+    connect(this, &GtIntelliGraphNode::portDeleted,
+            this, &GtIntelliGraphNode::nodeChanged);
+    connect(&pimpl->caption, &GtAbstractProperty::changed,
+            this, &GtIntelliGraphNode::nodeChanged);
 }
 
 GtIntelliGraphNode::~GtIntelliGraphNode() = default;
@@ -164,6 +176,7 @@ void
 GtIntelliGraphNode::setCaption(QString caption)
 {
     pimpl->caption = std::move(caption);
+    emit pimpl->caption.changed();
     updateObjectName();
 }
 
@@ -237,13 +250,13 @@ GtIntelliGraphNode::PortId
 GtIntelliGraphNode::insertInPort(PortData port, int idx, PortPolicy policy) noexcept(false)
 {
     port.optional = policy == PortPolicy::Optional;
-    return insertPort(PortType::In, std::move(port), -1);
+    return insertPort(PortType::In, std::move(port), idx);
 }
 
 GtIntelliGraphNode::PortId
 GtIntelliGraphNode::insertOutPort(PortData port, int idx) noexcept(false)
 {
-    return insertPort(PortType::Out, std::move(port), -1);
+    return insertPort(PortType::Out, std::move(port), idx);
 }
 
 GtIntelliGraphNode::PortId
@@ -267,6 +280,11 @@ GtIntelliGraphNode::insertPort(PortType type, PortData port, int idx) noexcept(f
         iter = std::next(ports.begin(), idx);
     }
 
+    // notify model
+    PortIndex pidx = PortIndex::fromValue(std::distance(ports.begin(), iter));
+    emit portAboutToBeInserted(type, pidx);
+    auto finally = gt::finally([=](){ emit portInserted(type, pidx); });
+
     port.m_id = pimpl->nextPortId++;
     PortId id = ports.insert(iter, std::move(port))->m_id;
     data.resize(ports.size());
@@ -284,13 +302,18 @@ GtIntelliGraphNode::removePort(PortId id)
 
         if (iter != ports->end())
         {
-            auto dist  = std::distance(ports->begin(), iter);
+            auto idx   = std::distance(ports->begin(), iter);
             auto& data = portData_(type);
 
             assert(ports->size() == data.size());
 
+            // notify model
+            PortIndex pidx = PortIndex::fromValue(idx);
+            emit portAboutToBeDeleted(type, pidx);
+            auto finally = gt::finally([=](){ emit portDeleted(type, pidx); });
+
             ports->erase(iter);
-            data.erase(std::next(data.begin(), dist));
+            data.erase(std::next(data.begin(), idx));
             return true;
         }
         // switch type
@@ -427,7 +450,7 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
 {
     if (pimpl->state == Evaluating)
     {
-        gtWarning().medium()
+        gtWarning().verbose()
             << tr("Node already evaluating!")
             << gt::brackets(QString{metaObject()->className()});
         return;
@@ -453,7 +476,7 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
     {
         // not aborting here to allow the triggering of the invalidated signals
         pimpl->state = EvalRequired;
-        gtWarning().medium()
+        gtWarning().verbose()
             << tr("Node not ready for evaluation!")
             << gt::brackets(QString{metaObject()->className()});
     }

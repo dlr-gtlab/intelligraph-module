@@ -311,6 +311,46 @@ signals:
      */
     void inputDataRecieved(gt::ig::PortIndex idx = PortIndex{0});
 
+    /**
+     * @brief Emitted if node specific data hast changed (cpation, number of
+     * ports etc.). May be invoked by the user to update the graphical node
+     * in case a port hast changed for example.
+     */
+    void nodeChanged();
+
+    /**
+     * @brief May be emitted if the port data changes (e.g. port caption)
+     */
+    void portChanged(PortId id);
+
+    /**
+     * @brief Will be called internally before deleting a point.
+     * @param type Port type (input or output)
+     * @param idx Affected index
+     */
+    void portAboutToBeDeleted(PortType type, PortIndex idx);
+
+    /**
+     * @brief Will be emiited just after a port was deleted
+     * @param type Port type (input or output)
+     * @param idx Old index
+     */
+    void portDeleted(PortType type, PortIndex idx);
+
+    /**
+     * @brief Will be called internally before inserting a point.
+     * @param type Port type (input or output)
+     * @param idx Affected index
+     */
+    void portAboutToBeInserted(PortType type, PortIndex idx);
+
+     /**
+     * @brief Will be emitted just after a port was inserted
+     * @param type Port type (input or output)
+     * @param idx New index
+     */
+    void portInserted(PortType type, PortIndex idx);
+
 protected:
 
     /**

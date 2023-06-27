@@ -12,7 +12,6 @@
 #include <QPointer>
 
 #include "gt_typetraits.h"
-#include "gt_logging.h"
 
 namespace gt
 {
@@ -34,7 +33,6 @@ public:
     {
         if (m_ptr)
         {
-            gtTrace().verbose() << __FUNCTION__ << m_ptr;
             delete m_ptr;
         }
     }

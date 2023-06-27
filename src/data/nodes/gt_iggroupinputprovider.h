@@ -9,9 +9,9 @@
 #ifndef GT_IGGROUPINPUTPROVIDER_H
 #define GT_IGGROUPINPUTPROVIDER_H
 
-#include "gt_intelligraphnode.h"
+#include "gt_igabstractgroupprovider.h"
 
-class GtIgGroupInputProvider : public GtIntelliGraphNode
+class GtIgGroupInputProvider : public GtIgAbstractGroupProvider<gt::ig::In>
 {
     Q_OBJECT
 

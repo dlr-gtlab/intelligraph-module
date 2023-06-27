@@ -136,8 +136,8 @@ GtIntelliGraph::findConnection(QtConnectionId const& conId) const
 void
 GtIntelliGraph::removeOrphans(DataFlowGraphModel& model)
 {
-    auto nodes = findDirectChildren<GtIntelliGraphNode*>();
-    auto cons = findDirectChildren<GtIntelliGraphConnection*>();
+    auto nodes = this->nodes();
+    auto cons = this->connections();
 
     for (auto nodeId : model.allNodeIds())
     {
@@ -252,7 +252,7 @@ GtIntelliGraph::createNode(QtNodeId nodeId)
     // update node in model
     if (node && node->isValid(model->name()))
     {
-        gtWarning().medium()
+        gtWarning().verbose()
             << tr("Node '%1' already exists!").arg(nodeId);
 
         model->init(*node);
@@ -336,7 +336,7 @@ GtIntelliGraph::createConnection(const QtConnectionId& connectionId)
 {
     if (auto* connection = findConnection(connectionId))
     {
-        gtWarning() << tr("Connection was already created!") << connectionId;
+        gtWarning().verbose() << tr("Connection was already created!") << connectionId;
 
         setupConnection(*connection);
 
@@ -486,21 +486,29 @@ GtIntelliGraph::onObjectDataMerged()
 void
 GtIntelliGraph::setupNode(GtIntelliGraphNode& node)
 {
-    connect(&node, &QObject::destroyed, this,
-            [this, model = node.modelName(), nodeId = node.id()](){
+    connect(&node, &QObject::destroyed, m_activeGraphModel,
+            [graph = m_activeGraphModel.data(),
+             model = node.modelName(),
+             nodeId = node.id()](){
         gtDebug().verbose() << "Deleting node from model:" << model
                             << "(" << nodeId << ")";;
-        m_activeGraphModel->deleteNode(nodeId);
+        graph->deleteNode(nodeId);
+    });
+    connect(&node, &GtIntelliGraphNode::nodeChanged, m_activeGraphModel,
+            [graph = m_activeGraphModel.data(),
+             nodeId = node.id()](){
+        emit graph->nodeUpdated(nodeId);
     });
 }
 
 void
 GtIntelliGraph::setupConnection(GtIntelliGraphConnection& connection)
 {
-    connect(&connection, &QObject::destroyed, this,
-            [this, conId = connection.toConnectionId()](){
+    connect(&connection, &QObject::destroyed,m_activeGraphModel,
+            [graph = m_activeGraphModel.data(),
+             conId = connection.toConnectionId()](){
         gtDebug().verbose() << "Deleting connection from model:" << conId;
-        m_activeGraphModel->deleteConnection(conId);
+        graph->deleteConnection(conId);
     });
 }
 

@@ -20,17 +20,18 @@ class GtIntelliGraphObjectModel final : public QtNodes::NodeDelegateModel
 
 public:
 
-    using NodeFlag         = gt::ig::NodeFlag;
-    using PortType         = QtNodes::PortType;
-    using PortIndex        = QtNodes::PortIndex;
-    using NodeDataType     = QtNodes::NodeDataType;
-    using NodeData         = std::shared_ptr<QtNodes::NodeData>;
-    using ConnectionPolicy = QtNodes::ConnectionPolicy;
-    using ConnectionId     = QtNodes::ConnectionId;
+    using NodeFlag           = gt::ig::NodeFlag;
+    using QtPortType         = QtNodes::PortType;
+    using QtPortIndex        = QtNodes::PortIndex;
+    using QtNodeDataType     = QtNodes::NodeDataType;
+    using QtNodeData         = std::shared_ptr<QtNodes::NodeData>;
+    using QtConnectionPolicy = QtNodes::ConnectionPolicy;
+    using QtConnectionId     = QtNodes::ConnectionId;
 
     explicit GtIntelliGraphObjectModel(QString const& className);
 
-    static gt::ig::PortType cast_port_type(PortType type) { return static_cast<gt::ig::PortType>(type); }
+    static gt::ig::PortType cast_port_type(QtPortType type) { return static_cast<gt::ig::PortType>(type); }
+    static QtPortType cast_port_type(gt::ig::PortType type) { return static_cast<QtPortType>(type); }
 
     /// initializes the model with a new node object
     void init(GtIntelliGraphNode& node);
@@ -46,17 +47,17 @@ public:
 
     QString name() const override;
 
-    unsigned nPorts(PortType const type) const override;
+    unsigned nPorts(QtPortType const type) const override;
 
-    NodeDataType dataType(PortType const type, PortIndex const idx) const override;
+    QtNodeDataType dataType(QtPortType const type, QtPortIndex const idx) const override;
 
-    bool portCaptionVisible(PortType type, PortIndex idx) const override;
+    bool portCaptionVisible(QtPortType type, QtPortIndex idx) const override;
 
-    QString portCaption(PortType type, PortIndex idx) const override;
+    QString portCaption(QtPortType type, QtPortIndex idx) const override;
 
-    NodeData outData(PortIndex const port) override;
+    QtNodeData outData(QtPortIndex const port) override;
 
-    void setInData(NodeData nodeData, PortIndex const port) override;
+    void setInData(QtNodeData nodeData, QtPortIndex const port) override;
 
     QWidget* embeddedWidget() override;
 
@@ -66,9 +67,9 @@ public:
 
 public slots:
 
-    void outputConnectionCreated(ConnectionId const &) override;
+    void outputConnectionCreated(QtConnectionId const &) override;
 
-    void outputConnectionDeleted(ConnectionId const &) override;
+    void outputConnectionDeleted(QtConnectionId const &) override;
 
 signals:
 
