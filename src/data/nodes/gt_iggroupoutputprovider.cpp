@@ -8,7 +8,7 @@
 
 #include "gt_iggroupoutputprovider.h"
 #include "gt_intelligraphnodefactory.h"
-#include "gt_intelligraphnodegroup.h"
+#include "gt_intelligraph.h"
 
 #include "gt_igobjectdata.h"
 
@@ -17,14 +17,28 @@ GTIG_REGISTER_NODE(GtIgGroupOutputProvider, "")
 GtIgGroupOutputProvider::GtIgGroupOutputProvider() :
     GtIgAbstractGroupProvider("Output Provider")
 {
-    setId(NodeId{1});
     setPos({250, 0});
+
+    connect(this, &GtIntelliGraphNode::outDataUpdated,
+            this, [t = this](PortIndex idx){
+        if (auto* graph = t->findParent<GtIntelliGraph*>())
+        {
+            graph->outDataUpdated(idx);
+        }
+    });
+    connect(this, &GtIntelliGraphNode::outDataInvalidated,
+            this, [t = this](PortIndex idx){
+        if (auto* graph = t->findParent<GtIntelliGraph*>())
+        {
+            graph->outDataInvalidated(idx);
+        }
+    });
 }
 
 GtIntelliGraphNode::NodeData
 GtIgGroupOutputProvider::eval(PortId outId)
 {
-    auto* group = findParent<GtIntelliGraphNodeGroup*>();
+    auto* group = findParent<GtIntelliGraph*>();
     if (!group)
     {
         gtWarning().medium()

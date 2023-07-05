@@ -21,6 +21,8 @@ class GtIntelliGraphObjectModel final : public QtNodes::NodeDelegateModel
 public:
 
     using NodeFlag           = gt::ig::NodeFlag;
+    using QtNodeFlag         = QtNodes::NodeFlag;
+    using QtNodeFlags        = QtNodes::NodeFlags;
     using QtPortType         = QtNodes::PortType;
     using QtPortIndex        = QtNodes::PortIndex;
     using QtNodeDataType     = QtNodes::NodeDataType;
@@ -39,7 +41,7 @@ public:
     GtIntelliGraphNode& node() { assert(m_node); return *m_node; }
     GtIntelliGraphNode const& node() const { assert(m_node); return *m_node; }
 
-    bool resizable() const override;
+    QtNodeFlags flags() const override;
 
     bool captionVisible() const override;
 

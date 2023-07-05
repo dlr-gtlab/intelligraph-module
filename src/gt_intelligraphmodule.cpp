@@ -71,7 +71,7 @@ GtIntelliGraphModule::data()
 {
     QList<QMetaObject> list;
 
-    list << GT_METADATA(GtIntelliGraph);
+//    list << GT_METADATA(GtIntelliGraph);
     list << GT_METADATA(GtIntelliGraphCategory);
     list << GT_METADATA(GtIntelliGraphConnection);
 

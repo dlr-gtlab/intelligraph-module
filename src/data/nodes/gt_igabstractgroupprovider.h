@@ -10,12 +10,14 @@
 #ifndef GT_IGABSTRACTGROUPPROVIDER_H
 #define GT_IGABSTRACTGROUPPROVIDER_H
 
+#include "gt_coreapplication.h"
 #include "gt_intelligraphnode.h"
 #include "gt_intelligraphdatafactory.h"
 #include "gt_igstringselectionproperty.h"
 
 #include "gt_propertystructcontainer.h"
 #include "gt_structproperty.h"
+#include "gt_intelligraph.h"
 
 template <gt::ig::PortType Type>
 class GtIgAbstractGroupProvider : public GtIntelliGraphNode
@@ -40,6 +42,11 @@ public:
         GtIntelliGraphNode(modelName),
         m_ports("ports", tr("Port Types"))
     {
+        setId(NodeId{TYPE()});
+        setFlag(UserDeletable, false);
+
+        if (!gtApp || !gtApp->devMode()) setFlag(UserHidden, true);
+
         GtPropertyStructDefinition portEntry{S_STRUCT_ID};
 
         auto allowedTypes = GtIntelliGraphDataFactory::instance().knownClasses();
@@ -123,6 +130,8 @@ private slots:
         Type == PortType::In ?
             insertOutPort({typeId, caption}, idx) :
             insertInPort({typeId, caption}, idx);
+
+        onPortInserted(INVERSE_TYPE(), PortIndex::fromValue(idx));
     }
 
     void onEntryRemoved(int idx)
@@ -137,6 +146,8 @@ private slots:
         gtDebug().verbose() << "Removing port idx" << idx;
 
         GtIntelliGraphNode::removePort(id);
+
+        onPortDeleted(PortIndex::fromValue(idx));
     }
 
     void onEntryChanged(int idx, GtAbstractProperty*)
@@ -162,6 +173,51 @@ private slots:
         p->caption = caption;
 
         emit portChanged(id);
+
+        onPortChanged(id);
+    }
+
+    void onPortInserted(PortType type, PortIndex idx)
+    {
+        auto* graph = findParent<GtIntelliGraph*>();
+        if (!graph) return;
+
+        PortId id = portId(INVERSE_TYPE(), idx);
+        if (auto* port = this->port(id))
+        {
+            TYPE() == PortType::In ?
+                graph->insertInPort(*port, idx) :
+                graph->insertOutPort(*port, idx);
+
+            if (TYPE() == PortType::Out)
+            {
+                graph->insertOutData(idx);
+            }
+        }
+    }
+
+    void onPortChanged(PortId id)
+    {
+        auto* graph = findParent<GtIntelliGraph*>();
+        if (!graph) return;
+
+        auto* inPort = port(id);
+        auto  idx    = portIndex(INVERSE_TYPE(), id);
+        auto* port   = graph->port(graph->portId(TYPE(), idx));
+
+        if (!inPort || !port) return;
+
+        port->typeId = inPort->typeId;
+        port->caption = inPort->caption;
+        emit graph->portChanged(port->id());
+    }
+
+    void onPortDeleted(PortIndex idx)
+    {
+        auto* graph = findParent<GtIntelliGraph*>();
+        if (!graph) return;
+
+        graph->removePort(graph->portId(INVERSE_TYPE(), idx));
     }
 };
 

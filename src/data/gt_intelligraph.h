@@ -11,7 +11,7 @@
 
 #include <QtNodes/Definitions>
 
-#include "gt_object.h"
+#include "gt_intelligraphnode.h"
 
 #include <QPointer>
 
@@ -19,12 +19,18 @@ namespace QtNodes { class DataFlowGraphModel; }
 
 class QJsonObject;
 
-class GtIntelliGraphNode;
+class GtIgGroupInputProvider;
+class GtIgGroupOutputProvider;
 class GtIntelliGraphConnection;
-class GtIntelliGraphObjectModel;
-class GtIntelliGraph : public GtObject
+class GtIntelliGraph : public GtIntelliGraphNode
 {
     Q_OBJECT
+
+    friend class GtIgGroupInputProvider;
+    friend class GtIgGroupOutputProvider;
+
+    template <gt::ig::PortType>
+    friend class GtIgAbstractGroupProvider;
 
 public:
 
@@ -47,17 +53,41 @@ public:
     GtIntelliGraphConnection* findConnection(QtConnectionId const& conId);
     GtIntelliGraphConnection const* findConnection(QtConnectionId const& conId) const;
 
-    /// clears all nodes and connections
+    GtIgGroupInputProvider* inputProvider();
+    GtIgGroupInputProvider const* inputProvider() const;
+
+    GtIgGroupOutputProvider* outputProvider();
+    GtIgGroupOutputProvider const* outputProvider() const;
+
+    void insertOutData(PortIndex idx);
+
+    bool setOutData(PortIndex idx, NodeData data);
+
+    /**
+     * @brief Clears all nodes and connections
+     */
     void clear();
 
-    /// removes all nodes and connections not part of the graph model
+    /**
+     * @brief Removes all nodes and connections not part of the graph model
+     * @param model data flow graph model
+     */
     void removeOrphans(DataFlowGraphModel& model);
 
-    /// attemps to restore the intelli graph using the json data
+    /**
+     * @brief Attemps to restore the intelli graph using the json data
+     * @param json Json object describing the intelli graph scene
+     * @return Success
+     */
     bool fromJson(QJsonObject const& json);
 
-    /// serializes the whole intelli graph tree as a json object
-    QJsonObject toJson() const;
+    /**
+     * @brief Serializes the whole intelli graph tree as a json object
+     * @param clone Whether to clone the object data (i.e. use the same uuid).
+     * Only set to true if the object should be restored instead of copied.
+     * @return Json object
+     */
+    QJsonObject toJson(bool clone = false) const;
 
     /**
      * @brief Creates a new node using the node id in the active graph model as
@@ -139,13 +169,17 @@ public:
 
 protected:
 
-    // keeps active graph model up date if a node or connection was changed
+    // keeps active graph model up date if a node or connection was restored
     void onObjectDataMerged() override;
+
+    NodeData eval(PortId outId) override;
 
 private:
 
     /// pointer to active graph model (i.e. mdi item)
     QPointer<DataFlowGraphModel> m_activeGraphModel;
+
+    std::vector<NodeData> m_outData;
 
     void setupNode(GtIntelliGraphNode& node);
 
@@ -154,6 +188,10 @@ private:
     bool appendNodeToModel(GtIntelliGraphNode& node);
 
     bool appendConnectionToModel(GtIntelliGraphConnection& con);
+
+    void initInputOutputProvider();
+
+    void setNewNodeId(GtIntelliGraphNode& node);
 };
 
 #endif // GT_INTELLIGRAPH_H

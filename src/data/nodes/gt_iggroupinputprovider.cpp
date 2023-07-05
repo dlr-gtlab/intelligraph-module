@@ -8,16 +8,12 @@
 
 #include "gt_iggroupinputprovider.h"
 #include "gt_intelligraphnodefactory.h"
-#include "gt_intelligraphnodegroup.h"
-
-#include "gt_igobjectdata.h"
 
 GTIG_REGISTER_NODE(GtIgGroupInputProvider, "")
 
 GtIgGroupInputProvider::GtIgGroupInputProvider() :
     GtIgAbstractGroupProvider("Input Provider")
 {
-    setId(NodeId{0});
     setPos({-250, 0});
 }
 
@@ -28,7 +24,7 @@ GtIgGroupInputProvider::eval(PortId outId)
 
     if (idx == gt::ig::invalid<PortIndex>()) return {};
 
-    auto* group = findParent<GtIntelliGraphNodeGroup*>();
+    auto* group = findParent<GtIntelliGraph*>();
     if (!group)
     {
         gtWarning().medium()

@@ -595,7 +595,7 @@ GtIntelliGraphNode::mergeJsonMemento(const QJsonObject& internals)
 }
 
 QJsonObject
-GtIntelliGraphNode::toJson() const
+GtIntelliGraphNode::toJson(bool clone) const
 {
     QJsonObject json;
     json["id"] = pimpl->id.get();
@@ -614,7 +614,7 @@ GtIntelliGraphNode::toJson() const
 }
 
 void
-GtIntelliGraphNode::toJsonMemento(QJsonObject& internals) const
+GtIntelliGraphNode::toJsonMemento(QJsonObject& internals, bool clone) const
 {
-    internals["memento"] = static_cast<QString>(toMemento().toByteArray());
+    internals["memento"] = static_cast<QString>(toMemento(clone).toByteArray());
 }

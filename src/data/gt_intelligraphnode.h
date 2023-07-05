@@ -25,8 +25,10 @@ namespace ig
 enum NodeFlag
 {
     NoFlag      = 0x0,
+    // Indicates node is resizeable
     Resizable   = 0x1,
-    HideCaption = 0x2,
+    // Indicates node caption should be hidden
+    HideCaption  = 0x2,
 };
 
 using NodeFlags  = int;
@@ -247,9 +249,11 @@ public:
 
     /**
      * @brief Serializes this node as a json object.
+     * @param clone Whether to clone the object data (i.e. use the same uuid).
+     * Only set to true if the object should be restored instead of copied.
      * @return Json object
      */
-    QJsonObject toJson() const;
+    QJsonObject toJson(bool clone = false) const;
 
     /**
      * @brief Will attempt to merge the json data.
@@ -260,10 +264,12 @@ public:
 
     /**
      * @brief Will write the memento data to the internal node data json object.
-     * Note: This is not the same as the object returned by "tojson".
+     * Note: This is not the same as the object returned by "toJson".
      * @param internals
+     * @param clone Whether to clone the object data (i.e. use the same uuid).
+     * Only set to true if the object should be restored instead of copied.
      */
-    void toJsonMemento(QJsonObject& internals) const;
+    void toJsonMemento(QJsonObject& internals, bool clone = false) const;
 
 public slots:
 

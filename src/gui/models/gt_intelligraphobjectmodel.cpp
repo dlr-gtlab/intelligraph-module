@@ -94,10 +94,24 @@ GtIntelliGraphObjectModel::init(GtIntelliGraphNode& node)
     emit nodeInitialized();
 }
 
-bool
-GtIntelliGraphObjectModel::resizable() const
+GtIntelliGraphObjectModel::QtNodeFlags
+GtIntelliGraphObjectModel::flags() const
 {
-    return m_node ? m_node->nodeFlags() & NodeFlag::Resizable : false;
+    if (!m_node) return QtNodes::NodeDelegateModel::flags();
+
+    QtNodeFlags flags{};
+
+    if (m_node->nodeFlags() & NodeFlag::Resizable)
+    {
+        flags |= QtNodeFlag::Resizable;
+    }
+
+    if (m_node->objectFlags() & GtObject::UserDeletable)
+    {
+        flags |= QtNodeFlag::Deletable;
+    }
+
+    return flags;
 }
 
 bool

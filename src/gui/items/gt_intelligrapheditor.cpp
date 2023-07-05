@@ -13,8 +13,6 @@
 #include "gt_intelligraphconnection.h"
 #include "gt_intelligraphnodefactory.h"
 
-#include "gt_intelligraphnodegroup.h"
-
 #include "models/gt_intelligraphobjectmodel.h"
 
 #include "gt_filedialog.h"
@@ -42,14 +40,6 @@
 /*
  * generated 1.2.0
  */
-
-#define GT_REGISTER_NODE_MODEL(REGISTRY, T, CAT) \
-{ \
-    REGISTRY->registerModel<GtIntelliGraphObjectModel>( \
-                [](){ \
-        return std::make_unique<GtIntelliGraphObjectModel>(GT_CLASSNAME(T)); \
-    }, CAT); \
-}
 
 static void setStyleDark()
 {
@@ -285,7 +275,8 @@ GtIntelliGraphEditor::setData(GtObject* obj)
             pimpl->igGraph->removeOrphans(pimpl->model);
         });
 
-        auto scene = pimpl->igGraph->toJson();
+        constexpr bool clone = true;
+        auto scene = pimpl->igGraph->toJson(clone);
 
         loadScene(scene);
     }

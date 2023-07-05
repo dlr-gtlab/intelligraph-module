@@ -11,7 +11,6 @@
 #include "gt_intelligraph.h"
 #include "gt_intelligrapheditor.h"
 #include "gt_intelligraphcategory.h"
-#include "gt_intelligraphnodegroup.h"
 #include "gt_igpackage.h"
 #include "gt_iggroupinputprovider.h"
 #include "gt_iggroupoutputprovider.h"
@@ -69,7 +68,7 @@ GtIntelliGraphObjectUI::GtIntelliGraphObjectUI()
         .setIcon(gt::gui::icon::add())
         .setVisibilityMethod(isCategoryObject);
 
-    addSingleAction(tr("Add Node Group"), addNodeGroup)
+    addSingleAction(tr("Add Sub Graph"), addNodeGroup)
         .setIcon(gt::gui::icon::add())
         .setVisibilityMethod(isGraphObject);
 
@@ -80,7 +79,6 @@ GtIntelliGraphObjectUI::GtIntelliGraphObjectUI()
     addSingleAction(tr("Load Intelli Graph..."), loadNodeGraph)
         .setIcon(gt::gui::icon::import())
         .setVisibilityMethod(isGraphObject);
-
 
     auto isProvider = [](GtObject* obj){
         return qobject_cast<GtIgGroupInputProvider*>(obj) ||
@@ -161,7 +159,7 @@ GtIntelliGraphObjectUI::addNodeGroup(GtObject* obj)
 
     if (!graph) return;
 
-    graph->appendNode(std::make_unique<GtIntelliGraphNodeGroup>());
+    graph->appendNode(std::make_unique<GtIntelliGraph>());
 }
 
 void

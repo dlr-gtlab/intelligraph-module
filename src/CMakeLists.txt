@@ -28,7 +28,6 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_igpackage.h
     data/gt_intelligraph.h
     data/gt_intelligraphconnection.h
-    data/gt_intelligraphnodegroup.h
     data/gt_intelligraphcategory.h
     data/nodes/gt_igabstractgroupprovider.h
     data/nodes/gt_igfinddirectchildnode.h
@@ -51,7 +50,6 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_intelligraph.cpp
     data/gt_intelligraphconnection.cpp
     data/gt_intelligraphnode.cpp
-    data/gt_intelligraphnodegroup.cpp
     data/gt_intelligraphcategory.cpp
     data/nodes/gt_iggroupinputprovider.cpp
     data/nodes/gt_igfinddirectchildnode.cpp
