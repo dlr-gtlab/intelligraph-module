@@ -28,7 +28,9 @@ enum NodeFlag
     // Indicates node is resizeable
     Resizable   = 0x1,
     // Indicates node caption should be hidden
-    HideCaption  = 0x2,
+    HideCaption = 0x2,
+    // Indicates node is unique (i.e. only one instance should exist)
+    Unique      = 0x4
 };
 
 using NodeFlags  = int;
@@ -215,7 +217,8 @@ public:
 
     /**
      * @brief Returns the embedded widget used in the intelli graph. Ownership
-     * may be transfered safely
+     * may be transfered safely. Note: Will instantiate the widget if it does
+     * not yet exists
      * @return Embedded widget
      */
     QWidget* embeddedWidget();
@@ -295,7 +298,7 @@ signals:
     void evaluated(gt::ig::PortIndex idx = PortIndex{0});
 
     /**
-     * @brief Emitted if the output data has changed (may be invalid), jsut
+     * @brief Emitted if the output data has changed (may be invalid), just
      * after evaluating. Will be called automatically and should not be triggered
      * by the "user". Triggers the evaluation of all connected ports.
      * @param idx Output port index. May be mapped to an output port id.
@@ -303,7 +306,7 @@ signals:
     void outDataUpdated(gt::ig::PortIndex idx = PortIndex{0});
 
     /**
-     * @brief Emitted if the output data was invalidated, jsut after evaluating.
+     * @brief Emitted if the output data was invalidated, just after evaluating.
      * Will be called automatically and should not be triggered by the "user".
      * Triggers the invalidation of all connected ports
      * @param idx Output port index. May be mapped to an output port id.
@@ -311,7 +314,7 @@ signals:
     void outDataInvalidated(gt::ig::PortIndex idx = PortIndex{0});
 
     /**
-     * @brief Emitted if new input data was recieved, jsut before evaluating.
+     * @brief Emitted if new input data was recieved, just before evaluating.
      * Data may be invalid. Should not be triggered by the "user".
      * @param idx Input port index. May be mapped to an input port id.
      */

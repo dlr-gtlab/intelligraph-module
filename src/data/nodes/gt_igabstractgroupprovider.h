@@ -44,6 +44,7 @@ public:
     {
         setId(NodeId{TYPE()});
         setFlag(UserDeletable, false);
+        setNodeFlag(NodeFlag::Unique, true);
 
         if (!gtApp || !gtApp->devMode()) setFlag(UserHidden, true);
 

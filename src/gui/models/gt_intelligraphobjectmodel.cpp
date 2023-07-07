@@ -218,14 +218,12 @@ GtIntelliGraphObjectModel::embeddedWidget()
 QJsonObject
 GtIntelliGraphObjectModel::save() const
 {
-    auto json = QtNodes::NodeDelegateModel::save();
-
     if (m_node)
     {
-        m_node->toJsonMemento(json);
+        return m_node->toJson();
     }
 
-    return json;
+    return {};
 }
 
 void

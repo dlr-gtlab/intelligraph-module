@@ -598,6 +598,8 @@ QJsonObject
 GtIntelliGraphNode::toJson(bool clone) const
 {
     QJsonObject json;
+    if (!clone && nodeFlags() & NodeFlag::Unique) return json;
+
     json["id"] = pimpl->id.get();
 
     QJsonObject position;
