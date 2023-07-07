@@ -324,7 +324,7 @@ GtIntelliGraphNode::removePort(PortId id)
 }
 
 GtIntelliGraphNode::NodeData const&
-GtIntelliGraphNode::portData(PortId id) const
+GtIntelliGraphNode::nodeData(PortId id) const
 {
     PortIndex idx;
     PortType type = PortType::In;

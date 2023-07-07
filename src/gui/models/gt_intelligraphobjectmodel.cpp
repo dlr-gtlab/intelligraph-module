@@ -167,39 +167,23 @@ GtIntelliGraphObjectModel::dataType(const QtPortType type, const QtPortIndex idx
 bool
 GtIntelliGraphObjectModel::portCaptionVisible(QtPortType type, QtPortIndex idx) const
 {
-    // this method indicates whether the custom port caption should be visible
-    // therefore we have to return false by default
-
     if (!m_node) return false;
 
     auto const& data = m_node->ports(cast_port_type(type));
     if (idx >= data.size()) return false;
 
-    return true;
+    return data.at(idx).captionVisible;
 }
 
 QString
 GtIntelliGraphObjectModel::portCaption(QtPortType type, QtPortIndex idx) const
 {
-    // returning an empty string will show the defualt port caption
-
     if (!m_node) return {};
 
     auto const& data = m_node->ports(cast_port_type(type));
     if (idx >= data.size()) return {};
 
-    auto& port = data.at(idx);
-
-    QString typeName = GtIntelliGraphDataFactory::instance().typeName(port.typeId);
-
-    if (port.captionVisible)
-    {
-        return port.caption.isEmpty() ?
-                   typeName :
-                   QStringLiteral("%1 (%2)").arg(port.caption, typeName);
-    }
-
-    return {};
+    return data.at(idx).caption;
 }
 
 GtIntelliGraphObjectModel::QtNodeData

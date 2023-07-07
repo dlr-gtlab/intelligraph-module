@@ -16,7 +16,7 @@
 #include "gt_object.h"
 
 /// Helper macro for registering a node class. The node class does should not be
-/// listed as a "data" object of your module
+/// registered additionally as a "data" object of your module
 #define GTIG_REGISTER_DATA(DATA) \
 struct RegisterDataOnce ## DATA { \
         RegisterDataOnce ## DATA() { \
@@ -42,10 +42,11 @@ public:
 
     bool registerData(QMetaObject const& meta) noexcept;
 
-    QString typeName(QString const& className) const noexcept;
+    auto registeredTypeIds() const { return knownClasses(); };
 
-    std::unique_ptr<GtIgNodeData> newData(QString const& className
-                                          ) const noexcept;
+    QString typeName(QString const& typeId) const noexcept;
+
+    std::unique_ptr<GtIgNodeData> newData(QString const& typeId) const noexcept;
 
 private:
 
@@ -53,10 +54,10 @@ private:
     using GtAbstractObjectFactory::newObject;
     using GtAbstractObjectFactory::registerClass;
 
-    using ClassName = QString;
-    using TypeName  = QString;
+    using TypeId   = QString;
+    using TypeName = QString;
 
-    QHash<ClassName, TypeName> m_typeNames;
+    QHash<TypeId, TypeName> m_typeNames;
 };
 
 #endif // GTINTELLIGRAPHDATAFACTORY_H

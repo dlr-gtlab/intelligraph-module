@@ -15,7 +15,8 @@
 #include "gt_object.h"
 
 /// Helper macro for registering a node class. The node class does should not be
-/// listed as a "data" object of your module
+/// listed as a "data" object of your module. Use an empty string to "hide"
+/// the node in the viewer.
 #define GTIG_REGISTER_NODE(CLASS, CAT) \
     struct RegisterNodeOnce ## CLASS { \
         RegisterNodeOnce ## CLASS() { \
@@ -31,6 +32,7 @@ class GtIntelliGraphNode;
 class GT_IG_EXPORT GtIntelliGraphNodeFactory : public GtAbstractObjectFactory
 {
     using NodeDelegateModelRegistry = QtNodes::NodeDelegateModelRegistry;
+
 public:
 
     GtIntelliGraphNodeFactory();
@@ -41,6 +43,17 @@ public:
      */
     static GtIntelliGraphNodeFactory& instance();
 
+    auto registeredNodes() const { return knownClasses(); };
+
+    QString nodeCategory(QString const& className) const noexcept;
+
+    /**
+     * @brief Regsiters the node so that it can be used in intelli graphs
+     * @param meta Metaobject of the node
+     * @param category Category to list node in. Use an empty string to "hide"
+     * the node in the viewer.
+     * @return Success
+     */
     bool registerNode(QMetaObject const& meta, QString const& category) noexcept;
 
     std::unique_ptr<GtIntelliGraphNode> newNode(QString const& className

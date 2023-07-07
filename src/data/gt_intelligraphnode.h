@@ -436,7 +436,8 @@ protected:
      * @param id Port id (output or input)
      * @return Port data (may be null)
      */
-    NodeData const& portData(PortId id) const;
+    [[deprecated("Use nodeData instead")]]
+    NodeData const& portData(PortId id) const { return nodeData(id); }
 
     /**
      * @brief Overload that casts the port data to the desired type.
@@ -444,9 +445,29 @@ protected:
      * @return Port data
      */
     template <typename T, typename U = std::remove_pointer_t<T>>
+    [[deprecated("Use nodeData<T*> instead")]]
     U const* portData(PortId id) const
     {
-        return qobject_cast<U const*>(portData(id).get());
+        return qobject_cast<U const*>(nodeData(id).get());
+    }
+
+    /**
+     * @brief Returns the node data of the specified port
+     * @param id Port id (output or input)
+     * @return Port data (may be null)
+     */
+    NodeData const& nodeData(PortId id) const;
+
+    /**
+     * @brief Overload that casts the node data of the specified port to the
+     * desired type.
+     * @param id Port id (output or input)
+     * @return Port data
+     */
+    template <typename T, typename U = std::remove_pointer_t<T>>
+    U const* nodeData(PortId id) const
+    {
+        return qobject_cast<U const*>(nodeData(id).get());
     }
 
 private:

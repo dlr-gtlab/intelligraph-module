@@ -217,7 +217,7 @@ private slots:
         auto* graph = findParent<GtIntelliGraph*>();
         if (!graph) return;
 
-        graph->removePort(graph->portId(INVERSE_TYPE(), idx));
+        graph->removePort(graph->portId(TYPE(), idx));
     }
 };
 
