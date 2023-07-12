@@ -33,6 +33,8 @@ GtIgObjectSourceNode::GtIgObjectSourceNode() :
         connect(this, &GtIntelliGraphNode::outDataUpdated, w.get(), update);
         connect(this, &GtIntelliGraphNode::outDataInvalidated, w.get(), update);
 
+        update();
+
         return w;
     });
 
@@ -51,7 +53,7 @@ GtIgObjectSourceNode::eval(PortId outId)
 
     m_object.revert();
 
-    auto* filterData = portData<GtIgStringListData*>(m_in);
+    auto* filterData = nodeData<GtIgStringListData*>(m_in);
     if (filterData)
     {
         m_object.setAllowedClasses(filterData->value());

@@ -28,8 +28,7 @@ public:
     using QtConnectionId = QtNodes::ConnectionId;
 
     Q_INVOKABLE GtIntelliGraphEditor();
-
-    ~GtIntelliGraphEditor() override;
+    ~GtIntelliGraphEditor();
 
     void setData(GtObject* obj) override;
 
@@ -43,12 +42,6 @@ private slots:
     void loadFromJson();
 
     void saveToJson();
-
-    void onNodeCreated(QtNodeId nodeId);
-    void onNodeDeleted(QtNodeId nodeId);
-
-    void onConnectionCreated(QtConnectionId conId);
-    void onConnectionDeleted(QtConnectionId conId);
 
     void onNodePositionChanged(QtNodeId nodeId);
 

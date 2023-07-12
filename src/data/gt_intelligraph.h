@@ -53,6 +53,9 @@ public:
     GtIntelliGraphConnection* findConnection(QtConnectionId const& conId);
     GtIntelliGraphConnection const* findConnection(QtConnectionId const& conId) const;
 
+    QList<GtIntelliGraph*> subGraphs();
+    QList<GtIntelliGraph const*> subGraphs() const;
+
     GtIgGroupInputProvider* inputProvider();
     GtIgGroupInputProvider const* inputProvider() const;
 
@@ -69,10 +72,10 @@ public:
     void clear();
 
     /**
-     * @brief Removes all nodes and connections not part of the graph model
-     * @param model data flow graph model
+     * @brief Removes all nodes and connections not part of the graph model.
+     * The graph model must be set beforehand.
      */
-    void removeOrphans(DataFlowGraphModel& model);
+    void removeOrphans();
 
     /**
      * @brief Attemps to restore the intelli graph using the json data
@@ -93,7 +96,7 @@ public:
      * @brief Creates a new node using the node id in the active graph model as
      * a child object and returns a pointer to it. Returns null if the process
      * failed. The ownership is taken care of. Make sure to set
-     * the active graph model beforehand.
+     * the graph model beforehand.
      * @param nodeId Node id to create/move
      * @return Node (may be null)
      */
@@ -152,11 +155,11 @@ public:
     bool updateNodePosition(QtNodeId nodeId);
 
     /**
-     * @brief Sets the active graph model. This is required for synchronizing
-     * changes
+     * @brief Creates a graph model if it does not exists already. This is
+     * required for synchronizing changes
      * @param model Model
      */
-    void setActiveGraphModel(DataFlowGraphModel& model);
+    DataFlowGraphModel* makeGraphModel();
 
     DataFlowGraphModel* activeGraphModel();
     DataFlowGraphModel const* activeGraphModel() const;
@@ -165,7 +168,7 @@ public:
      * @brief Clears the active graph model. Must not be called explicitly as
      * the model will be cleared automatically once its deleted.
      */
-    void clearActiveGraphModel();
+    void clearGraphModel();
 
 protected:
 
@@ -177,7 +180,7 @@ protected:
 private:
 
     /// pointer to active graph model (i.e. mdi item)
-    QPointer<DataFlowGraphModel> m_activeGraphModel;
+    std::unique_ptr<DataFlowGraphModel> m_graphModel;
 
     std::vector<NodeData> m_outData;
 

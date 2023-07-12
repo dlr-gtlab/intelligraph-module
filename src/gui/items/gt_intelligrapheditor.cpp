@@ -19,6 +19,8 @@
 #include "gt_application.h"
 #include "gt_logging.h"
 #include "gt_icons.h"
+#include "gt_objectuiaction.h"
+#include "gt_customactionmenu.h"
 
 #include <QtNodes/DataFlowGraphModel>
 #include <QtNodes/DataFlowGraphicsScene>
@@ -141,22 +143,29 @@ static void setStyleBright()
 
 struct GtIntelliGraphEditor::Impl
 {
+    ~Impl()
+    {
+        if (igGraph) igGraph->clearGraphModel();
+    }
+
     int _init_style_once = [](){
         gtApp->inDarkMode() ? setStyleDark() : setStyleBright();
         return 0;
     }();
 
+    QMenu* sceneMenu = nullptr;
+
     QPointer<GtIntelliGraph> igGraph = nullptr;
 
     /// model
-    QtNodes::DataFlowGraphModel model{
-        GtIntelliGraphNodeFactory::instance().makeRegistry()
-    };
+    QPointer<QtNodes::DataFlowGraphModel> model = nullptr;
     /// scene
-    QtNodes::DataFlowGraphicsScene* scene{new QtNodes::DataFlowGraphicsScene(model, &model)};
+    QtNodes::DataFlowGraphicsScene* scene = nullptr;
     /// view
-    QtNodes::GraphicsView* view{new QtNodes::GraphicsView(scene)};
+    QtNodes::GraphicsView* view{new QtNodes::GraphicsView};
 };
+
+GtIntelliGraphEditor::~GtIntelliGraphEditor() = default;
 
 GtIntelliGraphEditor::GtIntelliGraphEditor() :
     pimpl(std::make_unique<Impl>())
@@ -165,53 +174,35 @@ GtIntelliGraphEditor::GtIntelliGraphEditor() :
 
     pimpl->view->setFrameShape(QFrame::NoFrame);
 
-    // hacky way to disable undo/redo actions
-    // TODO: Add switch to QtNodes lib for disabling undo/redo actions
-    for (auto* action : pimpl->view->actions())
-    {
-        auto shortcut = action->shortcut();
-        if (shortcut == QKeySequence::Undo || shortcut == QKeySequence::Redo)
-        {
-            action->setEnabled(false);
-            action->setShortcut(QKeySequence{});
-        }
-    }
-
-    QVBoxLayout* l = new QVBoxLayout(widget());
+    auto* l = new QVBoxLayout(widget());
     l->addWidget(pimpl->view);
     l->setContentsMargins(0, 0, 0, 0);
-
-    connect(&pimpl->model, &QtNodes::DataFlowGraphModel::sceneLoaded,
-            pimpl->view, &QtNodes::GraphicsView::centerScene);
-
-    connect(pimpl->scene, &QtNodes::DataFlowGraphicsScene::nodeSelected,
-            this, &GtIntelliGraphEditor::onNodeSelected);
 
     /* MENU BAR */
     auto* menuBar = new QMenuBar;
 
-    QMenu *menu = menuBar->addMenu(tr("Scene"));
+    QMenu* menu = menuBar->addMenu(tr("Scene"));
+    pimpl->sceneMenu = menu;
+    pimpl->sceneMenu->setEnabled(false);
 
-    auto saveAction = menu->addAction(tr("Save..."));
-    saveAction->setIcon(gt::gui::icon::save());
+    GtObjectUIAction saveAction(tr("Save"), [this](GtObject*){
+        saveToJson();
+    });
+    saveAction.setIcon(gt::gui::icon::save());
 
-    auto loadAction = menu->addAction(tr("Load..."));
-    loadAction->setIcon(gt::gui::icon::import());
+    GtObjectUIAction loadAction(tr("Load"), [this](GtObject*){
+        loadFromJson();
+    });
+    loadAction.setIcon(gt::gui::icon::import());
 
-    auto printGraphAction = menu->addAction(tr("Copy to clipboard"));
-    printGraphAction->setIcon(gt::gui::icon::copy());
-
-    menu->addSeparator();
-
-    QObject::connect(saveAction, &QAction::triggered,
-                     this, &GtIntelliGraphEditor::saveToJson);
-    QObject::connect(loadAction, &QAction::triggered,
-                     this, &GtIntelliGraphEditor::loadFromJson);
-    QObject::connect(printGraphAction, &QAction::triggered,
-                     &pimpl->model, [&](){
-        QJsonDocument doc(pimpl->model.save());
+    GtObjectUIAction printGraphAction(tr("Copy to clipboard"), [this](GtObject*){
+        if (!pimpl->model) return;
+        QJsonDocument doc(pimpl->model->save());
         QApplication::clipboard()->setText(doc.toJson(QJsonDocument::Indented));
     });
+    printGraphAction.setIcon(gt::gui::icon::copy());
+
+    new GtCustomActionMenu({saveAction, loadAction, printGraphAction}, nullptr, nullptr, menu);
 
     /* OVERLAY */
     auto* overlay = new QVBoxLayout(pimpl->view);
@@ -223,21 +214,53 @@ GtIntelliGraphEditor::GtIntelliGraphEditor() :
     menuBar->setFixedSize(size);
 }
 
-GtIntelliGraphEditor::~GtIntelliGraphEditor()
+void
+GtIntelliGraphEditor::setData(GtObject* obj)
 {
-    gtTrace() << __FUNCTION__;
+    pimpl->igGraph = qobject_cast<GtIntelliGraph*>(obj);
+    if (!pimpl->igGraph) return;
+
+    if (pimpl->model || pimpl->scene)
+    {
+        gtError().verbose()
+            << tr("Expected null intelli graph model and null scene!")
+            << pimpl->model
+            << pimpl->scene;
+        return;
+    }
+
+    connect(pimpl->igGraph, &QObject::destroyed, this, &QObject::deleteLater);
+
+    auto model = pimpl->igGraph->makeGraphModel();
+    if (!model) return;
+
+    pimpl->model = model;
+
+    pimpl->scene = new QtNodes::DataFlowGraphicsScene(*model, model);
+
+    connect(pimpl->scene, &QtNodes::DataFlowGraphicsScene::nodeSelected,
+            this, &GtIntelliGraphEditor::onNodeSelected);
+    connect(pimpl->scene, &QtNodes::DataFlowGraphicsScene::nodeMoved,
+            this, &GtIntelliGraphEditor::onNodePositionChanged);
+
+    pimpl->view->setScene(pimpl->scene, QtNodes::GraphicsView::NoUndoRedoAction);
+    pimpl->view->centerScene();
+
+    pimpl->sceneMenu->setEnabled(true);
 }
 
 void
 GtIntelliGraphEditor::loadScene(const QJsonObject& scene)
 {
+    if (!pimpl->model || !pimpl->scene) return;
+
     gtDebug().verbose()
-            << "Loading JSON scene:"
-            << QJsonDocument(scene).toJson(QJsonDocument::Indented);
+        << "Loading JSON scene:"
+        << QJsonDocument(scene).toJson(QJsonDocument::Indented);
     try
     {
         pimpl->scene->clearScene();
-        pimpl->model.load(scene);
+        pimpl->model->load(scene);
     }
     catch (std::exception const& e)
     {
@@ -247,44 +270,10 @@ GtIntelliGraphEditor::loadScene(const QJsonObject& scene)
 }
 
 void
-GtIntelliGraphEditor::setData(GtObject* obj)
-{
-    pimpl->igGraph = qobject_cast<GtIntelliGraph*>(obj);
-
-    if (pimpl->igGraph)
-    {
-        pimpl->igGraph->setActiveGraphModel(pimpl->model);
-
-        connect(pimpl->igGraph, &QObject::destroyed,
-                this, &QObject::deleteLater);
-
-        connect(&pimpl->model, &QtNodes::DataFlowGraphModel::nodeCreated,
-                this, &GtIntelliGraphEditor::onNodeCreated);
-        connect(&pimpl->model, &QtNodes::DataFlowGraphModel::nodeDeleted,
-                this, &GtIntelliGraphEditor::onNodeDeleted);
-        connect(pimpl->scene, &QtNodes::DataFlowGraphicsScene::nodeMoved,
-                this, &GtIntelliGraphEditor::onNodePositionChanged);
-        connect(&pimpl->model, &QtNodes::DataFlowGraphModel::connectionCreated,
-                this, &GtIntelliGraphEditor::onConnectionCreated);
-        connect(&pimpl->model, &QtNodes::DataFlowGraphModel::connectionDeleted,
-                this, &GtIntelliGraphEditor::onConnectionDeleted);
-
-        // once loaded remove all orphan nodes and connections
-        connect(&pimpl->model, &QtNodes::DataFlowGraphModel::sceneLoaded,
-                pimpl->igGraph, [=](){
-            pimpl->igGraph->removeOrphans(pimpl->model);
-        });
-
-        constexpr bool clone = true;
-        auto scene = pimpl->igGraph->toJson(clone);
-
-        loadScene(scene);
-    }
-}
-
-void
 GtIntelliGraphEditor::loadFromJson()
 {
+    if (!pimpl->model || !pimpl->scene) return;
+
     QString filePath = GtFileDialog::getOpenFileName(nullptr, tr("Open Intelli Flow"));
 
     if (filePath.isEmpty() || !QFileInfo::exists(filePath)) return;
@@ -305,6 +294,8 @@ GtIntelliGraphEditor::loadFromJson()
 void
 GtIntelliGraphEditor::saveToJson()
 {
+    if (!pimpl->model) return;
+
     QString filePath = GtFileDialog::getSaveFileName(nullptr, tr("Save Intelli Flow"));
 
     if (filePath.isEmpty()) return;
@@ -317,53 +308,53 @@ GtIntelliGraphEditor::saveToJson()
         return;
     }
 
-    QJsonDocument doc(pimpl->model.save());
+    QJsonDocument doc(pimpl->model->save());
     file.write(doc.toJson(QJsonDocument::Indented));
 }
 
-void
-GtIntelliGraphEditor::onNodeCreated(QtNodeId nodeId)
-{
-    if (!pimpl->igGraph) return;
+//void
+//GtIntelliGraphEditor::onNodeCreated(QtNodeId nodeId)
+//{
+//    if (!pimpl->igGraph || !pimpl->model || !pimpl->scene) return;
 
-    auto* model = pimpl->model.delegateModel<GtIntelliGraphObjectModel>(nodeId);
+//    auto* model = pimpl->model->delegateModel<GtIntelliGraphObjectModel>(nodeId);
 
-    if (!model) return;
+//    if (!model) return;
 
-    connect(model, &GtIntelliGraphObjectModel::nodeInitialized,
-            pimpl->scene, [=](){
-        if (auto* gobject = pimpl->scene->nodeGraphicsObject(nodeId))
-        {
-            gobject->embedQWidget();
-        }
-    });
+//    connect(model, &GtIntelliGraphObjectModel::nodeInitialized,
+//            pimpl->scene, [=](){
+//        if (auto* gobject = pimpl->scene->nodeGraphicsObject(nodeId))
+//        {
+//            gobject->embedQWidget();
+//        }
+//    });
 
-    pimpl->igGraph->createNode(nodeId);
-}
+//    pimpl->igGraph->createNode(nodeId);
+//}
 
-void
-GtIntelliGraphEditor::onNodeDeleted(QtNodeId nodeId)
-{
-    if (!pimpl->igGraph) return;
+//void
+//GtIntelliGraphEditor::onNodeDeleted(QtNodeId nodeId)
+//{
+//    if (!pimpl->igGraph) return;
 
-    pimpl->igGraph->deleteNode(nodeId);
-}
+//    pimpl->igGraph->deleteNode(nodeId);
+//}
 
-void
-GtIntelliGraphEditor::onConnectionCreated(QtConnectionId conId)
-{
-    if (!pimpl->igGraph) return;
+//void
+//GtIntelliGraphEditor::onConnectionCreated(QtConnectionId conId)
+//{
+//    if (!pimpl->igGraph) return;
 
-    pimpl->igGraph->createConnection(conId);
-}
+//    pimpl->igGraph->createConnection(conId);
+//}
 
-void
-GtIntelliGraphEditor::onConnectionDeleted(QtConnectionId conId)
-{
-    if (!pimpl->igGraph) return;
+//void
+//GtIntelliGraphEditor::onConnectionDeleted(QtConnectionId conId)
+//{
+//    if (!pimpl->igGraph) return;
 
-    pimpl->igGraph->deleteConnection(conId);
-}
+//    pimpl->igGraph->deleteConnection(conId);
+//}
 
 void
 GtIntelliGraphEditor::onNodePositionChanged(QtNodeId nodeId)

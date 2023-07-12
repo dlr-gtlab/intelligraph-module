@@ -42,9 +42,10 @@ GtIgFindDirectChildNode::GtIgFindDirectChildNode() :
 
         connect(w.get(), &GtLineEdit::focusOut, this, updateProp);
         connect(w.get(), &GtLineEdit::clearFocusOut, this, updateProp);
-        connect(&m_childClassName, &GtAbstractProperty::changed,
-                w.get(), updateText);
+        connect(&m_childClassName, &GtAbstractProperty::changed, w.get(), updateText);
+
         updateText();
+
         return w;
     });
 
@@ -57,7 +58,7 @@ GtIgFindDirectChildNode::eval(PortId outId)
 {
     if (m_out != outId) return {};
 
-    if (auto* parent = portData<GtIgObjectData*>(m_in))
+    if (auto* parent = nodeData<GtIgObjectData*>(m_in))
     {
         auto const children = parent->object()->findDirectChildren();
 

@@ -7,10 +7,8 @@
  */
 
 #include "gt_intelligraph.h"
-#include "gt_intelligraphnode.h"
 #include "gt_intelligraphconnection.h"
 #include "gt_intelligraphnodefactory.h"
-
 #include "gt_iggroupinputprovider.h"
 #include "gt_iggroupoutputprovider.h"
 
@@ -63,7 +61,7 @@ inline T findConnection(ObjectList const& connections,
 }
 
 GtIntelliGraph::GtIntelliGraph() :
-    GtIntelliGraphNode("Intelli Graph")
+    GtIntelliGraphNode("Sub Graph")
 {
 
 }
@@ -71,87 +69,11 @@ GtIntelliGraph::GtIntelliGraph() :
 void
 GtIntelliGraph::initInputOutputProvider()
 {
-#if 1
     auto* exstInput = findDirectChild<GtIgGroupInputProvider*>();
     auto input = exstInput ? nullptr : std::make_unique<GtIgGroupInputProvider>();
 
     auto* exstOutput = findDirectChild<GtIgGroupOutputProvider*>();
     auto output = exstOutput ? nullptr : std::make_unique<GtIgGroupOutputProvider>();
-#else
-    auto* exstInput = findDirectChild<GtIgGroupInputProvider*>();
-    auto input = exstInput ? std::unique_ptr<GtIgGroupInputProvider>(exstInput) :
-                             std::make_unique<GtIgGroupInputProvider>();
-    input->setParent(nullptr);
-    input->disconnect(this);
-
-    auto* exstOutput = findDirectChild<GtIgGroupOutputProvider*>();
-    auto output = exstOutput ? std::unique_ptr<GtIgGroupOutputProvider>(exstOutput) :
-                               std::make_unique<GtIgGroupOutputProvider>();
-    output->setParent(nullptr);
-    input->disconnect(this);
-
-    auto onPortInserted = [this](auto* provider, PortType type, PortIndex idx){
-        PortId id = provider->portId(provider->INVERSE_TYPE(), idx);
-        if (auto* port = provider->port(id))
-        {
-            provider->TYPE() == PortType::In ?
-                insertInPort(*port, idx) :
-                insertOutPort(*port, idx);
-            return true;
-        }
-        return false;
-    };
-
-    auto onPortChanged = [this](auto* provider, PortId id){
-        auto* inPort = provider->port(id);
-        auto  idx    = provider->portIndex(provider->INVERSE_TYPE(), id);
-        auto* port   = this->port(portId(provider->TYPE(), idx));
-
-        if (!inPort || !port) return;
-
-        port->typeId = inPort->typeId;
-        port->caption = inPort->caption;
-        emit portChanged(port->id());
-    };
-
-    auto onPortDeleted = [this](auto* provider, PortIndex idx){
-        removePort(portId(provider->INVERSE_TYPE(), idx));
-    };
-
-    connect(input.get(), &GtIntelliGraphNode::portInserted,
-            this, [=, in = input.get()](PortType type, PortIndex idx){
-                onPortInserted(in, type, idx);
-            });
-    connect(input.get(), &GtIntelliGraphNode::portChanged,
-            this, [=, in = input.get()](PortId id){
-                onPortChanged(in, id);
-            });
-    connect(input.get(), &GtIntelliGraphNode::portAboutToBeDeleted,
-            this, [=, in = input.get()](PortType, PortIndex idx){
-                onPortDeleted(in, idx);
-            });
-
-    connect(output.get(), &GtIntelliGraphNode::portInserted,
-            this, [=, out = output.get()](PortType type, PortIndex idx){
-                if (onPortInserted(out, type, idx))
-                {
-                    m_outData.insert(std::next(m_outData.begin(), idx), NodeData{});
-                }
-            });
-    connect(output.get(), &GtIntelliGraphNode::portChanged,
-            this, [=, out = output.get()](PortId id){
-                onPortChanged(out, id);
-            });
-    connect(output.get(), &GtIntelliGraphNode::portAboutToBeDeleted,
-            this, [=, out = output.get()](PortType, PortIndex idx){
-                onPortDeleted(out, idx);
-            });
-
-    connect(output.get(), &GtIntelliGraphNode::outDataUpdated,
-            this, &GtIntelliGraphNode::outDataUpdated);
-    connect(output.get(), &GtIntelliGraphNode::outDataInvalidated,
-            this, &GtIntelliGraphNode::outDataInvalidated);
-#endif
 
     appendNode(std::move(output));
     appendNode(std::move(input));
@@ -163,7 +85,7 @@ GtIntelliGraph::setNewNodeId(GtIntelliGraphNode& node)
     auto const nodes = findDirectChildren<GtIntelliGraphNode const*>();
 
     // id may already be used
-    QVector<double> ids;
+    QVector<NodeId> ids;
     ids.reserve(nodes.size());
     std::transform(std::begin(nodes), std::end(nodes), std::back_inserter(ids),
                    [](GtIntelliGraphNode const* n){ return n->id(); });
@@ -257,6 +179,20 @@ GtIntelliGraph::findConnection(QtConnectionId const& conId) const
     return const_cast<GtIntelliGraph*>(this)->findConnection(conId);
 }
 
+QList<GtIntelliGraph*>
+GtIntelliGraph::subGraphs()
+{
+    return findDirectChildren<GtIntelliGraph*>();
+}
+
+QList<GtIntelliGraph const*>
+GtIntelliGraph::subGraphs() const
+{
+    return gt::container_const_cast(
+        const_cast<GtIntelliGraph*>(this)->subGraphs()
+    );
+}
+
 void
 GtIntelliGraph::insertOutData(PortIndex idx)
 {
@@ -333,16 +269,16 @@ GtIntelliGraph::clear()
 }
 
 void
-GtIntelliGraph::removeOrphans(DataFlowGraphModel& model)
+GtIntelliGraph::removeOrphans()
 {
     auto nodes = this->nodes();
     auto cons = this->connections();
 
-    for (auto nodeId : model.allNodeIds())
+    for (auto nodeId : m_graphModel->allNodeIds())
     {
         foreach (auto* node, qAsConst(nodes))
         {
-            if (auto* m = model.delegateModel<QtNodes::NodeDelegateModel>(nodeId))
+            if (auto* m = m_graphModel->delegateModel<QtNodes::NodeDelegateModel>(nodeId))
             {
                 if (node->id() == nodeId && m->name() == node->modelName())
                 {
@@ -351,7 +287,7 @@ GtIntelliGraph::removeOrphans(DataFlowGraphModel& model)
             }
         }
 
-        for (auto conId : model.allConnectionIds(nodeId))
+        for (auto conId : m_graphModel->allConnectionIds(nodeId))
         {
             foreach (auto* con, qAsConst(cons))
             {
@@ -440,9 +376,9 @@ GtIntelliGraph::fromJson(const QJsonObject& json)
 GtIntelliGraphNode*
 GtIntelliGraph::createNode(QtNodeId nodeId)
 {
-    if (!m_activeGraphModel) return nullptr;
+    if (!m_graphModel) return nullptr;
 
-    auto* model = m_activeGraphModel->delegateModel<GtIntelliGraphObjectModel>(nodeId);
+    auto* model = m_graphModel->delegateModel<GtIntelliGraphObjectModel>(nodeId);
 
     if (!model) return nullptr;
 
@@ -500,7 +436,7 @@ GtIntelliGraph::appendNode(std::unique_ptr<GtIntelliGraphNode> node)
     if (!gtDataModel->appendChild(node.get(), this).isValid()) return false;
 
     // update graph model
-    if (m_activeGraphModel) appendNodeToModel(*node);
+    if (m_graphModel) appendNodeToModel(*node);
 
     node.release();
     return true;
@@ -555,7 +491,7 @@ GtIntelliGraph::appendConnection(std::unique_ptr<GtIntelliGraphConnection> conne
     if (!gtDataModel->appendChild(connection.get(), this).isValid()) return false;
 
     // update graph model
-    if (m_activeGraphModel) appendConnectionToModel(*connection);
+    if (m_graphModel) appendConnectionToModel(*connection);
 
     connection.release();
     return true;
@@ -575,13 +511,13 @@ GtIntelliGraph::deleteConnection(const QtConnectionId& connectionId)
 bool
 GtIntelliGraph::updateNodePosition(QtNodeId nodeId)
 {
-    if (!m_activeGraphModel) return false;
+    if (!m_graphModel) return false;
 
-    auto* delegate = m_activeGraphModel->delegateModel<GtIntelliGraphObjectModel>(nodeId);
+    auto* delegate = m_graphModel->delegateModel<GtIntelliGraphObjectModel>(nodeId);
 
     if (!delegate) return false;
 
-    auto position = m_activeGraphModel->nodeData(nodeId, QtNodes::NodeRole::Position);
+    auto position = m_graphModel->nodeData(nodeId, QtNodes::NodeRole::Position);
 
     if (!position.isValid()) return false;
 
@@ -597,41 +533,101 @@ GtIntelliGraph::updateNodePosition(QtNodeId nodeId)
     return true;
 }
 
-void
-GtIntelliGraph::setActiveGraphModel(DataFlowGraphModel& model)
+GtIntelliGraph::DataFlowGraphModel*
+GtIntelliGraph::makeGraphModel()
 {
-    m_activeGraphModel = &model;
+    if (!m_graphModel)
+    {
+        m_graphModel = std::make_unique<DataFlowGraphModel>(
+            GtIntelliGraphNodeFactory::instance().makeRegistry()
+        );
+
+        for (auto* graph : subGraphs())
+        {
+            graph->initInputOutputProvider();
+            graph->makeGraphModel();
+        }
+
+        for (auto* node : nodes())
+        {
+            node->setActive(true);
+        }
+
+        // once loaded remove all orphan nodes and connections
+        connect(m_graphModel.get(), &QtNodes::DataFlowGraphModel::sceneLoaded,
+                this, [=](){ removeOrphans(); });
+
+        constexpr bool clone = true;
+        auto scene = toJson(clone);
+
+        connect(m_graphModel.get(), &QtNodes::DataFlowGraphModel::nodeCreated,
+                this, [=](QtNodeId nodeId){ createNode(nodeId); });
+        connect(m_graphModel.get(), &QtNodes::DataFlowGraphModel::nodeDeleted,
+                this, [=](QtNodeId nodeId){ deleteNode(nodeId); });
+        connect(m_graphModel.get(), &QtNodes::DataFlowGraphModel::connectionCreated,
+                this, [=](QtConnectionId conId){ createConnection(conId); });
+        connect(m_graphModel.get(), &QtNodes::DataFlowGraphModel::connectionDeleted,
+                this, [=](QtConnectionId conId){ deleteConnection(conId); });
+
+        try
+        {
+            m_graphModel->load(scene);
+        }
+        catch (std::exception const& e)
+        {
+            gtError() << tr("Failed to load scene from object tree! Error:")
+                      << gt::quoted(std::string{e.what()});
+        }
+    }
+
+    return m_graphModel.get();
 }
 
 GtIntelliGraph::DataFlowGraphModel*
 GtIntelliGraph::activeGraphModel()
 {
-    return m_activeGraphModel;
+    return m_graphModel.get();
 }
 
 GtIntelliGraph::DataFlowGraphModel const*
 GtIntelliGraph::activeGraphModel() const
 {
-    return m_activeGraphModel;
+    return m_graphModel.get();
 }
 
 void
-GtIntelliGraph::clearActiveGraphModel()
+GtIntelliGraph::clearGraphModel()
 {
-    m_activeGraphModel.clear();
+    // check if this graph is still used by the parent graph
+    if (auto* parent = qobject_cast<GtIntelliGraph*>(parentObject()))
+    {
+        if (parent->activeGraphModel()) return;
+    }
+
+    for (auto* node : nodes())
+    {
+        node->setActive(false);
+    }
+
+    m_graphModel.reset();
+
+    for (auto* graph : subGraphs())
+    {
+        graph->clearGraphModel();
+    }
 }
 
 void
 GtIntelliGraph::onObjectDataMerged()
 {
-    if (!m_activeGraphModel) return;
+    if (!m_graphModel) return;
 
     // after undo/redo we may have to add resoted nodes and connections to
     // the model
     auto const& nodes = this->nodes();
     auto const& connections = this->connections();
 
-    auto const& modelNodes = m_activeGraphModel->allNodeIds();
+    auto const& modelNodes = m_graphModel->allNodeIds();
 
     for (auto* node : nodes)
     {
@@ -645,7 +641,7 @@ GtIntelliGraph::onObjectDataMerged()
             appendNodeToModel(*node);
         }
 
-        auto const& modelConnections = m_activeGraphModel->allConnectionIds(node->id());
+        auto const& modelConnections = m_graphModel->allConnectionIds(node->id());
 
         // find connections that belong to node
         std::vector<GtIntelliGraphConnection*> nodeConnections;
@@ -672,16 +668,16 @@ GtIntelliGraph::onObjectDataMerged()
 void
 GtIntelliGraph::setupNode(GtIntelliGraphNode& node)
 {
-    connect(&node, &QObject::destroyed, m_activeGraphModel,
-            [graph = m_activeGraphModel.data(),
+    connect(&node, &QObject::destroyed, m_graphModel.get(),
+            [graph = m_graphModel.get(),
              model = node.modelName(),
              nodeId = node.id()](){
         gtDebug().verbose() << "Deleting node from model:" << model
                             << "(" << nodeId << ")";;
         graph->deleteNode(nodeId);
     });
-    connect(&node, &GtIntelliGraphNode::nodeChanged, m_activeGraphModel,
-            [graph = m_activeGraphModel.data(),
+    connect(&node, &GtIntelliGraphNode::nodeChanged, m_graphModel.get(),
+            [graph = m_graphModel.get(),
              nodeId = node.id()](){
         emit graph->nodeUpdated(nodeId);
     });
@@ -690,14 +686,25 @@ GtIntelliGraph::setupNode(GtIntelliGraphNode& node)
     if (auto group = qobject_cast<GtIntelliGraph*>(&node))
     {
         group->initInputOutputProvider();
+
+        // initialize graph model
+        if (activeGraphModel())
+        {
+            group->makeGraphModel();
+        }
+    }
+
+    if (activeGraphModel())
+    {
+        node.setActive();
     }
 }
 
 void
 GtIntelliGraph::setupConnection(GtIntelliGraphConnection& connection)
 {
-    connect(&connection, &QObject::destroyed,m_activeGraphModel,
-            [graph = m_activeGraphModel.data(),
+    connect(&connection, &QObject::destroyed,m_graphModel.get(),
+            [graph = m_graphModel.get(),
              conId = connection.toConnectionId()](){
         gtDebug().verbose() << "Deleting connection from model:" << conId;
         graph->deleteConnection(conId);
@@ -707,11 +714,11 @@ GtIntelliGraph::setupConnection(GtIntelliGraphConnection& connection)
 bool
 GtIntelliGraph::appendNodeToModel(GtIntelliGraphNode& node)
 {
-    assert(m_activeGraphModel);
+    assert(m_graphModel);
 
     try
     {
-        m_activeGraphModel->loadNode(node.toJson());
+        m_graphModel->loadNode(node.toJson());
     }
     catch (std::exception const& e)
     {
@@ -728,9 +735,9 @@ GtIntelliGraph::appendNodeToModel(GtIntelliGraphNode& node)
 bool
 GtIntelliGraph::appendConnectionToModel(GtIntelliGraphConnection& con)
 {
-    assert(m_activeGraphModel);
+    assert(m_graphModel);
 
-    m_activeGraphModel->addConnection(con.toConnectionId());
+    m_graphModel->addConnection(con.toConnectionId());
     setupConnection(con);
     return true;
 }

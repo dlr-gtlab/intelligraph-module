@@ -32,5 +32,9 @@ GtIgGroupInputProvider::eval(PortId outId)
         return {};
     }
 
-    return group->portData(group->portId(PortType::In, idx));
+    auto tmp = group->nodeData(group->portId(PortType::In, idx));
+
+//    gtDebug() << "HERE" << tmp << ":" << idx << "->" << group->portId(PortType::In, idx);
+
+    return tmp;
 }

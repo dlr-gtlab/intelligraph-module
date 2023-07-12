@@ -49,7 +49,7 @@ GtIgGroupOutputProvider::eval(PortId outId)
     for (auto const& p : this->ports(PortType::In))
     {
         PortIndex idx = portIndex(PortType::In, p.id());
-        if (!group->setOutData(idx, portData(p.id())))
+        if (!group->setOutData(idx, nodeData(p.id())))
         {
             gtWarning().medium()
                 << tr("Failed to forward output data to group node for idx '%1'")

@@ -9,7 +9,6 @@
 #include "gt_intelligraphnode.h"
 
 #include "gt_intelligraphnodefactory.h"
-#include "gt_intelligraph.h"
 #include "gt_igvolatileptr.h"
 
 #include "gt_intproperty.h"
@@ -60,6 +59,8 @@ struct GtIntelliGraphNode::Impl
     PortId nextPortId{0};
 
     State state{EvalRequired};
+
+    bool active{false};
 
     bool canEvaluate() const
     {
@@ -112,14 +113,33 @@ GtIntelliGraphNode::GtIntelliGraphNode(QString const& modelName, GtObject* paren
             this, &GtIntelliGraphNode::nodeChanged);
     connect(&pimpl->caption, &GtAbstractProperty::changed,
             this, &GtIntelliGraphNode::nodeChanged);
+    connect(this, &GtIntelliGraphNode::portChanged,
+            this, &GtIntelliGraphNode::nodeChanged);
 }
 
 GtIntelliGraphNode::~GtIntelliGraphNode() = default;
 
 void
+GtIntelliGraphNode::setActive(bool isActive)
+{
+    pimpl->active = isActive;
+}
+
+bool
+GtIntelliGraphNode::isActive() const
+{
+    return pimpl->active;
+}
+
+void
 GtIntelliGraphNode::setId(NodeId id)
 {
     pimpl->id = id;
+}
+
+GtIntelliGraphNode::NodeId GtIntelliGraphNode::id() const
+{
+    return NodeId{gt::ig::fromInt(pimpl->id)};
 }
 
 void
@@ -131,11 +151,6 @@ GtIntelliGraphNode::setPos(QPointF pos)
         pimpl->posY = pos.y();
         changed();
     }
-}
-
-GtIntelliGraphNode::NodeId GtIntelliGraphNode::id() const
-{
-    return NodeId{gt::ig::fromInt(pimpl->id)};
 }
 
 GtIntelliGraphNode::Position GtIntelliGraphNode::pos() const
@@ -217,7 +232,7 @@ GtIntelliGraphNode::ports_(PortType type) const noexcept(false)
 }
 
 std::vector<GtIntelliGraphNode::NodeData>&
-GtIntelliGraphNode::portData_(PortType type) const noexcept(false)
+GtIntelliGraphNode::nodeData_(PortType type) const noexcept(false)
 {
     switch (type)
     {
@@ -269,7 +284,7 @@ GtIntelliGraphNode::insertPort(PortType type, PortData port, int idx) noexcept(f
     }
 
     auto& ports = ports_(type);
-    auto& data  = portData_(type);
+    auto& data  = nodeData_(type);
 
     assert(ports.size() == data.size());
 
@@ -303,7 +318,7 @@ GtIntelliGraphNode::removePort(PortId id)
         if (iter != ports->end())
         {
             auto idx   = std::distance(ports->begin(), iter);
-            auto& data = portData_(type);
+            auto& data = nodeData_(type);
 
             assert(ports->size() == data.size());
 
@@ -342,7 +357,7 @@ GtIntelliGraphNode::nodeData(PortId id) const
         type = PortType::Out;
     }
 
-    auto& data = portData_(type);
+    auto& data = nodeData_(type);
     if (idx >= data.size())
     {
         gtWarning() << tr("PortId out of bound!") << id << idx;
@@ -456,13 +471,7 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
         return;
     }
 
-    bool isActive = false;
-    if (auto* p = qobject_cast<GtIntelliGraph const*>(parentObject()))
-    {
-        isActive = p->activeGraphModel();
-    }
-
-    if (!isActive)
+    if (!isActive())
     {
         gtWarning().verbose()
             << tr("Node is not active!")
@@ -572,13 +581,13 @@ GtIntelliGraphNode::fromJson(const QJsonObject& json) noexcept(false)
     node->pimpl->posX  = position["x"].toDouble();
     node->pimpl->posY  = position["y"].toDouble();
 
-    node->mergeJsonMemento(internals);
+    node->mergeNodeData(internals);
 
     return node;
 }
 
 bool
-GtIntelliGraphNode::mergeJsonMemento(const QJsonObject& internals)
+GtIntelliGraphNode::mergeNodeData(const QJsonObject& internals)
 {
     auto mementoData = internals["memento"].toString();
 
@@ -586,9 +595,11 @@ GtIntelliGraphNode::mergeJsonMemento(const QJsonObject& internals)
 
     if (memento.isNull() || !memento.mergeTo(*this, *gtObjectFactory))
     {
-        gtWarning() << tr("Failed to restore memento for '%1'!")
-                       .arg(objectName())
-                    << tr("Object may be incomplete");
+        gtWarning()
+            << tr("Failed to restore memento for '%1', object may be incomplete")
+               .arg(objectName());
+        gtWarning().medium()
+            << tr("Memento:") << mementoData;
         return false;
     }
     return true;
@@ -598,8 +609,6 @@ QJsonObject
 GtIntelliGraphNode::toJson(bool clone) const
 {
     QJsonObject json;
-    if (!clone && nodeFlags() & NodeFlag::Unique) return json;
-
     json["id"] = pimpl->id.get();
 
     QJsonObject position;
@@ -609,14 +618,8 @@ GtIntelliGraphNode::toJson(bool clone) const
 
     QJsonObject internals;
     internals["model-name"] = modelName();
-    toJsonMemento(internals);
+    internals["memento"] = static_cast<QString>(toMemento(clone).toByteArray());
     json["internal-data"] = internals;
 
     return json;
-}
-
-void
-GtIntelliGraphNode::toJsonMemento(QJsonObject& internals, bool clone) const
-{
-    internals["memento"] = static_cast<QString>(toMemento(clone).toByteArray());
 }

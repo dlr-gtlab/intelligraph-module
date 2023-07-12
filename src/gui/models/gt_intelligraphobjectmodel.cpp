@@ -106,6 +106,11 @@ GtIntelliGraphObjectModel::flags() const
         flags |= QtNodeFlag::Resizable;
     }
 
+    if (m_node->nodeFlags() & NodeFlag::Unique)
+    {
+        flags |= QtNodeFlag::Unique;
+    }
+
     if (m_node->objectFlags() & GtObject::UserDeletable)
     {
         flags |= QtNodeFlag::Deletable;
@@ -220,10 +225,10 @@ GtIntelliGraphObjectModel::save() const
 {
     if (m_node)
     {
-        return m_node->toJson();
+        return m_node->toJson()["internal-data"].toObject();
     }
 
-    return {};
+    return QtNodes::NodeDelegateModel::save();
 }
 
 void
@@ -241,7 +246,7 @@ GtIntelliGraphObjectModel::load(const QJsonObject& json)
         return;
     }
 
-    m_node->mergeJsonMemento(json);
+    m_node->mergeNodeData(json);
 
     gtDebug().verbose() << "NODE LOADED:" << m_node->objectName();
 

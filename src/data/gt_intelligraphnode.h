@@ -116,6 +116,10 @@ public:
 
     /* node specifc methods */
 
+    void setActive(bool isActive = true);
+
+    bool isActive() const;
+
     /**
      * @brief Sets the node id. handle with care, as this may result in
      * undesired behaviour. Will be saved persistently.
@@ -263,16 +267,7 @@ public:
      * @param internals Json object describing the internal node data. Note:
      * This is not the same as the object returned by "tojson".
      */
-    bool mergeJsonMemento(QJsonObject const& internals);
-
-    /**
-     * @brief Will write the memento data to the internal node data json object.
-     * Note: This is not the same as the object returned by "toJson".
-     * @param internals
-     * @param clone Whether to clone the object data (i.e. use the same uuid).
-     * Only set to true if the object should be restored instead of copied.
-     */
-    void toJsonMemento(QJsonObject& internals, bool clone = false) const;
+    bool mergeNodeData(QJsonObject const& internals);
 
 public slots:
 
@@ -487,7 +482,7 @@ private:
     /// internal use only
     std::vector<PortData>& ports_(PortType type) const noexcept(false);
     /// internal use only
-    std::vector<NodeData>& portData_(PortType type) const noexcept(false);
+    std::vector<NodeData>& nodeData_(PortType type) const noexcept(false);
 };
 
 inline gt::log::Stream&
