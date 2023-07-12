@@ -31,6 +31,7 @@ public:
     using QtConnectionId     = QtNodes::ConnectionId;
 
     explicit GtIntelliGraphObjectModel(QString const& className);
+    explicit GtIntelliGraphObjectModel(GtIntelliGraphNode& node);
 
     static gt::ig::PortType cast_port_type(QtPortType type) { return static_cast<gt::ig::PortType>(type); }
     static QtPortType cast_port_type(gt::ig::PortType type) { return static_cast<QtPortType>(type); }

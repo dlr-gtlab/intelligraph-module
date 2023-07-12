@@ -33,6 +33,11 @@ GtIntelliGraphObjectModel::GtIntelliGraphObjectModel(const QString& className)
     init(*node.release());
 }
 
+GtIntelliGraphObjectModel::GtIntelliGraphObjectModel(GtIntelliGraphNode& node)
+{
+    init(node);
+}
+
 void
 GtIntelliGraphObjectModel::init(GtIntelliGraphNode& node)
 {
@@ -47,6 +52,7 @@ GtIntelliGraphObjectModel::init(GtIntelliGraphNode& node)
     }
 
     m_node = &node;
+    m_node->setActive();
 
     connect(this, &GtIntelliGraphObjectModel::dataUpdated,
             m_node, [=](unsigned idx){
