@@ -242,7 +242,7 @@ GtIntelliGraph::appendNode(std::unique_ptr<GtIntelliGraphNode> node)
 {
     if (!node) return false;
 
-    setNewNodeId(*node);
+    updateNodeId(*node);
 
     if (!gtDataModel->appendChild(node.get(), this).isValid()) return false;
 
@@ -400,6 +400,8 @@ GtIntelliGraph::fromJson(const QJsonObject& json)
 
     bool success = true;
 
+    gtDebug().medium() << "Restoring intelli graph from json...";
+
     auto const connections = json["connections"].toArray();
 
     for (auto const& connection : connections)
@@ -410,7 +412,7 @@ GtIntelliGraph::fromJson(const QJsonObject& json)
             gtWarning() << tr("Failed to restore connection:") << obj->objectName();
             success = false; break;
         }
-        gtDebug() << "Restored connection:" << obj->objectName();
+        gtDebug().medium() << "### Restored connection:" << obj->objectName();
     }
 
     auto const nodes = json["nodes"].toArray();
@@ -425,7 +427,7 @@ GtIntelliGraph::fromJson(const QJsonObject& json)
                 gtWarning() << tr("Failed to restore node:") << obj->objectName();
                 success = false; break;
             }
-            gtDebug() << "Restored node:" << obj->objectName();
+            gtDebug().medium()  << "### Restored node:" << obj->objectName();
             obj.release()->setParent(this);
         }
     }
@@ -535,8 +537,7 @@ GtIntelliGraph::appendNodeById(QtNodeId nodeId)
     }
 
     // move node from model to object tree
-
-    auto node = &model->node();
+    auto* node = &model->node();
 
     assert (node->parent() == model);
 
@@ -595,8 +596,8 @@ GtIntelliGraph::deleteNode(QtNodeId nodeId)
 {
     if (auto* node = findNode(nodeId))
     {
-        gtDebug().verbose()
-            << "Deleting node:" << node;
+        gtInfo().verbose()
+            << tr("Deleting node:") << node->objectName();
         return gtDataModel->deleteFromModel(node);
     }
     return false;
@@ -607,7 +608,8 @@ GtIntelliGraph::deleteConnection(const QtConnectionId& connectionId)
 {
     if (auto* connection = findConnection(connectionId))
     {
-        gtDebug().verbose() << "Deleting connection:" << connectionId;
+        gtInfo().verbose()
+            << tr("Deleting connection:") << connectionId;
         return gtDataModel->deleteFromModel(connection);
     }
     return false;
@@ -668,7 +670,7 @@ GtIntelliGraph::appendNodeToModel(GtIntelliGraphNode& node)
 
     NodeId id = node.id();
 
-    // add node
+    // add delegate model
     auto model = std::make_unique<GtIntelliGraphObjectModel>(node);
 
     if (m_graphModel->addNode(std::move(model), id) == gt::ig::invalid<NodeId>())
@@ -699,6 +701,7 @@ GtIntelliGraph::appendConnectionToModel(GtIntelliGraphConnection& con)
 
     return true;
 }
+
 void
 GtIntelliGraph::initInputOutputProvider()
 {
@@ -713,7 +716,7 @@ GtIntelliGraph::initInputOutputProvider()
 }
 
 void
-GtIntelliGraph::setNewNodeId(GtIntelliGraphNode& node)
+GtIntelliGraph::updateNodeId(GtIntelliGraphNode& node)
 {
     auto const nodes = findDirectChildren<GtIntelliGraphNode const*>();
 

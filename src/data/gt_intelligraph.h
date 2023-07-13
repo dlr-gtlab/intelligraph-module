@@ -198,7 +198,7 @@ private:
 
     void initInputOutputProvider();
 
-    void setNewNodeId(GtIntelliGraphNode& node);
+    void updateNodeId(GtIntelliGraphNode& node);
 };
 
 #endif // GT_INTELLIGRAPH_H
