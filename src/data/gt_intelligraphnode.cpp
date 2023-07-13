@@ -426,8 +426,8 @@ GtIntelliGraphNode::setInData(PortIndex idx, NodeData data)
     if (idx >= pimpl->inData.size()) return false;
 
     gtDebug().verbose().nospace()
-        << "### Setting in data:  " << metaObject()->className()
-        << " at idx '" << idx << "': " << data;
+        << "### Setting in data:  '" << objectName()
+        << "' at idx '" << idx << "': " << data;
 
     pimpl->inData.at(idx) = std::move(data);
 
@@ -446,8 +446,8 @@ GtIntelliGraphNode::outData(PortIndex idx)
     if (idx >= pimpl->outData.size()) return {};
 
     gtDebug().verbose().nospace()
-        << "### Getting out data: " << metaObject()->className()
-        << " at idx '" << idx << "': " << pimpl->outData.at(idx);
+        << "### Getting out data: '" << objectName()
+        << "' at idx '" << idx << "': " << pimpl->outData.at(idx);
 
     // trigger node update if no input data is available
     if (pimpl->state == EvalRequired) updatePort(idx);
@@ -467,16 +467,14 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
     if (pimpl->state == Evaluating)
     {
         gtWarning().verbose()
-            << tr("Node already evaluating!")
-            << gt::brackets(QString{metaObject()->className()});
+            << tr("Node already evaluating!") << gt::brackets(objectName());
         return;
     }
 
     if (!isActive())
     {
         gtWarning().verbose()
-            << tr("Node is not active!")
-            << gt::brackets(QString{metaObject()->className()});
+            << tr("Node is not active!") << gt::brackets(objectName());
         return;
     }
 
@@ -487,8 +485,7 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
         // not aborting here to allow the triggering of the invalidated signals
         pimpl->state = EvalRequired;
         gtWarning().verbose()
-            << tr("Node not ready for evaluation!")
-            << gt::brackets(QString{metaObject()->className()});
+            << tr("Node not ready for evaluation!") << gt::brackets(objectName());
     }
 
     // eval helper
@@ -496,8 +493,8 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
         pimpl->state = Evaluating;
 
         gtDebug().verbose().nospace()
-            << "### Evaluating node:  " << metaObject()->className()
-            << " at output id '" << id << "'";
+            << "### Evaluating node:  '" << objectName()
+            << "' at output id '" << id << "'";
 
         auto tmp = eval(id);
 

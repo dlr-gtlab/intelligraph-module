@@ -13,6 +13,7 @@ set(PUBLIC_HEADERS
     gt_intelligraphnodefactory.h
     gt_intelligraphdatafactory.h
     data/gt_intelligraphnode.h
+    data/node_data/gt_igbooldata.h
     data/node_data/gt_igdoubledata.h
     data/node_data/gt_ignodedata.h
     data/node_data/gt_igobjectdata.h
@@ -30,9 +31,13 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_intelligraphconnection.h
     data/gt_intelligraphcategory.h
     data/nodes/gt_igabstractgroupprovider.h
+    data/nodes/gt_igconditionalnode.h
+    data/nodes/gt_igdoubletoboolnode.h
     data/nodes/gt_igfinddirectchildnode.h
     data/nodes/gt_iggroupinputprovider.h
     data/nodes/gt_iggroupoutputprovider.h
+    data/nodes/gt_ignumberdisplaynode.h
+    data/nodes/gt_ignumbersourcenode.h
     data/nodes/gt_igobjectmementonode.h
     data/nodes/gt_igobjectsourcenode.h
     data/nodes/gt_igstringlistinputnode.h
@@ -51,12 +56,17 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_intelligraphconnection.cpp
     data/gt_intelligraphnode.cpp
     data/gt_intelligraphcategory.cpp
-    data/nodes/gt_iggroupinputprovider.cpp
+    data/nodes/gt_igconditionalnode.cpp
+    data/nodes/gt_igdoubletoboolnode.cpp
     data/nodes/gt_igfinddirectchildnode.cpp
+    data/nodes/gt_iggroupinputprovider.cpp
     data/nodes/gt_iggroupoutputprovider.cpp
+    data/nodes/gt_ignumberdisplaynode.cpp
+    data/nodes/gt_ignumbersourcenode.cpp
     data/nodes/gt_igobjectmementonode.cpp
     data/nodes/gt_igobjectsourcenode.cpp
     data/nodes/gt_igstringlistinputnode.cpp
+    data/node_data/gt_igbooldata.cpp
     data/node_data/gt_igdoubledata.cpp
     data/node_data/gt_ignodedata.cpp
     data/node_data/gt_igobjectdata.cpp
