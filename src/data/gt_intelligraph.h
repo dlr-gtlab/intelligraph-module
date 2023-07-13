@@ -79,7 +79,7 @@ public:
      * @param node Node to append
      * @return success
      */
-    bool appendNode(std::unique_ptr<GtIntelliGraphNode> node);
+    GtIntelliGraphNode* appendNode(std::unique_ptr<GtIntelliGraphNode> node);
 
     /**
      * @brief Appends the connection to intelli graph. Use this function instead
@@ -87,7 +87,43 @@ public:
      * @param connection Connection to append
      * @return success
      */
-    bool appendConnection(std::unique_ptr<GtIntelliGraphConnection> connection);
+    GtIntelliGraphConnection* appendConnection(std::unique_ptr<GtIntelliGraphConnection> connection);
+
+    /**
+     * @brief Creates a new node using the node id in the active graph model as
+     * a child object and returns a pointer to it. Returns null if the process
+     * failed. The ownership is taken care of. Make sure to set
+     * the graph model beforehand.
+     * @param nodeId Node id to create/move
+     * @return Node (may be null)
+     */
+    GtIntelliGraphNode* appendNodeById(QtNodeId nodeId);
+
+    /**
+     * @brief Creates a new connection base on the connection details and
+     * returns a pointer to the newly created object (null if the process
+     * failed). The ownership is taken care of. The graph model must not be set
+     * beforehand.
+     * @param connectionId Connection details to be used for creating the node.
+     * @return Connection (may be null)
+     */
+    GtIntelliGraphConnection* appendConnectionById(QtConnectionId const& connectionId);
+
+    /**
+     * @brief Deletes the node described by node id. Returns true on success.
+     * The graph model must not be set beforehand.
+     * @param nodeId Node to delete
+     * @return True if successful else false
+     */
+    bool deleteNode(QtNodeId nodeId);
+
+    /**
+     * @brief Deletes the connection described by the connection details.
+     * Returns true on success. The graph model must not be set beforehand.
+     * @param nodeId Node to delete
+     * @return True if successful else false
+     */
+    bool deleteConnection(QtConnectionId const& connectionId);
 
     /**
      * @brief Updates the node position of the node matgched by the node id.
@@ -97,6 +133,8 @@ public:
      * @return True if successful else false
      */
     bool updateNodePosition(QtNodeId nodeId);
+
+    void setNodePosition(QtNodeId nodeId, QPointF pos);
 
     /**
      * @brief Creates a graph model if it does not exists already.
@@ -159,43 +197,6 @@ private:
     bool appendNodeToModel(GtIntelliGraphNode& node);
 
     bool appendConnectionToModel(GtIntelliGraphConnection& con);
-
-    /**
-     * @brief Creates a new node using the node id in the active graph model as
-     * a child object and returns a pointer to it. Returns null if the process
-     * failed. The ownership is taken care of. Make sure to set
-     * the graph model beforehand.
-     * @param nodeId Node id to create/move
-     * @return Node (may be null)
-     */
-    GtIntelliGraphNode* appendNodeById(QtNodeId nodeId);
-
-    /**
-     * @brief Creates a new connection base on the connection details and
-     * returns a pointer to the newly created object (null if the process
-     * failed). The ownership is taken care of. The graph model must not be set
-     * beforehand.
-     * @param connectionId Connection details to be used for creating the node.
-     * @return Connection (may be null)
-     */
-    GtIntelliGraphConnection* appendConnectionById(QtConnectionId const& connectionId);
-
-    /**
-     * @brief Deletes the node described by node id. Returns true on success.
-     * The graph model must not be set beforehand.
-     * @param nodeId Node to delete
-     * @return True if successful else false
-     */
-    bool deleteNode(QtNodeId nodeId);
-
-    /**
-     * @brief Deletes the connection described by the connection details.
-     * Returns true on success. The graph model must not be set beforehand.
-     * @param nodeId Node to delete
-     * @return True if successful else false
-     */
-    bool deleteConnection(QtConnectionId const& connectionId);
-
     void initInputOutputProvider();
 
     void updateNodeId(GtIntelliGraphNode& node);

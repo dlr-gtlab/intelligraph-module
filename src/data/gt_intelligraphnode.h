@@ -72,7 +72,8 @@ public:
     enum PortPolicy
     {
         Required,
-        Optional
+        Optional,
+        DoNotEvaluate
     };
 
     /// port data struct
@@ -86,8 +87,7 @@ public:
         PortData(QString _typeId, QString _caption, bool _captionVisible = true) :
             typeId(std::move(_typeId)),
             caption(std::move(_caption)),
-            captionVisible(_captionVisible),
-            optional(true)
+            captionVisible(_captionVisible)
         {}
 
         // type id for port data (classname)
@@ -97,7 +97,9 @@ public:
         // whether port caption should be visible
         bool captionVisible;
         // whether the port is required for the node evaluation
-        bool optional;
+        bool optional = true;
+
+        bool evaluate = true;
 
         /**
          * @brief Returns the port id
@@ -402,7 +404,7 @@ protected:
      * @param port Port data to append
      * @return Port id
      */
-    PortId addOutPort(PortData port) noexcept(false);
+    PortId addOutPort(PortData port, PortPolicy policy = PortPolicy::Optional) noexcept(false);
 
     /**
      * @brief Inserts an input port at the given location
@@ -420,7 +422,7 @@ protected:
      * @param idx Where to insert the port
      * @return Port id
      */
-    PortId insertOutPort(PortData port, int idx) noexcept(false);
+    PortId insertOutPort(PortData port, int idx, PortPolicy policy = PortPolicy::Optional) noexcept(false);
 
     /**
      * @brief Removes the port specified by id

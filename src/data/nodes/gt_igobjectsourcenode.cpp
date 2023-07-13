@@ -7,6 +7,7 @@
 
 #include "gt_igobjectdata.h"
 #include "gt_igstringlistdata.h"
+#include "gt_propertyobjectlinkeditor.h"
 
 GTIG_REGISTER_NODE(GtIgObjectSourceNode, "Object");
 

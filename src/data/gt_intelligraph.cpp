@@ -237,35 +237,33 @@ GtIntelliGraph::clear()
     gtDataModel->deleteFromModel(objects);
 }
 
-bool
+GtIntelliGraphNode*
 GtIntelliGraph::appendNode(std::unique_ptr<GtIntelliGraphNode> node)
 {
-    if (!node) return false;
+    if (!node) return {};
 
     updateNodeId(*node);
 
-    if (!gtDataModel->appendChild(node.get(), this).isValid()) return false;
+    if (!gtDataModel->appendChild(node.get(), this).isValid()) return {};
 
     // update graph model
     if (m_graphModel) appendNodeToModel(*node);
 
-    node.release();
-    return true;
+    return node.release();
 }
 
-bool
+GtIntelliGraphConnection*
 GtIntelliGraph::appendConnection(std::unique_ptr<GtIntelliGraphConnection> connection)
 {
     // connection may already exist
-    if (findConnection(connection->toConnectionId())) return false;
+    if (findConnection(connection->toConnectionId())) return {};
 
-    if (!gtDataModel->appendChild(connection.get(), this).isValid()) return false;
+    if (!gtDataModel->appendChild(connection.get(), this).isValid()) return {};
 
     // update graph model
     if (m_graphModel) appendConnectionToModel(*connection);
 
-    connection.release();
-    return true;
+    return connection.release();
 }
 
 bool
@@ -292,6 +290,41 @@ GtIntelliGraph::updateNodePosition(QtNodeId nodeId)
     node.setPos(pos);
 
     return true;
+}
+
+void
+GtIntelliGraph::setNodePosition(QtNodeId nodeId, QPointF pos)
+{
+    if (!m_graphModel) return;
+    if (auto* node = findNode(nodeId))
+    {
+        node->setPos(pos);
+        m_graphModel->setNodeData(nodeId, QtNodes::NodeRole::Position, pos);
+    }
+}
+
+bool
+GtIntelliGraph::deleteNode(QtNodeId nodeId)
+{
+    if (auto* node = findNode(nodeId))
+    {
+        gtInfo().verbose()
+            << tr("Deleting node:") << node->objectName();
+        return gtDataModel->deleteFromModel(node);
+    }
+    return false;
+}
+
+bool
+GtIntelliGraph::deleteConnection(const QtConnectionId& connectionId)
+{
+    if (auto* connection = findConnection(connectionId))
+    {
+        gtInfo().verbose()
+            << tr("Deleting connection:") << connectionId;
+        return gtDataModel->deleteFromModel(connection);
+    }
+    return false;
 }
 
 GtIntelliGraph::DataFlowGraphModel*
@@ -544,7 +577,7 @@ GtIntelliGraph::appendNodeById(QtNodeId nodeId)
     node->setId(gt::ig::NodeId{nodeId});
 
     gtInfo().medium() << tr("Appending node: %1 (id: %2)")
-                         .arg(node->objectName(), nodeId);
+                         .arg(node->objectName()).arg(nodeId);
 
     // TODO: remove
     node->setParent(nullptr); // to avoid disconnect-error msg (see #520)
@@ -589,30 +622,6 @@ GtIntelliGraph::appendConnectionById(const QtConnectionId& connectionId)
     setupConnection(*connection);
 
     return connection.release();
-}
-
-bool
-GtIntelliGraph::deleteNode(QtNodeId nodeId)
-{
-    if (auto* node = findNode(nodeId))
-    {
-        gtInfo().verbose()
-            << tr("Deleting node:") << node->objectName();
-        return gtDataModel->deleteFromModel(node);
-    }
-    return false;
-}
-
-bool
-GtIntelliGraph::deleteConnection(const QtConnectionId& connectionId)
-{
-    if (auto* connection = findConnection(connectionId))
-    {
-        gtInfo().verbose()
-            << tr("Deleting connection:") << connectionId;
-        return gtDataModel->deleteFromModel(connection);
-    }
-    return false;
 }
 
 void
@@ -679,11 +688,13 @@ GtIntelliGraph::appendNodeToModel(GtIntelliGraphNode& node)
                      .arg(node.modelName());
     }
 
+    emit m_graphModel->nodeCreated(id);
+
     // update node id if necessary
     if (node.id() != id) node.setId(id);
 
     // update node position
-    m_graphModel->setNodeData(id, QtNodes::NodeRole::Position, node.pos());
+    setNodePosition(id, node.pos());
 
     setupNode(node);
 

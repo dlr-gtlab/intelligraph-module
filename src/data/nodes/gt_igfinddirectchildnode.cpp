@@ -11,6 +11,7 @@
 #include "gt_intelligraphnodefactory.h"
 
 #include "gt_igobjectdata.h"
+#include "gt_lineedit.h"
 
 #include <QRegExpValidator>
 

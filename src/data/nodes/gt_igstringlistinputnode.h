@@ -10,13 +10,11 @@
 #define GT_IGSTRINGLISTINPUTNODE_H
 
 #include "gt_intelligraphnode.h"
-#include "gt_igvolatileptr.h"
 
 #include "gt_propertystructcontainer.h"
 
 #include <QTextEdit>
 
-class GtIgStringListData2;
 class GtIgStringListInputNode : public GtIntelliGraphNode
 {
     Q_OBJECT

@@ -8,7 +8,6 @@
 
 #include "gt_intelligraphconnection.h"
 
-#include "gt_igglobals.h"
 #include "gt_qtutilities.h"
 #include "gt_application.h"
 
@@ -16,10 +15,10 @@
 
 GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
     GtObject(parent),
-    m_inNodeId("inNodeId", tr("Ingoing Node Id"), tr("Ingoing Node Id")),
-    m_inPortIdx("inPortIdx", tr("Ingoing Port Idx"), tr("Ingoing Port Idx")),
-    m_outNodeId("outNodeId", tr("Outgoing Node Id"), tr("Outgoing Node Id")),
-    m_outPortIdx("outPortIdx", tr("Outgoing Port Idx"), tr("Outgoing Port Idx"))
+    m_inNodeId("inNodeId", tr("Starting Node Id"), tr("Starting Node Id")),
+    m_inPortIdx("inPortIdx", tr("Starting Port Idx"), tr("Starting Port Idx")),
+    m_outNodeId("outNodeId", tr("Recieving Node Id"), tr("Recieving Node Id")),
+    m_outPortIdx("outPortIdx", tr("Recieving Port Idx"), tr("Recieving Port Idx"))
 {
     static const QString cat = QStringLiteral("Node");
     registerProperty(m_inNodeId, cat);
@@ -36,6 +35,12 @@ GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
 
     setFlag(UserDeletable);
     if (!gtApp || !gtApp->devMode()) setFlag(UserHidden);
+}
+
+GtIntelliGraphConnection::QtConnectionId
+GtIntelliGraphConnection::toConnectionId() const
+{
+    return QtConnectionId{outNodeId(), outPortIdx(), inNodeId(), inPortIdx()};
 }
 
 bool

@@ -10,12 +10,9 @@
 #define GT_IGFINDDIRECTCHILDNODE_H
 
 #include "gt_intelligraphnode.h"
-#include "gt_igvolatileptr.h"
 
 #include "gt_stringproperty.h"
-#include "gt_lineedit.h"
 
-class GtIgObjectData2;
 class GtIgFindDirectChildNode : public GtIntelliGraphNode
 {
     Q_OBJECT

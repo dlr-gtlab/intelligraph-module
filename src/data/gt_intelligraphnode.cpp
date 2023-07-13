@@ -256,9 +256,9 @@ GtIntelliGraphNode::addInPort(PortData port, PortPolicy policy) noexcept(false)
 }
 
 GtIntelliGraphNode::PortId
-GtIntelliGraphNode::addOutPort(PortData port) noexcept(false)
+GtIntelliGraphNode::addOutPort(PortData port, PortPolicy policy) noexcept(false)
 {
-    return insertOutPort(std::move(port), -1);
+    return insertOutPort(std::move(port), -1, policy);
 }
 
 GtIntelliGraphNode::PortId
@@ -269,8 +269,9 @@ GtIntelliGraphNode::insertInPort(PortData port, int idx, PortPolicy policy) noex
 }
 
 GtIntelliGraphNode::PortId
-GtIntelliGraphNode::insertOutPort(PortData port, int idx) noexcept(false)
+GtIntelliGraphNode::insertOutPort(PortData port, int idx, PortPolicy policy) noexcept(false)
 {
+    port.evaluate = policy != PortPolicy::DoNotEvaluate;
     return insertPort(PortType::Out, std::move(port), idx);
 }
 
@@ -509,7 +510,7 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
 
     // update helper
     const auto updateOutData = [=](PortIndex idx, PortData const& port){
-
+        if (!port.evaluate) return;
         // invalidate out data
         if (!canEvaluate) return emit outDataInvalidated(idx);
 

@@ -68,7 +68,7 @@ public:
                 this, &GtIgAbstractGroupProvider::onEntryChanged);
     }
 
-    void insertPort(PortData data, int idx)
+    void insertPort(PortData data, int idx = -1)
     {
         auto& ports = this->ports(INVERSE_TYPE());
 
