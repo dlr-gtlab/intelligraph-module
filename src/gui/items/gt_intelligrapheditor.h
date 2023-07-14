@@ -12,7 +12,14 @@
 #include "gt_mdiitem.h"
 
 #include "gt_intelligraphnode.h"
+
 #include <QtNodes/Definitions>
+#include <QtNodes/DataFlowGraphModel>
+#include <QtNodes/DataFlowGraphicsScene>
+#include <QtNodes/GraphicsView>
+
+class QMenu;
+class GtIntelliGraph;
 
 /**
  * @generated 1.2.0
@@ -25,18 +32,24 @@ class GtIntelliGraphEditor : public GtMdiItem
 public:
 
     using QtNodeId       = QtNodes::NodeId;
-    using QtConnectionId = QtNodes::ConnectionId;
 
     Q_INVOKABLE GtIntelliGraphEditor();
-
-    ~GtIntelliGraphEditor() override;
+    ~GtIntelliGraphEditor();
 
     void setData(GtObject* obj) override;
 
 private:
 
-    struct Impl;
-    std::unique_ptr<Impl> pimpl;
+    QPointer<GtIntelliGraph> m_data = nullptr;
+
+    /// model
+    QPointer<QtNodes::DataFlowGraphModel> m_model = nullptr;
+    /// scene
+    QtNodes::DataFlowGraphicsScene* m_scene = nullptr;
+    /// view
+    QtNodes::GraphicsView* m_view = nullptr;
+
+    QMenu* m_sceneMenu = nullptr;
 
 private slots:
 
@@ -44,19 +57,17 @@ private slots:
 
     void saveToJson();
 
-    void onNodeCreated(QtNodeId nodeId);
-    void onNodeDeleted(QtNodeId nodeId);
-
-    void onConnectionCreated(QtConnectionId conId);
-    void onConnectionDeleted(QtConnectionId conId);
-
     void onNodePositionChanged(QtNodeId nodeId);
 
     void onNodeSelected(QtNodeId nodeId);
 
+    void onNodeContextMenu(QtNodeId nodeId, QPointF pos);
+
 private:
 
     void loadScene(QJsonObject const& scene);
+
+    void makeGroupNode(std::vector<QtNodeId> const& selectedNodeIds);
 };
 
 #endif // NDSNODEEDITOR_H

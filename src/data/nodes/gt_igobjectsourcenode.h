@@ -3,13 +3,8 @@
 
 #include "gt_intelligraphnode.h"
 
-#include "gt_igvolatileptr.h"
 #include "gt_igobjectlinkproperty.h"
 
-#include "gt_propertyobjectlinkeditor.h"
-
-class GtIgObjectData2;
-class GtIgStringListData2;
 class GtIgObjectSourceNode : public GtIntelliGraphNode
 {
     Q_OBJECT

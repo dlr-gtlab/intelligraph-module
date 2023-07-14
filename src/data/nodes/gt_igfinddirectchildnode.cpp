@@ -11,6 +11,7 @@
 #include "gt_intelligraphnodefactory.h"
 
 #include "gt_igobjectdata.h"
+#include "gt_lineedit.h"
 
 #include <QRegExpValidator>
 
@@ -36,13 +37,16 @@ GtIgFindDirectChildNode::GtIgFindDirectChildNode() :
         auto const updateProp = [this, w_ = w.get()](){
             m_childClassName = w_->text();
         };
+        auto const updateText = [this, w_ = w.get()](){
+            w_->setText(m_childClassName);
+        };
 
         connect(w.get(), &GtLineEdit::focusOut, this, updateProp);
         connect(w.get(), &GtLineEdit::clearFocusOut, this, updateProp);
-        connect(this, &GtIntelliGraphNode::outDataUpdated, w.get(),
-                [this, w_ = w.get()](){
-            w_->setText(m_childClassName);
-        });
+        connect(&m_childClassName, &GtAbstractProperty::changed, w.get(), updateText);
+
+        updateText();
+
         return w;
     });
 
@@ -55,7 +59,7 @@ GtIgFindDirectChildNode::eval(PortId outId)
 {
     if (m_out != outId) return {};
 
-    if (auto* parent = portData<GtIgObjectData*>(m_in))
+    if (auto* parent = nodeData<GtIgObjectData*>(m_in))
     {
         auto const children = parent->object()->findDirectChildren();
 

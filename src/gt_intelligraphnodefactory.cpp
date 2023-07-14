@@ -9,9 +9,11 @@
 #include "gt_intelligraphnodefactory.h"
 
 #include "gt_intelligraphnode.h"
+#include "models/gt_intelligraphobjectmodel.h"
+
 #include "gt_objectfactory.h"
 #include "gt_qtutilities.h"
-#include "models/gt_intelligraphobjectmodel.h"
+#include "gt_algorithms.h"
 
 #include <QtNodes/NodeDelegateModelRegistry>
 
@@ -22,6 +24,12 @@ GtIntelliGraphNodeFactory::instance()
 {
     static GtIntelliGraphNodeFactory self;
     return self;
+}
+
+QString
+GtIntelliGraphNodeFactory::nodeCategory(const QString& className) const noexcept
+{
+    return m_categories.value(className);
 }
 
 bool
@@ -79,15 +87,14 @@ GtIntelliGraphNodeFactory::makeRegistry() noexcept
 {
     auto registry = std::make_unique<QtNodes::NodeDelegateModelRegistry>();
 
-    for (auto const& name : knownClasses())
-    {
-        auto cat = m_categories.value(name);
-        if (cat.isEmpty()) cat = QStringLiteral("Unknown");
+    gt::for_each_key(m_knownClasses.begin(), m_knownClasses.end(),
+                     [&, this](auto const& name){
+        auto const& cat = m_categories.value(name);
 
         registry->registerModel<GtIntelliGraphObjectModel>([=](){
             return std::make_unique<GtIntelliGraphObjectModel>(name);
         }, cat);
-    }
+    });
 
     return registry;
 }

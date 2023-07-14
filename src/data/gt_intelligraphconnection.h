@@ -27,13 +27,13 @@ class GtIntelliGraphConnection : public GtObject
 public:
 
     Q_INVOKABLE GtIntelliGraphConnection(GtObject* parent = nullptr);
-
-    QtConnectionId toConnectionId() const
+    GtIntelliGraphConnection(QtConnectionId conId, GtObject* parent = nullptr) :
+        GtIntelliGraphConnection(parent)
     {
-        return QtConnectionId{
-            outNodeId(), outPortIdx(), inNodeId(), inPortIdx()
-        };
+        fromConnectionId(conId);
     }
+
+    QtConnectionId toConnectionId() const;
 
     bool fromConnectionId(QtConnectionId connection);
 
@@ -42,12 +42,16 @@ public:
     QJsonObject toJson() const;
 
     NodeId inNodeId() const { return NodeId{gt::ig::fromInt(m_inNodeId)}; }
+    void setInNodeId(NodeId nodeId) { m_inNodeId = nodeId; }
     
     PortIndex inPortIdx() const { return PortIndex{gt::ig::fromInt(m_inPortIdx)}; }
+    void setInPortIdx(PortIndex port) { m_inPortIdx = port; }
 
     NodeId outNodeId() const { return NodeId{gt::ig::fromInt(m_outNodeId)}; }
+    void setOutNodeId(NodeId nodeId) { m_outNodeId = nodeId; }
     
     PortIndex outPortIdx() const { return PortIndex{gt::ig::fromInt(m_outPortIdx)}; }
+    void setOutPortIdx(PortIndex port) { m_outPortIdx = port; }
 
     bool isValid() const;
 

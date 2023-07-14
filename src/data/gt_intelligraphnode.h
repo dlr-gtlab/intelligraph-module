@@ -25,8 +25,12 @@ namespace ig
 enum NodeFlag
 {
     NoFlag      = 0x0,
+    // Indicates node is resizeable
     Resizable   = 0x1,
+    // Indicates node caption should be hidden
     HideCaption = 0x2,
+    // Indicates node is unique (i.e. only one instance should exist)
+    Unique      = 0x4
 };
 
 using NodeFlags  = int;
@@ -68,7 +72,8 @@ public:
     enum PortPolicy
     {
         Required,
-        Optional
+        Optional,
+        DoNotEvaluate
     };
 
     /// port data struct
@@ -82,8 +87,7 @@ public:
         PortData(QString _typeId, QString _caption, bool _captionVisible = true) :
             typeId(std::move(_typeId)),
             caption(std::move(_caption)),
-            captionVisible(_captionVisible),
-            optional(true)
+            captionVisible(_captionVisible)
         {}
 
         // type id for port data (classname)
@@ -93,7 +97,9 @@ public:
         // whether port caption should be visible
         bool captionVisible;
         // whether the port is required for the node evaluation
-        bool optional;
+        bool optional = true;
+
+        bool evaluate = true;
 
         /**
          * @brief Returns the port id
@@ -111,6 +117,10 @@ public:
     ~GtIntelliGraphNode();
 
     /* node specifc methods */
+
+    void setActive(bool isActive = true);
+
+    bool isActive() const;
 
     /**
      * @brief Sets the node id. handle with care, as this may result in
@@ -213,7 +223,8 @@ public:
 
     /**
      * @brief Returns the embedded widget used in the intelli graph. Ownership
-     * may be transfered safely
+     * may be transfered safely. Note: Will instantiate the widget if it does
+     * not yet exists
      * @return Embedded widget
      */
     QWidget* embeddedWidget();
@@ -247,23 +258,18 @@ public:
 
     /**
      * @brief Serializes this node as a json object.
+     * @param clone Whether to clone the object data (i.e. use the same uuid).
+     * Only set to true if the object should be restored instead of copied.
      * @return Json object
      */
-    QJsonObject toJson() const;
+    QJsonObject toJson(bool clone = false) const;
 
     /**
      * @brief Will attempt to merge the json data.
      * @param internals Json object describing the internal node data. Note:
      * This is not the same as the object returned by "tojson".
      */
-    bool mergeJsonMemento(QJsonObject const& internals);
-
-    /**
-     * @brief Will write the memento data to the internal node data json object.
-     * Note: This is not the same as the object returned by "tojson".
-     * @param internals
-     */
-    void toJsonMemento(QJsonObject& internals) const;
+    bool mergeNodeData(QJsonObject const& internals);
 
 public slots:
 
@@ -289,7 +295,7 @@ signals:
     void evaluated(gt::ig::PortIndex idx = PortIndex{0});
 
     /**
-     * @brief Emitted if the output data has changed (may be invalid), jsut
+     * @brief Emitted if the output data has changed (may be invalid), just
      * after evaluating. Will be called automatically and should not be triggered
      * by the "user". Triggers the evaluation of all connected ports.
      * @param idx Output port index. May be mapped to an output port id.
@@ -297,7 +303,7 @@ signals:
     void outDataUpdated(gt::ig::PortIndex idx = PortIndex{0});
 
     /**
-     * @brief Emitted if the output data was invalidated, jsut after evaluating.
+     * @brief Emitted if the output data was invalidated, just after evaluating.
      * Will be called automatically and should not be triggered by the "user".
      * Triggers the invalidation of all connected ports
      * @param idx Output port index. May be mapped to an output port id.
@@ -305,11 +311,51 @@ signals:
     void outDataInvalidated(gt::ig::PortIndex idx = PortIndex{0});
 
     /**
-     * @brief Emitted if new input data was recieved, jsut before evaluating.
+     * @brief Emitted if new input data was recieved, just before evaluating.
      * Data may be invalid. Should not be triggered by the "user".
      * @param idx Input port index. May be mapped to an input port id.
      */
     void inputDataRecieved(gt::ig::PortIndex idx = PortIndex{0});
+
+    /**
+     * @brief Emitted if node specific data hast changed (cpation, number of
+     * ports etc.). May be invoked by the user to update the graphical node
+     * in case a port hast changed for example.
+     */
+    void nodeChanged();
+
+    /**
+     * @brief May be emitted if the port data changes (e.g. port caption)
+     */
+    void portChanged(PortId id);
+
+    /**
+     * @brief Will be called internally before deleting a point.
+     * @param type Port type (input or output)
+     * @param idx Affected index
+     */
+    void portAboutToBeDeleted(PortType type, PortIndex idx);
+
+    /**
+     * @brief Will be emiited just after a port was deleted
+     * @param type Port type (input or output)
+     * @param idx Old index
+     */
+    void portDeleted(PortType type, PortIndex idx);
+
+    /**
+     * @brief Will be called internally before inserting a point.
+     * @param type Port type (input or output)
+     * @param idx Affected index
+     */
+    void portAboutToBeInserted(PortType type, PortIndex idx);
+
+     /**
+     * @brief Will be emitted just after a port was inserted
+     * @param type Port type (input or output)
+     * @param idx New index
+     */
+    void portInserted(PortType type, PortIndex idx);
 
 protected:
 
@@ -358,7 +404,7 @@ protected:
      * @param port Port data to append
      * @return Port id
      */
-    PortId addOutPort(PortData port) noexcept(false);
+    PortId addOutPort(PortData port, PortPolicy policy = PortPolicy::Optional) noexcept(false);
 
     /**
      * @brief Inserts an input port at the given location
@@ -376,7 +422,7 @@ protected:
      * @param idx Where to insert the port
      * @return Port id
      */
-    PortId insertOutPort(PortData port, int idx) noexcept(false);
+    PortId insertOutPort(PortData port, int idx, PortPolicy policy = PortPolicy::Optional) noexcept(false);
 
     /**
      * @brief Removes the port specified by id
@@ -390,7 +436,8 @@ protected:
      * @param id Port id (output or input)
      * @return Port data (may be null)
      */
-    NodeData const& portData(PortId id) const;
+    [[deprecated("Use nodeData instead")]]
+    NodeData const& portData(PortId id) const { return nodeData(id); }
 
     /**
      * @brief Overload that casts the port data to the desired type.
@@ -398,9 +445,29 @@ protected:
      * @return Port data
      */
     template <typename T, typename U = std::remove_pointer_t<T>>
+    [[deprecated("Use nodeData<T*> instead")]]
     U const* portData(PortId id) const
     {
-        return qobject_cast<U const*>(portData(id).get());
+        return qobject_cast<U const*>(nodeData(id).get());
+    }
+
+    /**
+     * @brief Returns the node data of the specified port
+     * @param id Port id (output or input)
+     * @return Port data (may be null)
+     */
+    NodeData const& nodeData(PortId id) const;
+
+    /**
+     * @brief Overload that casts the node data of the specified port to the
+     * desired type.
+     * @param id Port id (output or input)
+     * @return Port data
+     */
+    template <typename T, typename U = std::remove_pointer_t<T>>
+    U const* nodeData(PortId id) const
+    {
+        return qobject_cast<U const*>(nodeData(id).get());
     }
 
 private:
@@ -417,7 +484,7 @@ private:
     /// internal use only
     std::vector<PortData>& ports_(PortType type) const noexcept(false);
     /// internal use only
-    std::vector<NodeData>& portData_(PortType type) const noexcept(false);
+    std::vector<NodeData>& nodeData_(PortType type) const noexcept(false);
 };
 
 inline gt::log::Stream&

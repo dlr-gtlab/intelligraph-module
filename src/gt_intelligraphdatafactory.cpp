@@ -10,7 +10,6 @@
 #include "gt_intelligraphdatafactory.h"
 #include "gt_ignodedata.h"
 
-#include "gt_utilities.h"
 #include "gt_qtutilities.h"
 #include "gt_logging.h"
 
@@ -59,16 +58,16 @@ GtIntelliGraphDataFactory::registerData(const QMetaObject& meta) noexcept
 }
 
 QString
-GtIntelliGraphDataFactory::typeName(const QString& className) const noexcept
+GtIntelliGraphDataFactory::typeName(const QString& typeId) const noexcept
 {
-    return m_typeNames.value(className);
+    return m_typeNames.value(typeId);
 }
 
 std::unique_ptr<GtIgNodeData>
-GtIntelliGraphDataFactory::newData(const QString& className) const noexcept
+GtIntelliGraphDataFactory::newData(const QString& typeId) const noexcept
 {
     std::unique_ptr<GtObject> obj{
-        const_cast<GtIntelliGraphDataFactory*>(this)->newObject(className)
+        const_cast<GtIntelliGraphDataFactory*>(this)->newObject(typeId)
     };
 
     return gt::unique_qobject_cast<GtIgNodeData>(std::move(obj));

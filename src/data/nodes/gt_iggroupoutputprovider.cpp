@@ -8,25 +8,37 @@
 
 #include "gt_iggroupoutputprovider.h"
 #include "gt_intelligraphnodefactory.h"
-#include "gt_intelligraphnodegroup.h"
+#include "gt_intelligraph.h"
 
 #include "gt_igobjectdata.h"
 
-GTIG_REGISTER_NODE(GtIgGroupOutputProvider, "Group")
+GTIG_REGISTER_NODE(GtIgGroupOutputProvider, "")
 
 GtIgGroupOutputProvider::GtIgGroupOutputProvider() :
-    GtIntelliGraphNode("Output Provider")
+    GtIgAbstractGroupProvider("Output Provider")
 {
-    setId(NodeId{std::numeric_limits<int>::max() - 1});
-    setPos({200, 0});
+    setPos({250, 0});
 
-    addInPort(gt::ig::typeId<GtIgObjectData>());
+    connect(this, &GtIntelliGraphNode::outDataUpdated,
+            this, [t = this](PortIndex idx){
+        if (auto* graph = t->findParent<GtIntelliGraph*>())
+        {
+            graph->outDataUpdated(idx);
+        }
+    });
+    connect(this, &GtIntelliGraphNode::outDataInvalidated,
+            this, [t = this](PortIndex idx){
+        if (auto* graph = t->findParent<GtIntelliGraph*>())
+        {
+            graph->outDataInvalidated(idx);
+        }
+    });
 }
 
 GtIntelliGraphNode::NodeData
 GtIgGroupOutputProvider::eval(PortId outId)
 {
-    auto* group = findParent<GtIntelliGraphNodeGroup*>();
+    auto* group = findParent<GtIntelliGraph*>();
     if (!group)
     {
         gtWarning().medium()
@@ -37,7 +49,7 @@ GtIgGroupOutputProvider::eval(PortId outId)
     for (auto const& p : this->ports(PortType::In))
     {
         PortIndex idx = portIndex(PortType::In, p.id());
-        if (!group->setOutData(idx, portData(p.id())))
+        if (!group->setOutData(idx, nodeData(p.id())))
         {
             gtWarning().medium()
                 << tr("Failed to forward output data to group node for idx '%1'")

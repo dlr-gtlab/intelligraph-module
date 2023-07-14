@@ -13,12 +13,14 @@ set(PUBLIC_HEADERS
     gt_intelligraphnodefactory.h
     gt_intelligraphdatafactory.h
     data/gt_intelligraphnode.h
+    data/node_data/gt_igbooldata.h
     data/node_data/gt_igdoubledata.h
     data/node_data/gt_ignodedata.h
     data/node_data/gt_igobjectdata.h
     data/node_data/gt_igstringlistdata.h
-    data/properties/gt_igobjectlinkproperty.h
     data/properties/gt_igcolorproperty.h
+    data/properties/gt_igobjectlinkproperty.h
+    data/properties/gt_igstringselectionproperty.h
 )
 
 add_library(GTlabIntelliGraph SHARED
@@ -27,17 +29,22 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_igpackage.h
     data/gt_intelligraph.h
     data/gt_intelligraphconnection.h
-    data/gt_intelligraphnodegroup.h
     data/gt_intelligraphcategory.h
+    data/nodes/gt_igabstractgroupprovider.h
+    data/nodes/gt_igconditionalnode.h
+    data/nodes/gt_igdoubletoboolnode.h
     data/nodes/gt_igfinddirectchildnode.h
     data/nodes/gt_iggroupinputprovider.h
     data/nodes/gt_iggroupoutputprovider.h
+    data/nodes/gt_ignumberdisplaynode.h
+    data/nodes/gt_ignumbersourcenode.h
     data/nodes/gt_igobjectmementonode.h
     data/nodes/gt_igobjectsourcenode.h
     data/nodes/gt_igstringlistinputnode.h
     gui/items/gt_intelligrapheditor.h
     gui/models/gt_intelligraphobjectmodel.h
     gui/property_items/gt_igobjectlinkpropertyitem.h
+    gui/property_items/gt_igstringselectionpropertyitem.h
     gui/ui/gt_intelligraphobjectui.h
     gui/ui/gt_igprojectui.h
 
@@ -48,23 +55,29 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_intelligraph.cpp
     data/gt_intelligraphconnection.cpp
     data/gt_intelligraphnode.cpp
-    data/gt_intelligraphnodegroup.cpp
     data/gt_intelligraphcategory.cpp
-    data/nodes/gt_iggroupinputprovider.cpp
+    data/nodes/gt_igconditionalnode.cpp
+    data/nodes/gt_igdoubletoboolnode.cpp
     data/nodes/gt_igfinddirectchildnode.cpp
+    data/nodes/gt_iggroupinputprovider.cpp
     data/nodes/gt_iggroupoutputprovider.cpp
+    data/nodes/gt_ignumberdisplaynode.cpp
+    data/nodes/gt_ignumbersourcenode.cpp
     data/nodes/gt_igobjectmementonode.cpp
     data/nodes/gt_igobjectsourcenode.cpp
     data/nodes/gt_igstringlistinputnode.cpp
+    data/node_data/gt_igbooldata.cpp
     data/node_data/gt_igdoubledata.cpp
     data/node_data/gt_ignodedata.cpp
     data/node_data/gt_igobjectdata.cpp
     data/node_data/gt_igstringlistdata.cpp
-    data/properties/gt_igobjectlinkproperty.cpp
     data/properties/gt_igcolorproperty.cpp
+    data/properties/gt_igobjectlinkproperty.cpp
+    data/properties/gt_igstringselectionproperty.cpp
     gui/items/gt_intelligrapheditor.cpp
     gui/models/gt_intelligraphobjectmodel.cpp
     gui/property_items/gt_igobjectlinkpropertyitem.cpp
+    gui/property_items/gt_igstringselectionpropertyitem.cpp
     gui/ui/gt_intelligraphobjectui.cpp
     gui/ui/gt_igprojectui.cpp
 )

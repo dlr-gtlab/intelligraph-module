@@ -8,19 +8,13 @@
 
 #include "gt_iggroupinputprovider.h"
 #include "gt_intelligraphnodefactory.h"
-#include "gt_intelligraphnodegroup.h"
 
-#include "gt_igobjectdata.h"
-
-GTIG_REGISTER_NODE(GtIgGroupInputProvider, "Group")
+GTIG_REGISTER_NODE(GtIgGroupInputProvider, "")
 
 GtIgGroupInputProvider::GtIgGroupInputProvider() :
-    GtIntelliGraphNode("Input Provider")
+    GtIgAbstractGroupProvider("Input Provider")
 {
-    setId(NodeId{std::numeric_limits<int>::max() - 2});
-    setPos({-200, 0});
-
-    addOutPort(gt::ig::typeId<GtIgObjectData>());
+    setPos({-250, 0});
 }
 
 GtIntelliGraphNode::NodeData
@@ -30,7 +24,7 @@ GtIgGroupInputProvider::eval(PortId outId)
 
     if (idx == gt::ig::invalid<PortIndex>()) return {};
 
-    auto* group = findParent<GtIntelliGraphNodeGroup*>();
+    auto* group = findParent<GtIntelliGraph*>();
     if (!group)
     {
         gtWarning().medium()
@@ -38,5 +32,9 @@ GtIgGroupInputProvider::eval(PortId outId)
         return {};
     }
 
-    return group->portData(group->portId(PortType::In, idx));
+    auto tmp = group->nodeData(group->portId(PortType::In, idx));
+
+//    gtDebug() << "HERE" << tmp << ":" << idx << "->" << group->portId(PortType::In, idx);
+
+    return tmp;
 }

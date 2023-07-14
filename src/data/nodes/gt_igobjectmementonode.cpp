@@ -22,17 +22,20 @@ GtIgObjectMementoNode::GtIgObjectMementoNode() :
         w->setMinimumSize(300, 300);
         w->setReadOnly(true);
         new GtXmlHighlighter(w->document());
-        
-        connect(this, &GtIntelliGraphNode::inputDataRecieved, w.get(), [=, w_ = w.get()](){
+
+        auto const update = [=, w_ = w.get()](){
             w_->clear();
-            if (auto* data = portData<GtIgObjectData*>(inPort))
+            if (auto* data = nodeData<GtIgObjectData*>(inPort))
             {
                 if (auto* obj = data->object())
                 {
                     w_->setPlainText(obj->toMemento().toByteArray());
                 }
             }
-        });
+        };
+        
+        connect(this, &GtIntelliGraphNode::inputDataRecieved, w.get(), update);
+        update();
 
         return w;
     });

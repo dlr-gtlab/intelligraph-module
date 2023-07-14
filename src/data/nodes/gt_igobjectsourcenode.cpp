@@ -7,6 +7,7 @@
 
 #include "gt_igobjectdata.h"
 #include "gt_igstringlistdata.h"
+#include "gt_propertyobjectlinkeditor.h"
 
 GTIG_REGISTER_NODE(GtIgObjectSourceNode, "Object");
 
@@ -33,6 +34,8 @@ GtIgObjectSourceNode::GtIgObjectSourceNode() :
         connect(this, &GtIntelliGraphNode::outDataUpdated, w.get(), update);
         connect(this, &GtIntelliGraphNode::outDataInvalidated, w.get(), update);
 
+        update();
+
         return w;
     });
 
@@ -51,7 +54,7 @@ GtIgObjectSourceNode::eval(PortId outId)
 
     m_object.revert();
 
-    auto* filterData = portData<GtIgStringListData*>(m_in);
+    auto* filterData = nodeData<GtIgStringListData*>(m_in);
     if (filterData)
     {
         m_object.setAllowedClasses(filterData->value());
