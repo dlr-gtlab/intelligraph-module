@@ -21,6 +21,7 @@ set(PUBLIC_HEADERS
     data/properties/gt_igcolorproperty.h
     data/properties/gt_igobjectlinkproperty.h
     data/properties/gt_igstringselectionproperty.h
+    gui/ui/gt_intelligraphnodeui.h
 )
 
 add_library(GTlabIntelliGraph SHARED
@@ -45,8 +46,7 @@ add_library(GTlabIntelliGraph SHARED
     gui/models/gt_intelligraphobjectmodel.h
     gui/property_items/gt_igobjectlinkpropertyitem.h
     gui/property_items/gt_igstringselectionpropertyitem.h
-    gui/ui/gt_intelligraphobjectui.h
-    gui/ui/gt_igprojectui.h
+    gui/ui/gt_intelligraphpackageui.h
 
     gt_intelligraphmodule.cpp
     gt_intelligraphnodefactory.cpp
@@ -78,8 +78,8 @@ add_library(GTlabIntelliGraph SHARED
     gui/models/gt_intelligraphobjectmodel.cpp
     gui/property_items/gt_igobjectlinkpropertyitem.cpp
     gui/property_items/gt_igstringselectionpropertyitem.cpp
-    gui/ui/gt_intelligraphobjectui.cpp
-    gui/ui/gt_igprojectui.cpp
+    gui/ui/gt_intelligraphnodeui.cpp
+    gui/ui/gt_intelligraphpackageui.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

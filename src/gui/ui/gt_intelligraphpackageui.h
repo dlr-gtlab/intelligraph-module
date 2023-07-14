@@ -6,18 +6,18 @@
  *  E-Mail: marius.broecker@dlr.de
  */
 
-#ifndef GTINTELLIGRAPHOBJECTUI_H
-#define GTINTELLIGRAPHOBJECTUI_H
+#ifndef GT_INTELLIGRAPHPACKAGEUI_H
+#define GT_INTELLIGRAPHPACKAGEUI_H
 
 #include "gt_objectui.h"
 
-class GtIntelliGraphObjectUI : public GtObjectUI
+class GtIntelliGraphPackageUI : public GtObjectUI
 {
     Q_OBJECT
 
 public:
-
-    Q_INVOKABLE GtIntelliGraphObjectUI();
+    
+    Q_INVOKABLE GtIntelliGraphPackageUI();
 
     QIcon icon(GtObject* obj) const override;
 
@@ -25,19 +25,9 @@ public:
 
     static void addNodeGraph(GtObject* obj);
 
-    static void addNodeGroup(GtObject* obj);
-
-    static void clearNodeGraph(GtObject* obj);
-
-    static void loadNodeGraph(GtObject* obj);
-
     static bool isCategoryObject(GtObject* obj);
 
     static bool isPackageObject(GtObject* obj);
-
-    static bool isGraphObject(GtObject* obj);
-
-    QStringList openWith(GtObject* obj) override;
 };
 
-#endif // GTINTELLIGRAPHOBJECTUI_H
+#endif // GT_INTELLIGRAPHPACKAGEUI_H

@@ -13,20 +13,16 @@
 #include "gt_intelligraphmodule.h"
 
 #include "gt_igpackage.h"
-#include "gt_intelligraph.h"
+#include "gt_intelligraphnodefactory.h"
 #include "gt_intelligraphcategory.h"
 #include "gt_intelligraphconnection.h"
-#include "gt_iggroupinputprovider.h"
-#include "gt_iggroupoutputprovider.h"
-#include "gt_igprojectui.h"
-#include "gt_intelligraphobjectui.h"
+#include "gt_intelligraphpackageui.h"
+#include "gt_intelligraphnodeui.h"
 #include "gt_intelligrapheditor.h"
 #include "gt_igobjectlinkproperty.h"
 #include "gt_igobjectlinkpropertyitem.h"
 #include "gt_igstringselectionproperty.h"
 #include "gt_igstringselectionpropertyitem.h"
-
-#include "gt_project.h"
 
 GtVersionNumber
 GtIntelliGraphModule::version()
@@ -121,20 +117,23 @@ GtIntelliGraphModule::dockWidgets()
 QMap<const char*, QMetaObject>
 GtIntelliGraphModule::uiItems()
 {
+    static QVector<QByteArray> buffer;
+
     QMap<const char*, QMetaObject> map;
 
-    map.insert(GT_CLASSNAME(GtProject),
-               GT_METADATA(GtIgProjectUI));
     map.insert(GT_CLASSNAME(GtIgPackage),
-               GT_METADATA(GtIntelliGraphObjectUI));
-    map.insert(GT_CLASSNAME(GtIntelliGraph),
-               GT_METADATA(GtIntelliGraphObjectUI));
+               GT_METADATA(GtIntelliGraphPackageUI));
     map.insert(GT_CLASSNAME(GtIntelliGraphCategory),
-               GT_METADATA(GtIntelliGraphObjectUI));
-    map.insert(GT_CLASSNAME(GtIgGroupInputProvider),
-               GT_METADATA(GtIntelliGraphObjectUI));
-    map.insert(GT_CLASSNAME(GtIgGroupOutputProvider),
-               GT_METADATA(GtIntelliGraphObjectUI));
+               GT_METADATA(GtIntelliGraphPackageUI));
+
+    QStringList const& registeredNodes = GtIntelliGraphNodeFactory::instance().registeredNodes();
+    buffer.reserve(registeredNodes.size());
+
+    for (QString const& node : registeredNodes)
+    {
+        buffer.push_back(node.toLatin1());
+        map.insert(buffer.constLast(), GT_METADATA(GtIntelliGraphNodeUI));
+    }
 
     return map;
 }
