@@ -1,9 +1,9 @@
 /* GTlab - Gas Turbine laboratory
  * copyright 2009-2023 by DLR
- * 
+ *
  * Created on: 16.03.2023
  * Author: S. Reitenbach
- * Email: 
+ * Email:
  */
 
 #ifndef NDSNODEEDITOR_H
@@ -60,6 +60,8 @@ private slots:
     void onNodePositionChanged(QtNodeId nodeId);
 
     void onNodeSelected(QtNodeId nodeId);
+
+    void onNodeDoubleClicked(QtNodeId nodeId);
 
     void onNodeContextMenu(QtNodeId nodeId, QPointF pos);
 

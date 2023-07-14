@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Caption may be renamed using the properties dock widget
-- Added group nodes, that allows for nested intelli graphs. Group nodes can be created using the context menu of a node selection - #5
+- Added group nodes, that allows for nested intelli graphs. Group nodes can be created using the context menu of a node selection and may be opened using a double click. - #5
 - Nodes can be unique effectively existing only once within an intelli graph. Unique nodes will be highlighted - #18
 
 ### Changed

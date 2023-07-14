@@ -23,6 +23,7 @@
 #include "gt_customactionmenu.h"
 #include "gt_objectmemento.h"
 #include "gt_qtutilities.h"
+#include "gt_guiutilities.h"
 #include "gt_inputdialog.h"
 #include "gt_objectfactory.h"
 #include "gt_command.h"
@@ -225,6 +226,8 @@ GtIntelliGraphEditor::setData(GtObject* obj)
 
     connect(m_scene, &QtNodes::DataFlowGraphicsScene::nodeSelected,
             this, &GtIntelliGraphEditor::onNodeSelected);
+    connect(m_scene, &QtNodes::DataFlowGraphicsScene::nodeDoubleClicked,
+            this, &GtIntelliGraphEditor::onNodeDoubleClicked);
     connect(m_scene, &QtNodes::DataFlowGraphicsScene::nodeMoved,
             this, &GtIntelliGraphEditor::onNodePositionChanged);
     connect(m_scene, &QtNodes::DataFlowGraphicsScene::nodeContextMenu,
@@ -240,7 +243,7 @@ GtIntelliGraphEditor::setData(GtObject* obj)
 void
 GtIntelliGraphEditor::loadScene(const QJsonObject& scene)
 {
-    if (!m_model || !m_scene) return;
+    assert(m_model); assert(m_scene);
 
     gtDebug().verbose()
         << "Loading JSON scene:"
@@ -260,7 +263,7 @@ GtIntelliGraphEditor::loadScene(const QJsonObject& scene)
 void
 GtIntelliGraphEditor::loadFromJson()
 {
-    if (!m_model || !m_scene) return;
+    assert(m_model); assert(m_scene);
 
     QString filePath = GtFileDialog::getOpenFileName(nullptr, tr("Open Intelli Flow"));
 
@@ -282,7 +285,7 @@ GtIntelliGraphEditor::loadFromJson()
 void
 GtIntelliGraphEditor::saveToJson()
 {
-    if (!m_model) return;
+    assert(m_model);
 
     QString filePath = GtFileDialog::getSaveFileName(nullptr, tr("Save Intelli Flow"));
 
@@ -303,7 +306,7 @@ GtIntelliGraphEditor::saveToJson()
 void
 GtIntelliGraphEditor::onNodePositionChanged(QtNodeId nodeId)
 {
-    if (!m_data) return;
+    assert(m_data);
 
     m_data->updateNodePosition(nodeId);
 }
@@ -311,7 +314,7 @@ GtIntelliGraphEditor::onNodePositionChanged(QtNodeId nodeId)
 void
 GtIntelliGraphEditor::onNodeSelected(QtNodeId nodeId)
 {
-    if (!m_data) return;
+    assert(m_data);
 
     if (auto* node = m_data->findNode(nodeId))
     {
@@ -320,9 +323,20 @@ GtIntelliGraphEditor::onNodeSelected(QtNodeId nodeId)
 }
 
 void
+GtIntelliGraphEditor::onNodeDoubleClicked(QtNodeId nodeId)
+{
+    assert(m_data);
+
+    auto* node = m_data->findNode(nodeId);
+    if (!node) return;
+
+    gt::gui::handleObjectDoubleClick(*node);
+}
+
+void
 GtIntelliGraphEditor::onNodeContextMenu(QtNodeId nodeId, QPointF pos)
 {
-    if (!m_scene || !m_model) return;
+    assert(m_data); assert(m_model); assert(m_scene);
 
     auto selectedNodeIds = m_scene->selectedNodes();
     if (selectedNodeIds.empty()) return;
@@ -337,7 +351,7 @@ GtIntelliGraphEditor::onNodeContextMenu(QtNodeId nodeId, QPointF pos)
     QMenu menu;
 
     QAction* act = menu.addAction(tr("Group selected Nodes"));
-    act->setIcon(gt::gui::icon::select());    
+    act->setIcon(gt::gui::icon::select());
     act->setEnabled(allDeletable);
 
     auto res = menu.exec(QCursor::pos());
