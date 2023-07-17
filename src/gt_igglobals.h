@@ -10,7 +10,6 @@
 #define GT_IGGLOBALS_H
 
 #include "gt_intproperty.h"
-#include "gt_typetraits.h"
 
 #include <QPointF>
 

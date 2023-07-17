@@ -131,7 +131,7 @@ public:
      * @brief Returns static meta objects of property item classes.
      * @return list of meta objects of property item classes.
      */
-    QMap<const char*, QMetaObject> propertyItems() override;;
+    QMap<const char*, QMetaObject> propertyItems() override;
 };
 
 #endif // NDS_NODESMODULE_H

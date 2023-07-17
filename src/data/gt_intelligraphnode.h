@@ -175,13 +175,15 @@ public:
      * @brief Setter for the caption. Will be saved persistently
      * @param caption New caption
      */
-    void setCaption(QString caption);
+    void setCaption(QString const& caption);
 
     /**
      * @brief Caption of the node
      * @return Caption
      */
-    QString const& caption() const;
+    QString caption() const;
+
+    QString baseObjectName() const;
 
     /**
      * @brief Model name of the node
@@ -474,6 +476,9 @@ private:
 
     struct Impl;
     std::unique_ptr<Impl> pimpl;
+
+    // hide object name setter
+    using GtObject::setObjectName;
 
     /// initialzes the widgets
     void initWidget();

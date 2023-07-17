@@ -42,7 +42,7 @@ public:
 
     bool registerData(QMetaObject const& meta) noexcept;
 
-    auto registeredTypeIds() const { return knownClasses(); };
+    QStringList registeredTypeIds() const { return knownClasses(); };
 
     QString typeName(QString const& typeId) const noexcept;
 

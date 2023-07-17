@@ -40,11 +40,6 @@ struct GtIntelliGraphNode::Impl
     GtDoubleProperty posY{"posY", tr("y-Pos"), tr("y-Position")};
     /// caption string
     QString modelName;
-    /// model name string
-    GtStringProperty caption{
-        "caption", tr("Caption"), tr("Node Capton"), modelName,
-        new QRegExpValidator{gt::re::woUmlauts()}
-    };
     /// ports
     std::vector<PortData> inPorts, outPorts{};
     /// data
@@ -99,19 +94,18 @@ GtIntelliGraphNode::GtIntelliGraphNode(QString const& modelName, GtObject* paren
     registerProperty(pimpl->id, cat);
     registerProperty(pimpl->posX, cat);
     registerProperty(pimpl->posY, cat);
-    registerProperty(pimpl->caption, cat);
 
     pimpl->id.setReadOnly(true);
     pimpl->posX.setReadOnly(true);
     pimpl->posY.setReadOnly(true);
 
-    updateObjectName();
+    setCaption(modelName);
 
     connect(this, &GtIntelliGraphNode::portInserted,
             this, &GtIntelliGraphNode::nodeChanged);
     connect(this, &GtIntelliGraphNode::portDeleted,
             this, &GtIntelliGraphNode::nodeChanged);
-    connect(&pimpl->caption, &GtAbstractProperty::changed,
+    connect(this, &QObject::objectNameChanged,
             this, &GtIntelliGraphNode::nodeChanged);
     connect(this, &GtIntelliGraphNode::portChanged,
             this, &GtIntelliGraphNode::nodeChanged);
@@ -173,7 +167,7 @@ GtIntelliGraphNode::isValid(const QString& modelName)
 void
 GtIntelliGraphNode::updateObjectName()
 {
-    gt::setUniqueName(*this, pimpl->caption);
+    gt::setUniqueName(*this, baseObjectName());
 }
 
 void
@@ -188,17 +182,26 @@ GtIntelliGraphNode::NodeFlags GtIntelliGraphNode::nodeFlags() const
 }
 
 void
-GtIntelliGraphNode::setCaption(QString caption)
+GtIntelliGraphNode::setCaption(QString const& caption)
 {
-    pimpl->caption = std::move(caption);
-    emit pimpl->caption.changed();
-    updateObjectName();
+    gt::setUniqueName(*this, caption);
 }
 
-QString const&
+QString
 GtIntelliGraphNode::caption() const
 {
-    return pimpl->caption.get();
+    return objectName();
+}
+
+QString
+GtIntelliGraphNode::baseObjectName() const
+{
+    static QRegularExpression const regExp(QStringLiteral(R"((.+)(\[\d+\]))"));
+    constexpr int groupNo = 1;
+
+    auto const& name = objectName();
+    auto const& match = regExp.match(name);
+    return (match.capturedLength(groupNo) > 0) ? match.captured(groupNo) : name;
 }
 
 QString const&
