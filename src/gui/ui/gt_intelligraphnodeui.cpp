@@ -153,3 +153,11 @@ GtIntelliGraphNodeUI::openWith(GtObject* obj)
     return list;
 }
 
+GtIgPortUIAction&
+GtIntelliGraphNodeUI::addPortAction(const QString& actionText,
+                                    PortActionFunction actionMethod)
+{
+    m_portActions.append(GtIgPortUIAction(actionText, std::move(actionMethod)));
+    return m_portActions.back();
+}
+

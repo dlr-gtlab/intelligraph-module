@@ -24,6 +24,10 @@
 #include "gt_igstringselectionproperty.h"
 #include "gt_igstringselectionpropertyitem.h"
 
+#include "gt_iggroupinputprovider.h"
+#include "gt_iggroupoutputprovider.h"
+#include "gt_iggroupproviderui.h"
+
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
@@ -125,6 +129,11 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(GtIntelliGraphPackageUI));
     map.insert(GT_CLASSNAME(GtIntelliGraphCategory),
                GT_METADATA(GtIntelliGraphPackageUI));
+
+    map.insert(GT_CLASSNAME(GtIgGroupInputProvider),
+               GT_METADATA(GtIgGroupProviderUI));
+    map.insert(GT_CLASSNAME(GtIgGroupOutputProvider),
+               GT_METADATA(GtIgGroupProviderUI));
 
     QStringList const& registeredNodes = GtIntelliGraphNodeFactory::instance().registeredNodes();
     buffer.reserve(registeredNodes.size());

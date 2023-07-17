@@ -9,6 +9,7 @@
 
 #include "gt_intelligrapheditor.h"
 
+#include "gt_intelligraphnodeui.h"
 #include "gt_intelligraphconnection.h"
 #include "gt_intelligraphdatafactory.h"
 #include "gt_iggroupinputprovider.h"
@@ -339,13 +340,63 @@ GtIntelliGraphEditor::onNodeDoubleClicked(QtNodeId nodeId)
 void
 GtIntelliGraphEditor::onPortContextMenu(QtNodeId nodeId, QtPortType type, QtPortIndex idx, QPointF pos)
 {
+    using PortType  = gt::ig::PortType;
+    using PortIndex = gt::ig::PortIndex;
+
     assert(m_data); assert(m_model);
+
+    auto* node = m_data->findNode(nodeId);
+    if (!node) return;
 
     // create menu
     QMenu menu;
 
-    auto conIds = m_model->allConnectionIds(nodeId);
+    QList<GtObjectUI*> const& uis = gtApp->objectUI(node);
+    QVector<GtIntelliGraphNodeUI*> nodeUis;
+    nodeUis.reserve(uis.size());
+    for (auto* ui : uis)
+    {
+        if (auto* nodeUi = qobject_cast<GtIntelliGraphNodeUI*>(ui))
+        {
+            nodeUis.push_back(nodeUi);
+        }
+    }
 
+    // add custom action
+    QHash<QAction*, typename GtIgPortUIAction::ActionMethod> actions;
+
+    for (auto* nodeUi : nodeUis)
+    {
+        for (auto const& actionData : nodeUi->portActions())
+        {
+            if (actionData.empty())
+            {
+                menu.addSeparator();
+                continue;
+            }
+
+            if (actionData.visibilityMethod() &&
+                !actionData.visibilityMethod()(node, static_cast<PortType>(type), PortIndex::fromValue(idx)))
+            {
+                continue;
+            }
+
+            auto* action = menu.addAction(actionData.text());
+            action->setIcon(actionData.icon());
+
+            if (actionData.verificationMethod() &&
+                !actionData.verificationMethod()(node, static_cast<PortType>(type), PortIndex::fromValue(idx)))
+            {
+                action->setEnabled(false);
+            }
+
+            actions.insert(action, actionData.method());
+        }
+    }
+
+    menu.addSeparator();
+
+    auto const& conIds = m_model->allConnectionIds(nodeId);
     QList<GtObject*> connections;
     connections.reserve(conIds.size());
 
@@ -357,15 +408,22 @@ GtIntelliGraphEditor::onPortContextMenu(QtNodeId nodeId, QtPortType type, QtPort
         }
     }
 
-    QAction* deleteAct = menu.addAction(tr("Remove connections"));
+    QAction* deleteAct = menu.addAction(tr("Remove all connections"));
     deleteAct->setEnabled(!connections.empty());
     deleteAct->setIcon(gt::gui::icon::chainOff());
 
-    QAction* res = menu.exec(QCursor::pos());
+    QAction* triggered = menu.exec(QCursor::pos());
 
-    if (res == deleteAct)
+    if (triggered == deleteAct)
     {
         gtDataModel->deleteFromModel(connections);
+        return;
+    }
+
+    // call custom action
+    if (auto action = actions.value(triggered))
+    {
+        action(node, static_cast<PortType>(type), PortIndex::fromValue(idx));
     }
 }
 
@@ -415,13 +473,13 @@ GtIntelliGraphEditor::onNodeContextMenu(QtNodeId nodeId, QPointF pos)
         deleteAct->setVisible(false);
     }
 
-    QAction* res = menu.exec(QCursor::pos());
+    QAction* triggered = menu.exec(QCursor::pos());
 
-    if (res == groupAct)
+    if (triggered == groupAct)
     {
         return makeGroupNode(selectedNodeIds);
     }
-    if (res == deleteAct)
+    if (triggered == deleteAct)
     {
         return deleteNodes(selectedNodeIds);
     }
