@@ -118,8 +118,18 @@ public:
 
     /* node specifc methods */
 
+    /**
+     * @brief Sets the node active or disables it. Only an active node can be
+     * evaluated. A node is deactivated by default to evaluate only if necessary
+     * @param isActive Whether the node should be (de-)activated
+     */
     void setActive(bool isActive = true);
 
+    /**
+     * @brief Returns whether the node is active. Only an active node can be
+     * evaluated.
+     * @return Is active
+     */
     bool isActive() const;
 
     /**
@@ -183,6 +193,16 @@ public:
      */
     QString caption() const;
 
+    /**
+     * @brief Returns the object name, that does not contain any symbols or
+     * enumerations to make it unique.
+     *
+     * Example:
+     * #1 "My Fancy Node" -> "My Fancy Node"
+     * #2 "My Fancy Node[2]" -> "My Fancy Node"
+     *
+     * @return Base object name
+     */
     QString baseObjectName() const;
 
     /**
@@ -290,7 +310,7 @@ public slots:
 signals:
 
     /**
-     * @brief Emitted if the node has evaluated and the output data have changed.
+     * @brief Emitted if the node has evaluated and the output data has changed.
      * Will be called automatically and should not be triggered by the "user".
      * @param idx Output port index. May be mapped to an output port id.
      */
@@ -321,7 +341,7 @@ signals:
 
     /**
      * @brief Emitted if node specific data hast changed (cpation, number of
-     * ports etc.). May be invoked by the user to update the graphical node
+     * ports etc.). May be invoked by the "user" to update the graphical node
      * in case a port hast changed for example.
      */
     void nodeChanged();
@@ -388,7 +408,7 @@ protected:
     void registerWidgetFactory(WidgetFactory factory);
 
     /**
-     * @brief Setts a node flag
+     * @brief Sets a node flag
      * @param flag Flag to set
      * @param enable Whether to enable or disable the flag
      */
@@ -471,6 +491,8 @@ protected:
     {
         return qobject_cast<U const*>(nodeData(id).get());
     }
+
+    void onObjectDataMerged() override { gtDebug() << __FUNCTION__ << objectName(); }
 
 private:
 

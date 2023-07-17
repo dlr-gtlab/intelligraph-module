@@ -9,19 +9,21 @@
 #ifndef GT_INTELLIGRAPH_H
 #define GT_INTELLIGRAPH_H
 
-#include <QtNodes/Definitions>
 
 #include "gt_intelligraphnode.h"
+#include "gt_igvolatileptr.h"
+
+#include <QtNodes/Definitions>
 
 #include <QPointer>
 
 namespace QtNodes { class DataFlowGraphModel; }
 
 class QJsonObject;
-
 class GtIgGroupInputProvider;
 class GtIgGroupOutputProvider;
 class GtIntelliGraphConnection;
+
 class GtIntelliGraph : public GtIntelliGraphNode
 {
     Q_OBJECT
@@ -33,6 +35,16 @@ class GtIntelliGraph : public GtIntelliGraphNode
     friend class GtIgAbstractGroupProvider;
 
 public:
+
+    enum GroupModelPolicy
+    {
+        /// Model is just a dummy and may be closed as soon as its
+        /// parent model is closed
+        DummyModel = 0,
+        /// Model is active and should be kept alive if its parent model
+        /// is closed (default)
+        ActiveModel = 1
+    };
 
     using DataFlowGraphModel = QtNodes::DataFlowGraphModel;
 
@@ -125,35 +137,30 @@ public:
      */
     bool deleteConnection(QtConnectionId const& connectionId);
 
-    /**
-     * @brief Updates the node position of the node matgched by the node id.
-     * Returns true on success. Make sure to set the active graph model
-     * beforehand.
-     * @param nodeId Node to update
-     * @return True if successful else false
-     */
-    bool updateNodePosition(QtNodeId nodeId);
-
     void setNodePosition(QtNodeId nodeId, QPointF pos);
 
     /**
      * @brief Creates a graph model if it does not exists already.
      * @param model Model
+     * @param policy Inidctaes whether the instance should be consider an active
+     * or a dummy model
+     * @return Graph model
      */
-    DataFlowGraphModel* makeGraphModel();
-
-    /**
-     * @brief Returns the active graph model
-     * @return
-     */
-    DataFlowGraphModel* activeGraphModel();
-    DataFlowGraphModel const* activeGraphModel() const;
+    DataFlowGraphModel* makeGraphModel(GroupModelPolicy policy = ActiveModel);
 
     /**
      * @brief Clears the active graph model. Must not be called explicitly as
      * the model will be cleared automatically once its deleted.
+     * @param force Force to close model regardless of model policy
      */
-    void clearGraphModel();
+    void clearGraphModel(bool force = true);
+
+    /**
+     * @brief Returns the active graph model
+     * @return Graph model
+     */
+    DataFlowGraphModel* activeGraphModel();
+    DataFlowGraphModel const* activeGraphModel() const;
 
     /**
      * @brief Attemps to restore the intelli graph using the json data
@@ -179,8 +186,10 @@ protected:
 
 private:
 
+    GroupModelPolicy m_policy = DummyModel;
+
     /// pointer to active graph model (i.e. mdi item)
-    std::unique_ptr<DataFlowGraphModel> m_graphModel;
+    gt::ig::volatile_ptr<DataFlowGraphModel> m_graphModel;
 
     std::vector<NodeData> m_outData;
 

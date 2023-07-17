@@ -135,8 +135,11 @@ GtIntelliGraphModule::uiItems()
     map.insert(GT_CLASSNAME(GtIgGroupOutputProvider),
                GT_METADATA(GtIgGroupProviderUI));
 
-    QStringList const& registeredNodes = GtIntelliGraphNodeFactory::instance().registeredNodes();
+    QStringList registeredNodes = GtIntelliGraphNodeFactory::instance().registeredNodes();
     buffer.reserve(registeredNodes.size());
+
+    registeredNodes.removeOne(GT_CLASSNAME(GtIgGroupInputProvider));
+    registeredNodes.removeOne(GT_CLASSNAME(GtIgGroupOutputProvider));
 
     for (QString const& node : registeredNodes)
     {

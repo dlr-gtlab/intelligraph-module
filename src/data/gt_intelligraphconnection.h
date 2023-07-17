@@ -55,6 +55,10 @@ public:
 
     bool isValid() const;
 
+protected:
+
+    void onObjectDataMerged() override { gtDebug() << __FUNCTION__ << objectName(); }
+
 private:
 
     /// node id IN (should be unsigned)

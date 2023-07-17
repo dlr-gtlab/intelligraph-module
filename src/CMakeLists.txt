@@ -47,6 +47,8 @@ add_library(GTlabIntelliGraph SHARED
     gui/models/gt_intelligraphobjectmodel.h
     gui/property_items/gt_igobjectlinkpropertyitem.h
     gui/property_items/gt_igstringselectionpropertyitem.h
+    gui/gt_intelligraphscene.h
+    gui/gt_intelligraphview.h
     gui/ui/gt_intelligraphpackageui.h
     gui/ui/gt_iggroupproviderui.h
 
@@ -76,6 +78,8 @@ add_library(GTlabIntelliGraph SHARED
     data/properties/gt_igcolorproperty.cpp
     data/properties/gt_igobjectlinkproperty.cpp
     data/properties/gt_igstringselectionproperty.cpp
+    gui/gt_intelligraphscene.cpp
+    gui/gt_intelligraphview.cpp
     gui/items/gt_intelligrapheditor.cpp
     gui/models/gt_intelligraphobjectmodel.cpp
     gui/property_items/gt_igobjectlinkpropertyitem.cpp

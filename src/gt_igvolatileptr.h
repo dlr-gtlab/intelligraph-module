@@ -25,6 +25,9 @@ class volatile_ptr
 {
 public:
 
+    volatile_ptr(std::nullptr_t) :
+        volatile_ptr((T*)nullptr)
+    { }
     explicit volatile_ptr(T* ptr = nullptr) :
         m_ptr(ptr)
     { }

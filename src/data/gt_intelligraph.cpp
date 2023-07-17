@@ -266,32 +266,6 @@ GtIntelliGraph::appendConnection(std::unique_ptr<GtIntelliGraphConnection> conne
     return connection.release();
 }
 
-bool
-GtIntelliGraph::updateNodePosition(QtNodeId nodeId)
-{
-    if (!m_graphModel) return false;
-
-    auto* delegate = m_graphModel->delegateModel<GtIntelliGraphObjectModel>(nodeId);
-
-    if (!delegate) return false;
-
-    auto position = m_graphModel->nodeData(nodeId, QtNodes::NodeRole::Position);
-
-    if (!position.isValid()) return false;
-
-    auto pos = position.toPointF();
-
-    auto& node = delegate->node();
-
-    gtInfo().verbose()
-        << tr("Updating node position to") << pos
-        << gt::brackets(node.objectName());
-
-    node.setPos(pos);
-
-    return true;
-}
-
 void
 GtIntelliGraph::setNodePosition(QtNodeId nodeId, QPointF pos)
 {
@@ -328,18 +302,26 @@ GtIntelliGraph::deleteConnection(const QtConnectionId& connectionId)
 }
 
 GtIntelliGraph::DataFlowGraphModel*
-GtIntelliGraph::makeGraphModel()
+GtIntelliGraph::makeGraphModel(GroupModelPolicy policy)
 {
+    // upgrade dummy model to active model
+    if (policy == ActiveModel)
+    {
+        m_policy = policy;
+    }
+
+    // initialize the graph model
     if (!m_graphModel)
     {
-        m_graphModel = std::make_unique<DataFlowGraphModel>(
+        m_policy = policy;
+        m_graphModel = gt::ig::make_volatile<DataFlowGraphModel>(
             GtIntelliGraphNodeFactory::instance().makeRegistry()
         );
 
         for (auto* graph : subGraphs())
         {
             graph->initInputOutputProvider();
-            graph->makeGraphModel();
+            graph->makeGraphModel(DummyModel);
         }
 
         for (auto* node : nodes())
@@ -369,21 +351,15 @@ GtIntelliGraph::makeGraphModel()
     return m_graphModel.get();
 }
 
-GtIntelliGraph::DataFlowGraphModel*
-GtIntelliGraph::activeGraphModel()
-{
-    return m_graphModel.get();
-}
-
-GtIntelliGraph::DataFlowGraphModel const*
-GtIntelliGraph::activeGraphModel() const
-{
-    return m_graphModel.get();
-}
-
 void
-GtIntelliGraph::clearGraphModel()
+GtIntelliGraph::clearGraphModel(bool force)
 {
+    // dont close an active model if we are not forcing it
+    if (m_policy != DummyModel && !force) return;
+
+    // reset policy
+    m_policy = DummyModel;
+
     // check if this graph is still used by the parent graph
     if (auto* parent = qobject_cast<GtIntelliGraph*>(parentObject()))
     {
@@ -399,8 +375,20 @@ GtIntelliGraph::clearGraphModel()
 
     for (auto* graph : subGraphs())
     {
-        graph->clearGraphModel();
+        graph->clearGraphModel(false);
     }
+}
+
+GtIntelliGraph::DataFlowGraphModel*
+GtIntelliGraph::activeGraphModel()
+{
+    return m_graphModel.get();
+}
+
+GtIntelliGraph::DataFlowGraphModel const*
+GtIntelliGraph::activeGraphModel() const
+{
+    return m_graphModel.get();
 }
 
 QJsonObject
@@ -537,7 +525,7 @@ GtIntelliGraph::setupNode(GtIntelliGraphNode& node)
         // initialize graph model if active
         if (isActive)
         {
-            group->makeGraphModel();
+            group->makeGraphModel(DummyModel);
         }
     }
 
@@ -594,8 +582,6 @@ GtIntelliGraph::appendNodeById(QtNodeId nodeId)
 
     setupNode(*node);
 
-    updateNodePosition(nodeId);
-
     return node;
 }
 
@@ -627,6 +613,8 @@ GtIntelliGraph::appendConnectionById(const QtConnectionId& connectionId)
 void
 GtIntelliGraph::onObjectDataMerged()
 {
+    gtDebug() << __FUNCTION__ << objectName();
+
     if (!m_graphModel) return;
 
     // after undo/redo we may have to add resoted nodes and connections to

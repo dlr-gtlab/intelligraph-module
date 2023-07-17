@@ -196,7 +196,7 @@ GtIntelliGraphNode::caption() const
 QString
 GtIntelliGraphNode::baseObjectName() const
 {
-    static QRegularExpression const regExp(QStringLiteral(R"((.+)(\[\d+\]))"));
+    static QRegularExpression const regExp(QStringLiteral(R"((.+)(\s?\[\d+\]))"));
     constexpr int groupNo = 1;
 
     auto const& name = objectName();
