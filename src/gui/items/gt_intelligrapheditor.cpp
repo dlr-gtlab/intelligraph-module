@@ -9,7 +9,6 @@
 
 #include "gt_intelligrapheditor.h"
 
-#include "gt_intelligraph.h"
 #include "gt_intelligraphconnection.h"
 #include "gt_intelligraphdatafactory.h"
 #include "gt_iggroupinputprovider.h"
@@ -234,6 +233,8 @@ GtIntelliGraphEditor::setData(GtObject* obj)
             this, &GtIntelliGraphEditor::onNodePositionChanged);
     connect(m_scene, &QtNodes::DataFlowGraphicsScene::nodeContextMenu,
             this, &GtIntelliGraphEditor::onNodeContextMenu);
+    connect(m_scene, &QtNodes::DataFlowGraphicsScene::portContextMenu,
+            this, &GtIntelliGraphEditor::onPortContextMenu);
 
 
     m_view->setScene(m_scene, QtNodes::GraphicsView::NoUndoRedoAction);
@@ -336,6 +337,39 @@ GtIntelliGraphEditor::onNodeDoubleClicked(QtNodeId nodeId)
 }
 
 void
+GtIntelliGraphEditor::onPortContextMenu(QtNodeId nodeId, QtPortType type, QtPortIndex idx, QPointF pos)
+{
+    assert(m_data); assert(m_model);
+
+    // create menu
+    QMenu menu;
+
+    auto conIds = m_model->allConnectionIds(nodeId);
+
+    QList<GtObject*> connections;
+    connections.reserve(conIds.size());
+
+    for (auto conId : conIds)
+    {
+        if (auto* con = m_data->findConnection(conId))
+        {
+            connections.append(con);
+        }
+    }
+
+    QAction* deleteAct = menu.addAction(tr("Remove connections"));
+    deleteAct->setEnabled(!connections.empty());
+    deleteAct->setIcon(gt::gui::icon::chainOff());
+
+    QAction* res = menu.exec(QCursor::pos());
+
+    if (res == deleteAct)
+    {
+        gtDataModel->deleteFromModel(connections);
+    }
+}
+
+void
 GtIntelliGraphEditor::onNodeContextMenu(QtNodeId nodeId, QPointF pos)
 {
     assert(m_data); assert(m_model); assert(m_scene);
@@ -385,23 +419,29 @@ GtIntelliGraphEditor::onNodeContextMenu(QtNodeId nodeId, QPointF pos)
 
     if (res == groupAct)
     {
-        makeGroupNode(selectedNodeIds);
+        return makeGroupNode(selectedNodeIds);
     }
     if (res == deleteAct)
     {
-        QList<GtObject*> selectedNodes;
-        selectedNodes.reserve(selectedNodeIds.size());
-
-        for (QtNodeId nodeId : selectedNodeIds)
-        {
-            if (auto node = m_data->findNode(nodeId))
-            {
-                selectedNodes.push_back(node);
-            }
-        }
-
-        gtDataModel->deleteFromModel(selectedNodes);
+        return deleteNodes(selectedNodeIds);
     }
+}
+
+void
+GtIntelliGraphEditor::deleteNodes(const std::vector<QtNodeId>& nodeIds)
+{
+    QList<GtObject*> nodes;
+    nodes.reserve(nodeIds.size());
+
+    for (QtNodeId nodeId : nodeIds)
+    {
+        if (auto node = m_data->findNode(nodeId))
+        {
+            nodes.push_back(node);
+        }
+    }
+
+    gtDataModel->deleteFromModel(nodes);
 }
 
 void
@@ -411,8 +451,6 @@ GtIntelliGraphEditor::makeGroupNode(std::vector<QtNodeId> const& selectedNodeIds
     using NodeId         = gt::ig::NodeId;
     using QtNodeRole     = QtNodes::NodeRole;
     using QtNodeDataType = QtNodes::NodeDataType;
-    using QtPortType     = QtNodes::PortType;
-    using QtPortIndex    = QtNodes::PortIndex;
     using QtPortRole     = QtNodes::PortRole;
     using QtConnectionId = QtNodes::ConnectionId;
 

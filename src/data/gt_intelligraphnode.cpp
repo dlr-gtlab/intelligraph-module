@@ -40,11 +40,6 @@ struct GtIntelliGraphNode::Impl
     GtDoubleProperty posY{"posY", tr("y-Pos"), tr("y-Position")};
     /// caption string
     QString modelName;
-    /// model name string
-    GtStringProperty caption{
-        "caption", tr("Caption"), tr("Node Capton"), modelName,
-        new QRegExpValidator{gt::re::woUmlauts()}
-    };
     /// ports
     std::vector<PortData> inPorts, outPorts{};
     /// data
@@ -190,16 +185,12 @@ void
 GtIntelliGraphNode::setCaption(QString const& caption)
 {
     gt::setUniqueName(*this, caption);
-//    pimpl->caption = std::move(caption);
-//    emit pimpl->caption.changed();
-//    updateObjectName();
 }
 
 QString
 GtIntelliGraphNode::caption() const
 {
     return objectName();
-//    pimpl->caption.get();
 }
 
 QString

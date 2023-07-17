@@ -181,7 +181,6 @@ public:
      * @brief Caption of the node
      * @return Caption
      */
-    [[deprecated("Use objectName() instead")]]
     QString caption() const;
 
     QString baseObjectName() const;

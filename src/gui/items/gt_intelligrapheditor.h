@@ -11,7 +11,7 @@
 
 #include "gt_mdiitem.h"
 
-#include "gt_intelligraphnode.h"
+#include "gt_intelligraph.h"
 
 #include <QtNodes/Definitions>
 #include <QtNodes/DataFlowGraphModel>
@@ -19,7 +19,6 @@
 #include <QtNodes/GraphicsView>
 
 class QMenu;
-class GtIntelliGraph;
 
 /**
  * @generated 1.2.0
@@ -32,6 +31,8 @@ class GtIntelliGraphEditor : public GtMdiItem
 public:
 
     using QtNodeId       = QtNodes::NodeId;
+    using QtPortType     = QtNodes::PortType;
+    using QtPortIndex    = QtNodes::PortIndex;
 
     Q_INVOKABLE GtIntelliGraphEditor();
     ~GtIntelliGraphEditor();
@@ -65,9 +66,13 @@ private slots:
 
     void onNodeContextMenu(QtNodeId nodeId, QPointF pos);
 
+    void onPortContextMenu(QtNodeId nodeId, QtPortType type, QtPortIndex idx, QPointF pos);
+
 private:
 
     void loadScene(QJsonObject const& scene);
+
+    void deleteNodes(std::vector<QtNodeId> const& nodeIds);
 
     void makeGroupNode(std::vector<QtNodeId> const& selectedNodeIds);
 };
