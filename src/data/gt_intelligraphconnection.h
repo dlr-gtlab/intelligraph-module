@@ -27,6 +27,7 @@ class GtIntelliGraphConnection : public GtObject
 public:
 
     Q_INVOKABLE GtIntelliGraphConnection(GtObject* parent = nullptr);
+
     GtIntelliGraphConnection(QtConnectionId conId, GtObject* parent = nullptr) :
         GtIntelliGraphConnection(parent)
     {
@@ -36,10 +37,6 @@ public:
     QtConnectionId toConnectionId() const;
 
     bool fromConnectionId(QtConnectionId connection);
-
-    bool fromJson(QJsonObject const& json);
-
-    QJsonObject toJson() const;
 
     NodeId inNodeId() const { return NodeId{gt::ig::fromInt(m_inNodeId)}; }
     void setInNodeId(NodeId nodeId) { m_inNodeId = nodeId; }
@@ -55,9 +52,7 @@ public:
 
     bool isValid() const;
 
-protected:
-
-    void onObjectDataMerged() override { gtDebug() << __FUNCTION__ << objectName(); }
+    void updateObjectName();
 
 private:
 
@@ -69,8 +64,6 @@ private:
     GtIntProperty m_outNodeId;
     /// port idx IN (should be unsigned)
     GtIntProperty m_outPortIdx;
-
-    void updateObjectName();
 };
 
 #endif // GT_INTELLIGRAPHCONNECTION_H

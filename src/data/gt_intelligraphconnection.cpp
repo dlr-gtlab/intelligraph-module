@@ -9,9 +9,6 @@
 #include "gt_intelligraphconnection.h"
 
 #include "gt_qtutilities.h"
-#include "gt_application.h"
-
-#include <QtNodes/ConnectionIdUtils>
 
 GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
     GtObject(parent),
@@ -32,9 +29,6 @@ GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
     m_outPortIdx.setReadOnly(true);
 
     updateObjectName();
-
-    setFlag(UserDeletable);
-    if (!gtApp || !gtApp->devMode()) setFlag(UserHidden);
 }
 
 GtIntelliGraphConnection::QtConnectionId
@@ -54,32 +48,6 @@ GtIntelliGraphConnection::fromConnectionId(QtConnectionId connection)
     updateObjectName();
 
     return isValid();
-}
-
-bool
-GtIntelliGraphConnection::fromJson(const QJsonObject& json)
-{
-    constexpr auto invalid = QtNodes::InvalidPortIndex;
-
-    m_inNodeId   = json["inNodeId"].toInt(invalid);
-    m_inPortIdx  = json["inPortIndex"].toInt(invalid);
-    m_outNodeId  = json["outNodeId"].toInt(invalid);
-    m_outPortIdx = json["outPortIndex"].toInt(invalid);
-
-    updateObjectName();
-
-    return isValid();
-}
-
-QJsonObject
-GtIntelliGraphConnection::toJson() const
-{
-    QJsonObject json;
-    json["inNodeId"]     = m_inNodeId.get();
-    json["inPortIndex"]  = m_inPortIdx.get();
-    json["outNodeId"]    = m_outNodeId.get();
-    json["outPortIndex"] = m_outPortIdx.get();
-    return json;
 }
 
 bool

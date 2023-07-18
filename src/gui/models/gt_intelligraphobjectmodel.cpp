@@ -8,6 +8,7 @@
 
 #include "gt_intelligraphobjectmodel.h"
 
+#include "gt_igjsonadpater.h"
 #include "gt_intelligraphnodefactory.h"
 #include "gt_intelligraphdatafactory.h"
 
@@ -231,7 +232,7 @@ GtIntelliGraphObjectModel::save() const
 {
     if (m_node)
     {
-        return m_node->toJson()["internal-data"].toObject();
+        return gt::ig::toJson(*m_node)["internal-data"].toObject();
     }
 
     return QtNodes::NodeDelegateModel::save();
@@ -252,7 +253,7 @@ GtIntelliGraphObjectModel::load(const QJsonObject& json)
         return;
     }
 
-    m_node->mergeNodeData(json);
+    gt::ig::mergeFromJson(json, *m_node);
 
     gtDebug().verbose() << "NODE LOADED:" << m_node->objectName();
 

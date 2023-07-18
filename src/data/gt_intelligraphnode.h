@@ -266,33 +266,6 @@ public:
      */
     NodeData outData(PortIndex idx);
 
-    /* serialization */
-
-    /**
-     * @brief Creates a new node from json data (see "toJson"). May be null.
-     * Method may throw if the node type described by the json data does not
-     * exists.
-     * @param json Json object to use for the node creation
-     * @return Node
-     */
-    static std::unique_ptr<GtIntelliGraphNode> fromJson(QJsonObject const& json
-                                                        ) noexcept(false);
-
-    /**
-     * @brief Serializes this node as a json object.
-     * @param clone Whether to clone the object data (i.e. use the same uuid).
-     * Only set to true if the object should be restored instead of copied.
-     * @return Json object
-     */
-    QJsonObject toJson(bool clone = false) const;
-
-    /**
-     * @brief Will attempt to merge the json data.
-     * @param internals Json object describing the internal node data. Note:
-     * This is not the same as the object returned by "tojson".
-     */
-    bool mergeNodeData(QJsonObject const& internals);
-
 public slots:
 
     /**

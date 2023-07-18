@@ -30,9 +30,10 @@ class GtIntelliGraphEditor : public GtMdiItem
 {
     Q_OBJECT
 
+    /// helper struct to close the graph model if its no longer used
     struct Cleanup
     {
-        void operator()() { if (data) data->clearGraphModel(); }
+        void operator()() { if (data) data->clearModelManager(); }
 
         QPointer<GtIntelliGraph> data;
     };
@@ -46,6 +47,10 @@ public:
     Q_INVOKABLE GtIntelliGraphEditor();
 
     void setData(GtObject* obj) override;
+
+protected:
+
+    QString customId(GtObject* obj) override;
 
 private:
 

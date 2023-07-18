@@ -19,10 +19,11 @@
 
 namespace QtNodes { class DataFlowGraphModel; }
 
-class QJsonObject;
+class GtObjectGroup;
 class GtIgGroupInputProvider;
 class GtIgGroupOutputProvider;
 class GtIntelliGraphConnection;
+class GtIntelliGraphModelManager;
 
 class GtIntelliGraph : public GtIntelliGraphNode
 {
@@ -35,16 +36,6 @@ class GtIntelliGraph : public GtIntelliGraphNode
     friend class GtIgAbstractGroupProvider;
 
 public:
-
-    enum GroupModelPolicy
-    {
-        /// Model is just a dummy and may be closed as soon as its
-        /// parent model is closed
-        DummyModel = 0,
-        /// Model is active and should be kept alive if its parent model
-        /// is closed (default)
-        ActiveModel = 1
-    };
 
     using DataFlowGraphModel = QtNodes::DataFlowGraphModel;
 
@@ -59,6 +50,9 @@ public:
 
     QList<GtIntelliGraphConnection*> connections();
     QList<GtIntelliGraphConnection const*> connections() const;
+
+    GtObjectGroup* connectionGroup();
+    GtObjectGroup const* connectionGroup() const;
 
     GtIntelliGraphNode* findNode(QtNodeId nodeId);
     GtIntelliGraphNode const* findNode(QtNodeId nodeId) const;
@@ -86,7 +80,7 @@ public:
 
     /**
      * @brief Appends the node to the intelli graph. Use this function instead
-     * of appending the child directly. Node may change its nodeid if its
+     * of appending the child directly. Node may change its id if its
      * already occupied
      * @param node Node to append
      * @return success
@@ -101,25 +95,25 @@ public:
      */
     GtIntelliGraphConnection* appendConnection(std::unique_ptr<GtIntelliGraphConnection> connection);
 
-    /**
-     * @brief Creates a new node using the node id in the active graph model as
-     * a child object and returns a pointer to it. Returns null if the process
-     * failed. The ownership is taken care of. Make sure to set
-     * the graph model beforehand.
-     * @param nodeId Node id to create/move
-     * @return Node (may be null)
-     */
-    GtIntelliGraphNode* appendNodeById(QtNodeId nodeId);
+//    /**
+//     * @brief Creates a new node using the node id in the active graph model as
+//     * a child object and returns a pointer to it. Returns null if the process
+//     * failed. The ownership is taken care of. Make sure to set
+//     * the graph model beforehand.
+//     * @param nodeId Node id to create/move
+//     * @return Node (may be null)
+//     */
+//    GtIntelliGraphNode* appendNodeById(QtNodeId nodeId);
 
-    /**
-     * @brief Creates a new connection base on the connection details and
-     * returns a pointer to the newly created object (null if the process
-     * failed). The ownership is taken care of. The graph model must not be set
-     * beforehand.
-     * @param connectionId Connection details to be used for creating the node.
-     * @return Connection (may be null)
-     */
-    GtIntelliGraphConnection* appendConnectionById(QtConnectionId const& connectionId);
+//    /**
+//     * @brief Creates a new connection base on the connection details and
+//     * returns a pointer to the newly created object (null if the process
+//     * failed). The ownership is taken care of. The graph model must not be set
+//     * beforehand.
+//     * @param connectionId Connection details to be used for creating the node.
+//     * @return Connection (may be null)
+//     */
+//    GtIntelliGraphConnection* appendConnectionById(QtConnectionId const& connectionId);
 
     /**
      * @brief Deletes the node described by node id. Returns true on success.
@@ -139,43 +133,37 @@ public:
 
     void setNodePosition(QtNodeId nodeId, QPointF pos);
 
-    /**
-     * @brief Creates a graph model if it does not exists already.
-     * @param model Model
-     * @param policy Inidctaes whether the instance should be consider an active
-     * or a dummy model
-     * @return Graph model
-     */
-    DataFlowGraphModel* makeGraphModel(GroupModelPolicy policy = ActiveModel);
+//    /**
+//     * @brief Creates a graph model if it does not exists already.
+//     * @param model Model
+//     * @param policy Inidctaes whether the instance should be consider an active
+//     * or a dummy model
+//     * @return Graph model
+//     */
+//    DataFlowGraphModel* makeGraphModel(gt::ig::ModelPolicy policy = gt::ig::ActiveModel);
 
-    /**
-     * @brief Clears the active graph model. Must not be called explicitly as
-     * the model will be cleared automatically once its deleted.
-     * @param force Force to close model regardless of model policy
-     */
-    void clearGraphModel(bool force = true);
+//    /**
+//     * @brief Clears the active graph model. Should be called once the graph
+//     * model is no longer used.
+//     * @param force Force to close model regardless of model policy
+//     */
+//    void clearGraphModel(bool force = true);
 
-    /**
-     * @brief Returns the active graph model
-     * @return Graph model
-     */
-    DataFlowGraphModel* activeGraphModel();
-    DataFlowGraphModel const* activeGraphModel() const;
+//    /**
+//     * @brief Returns the active graph model
+//     * @return Graph model
+//     */
+//    DataFlowGraphModel* activeGraphModel();
+//    DataFlowGraphModel const* activeGraphModel() const;
 
-    /**
-     * @brief Attemps to restore the intelli graph using the json data
-     * @param json Json object describing the intelli graph scene
-     * @return Success
-     */
-    bool fromJson(QJsonObject const& json);
+    void initGroupProviders();
 
-    /**
-     * @brief Serializes the whole intelli graph tree as a json object
-     * @param clone Whether to clone the object data (i.e. use the same uuid).
-     * Only set to true if the object should be restored instead of copied.
-     * @return Json object
-     */
-    QJsonObject toJson(bool clone = false) const;
+    GtIntelliGraphModelManager* makeModelManager(gt::ig::ModelPolicy policy = gt::ig::ActiveModel);
+
+    void clearModelManager(bool force = true);
+
+    GtIntelliGraphModelManager* findModelManager();
+    GtIntelliGraphModelManager const* findModelManager() const;
 
 protected:
 
@@ -184,29 +172,36 @@ protected:
 
     NodeData eval(PortId outId) override;
 
+signals:
+
+    void connectionAppended(GtIntelliGraphConnection* connection);
+
+    void nodeAppended(GtIntelliGraphNode* node);
+
+    void nodePositionChanged(gt::ig::NodeId nodeId, QPointF pos);
+
 private:
 
-    GroupModelPolicy m_policy = DummyModel;
+//    GroupModelPolicy m_policy = DummyModel;
 
-    /// pointer to active graph model (i.e. mdi item)
-    gt::ig::volatile_ptr<DataFlowGraphModel> m_graphModel;
+//    /// pointer to active graph model (i.e. mdi item)
+//    gt::ig::volatile_ptr<DataFlowGraphModel> m_graphModel;
 
     std::vector<NodeData> m_outData;
 
-    /**
-     * @brief Removes all nodes and connections not part of the graph model.
-     * The graph model must be set beforehand.
-     */
-    void removeOrphans();
+//    /**
+//     * @brief Removes all nodes and connections not part of the graph model.
+//     * The graph model must be set beforehand.
+//     */
+//    void removeOrphans();
 
-    void setupNode(GtIntelliGraphNode& node);
+//    void setupNode(GtIntelliGraphNode& node);
 
-    void setupConnection(GtIntelliGraphConnection& connection);
+//    void setupConnection(GtIntelliGraphConnection& connection);
 
-    bool appendNodeToModel(GtIntelliGraphNode& node);
+//    bool appendNodeToModel(GtIntelliGraphNode& node);
 
-    bool appendConnectionToModel(GtIntelliGraphConnection& con);
-    void initInputOutputProvider();
+//    bool appendConnectionToModel(GtIntelliGraphConnection& con);
 
     void updateNodeId(GtIntelliGraphNode& node);
 };

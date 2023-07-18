@@ -27,11 +27,13 @@ set(PUBLIC_HEADERS
 
 add_library(GTlabIntelliGraph SHARED
     ${PUBLIC_HEADERS}
+    gt_igjsonadpater.h
     gt_intelligraphmodule.h
     data/gt_igpackage.h
     data/gt_intelligraph.h
     data/gt_intelligraphconnection.h
     data/gt_intelligraphcategory.h
+    data/gt_intelligraphmodelmanager.h
     data/nodes/gt_igabstractgroupprovider.h
     data/nodes/gt_igconditionalnode.h
     data/nodes/gt_igdoubletoboolnode.h
@@ -52,6 +54,7 @@ add_library(GTlabIntelliGraph SHARED
     gui/ui/gt_intelligraphpackageui.h
     gui/ui/gt_iggroupproviderui.h
 
+    gt_igjsonadpater.cpp
     gt_intelligraphmodule.cpp
     gt_intelligraphnodefactory.cpp
     gt_intelligraphdatafactory.cpp
@@ -60,6 +63,7 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_intelligraphconnection.cpp
     data/gt_intelligraphnode.cpp
     data/gt_intelligraphcategory.cpp
+    data/gt_intelligraphmodelmanager.cpp
     data/nodes/gt_igconditionalnode.cpp
     data/nodes/gt_igdoubletoboolnode.cpp
     data/nodes/gt_igfinddirectchildnode.cpp

@@ -163,3 +163,12 @@ GtIntelliGraphEditor::setData(GtObject* obj)
     m_view->setScene(*m_scene);
     m_view->centerScene();
 }
+
+QString
+GtIntelliGraphEditor::customId(GtObject* obj)
+{
+    auto data  = qobject_cast<GtIntelliGraph*>(obj);
+    if (!data) return {};
+
+    return objectName() + QStringLiteral(" - ") + data->caption();
+}

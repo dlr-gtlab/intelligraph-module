@@ -9,6 +9,7 @@
 
 #include "gt_intelligraphnodeui.h"
 
+#include "gt_igjsonadpater.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligrapheditor.h"
 
@@ -115,7 +116,7 @@ GtIntelliGraphNodeUI::loadNodeGraph(GtObject* obj)
     auto finally = gt::finally([&](){ gtApp->endCommand(cmd); });
 
     auto scene = QJsonDocument::fromJson(file.readAll()).object();
-    graph->fromJson(scene);
+    gt::ig::fromJson(scene, *graph);
 }
 
 bool

@@ -14,6 +14,7 @@
 #include "gt_intelligraphdatafactory.h"
 #include "gt_iggroupinputprovider.h"
 #include "gt_iggroupoutputprovider.h"
+#include "gt_intelligraphmodelmanager.h"
 
 #include "gt_application.h"
 #include "gt_command.h"
@@ -62,9 +63,9 @@ void findNodes(GtIntelliGraph& graph, In const& in, Out& out)
 }
 
 GtIntelliGraphScene::GtIntelliGraphScene(GtIntelliGraph& graph, QObject* parent) :
-    QtNodes::DataFlowGraphicsScene(*graph.makeGraphModel(), parent),
+    QtNodes::DataFlowGraphicsScene(*graph.makeModelManager()->graphModel(), parent),
     m_data(&graph),
-    m_model(graph.activeGraphModel())
+    m_model(static_cast<QtNodes::DataFlowGraphModel*>(&graphModel()))
 {
     connect(this, &QtNodes::DataFlowGraphicsScene::nodeMoved,
             this, &GtIntelliGraphScene::onNodePositionChanged);
@@ -140,7 +141,7 @@ GtIntelliGraphScene::onNodePositionChanged(QtNodes::NodeId nodeId)
 
     auto* delegate = m_model->delegateModel<GtIntelliGraphObjectModel>(nodeId);
 
-    if (!delegate) return;
+    if (!delegate || !delegate->node()) return;
 
     auto position = m_model->nodeData(nodeId, QtNodes::NodeRole::Position);
 
@@ -148,13 +149,13 @@ GtIntelliGraphScene::onNodePositionChanged(QtNodes::NodeId nodeId)
 
     auto pos = position.toPointF();
 
-    auto& node = delegate->node();
+    auto* node = delegate->node();
 
     gtInfo().verbose()
         << tr("Updating node position to") << pos
-        << gt::brackets(node.objectName());
+        << gt::brackets(node->objectName());
 
-    node.setPos(pos);
+    node->setPos(pos);
 }
 
 void
@@ -428,13 +429,13 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
     // create group node
     QtNodes::NodeId groupNodeId = m_model->addNode(m_data->modelName());
     auto* groupNode = qobject_cast<GtIntelliGraph*>(m_data->findNode(groupNodeId));
-    if (!groupNode || !groupNode->activeGraphModel())
+    if (!groupNode || !groupNode->findModelManager())
     {
         gtError() << tr("Failed to create group node! (Invalid group node)");
         return;
     }
 
-    auto groupModel = groupNode->activeGraphModel();
+    auto groupModel = groupNode->findModelManager()->graphModel();
     groupNode->setCaption(groupNodeName);
 
     // setup input/output provider
@@ -544,12 +545,12 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
 
     std::sort(connectionsIn.begin(), connectionsIn.end(),
               [=](QtConnectionId const& a, QtConnectionId const& b){
-                  return sortByNodePosition(a.inNodeId, b.inNodeId);
-              });
+        return sortByNodePosition(a.inNodeId, b.inNodeId);
+    });
     std::sort(connectionsIn.begin(), connectionsIn.end(),
               [=](QtConnectionId const& a, QtConnectionId const& b){
-                  return sortByNodePosition(a.outNodeId, b.outNodeId);
-              });
+        return sortByNodePosition(a.outNodeId, b.outNodeId);
+    });
 
     // move input connections
     PortIndex index{0};
