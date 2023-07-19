@@ -19,6 +19,8 @@ class GtIntelliGraphScene : public QtNodes::DataFlowGraphicsScene
 {
     Q_OBJECT
 
+    using ConnectionId = QtNodes::ConnectionId;
+
 public:
 
     GtIntelliGraphScene(GtIntelliGraph& graph);
@@ -29,7 +31,7 @@ public slots:
 
     void duplicateSelectedObjects();
 
-    void copySelectedObjects();
+    bool copySelectedObjects();
 
     void pasteObjects();
 

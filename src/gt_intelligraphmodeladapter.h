@@ -30,8 +30,8 @@ public:
                                gt::ig::ModelPolicy policy);
     ~GtIntelliGraphModelAdapter();
 
-    GtIntelliGraph* intelliGraph();
-    GtIntelliGraph const* intelliGraph() const;
+    GtIntelliGraph& intelliGraph();
+    GtIntelliGraph const& intelliGraph() const;
 
     /**
      * @brief Returns the active graph model
@@ -116,6 +116,12 @@ private:
      * @param connection Connection to setup
      */
     void setupConnection(GtIntelliGraphConnection& connection);
+
+private slots:
+
+    void onNodeDeletedFromModel(QtNodes::NodeId nodeId);
+
+    void onConnectionDeletedFromModel(QtNodes::ConnectionId conId);
 };
 
 

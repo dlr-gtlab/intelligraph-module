@@ -9,9 +9,11 @@
 
 #include "gt_intelligraphscene.h"
 
+#include "gt_igprivate.h"
 #include "gt_intelligraphnodeui.h"
 #include "gt_intelligraphconnection.h"
 #include "gt_intelligraphdatafactory.h"
+#include "gt_intelligraphjsonadapter.h"
 #include "gt_iggroupinputprovider.h"
 #include "gt_iggroupoutputprovider.h"
 #include "gt_intelligraphmodeladapter.h"
@@ -25,7 +27,6 @@
 #include "gt_inputdialog.h"
 #include "gt_objectmemento.h"
 #include "gt_objectfactory.h"
-#include "models/gt_intelligraphobjectmodel.h"
 
 #include <gt_logging.h>
 
@@ -33,6 +34,8 @@
 #include <QtNodes/internal/ConnectionGraphicsObject.hpp>
 
 #include <QGraphicsItem>
+#include <QClipboard>
+#include <QApplication>
 
 template <typename In, typename Out>
 void findConnections(GtIntelliGraph& graph, In const& in, Out& out)
@@ -49,17 +52,69 @@ void findConnections(GtIntelliGraph& graph, In const& in, Out& out)
 }
 
 template <typename In, typename Out>
-void findNodes(GtIntelliGraph& graph, In const& in, Out& out)
+void findNodes(GtIntelliGraph& graph, In const& in, Out& out, bool onlyDeletable = false)
 {
     out.reserve(in.size());
 
     for (auto nodeId : in)
     {
-        if (auto* node = graph.findNode(nodeId))
+        if (auto* node = graph.findNode(gt::ig::NodeId::fromValue(nodeId)))
         {
-            out.push_back(node);
+            if (!onlyDeletable || (onlyDeletable && node->objectFlags() & GtObject::UserDeletable))
+            {
+                out.push_back(node);
+            }
         }
     }
+}
+
+struct SelectedItems
+{
+    QVector<QtNodes::NodeId> nodes;
+    QVector<QtNodes::ConnectionId> connections;
+
+    bool empty() const { return nodes.empty() && connections.empty(); }
+};
+
+SelectedItems
+findSelectedItems(GtIntelliGraphScene& scene)
+{
+    auto  const& selected = scene.selectedItems();
+
+    if (selected.empty()) return {};
+
+    SelectedItems items;
+
+    for (auto* item : selected)
+    {
+        if (auto* node = qgraphicsitem_cast<QtNodes::NodeGraphicsObject*>(item))
+        {
+            items.nodes << node->nodeId();
+            continue;
+        }
+        if (auto* con = qgraphicsitem_cast<QtNodes::ConnectionGraphicsObject*>(item))
+        {
+            items.connections << con->connectionId();
+            continue;
+        }
+    }
+    return items;
+}
+
+template<typename T>
+QList<T>
+findItems(GtIntelliGraphScene& scene)
+{
+    QList<T> items;
+
+    for (auto* item : scene.items())
+    {
+        if (auto* obj = qgraphicsitem_cast<T>(item))
+        {
+            items << obj;
+        }
+    }
+    return items;
 }
 
 GtIntelliGraphScene::GtIntelliGraphScene(GtIntelliGraph& graph) :
@@ -87,31 +142,12 @@ GtIntelliGraphScene::GtIntelliGraphScene(GtIntelliGraph& graph) :
 void
 GtIntelliGraphScene::deleteSelectedObjects()
 {
-    gtDebug().medium() << __FUNCTION__;
-
-    auto const& items = selectedItems();
-    if (selectedItems().empty()) return;
-
-    QVector<QtNodes::NodeId> selectedNodes;
-    QVector<QtNodes::ConnectionId> selectedConnections;
-
-    for (auto* item : items)
-    {
-        if (auto* node = qgraphicsitem_cast<QtNodes::NodeGraphicsObject*>(item))
-        {
-            selectedNodes << node->nodeId();
-            continue;
-        }
-        if (auto* con = qgraphicsitem_cast<QtNodes::ConnectionGraphicsObject*>(item))
-        {
-            selectedConnections << con->connectionId();
-            continue;
-        }
-    }
+    auto const& selected = ::findSelectedItems(*this);
+    if (selected.empty()) return;
 
     GtObjectList objects;
-    findConnections(*m_data, selectedConnections, objects);
-    findNodes(*m_data, selectedNodes, objects);
+    findConnections(*m_data, selected.connections, objects);
+    findNodes(*m_data, selected.nodes, objects, true);
 
     gtDataModel->deleteFromModel(objects);
 }
@@ -119,37 +155,121 @@ GtIntelliGraphScene::deleteSelectedObjects()
 void
 GtIntelliGraphScene::duplicateSelectedObjects()
 {
-    auto selectedNodes = this->selectedNodes();
+    if (!copySelectedObjects()) return;
 
-    gtDebug().medium() << __FUNCTION__;
+    pasteObjects();
 }
 
-void
+bool
 GtIntelliGraphScene::copySelectedObjects()
 {
-    gtDebug().medium() << __FUNCTION__;
+    auto selected = findSelectedItems(*this);
+    if (selected.nodes.empty()) return false;
+
+    // only duplicate internal connections
+    auto iter = 0;
+    foreach (auto conId, selected.connections)
+    {
+        if (!selected.nodes.contains(conId.inNodeId) ||
+            !selected.nodes.contains(conId.outNodeId))
+        {
+            selected.connections.remove(iter);
+            continue;
+        }
+        iter++;
+    }
+
+    QList<GtIntelliGraphNode const*> nodes;
+    QList<GtIntelliGraphConnection const*> connections;
+    findConnections(*m_data, selected.connections, connections);
+    findNodes(*m_data, selected.nodes, nodes);
+
+    // at least one node should be selected
+    if (nodes.empty()) return false;
+
+    QJsonDocument doc(gt::ig::toJson(nodes, connections));
+    QApplication::clipboard()->setText(doc.toJson(QJsonDocument::Indented));
+
+    return true;
 }
 
 void
 GtIntelliGraphScene::pasteObjects()
 {
+    using namespace gt::ig;
+
     gtDebug().medium() << __FUNCTION__;
+
+    auto text = QApplication::clipboard()->text();
+    if (text.isEmpty()) return;
+
+    auto doc = QJsonDocument::fromJson(text.toUtf8());
+    if (doc.isNull()) return;
+
+    // restore objects
+    auto objects = gt::ig::fromJson(doc.object());
+    if (!objects) return;
+
+    // shift node positions
+    constexpr QPointF offset{50, 50};
+
+    for (auto& node : objects->nodes)
+    {
+        node->setPos(node->pos() + offset);
+    }
+
+    auto cmd = gtApp->startCommand(m_data, tr("Paste objects"));
+    auto cleanup = gt::finally([&](){
+        gtApp->endCommand(cmd);
+    });
+
+    // append objects
+    auto newNodeIds = m_data->appendObjects(objects->nodes, objects->connections);
+
+    auto nodes = findItems<QtNodes::NodeGraphicsObject*>(*this);
+    auto iter = 0;
+    foreach (auto* node, nodes)
+    {
+        auto nodeId = node->nodeId();
+        if (!newNodeIds.contains(NodeId::fromValue(nodeId)))
+        {
+            nodes.removeAt(iter);
+            continue;
+        }
+        iter++;
+    }
+
+    auto connections = findItems<QtNodes::ConnectionGraphicsObject*>(*this);
+    iter = 0;
+    foreach (auto* con, connections)
+    {
+        auto conId = con->connectionId();
+        if (!newNodeIds.contains(NodeId::fromValue(conId.inNodeId)) ||
+            !newNodeIds.contains(NodeId::fromValue(conId.outNodeId)))
+        {
+            connections.removeAt(iter);
+            continue;
+        }
+        iter++;
+    }
+
+    clearSelection();
+    for (auto* item : qAsConst(nodes)) item->setSelected(true);
+    for (auto* item : qAsConst(connections)) item->setSelected(true);
 }
 
 void
 GtIntelliGraphScene::onNodePositionChanged(QtNodes::NodeId nodeId)
 {
-    auto* delegate = m_model->delegateModel<GtIntelliGraphObjectModel>(nodeId);
+    auto* node = m_data->findNode(gt::ig::NodeId::fromValue(nodeId));
 
-    if (!delegate || !delegate->node()) return;
+    if (!node) return;
 
     auto position = m_model->nodeData(nodeId, QtNodes::NodeRole::Position);
 
     if (!position.isValid()) return;
 
     auto pos = position.toPointF();
-
-    auto* node = delegate->node();
 
     gtInfo().verbose()
         << tr("Updating node position to") << pos
@@ -161,7 +281,7 @@ GtIntelliGraphScene::onNodePositionChanged(QtNodes::NodeId nodeId)
 void
 GtIntelliGraphScene::onNodeSelected(QtNodes::NodeId nodeId)
 {
-    if (auto* node = m_data->findNode(nodeId))
+    if (auto* node = m_data->findNode(gt::ig::NodeId::fromValue(nodeId)))
     {
         emit gtApp->objectSelected(node);
     }
@@ -170,10 +290,10 @@ GtIntelliGraphScene::onNodeSelected(QtNodes::NodeId nodeId)
 void
 GtIntelliGraphScene::onNodeDoubleClicked(QtNodes::NodeId nodeId)
 {
-    auto* node = m_data->findNode(nodeId);
-    if (!node) return;
-
-    gt::gui::handleObjectDoubleClick(*node);
+    if (auto* node = m_data->findNode(gt::ig::NodeId::fromValue(nodeId)))
+    {
+        gt::gui::handleObjectDoubleClick(*node);
+    }
 }
 
 void
@@ -185,7 +305,7 @@ GtIntelliGraphScene::onPortContextMenu(QtNodes::NodeId nodeId,
     using PortType  = gt::ig::PortType;
     using PortIndex = gt::ig::PortIndex;
 
-    auto* node = m_data->findNode(nodeId);
+    auto* node = m_data->findNode(gt::ig::NodeId::fromValue(nodeId));
     if (!node) return;
 
     // create menu
@@ -237,7 +357,7 @@ GtIntelliGraphScene::onPortContextMenu(QtNodes::NodeId nodeId,
     menu.addSeparator();
 
     QList<GtObject*> connections;
-    findConnections(*m_data, m_model->allConnectionIds(nodeId), connections);
+    findConnections(*m_data, m_model->connections(nodeId, type, idx), connections);
 
     QAction* deleteAct = menu.addAction(tr("Remove all connections"));
     deleteAct->setEnabled(!connections.empty());
@@ -293,7 +413,8 @@ GtIntelliGraphScene::onNodeContextMenu(QtNodes::NodeId nodeId, QPointF pos)
     // add custom object menu
     if (selectedNodeIds.size() == 1)
     {
-        if (GtIntelliGraphNode* node = m_data->findNode(selectedNodeIds.front()))
+        auto id = gt::ig::NodeId::fromValue(selectedNodeIds.front());
+        if (GtIntelliGraphNode* node = m_data->findNode(id))
         {
             menu.addSeparator();
 
@@ -419,18 +540,17 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
     });
 
     // create group node
-    QtNodes::NodeId groupNodeId = m_model->addNode(m_data->modelName());
-    auto* groupNode = qobject_cast<GtIntelliGraph*>(m_data->findNode(groupNodeId));
+    auto* groupNode = static_cast<GtIntelliGraph*>(m_data->appendNode(std::make_unique<GtIntelliGraph>()));
     if (!groupNode || !groupNode->findModelAdapter())
     {
         gtError() << tr("Failed to create group node! (Invalid group node)");
         return;
     }
 
-    auto groupModel = groupNode->findModelAdapter()->graphModel();
     groupNode->setCaption(groupNodeName);
 
     // setup input/output provider
+    groupNode->initGroupProviders();
     auto* inputProvider = groupNode->inputProvider();
     auto* outputProvider = groupNode->outputProvider();
 
@@ -438,7 +558,7 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
     {
         gtError() << tr("Failed to create group node! "
                         "(Invalid input or output provider)");
-        m_data->deleteNode(groupNodeId);
+        gtError() << inputProvider << outputProvider;
         return;
     }
 
@@ -453,38 +573,38 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
     }
 
     // preprocess selected nodes
-    QPolygonF selectionPoly;
 
-    QVector<GtIntelliGraphNode*> selectedNodes;
+    std::vector<GtIntelliGraphNode*> selectedNodes;
+    findNodes(*m_data, selectedNodeIds, selectedNodes);
 
-    for (QtNodes::NodeId nodeId : selectedNodeIds)
+    if (selectedNodes.size() != selectedNodeIds.size())
     {
-        auto node = m_data->findNode(nodeId);
-        if (!node)
-        {
-            gtError() << tr("Failed to create group node! "
-                            "(Node %1 not found)").arg(nodeId);
-            return;
-        }
-        selectedNodes.append(node);
-        selectionPoly.append(node->pos());
+        gtError() << tr("Failed to create group node! "
+                        "(Some nodes were not not found)");
+        return;
     }
+
+    QPolygonF selectionPoly;
+    std::transform(selectedNodes.begin(), selectedNodes.end(),
+                   std::back_inserter(selectionPoly), [](auto const* node){
+        return node->pos();
+    });
 
     // update node positions
     auto boundingRect = selectionPoly.boundingRect();
     auto center = boundingRect.center();
     auto offset = QPointF{boundingRect.width() / 2, boundingRect.height() / 2};
 
-    m_data->setNodePosition(groupNodeId, center);
-    groupNode->setNodePosition(inputProvider->id(), inputProvider->pos() - offset);
-    groupNode->setNodePosition(outputProvider->id(), outputProvider->pos() + offset);
+    m_data->setNodePosition(groupNode, center);
+    groupNode->setNodePosition(inputProvider, inputProvider->pos() - offset);
+    groupNode->setNodePosition(outputProvider, outputProvider->pos() + offset);
 
     // move selected nodes
     for (auto* node : selectedNodes)
     {
         auto newNode = gt::unique_qobject_cast<GtIntelliGraphNode>(
             node->toMemento().toObject(*gtObjectFactory)
-            );
+        );
 
         if (!newNode)
         {
@@ -507,12 +627,10 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
         NodeId oldId = node->id();
         NodeId newId = movedNode->id();
 
-        delete node; //m_data->deleteNode(oldId);
-
         // udpate connections if node id has changed
         if (newId == oldId) continue;
 
-        gtDebug().verbose() << "Updating node id from" << oldId << "to" << newId << "...";
+        gtInfo().verbose() << "Updating node id from" << oldId << "to" << newId << "...";
 
         for (auto& conId : connectionsIn)
         {
@@ -528,6 +646,10 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
             if (conId.outNodeId == oldId) conId.outNodeId = newId;
         }
     }
+
+    // remove old nodes and connections. COnnections must be deleted before
+    // appending new connections
+    qDeleteAll(selectedNodes);
 
     // sort in and out going connections to avoid crossing connections
     auto const sortByNodePosition = [this](QtNodes::NodeId const& a, QtNodes::NodeId const& b){
@@ -552,38 +674,37 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
         QtConnectionId newCon = conId;
         newCon.inNodeId = groupNode->id();
         newCon.inPortIndex = index;
-        m_model->addConnection(newCon);
+        m_data->appendConnection(std::make_unique<GtIntelliGraphConnection>(newCon));
 
         // create connection in subgraph
         conId.outNodeId = inputProvider->id();
         conId.outPortIndex = index;
-        groupModel->addConnection(conId);
+        groupNode->appendConnection(std::make_unique<GtIntelliGraphConnection>(conId));
 
         index++;
     }
 
     // move output connections
     index = PortIndex{0};
-    for (QtConnectionId conId : connectionsOut)
+    for (ConnectionId conId : connectionsOut)
     {
         // create connection in parent graph
-        QtConnectionId newCon = conId;
+        ConnectionId newCon = conId;
         newCon.outNodeId = groupNode->id();
         newCon.outPortIndex = index;
-        m_model->addConnection(newCon);
+        m_data->appendConnection(std::make_unique<GtIntelliGraphConnection>(newCon));
 
         // create connection in subgraph
         conId.inNodeId = outputProvider->id();
         conId.inPortIndex = index;
-        groupModel->addConnection(conId);
+        groupNode->appendConnection(std::make_unique<GtIntelliGraphConnection>(conId));
 
         index++;
     }
 
     // move internal connections
-    for (QtConnectionId const& conId : connectionsInternal)
+    for (ConnectionId const& conId : connectionsInternal)
     {
-        groupModel->addConnection(conId);
+       groupNode->appendConnection(std::make_unique<GtIntelliGraphConnection>(conId));
     }
 }
-

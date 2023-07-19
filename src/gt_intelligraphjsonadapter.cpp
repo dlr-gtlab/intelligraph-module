@@ -22,27 +22,7 @@
 QJsonObject
 gt::ig::toJson(GtIntelliGraph const& graph, bool clone)
 {
-    QJsonArray jConections;
-    auto connections = graph.connections();
-    std::transform(connections.begin(), connections.end(),
-                   std::back_inserter(jConections),
-                   [](GtIntelliGraphConnection const* con){
-        return toJson(*con);
-    });
-
-    QJsonArray jNodes;
-    auto nodes = graph.nodes();
-    std::transform(nodes.begin(), nodes.end(),
-                   std::back_inserter(jNodes),
-                   [=](GtIntelliGraphNode const* node){
-        return toJson(*node, clone);
-    });
-
-    QJsonObject json;
-    json["connections"] = jConections;
-    json["nodes"] = jNodes;
-
-    return json;
+    return toJson(graph.nodes(), graph.connections(), clone);
 }
 
 QJsonObject
@@ -77,59 +57,37 @@ gt::ig::toJson(GtIntelliGraphConnection const& connection)
     return json;
 }
 
-bool
-gt::ig::fromJson(const QJsonObject& json, GtIntelliGraph& graph)
+QJsonObject
+gt::ig::toJson(QList<const GtIntelliGraphNode*> const& nodes,
+               QList<const GtIntelliGraphConnection*> const& connections,
+               bool clone)
 {
-    // for now we clear the whole object tree -> we may optimize later
-    graph.clear();
+    QJsonArray jConections;
+    std::transform(connections.begin(), connections.end(),
+                   std::back_inserter(jConections),
+                   [](GtIntelliGraphConnection const* con){
+        return toJson(*con);
+    });
 
-    gtDebug().medium() << "Restoring intelli graph from json...";
+    QJsonArray jNodes;
+    std::transform(nodes.begin(), nodes.end(),
+                   std::back_inserter(jNodes),
+                   [=](GtIntelliGraphNode const* node){
+        return toJson(*node, clone);
+    });
 
-    auto const jConnections = json["connections"].toArray();
+    QJsonObject json;
+    json["connections"] = jConections;
+    json["nodes"] = jNodes;
 
-    for (auto const& connection : jConnections)
-    {
-        auto object = fromJsonToConnection(connection.toObject());
-        if (!object->isValid())
-        {
-            gtWarning() << QObject::tr("Failed to restore connection:")
-                        << object->objectName();
-            graph.clear();
-            return false;
-        }
-        graph.appendConnection(std::move(object));
-    }
-
-    auto const jNodes = json["nodes"].toArray();
-
-    try
-    {
-        for (auto const& node : jNodes)
-        {
-            auto object = fromJsonToNode(node.toObject());
-            if (!object->isValid())
-            {
-                gtWarning() << QObject::tr("Failed to restore node:")
-                            << object->objectName();
-                graph.clear();
-                return false;
-            }
-            graph.appendNode(std::move(object));
-        }
-
-        return true;
-    }
-    catch (std::exception const& e)
-    {
-        gtError() << QObject::tr("Failed to restore Intelli Graph from json! Error:")
-                  << e.what();
-        return false;
-    }
+    return json;
 }
 
 std::unique_ptr<GtIntelliGraphNode>
-gt::ig::fromJsonToNode(const QJsonObject& json)
+fromJsonToNode(const QJsonObject& json)
 {
+    using namespace gt::ig;
+
     auto internals = json["internal-data"].toObject();
     auto classname = internals["model-name"].toString();
 
@@ -150,8 +108,10 @@ gt::ig::fromJsonToNode(const QJsonObject& json)
 }
 
 std::unique_ptr<GtIntelliGraphConnection>
-gt::ig::fromJsonToConnection(const QJsonObject& json)
+fromJsonToConnection(const QJsonObject& json)
 {
+    using namespace gt::ig;
+
     auto connection = std::make_unique<GtIntelliGraphConnection>();
 
     constexpr auto invalid = gt::ig::invalid<PortIndex>().value();
@@ -166,7 +126,63 @@ gt::ig::fromJsonToConnection(const QJsonObject& json)
     return connection;
 }
 
-bool gt::ig::mergeFromJson(const QJsonObject& json, GtIntelliGraphNode& node)
+tl::optional<gt::ig::RestoredObjects>
+fromJsonImpl(const QJsonObject& json)
+{
+    using namespace gt::ig;
+
+    RestoredObjects objects;
+
+    auto const& jConnections = json["connections"].toArray();
+
+    // first we buffer the connections, as they may need to be updated
+    for (auto const& jConnection : jConnections)
+    {
+        auto object = fromJsonToConnection(jConnection.toObject());
+        if (!object->isValid())
+        {
+            gtWarning() << QObject::tr("Failed to restore connection:")
+                        << object->objectName();
+            return {};
+        }
+        objects.connections.push_back(std::move(object));
+    }
+
+    auto const& jNodes = json["nodes"].toArray();
+
+    for (auto const& jNode : jNodes)
+    {
+        auto object = fromJsonToNode(jNode.toObject());
+        if (!object->isValid())
+        {
+            gtWarning() << QObject::tr("Failed to restore node:")
+                        << object->objectName();
+            return {};
+        }
+
+        objects.nodes.push_back(std::move(object));
+    }
+
+    return objects;
+}
+
+tl::optional<gt::ig::RestoredObjects>
+gt::ig::fromJson(const QJsonObject& json)
+{
+    try
+    {
+        return fromJsonImpl(json);
+    }
+    catch (std::exception const& e)
+    {
+        gtError() << QObject::tr("Failed to restore Intelli Graph from json! Error:")
+                  << e.what();
+        return {};
+    }
+}
+
+bool
+gt::ig::mergeFromJson(const QJsonObject& json, GtIntelliGraphNode& node)
 {
     auto mementoData = json["memento"].toString();
 

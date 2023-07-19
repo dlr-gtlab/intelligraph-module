@@ -94,6 +94,14 @@ enum ModelPolicy
     ActiveModel = 1
 };
 
+enum NodeIdPolicy
+{
+    /// Indictaes that the node id may be updated if it already exists
+    UpdateNodeId = 0,
+    /// Indicates that the node id should not be updated.
+    KeepNodeId = 1
+};
+
 template<typename T>
 constexpr inline T invalid() noexcept
 {

@@ -10,6 +10,10 @@
 #ifndef gt_intelligraphjsonadapter_H
 #define gt_intelligraphjsonadapter_H
 
+#include <thirdparty/tl/optional.hpp>
+
+#include <QList>
+
 #include <memory>
 
 class QJsonObject;
@@ -26,9 +30,18 @@ QJsonObject toJson(GtIntelliGraph const& graph, bool clone = false);
 QJsonObject toJson(GtIntelliGraphNode const& node, bool clone = false);
 QJsonObject toJson(GtIntelliGraphConnection const& connection);
 
-bool fromJson(QJsonObject const& json, GtIntelliGraph& graph);
-std::unique_ptr<GtIntelliGraphNode> fromJsonToNode(QJsonObject const& json);
-std::unique_ptr<GtIntelliGraphConnection> fromJsonToConnection(QJsonObject const& json);
+QJsonObject toJson(QList<GtIntelliGraphNode const*> const& nodes,
+                   QList<GtIntelliGraphConnection const*> const& connections,
+                   bool clone = false);
+
+struct RestoredObjects
+{
+    std::vector<std::unique_ptr<GtIntelliGraphNode>> nodes;
+    std::vector<std::unique_ptr<GtIntelliGraphConnection>> connections;
+};
+
+tl::optional<RestoredObjects>
+fromJson(QJsonObject const& json);
 
 bool mergeFromJson(QJsonObject const& json, GtIntelliGraphNode& node);
 

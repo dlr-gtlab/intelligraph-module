@@ -14,13 +14,13 @@
 #include "gt_object.h"
 #include "gt_intproperty.h"
 
-#include <QtNodes/Definitions>
+namespace QtNodes { struct ConnectionId; }
 
 class GtIntelliGraphConnection : public GtObject
 {
     Q_OBJECT
 
-    using QtConnectionId = QtNodes::ConnectionId;
+    using ConnectionId = QtNodes::ConnectionId;
     using NodeId    = gt::ig::NodeId;
     using PortIndex = gt::ig::PortIndex;
 
@@ -28,15 +28,11 @@ public:
 
     Q_INVOKABLE GtIntelliGraphConnection(GtObject* parent = nullptr);
 
-    GtIntelliGraphConnection(QtConnectionId conId, GtObject* parent = nullptr) :
-        GtIntelliGraphConnection(parent)
-    {
-        fromConnectionId(conId);
-    }
+    GtIntelliGraphConnection(ConnectionId conId, GtObject* parent = nullptr);
 
-    QtConnectionId toConnectionId() const;
+    ConnectionId connectionId() const;
 
-    bool fromConnectionId(QtConnectionId connection);
+    bool fromConnectionId(ConnectionId connection);
 
     NodeId inNodeId() const { return NodeId{gt::ig::fromInt(m_inNodeId)}; }
     void setInNodeId(NodeId nodeId) { m_inNodeId = nodeId; }

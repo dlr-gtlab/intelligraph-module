@@ -27,6 +27,7 @@ set(PUBLIC_HEADERS
 
 add_library(GTlabIntelliGraph SHARED
     ${PUBLIC_HEADERS}
+    gt_igprivate.h
     gt_intelligraphmodule.h
     gt_intelligraphmodeladapter.h
     gt_intelligraphjsonadapter.h

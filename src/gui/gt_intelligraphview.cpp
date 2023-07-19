@@ -9,13 +9,15 @@
 
 #include "gt_intelligraphview.h"
 
+#include "gt_command.h"
 #include "gt_objectuiaction.h"
 #include "gt_customactionmenu.h"
 #include "gt_filedialog.h"
 #include "gt_icons.h"
-#include "gt_logging.h"
 #include "gt_utilities.h"
 #include "gt_application.h"
+
+#include <gt_logging.h>
 
 #include <QtNodes/BasicGraphicsScene>
 #include <QtNodes/StyleCollection>
@@ -485,6 +487,7 @@ GtIntelliGraphView::loadScene(const QJsonObject& scene)
     gtDebug().verbose()
         << "Loading JSON scene:"
         << QJsonDocument(scene).toJson(QJsonDocument::Indented);
+
     try
     {
         nodeScene()->clearScene();

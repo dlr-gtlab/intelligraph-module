@@ -22,6 +22,8 @@ class GtIntelliGraphConnection;
 class GtIntellIGraphConnectionGroup;
 class GtIntelliGraphModelAdapter;
 
+namespace QtNodes { struct ConnectionId; }
+
 class GtIntelliGraph : public GtIntelliGraphNode
 {
     Q_OBJECT
@@ -32,10 +34,9 @@ class GtIntelliGraph : public GtIntelliGraphNode
     template <gt::ig::PortType>
     friend class GtIgAbstractGroupProvider;
 
-public:
+    using ConnectionId = QtNodes::ConnectionId;
 
-    using QtNodeId = QtNodes::NodeId;
-    using QtConnectionId = QtNodes::ConnectionId;
+public:
 
     Q_INVOKABLE GtIntelliGraph();
     ~GtIntelliGraph();
@@ -54,11 +55,11 @@ public:
     GtIntellIGraphConnectionGroup& connectionGroup();
     GtIntellIGraphConnectionGroup const& connectionGroup() const;
 
-    GtIntelliGraphNode* findNode(QtNodeId nodeId);
-    GtIntelliGraphNode const* findNode(QtNodeId nodeId) const;
+    GtIntelliGraphNode* findNode(NodeId nodeId);
+    GtIntelliGraphNode const* findNode(NodeId nodeId) const;
 
-    GtIntelliGraphConnection* findConnection(QtConnectionId const& conId);
-    GtIntelliGraphConnection const* findConnection(QtConnectionId const& conId) const;
+    GtIntelliGraphConnection* findConnection(ConnectionId const& conId);
+    GtIntelliGraphConnection const* findConnection(ConnectionId const& conId) const;
 
     QList<GtIntelliGraph*> subGraphs();
     QList<GtIntelliGraph const*> subGraphs() const;
@@ -90,9 +91,11 @@ public:
      * of appending the child directly. Node may change its id if its
      * already occupied
      * @param node Node to append
+     * @param policy Whether to generate a new id if necessary
      * @return success
      */
-    GtIntelliGraphNode* appendNode(std::unique_ptr<GtIntelliGraphNode> node);
+    GtIntelliGraphNode* appendNode(std::unique_ptr<GtIntelliGraphNode> node,
+                                   gt::ig::NodeIdPolicy policy = gt::ig::UpdateNodeId);
 
     /**
      * @brief Appends the connection to intelli graph. Use this function instead
@@ -102,48 +105,30 @@ public:
      */
     GtIntelliGraphConnection* appendConnection(std::unique_ptr<GtIntelliGraphConnection> connection);
 
-//    /**
-//     * @brief Creates a new node using the node id in the active graph model as
-//     * a child object and returns a pointer to it. Returns null if the process
-//     * failed. The ownership is taken care of. Make sure to set
-//     * the graph model beforehand.
-//     * @param nodeId Node id to create/move
-//     * @return Node (may be null)
-//     */
-//    GtIntelliGraphNode* appendNodeById(QtNodeId nodeId);
-
-//    /**
-//     * @brief Creates a new connection base on the connection details and
-//     * returns a pointer to the newly created object (null if the process
-//     * failed). The ownership is taken care of. The graph model must not be set
-//     * beforehand.
-//     * @param connectionId Connection details to be used for creating the node.
-//     * @return Connection (may be null)
-//     */
-//    GtIntelliGraphConnection* appendConnectionById(QtConnectionId const& connectionId);
+    QVector<NodeId> appendObjects(std::vector<std::unique_ptr<GtIntelliGraphNode>>& nodes,
+                                  std::vector<std::unique_ptr<GtIntelliGraphConnection>>& connections);
 
     /**
-     * @brief Deletes the node described by node id. Returns true on success.
-     * The graph model must not be set beforehand.
+     * @brief Deletes the node specified by node id. Returns true on success.
      * @param nodeId Node to delete
      * @return True if successful else false
      */
-    bool deleteNode(QtNodeId nodeId);
+    bool deleteNode(NodeId nodeId);
 
     /**
-     * @brief Deletes the connection described by the connection details.
-     * Returns true on success. The graph model must not be set beforehand.
+     * @brief Deletes the connection specified by the connection id.
+     * Returns true on success.
      * @param nodeId Node to delete
      * @return True if successful else false
      */
-    bool deleteConnection(QtConnectionId const& connectionId);
+    bool deleteConnection(ConnectionId connectionId);
 
     /**
      * @brief Updates the position of the node associated with nodeId.
      * @param nodeId Node to update
      * @param pos New position
      */
-    void setNodePosition(QtNodeId nodeId, QPointF pos);
+    void setNodePosition(GtIntelliGraphNode* node, QPointF pos);
 
     /**
      * @brief Creates a graph model adapter if it does not exists already.
@@ -184,8 +169,6 @@ signals:
 private:
 
     std::vector<NodeData> m_outData;
-
-    void updateNodeId(GtIntelliGraphNode& node);
 };
 
 #endif // GT_INTELLIGRAPH_H

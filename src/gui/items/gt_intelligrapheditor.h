@@ -39,10 +39,6 @@ public:
 
     void setData(GtObject* obj) override;
 
-protected:
-
-    QString customId(GtObject* obj = nullptr) override;
-
 private:
 
     gt::Finally<Cleanup> m_cleanup{Cleanup{}};

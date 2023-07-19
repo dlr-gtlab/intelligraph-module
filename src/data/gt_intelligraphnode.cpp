@@ -22,6 +22,7 @@
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, GtIntelliGraphNode::NodeData const& data)
 {
+    // temporary
     if (auto* d = qobject_cast<GtIgDoubleData const*>(data.get()))
     {
         gt::log::StreamStateSaver saver(s);

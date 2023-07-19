@@ -127,7 +127,7 @@ GtIntelliGraphEditor::GtIntelliGraphEditor() :
 {
     gtApp->inDarkMode() ? setStyleDark() : setStyleBright();
 
-    setObjectName(GtIntelliGraphEditor::customId());
+    setObjectName(tr("IntelliGraph Editor"));
 
     m_view->setFrameShape(QFrame::NoFrame);
 
@@ -159,14 +159,5 @@ GtIntelliGraphEditor::setData(GtObject* obj)
     m_view->setScene(*m_scene);
     m_view->centerScene();
 
-    setObjectName(customId(data));
-}
-
-QString
-GtIntelliGraphEditor::customId(GtObject* obj)
-{
-    auto* data  = qobject_cast<GtIntelliGraph*>(obj);
-    if (!data) return {};
-
-    return tr("IntelliGraph Editor") + QStringLiteral(" - ") + data->caption();
+    setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + data->caption());
 }

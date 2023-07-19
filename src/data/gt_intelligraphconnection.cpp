@@ -10,6 +10,8 @@
 
 #include "gt_qtutilities.h"
 
+#include <QtNodes/Definitions>
+
 GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
     GtObject(parent),
     m_inNodeId("inNodeId", tr("Recieving Node Id"), tr("Recieving Node Id")),
@@ -33,14 +35,20 @@ GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
     updateObjectName();
 }
 
-GtIntelliGraphConnection::QtConnectionId
-GtIntelliGraphConnection::toConnectionId() const
+GtIntelliGraphConnection::GtIntelliGraphConnection(ConnectionId conId, GtObject* parent) :
+    GtIntelliGraphConnection(parent)
 {
-    return QtConnectionId{outNodeId(), outPortIdx(), inNodeId(), inPortIdx()};
+    fromConnectionId(conId);
+}
+
+GtIntelliGraphConnection::ConnectionId
+GtIntelliGraphConnection::connectionId() const
+{
+    return ConnectionId{outNodeId(), outPortIdx(), inNodeId(), inPortIdx()};
 }
 
 bool
-GtIntelliGraphConnection::fromConnectionId(QtConnectionId connection)
+GtIntelliGraphConnection::fromConnectionId(ConnectionId connection)
 {
     m_inNodeId   = connection.inNodeId;
     m_inPortIdx  = connection.inPortIndex;
