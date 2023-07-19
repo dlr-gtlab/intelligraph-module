@@ -10,17 +10,14 @@
 #define NDSNODEEDITOR_H
 
 #include "gt_intelligraph.h"
-#include "gt_intelligraphview.h"
 #include "gt_intelligraphscene.h"
 #include "gt_igvolatileptr.h"
 
 #include "gt_mdiitem.h"
-
-#include <QtNodes/Definitions>
-#include <QtNodes/DataFlowGraphModel>
-#include <QtNodes/DataFlowGraphicsScene>
+#include "gt_utilities.h"
 
 class QMenu;
+class GtIntelliGraphView;
 
 /**
  * @generated 1.2.0
@@ -30,19 +27,13 @@ class GtIntelliGraphEditor : public GtMdiItem
 {
     Q_OBJECT
 
-    /// helper struct to close the graph model if its no longer used
     struct Cleanup
     {
-        void operator()() { if (data) data->clearModelManager(); }
-
+        void operator()() { if (data) data->clearModelAdapter(); }
         QPointer<GtIntelliGraph> data;
     };
 
 public:
-
-    using QtNodeId       = QtNodes::NodeId;
-    using QtPortType     = QtNodes::PortType;
-    using QtPortIndex    = QtNodes::PortIndex;
 
     Q_INVOKABLE GtIntelliGraphEditor();
 
@@ -50,7 +41,7 @@ public:
 
 protected:
 
-    QString customId(GtObject* obj) override;
+    QString customId(GtObject* obj = nullptr) override;
 
 private:
 

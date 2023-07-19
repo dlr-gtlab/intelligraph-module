@@ -7,7 +7,7 @@
  */
 
 
-#include "gt_igjsonadpater.h"
+#include "gt_intelligraphjsonadapter.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligraphnode.h"
 #include "gt_intelligraphconnection.h"
@@ -57,9 +57,10 @@ gt::ig::toJson(GtIntelliGraphNode const& node, bool clone)
     position["y"] = pos.y();
     json["position"] = position;
 
+    auto const& memento = node.toMemento(clone);
     QJsonObject internals;
-    internals["model-name"] = node.modelName();
-    internals["memento"] = static_cast<QString>(node.toMemento(clone).toByteArray());
+    internals["model-name"] = memento.className();
+    internals["memento"] = static_cast<QString>(memento.toByteArray());
     json["internal-data"] = internals;
 
     return json;

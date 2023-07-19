@@ -172,7 +172,7 @@ private slots:
         QString caption = entry->template getMemberVal<QString>(S_CAPTION);
 
         gtDebug().verbose() << "Updating port" << idx << "to" << typeId
-                            << gt::brackets("caption: " + caption);
+                            << gt::brackets("caption: " + gt::squoted(caption));
 
         p->typeId = typeId;
         p->caption = caption;

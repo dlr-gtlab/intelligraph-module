@@ -16,6 +16,8 @@
 #include "gt_intelligraphnodefactory.h"
 #include "gt_intelligraphcategory.h"
 #include "gt_intelligraphconnection.h"
+#include "gt_intelligraphconnectiongroup.h"
+#include "gt_intelligraphconnectionui.h"
 #include "gt_intelligraphpackageui.h"
 #include "gt_intelligraphnodeui.h"
 #include "gt_intelligrapheditor.h"
@@ -124,6 +126,11 @@ GtIntelliGraphModule::uiItems()
     static QVector<QByteArray> buffer;
 
     QMap<const char*, QMetaObject> map;
+
+    map.insert(GT_CLASSNAME(GtIntelliGraphConnection),
+               GT_METADATA(GtIntelliGraphConnectionUI));
+    map.insert(GT_CLASSNAME(GtIntellIGraphConnectionGroup),
+               GT_METADATA(GtIntelliGraphConnectionUI));
 
     map.insert(GT_CLASSNAME(GtIgPackage),
                GT_METADATA(GtIntelliGraphPackageUI));

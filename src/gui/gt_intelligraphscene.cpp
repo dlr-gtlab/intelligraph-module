@@ -14,7 +14,7 @@
 #include "gt_intelligraphdatafactory.h"
 #include "gt_iggroupinputprovider.h"
 #include "gt_iggroupoutputprovider.h"
-#include "gt_intelligraphmodelmanager.h"
+#include "gt_intelligraphmodeladapter.h"
 
 #include "gt_application.h"
 #include "gt_command.h"
@@ -62,11 +62,13 @@ void findNodes(GtIntelliGraph& graph, In const& in, Out& out)
     }
 }
 
-GtIntelliGraphScene::GtIntelliGraphScene(GtIntelliGraph& graph, QObject* parent) :
-    QtNodes::DataFlowGraphicsScene(*graph.makeModelManager()->graphModel(), parent),
+GtIntelliGraphScene::GtIntelliGraphScene(GtIntelliGraph& graph) :
+    QtNodes::DataFlowGraphicsScene(*graph.makeModelAdapter()->graphModel()),
     m_data(&graph),
     m_model(static_cast<QtNodes::DataFlowGraphModel*>(&graphModel()))
 {
+    setParent(m_model);
+
     connect(this, &QtNodes::DataFlowGraphicsScene::nodeMoved,
             this, &GtIntelliGraphScene::onNodePositionChanged);
     connect(this, &QtNodes::DataFlowGraphicsScene::nodeSelected,
@@ -78,14 +80,14 @@ GtIntelliGraphScene::GtIntelliGraphScene(GtIntelliGraph& graph, QObject* parent)
     connect(this, &QtNodes::DataFlowGraphicsScene::portContextMenu,
             this, &GtIntelliGraphScene::onPortContextMenu);
 
-    connect(m_model, &QtNodes::DataFlowGraphModel::nodePositionUpdated,
-            this, &GtIntelliGraphScene::onNodePositionChanged);
+//    connect(m_model, &QtNodes::DataFlowGraphModel::nodePositionUpdated,
+//            this, &GtIntelliGraphScene::onNodePositionChanged);
 }
 
 void
 GtIntelliGraphScene::deleteSelectedObjects()
 {
-    gtDebug() << __FUNCTION__;
+    gtDebug().medium() << __FUNCTION__;
 
     auto const& items = selectedItems();
     if (selectedItems().empty()) return;
@@ -119,26 +121,24 @@ GtIntelliGraphScene::duplicateSelectedObjects()
 {
     auto selectedNodes = this->selectedNodes();
 
-    gtDebug() << __FUNCTION__;
+    gtDebug().medium() << __FUNCTION__;
 }
 
 void
 GtIntelliGraphScene::copySelectedObjects()
 {
-    gtDebug() << __FUNCTION__;
+    gtDebug().medium() << __FUNCTION__;
 }
 
 void
 GtIntelliGraphScene::pasteObjects()
 {
-    gtDebug() << __FUNCTION__;
+    gtDebug().medium() << __FUNCTION__;
 }
 
 void
 GtIntelliGraphScene::onNodePositionChanged(QtNodes::NodeId nodeId)
 {
-    assert(m_data);
-
     auto* delegate = m_model->delegateModel<GtIntelliGraphObjectModel>(nodeId);
 
     if (!delegate || !delegate->node()) return;
@@ -161,8 +161,6 @@ GtIntelliGraphScene::onNodePositionChanged(QtNodes::NodeId nodeId)
 void
 GtIntelliGraphScene::onNodeSelected(QtNodes::NodeId nodeId)
 {
-    assert(m_data);
-
     if (auto* node = m_data->findNode(nodeId))
     {
         emit gtApp->objectSelected(node);
@@ -172,8 +170,6 @@ GtIntelliGraphScene::onNodeSelected(QtNodes::NodeId nodeId)
 void
 GtIntelliGraphScene::onNodeDoubleClicked(QtNodes::NodeId nodeId)
 {
-    assert(m_data);
-
     auto* node = m_data->findNode(nodeId);
     if (!node) return;
 
@@ -188,8 +184,6 @@ GtIntelliGraphScene::onPortContextMenu(QtNodes::NodeId nodeId,
 {
     using PortType  = gt::ig::PortType;
     using PortIndex = gt::ig::PortIndex;
-
-    assert(m_data); assert(m_model);
 
     auto* node = m_data->findNode(nodeId);
     if (!node) return;
@@ -267,8 +261,6 @@ GtIntelliGraphScene::onPortContextMenu(QtNodes::NodeId nodeId,
 void
 GtIntelliGraphScene::onNodeContextMenu(QtNodes::NodeId nodeId, QPointF pos)
 {
-    assert(m_data); assert(m_model);
-
     // retrieve selected nodes
     auto selectedNodeIds = selectedNodes();
 
@@ -421,7 +413,7 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
         dtypeOut.push_back(dtype.id);
     }
 
-    auto cmd = gtApp->startCommand(m_data, "bla");
+    auto cmd = gtApp->startCommand(m_data, tr("Create group node '%1'").arg(groupNodeName));
     auto finally = gt::finally([&](){
         gtApp->endCommand(cmd);
     });
@@ -429,13 +421,13 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
     // create group node
     QtNodes::NodeId groupNodeId = m_model->addNode(m_data->modelName());
     auto* groupNode = qobject_cast<GtIntelliGraph*>(m_data->findNode(groupNodeId));
-    if (!groupNode || !groupNode->findModelManager())
+    if (!groupNode || !groupNode->findModelAdapter())
     {
         gtError() << tr("Failed to create group node! (Invalid group node)");
         return;
     }
 
-    auto groupModel = groupNode->findModelManager()->graphModel();
+    auto groupModel = groupNode->findModelAdapter()->graphModel();
     groupNode->setCaption(groupNodeName);
 
     // setup input/output provider

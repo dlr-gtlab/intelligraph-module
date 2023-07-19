@@ -14,11 +14,6 @@
 #include "gt_application.h"
 #include "gt_logging.h"
 
-#include <QtNodes/StyleCollection>
-#include <QtNodes/NodeData>
-#include <QtNodes/NodeDelegateModelRegistry>
-#include <QtNodes/internal/NodeGraphicsObject.hpp>
-
 #include <QVBoxLayout>
 #include <QMenu>
 #include <QCursor>
@@ -132,7 +127,7 @@ GtIntelliGraphEditor::GtIntelliGraphEditor() :
 {
     gtApp->inDarkMode() ? setStyleDark() : setStyleBright();
 
-    setObjectName(tr("NodeEditor"));
+    setObjectName(GtIntelliGraphEditor::customId());
 
     m_view->setFrameShape(QFrame::NoFrame);
 
@@ -154,21 +149,24 @@ GtIntelliGraphEditor::setData(GtObject* obj)
         return;
     }
 
+    // close window if data was deleted
     connect(data, &QObject::destroyed, this, &QObject::deleteLater);
 
-    // we have to make sure to close the graph model when it is no longer used
-    m_cleanup = gt::Finally<Cleanup>(Cleanup{data});
+    // close graph model if its no longer used
+    m_cleanup = gt::finally(Cleanup{data});
     m_scene = gt::ig::make_volatile<GtIntelliGraphScene>(*data);
 
     m_view->setScene(*m_scene);
     m_view->centerScene();
+
+    setObjectName(customId(data));
 }
 
 QString
 GtIntelliGraphEditor::customId(GtObject* obj)
 {
-    auto data  = qobject_cast<GtIntelliGraph*>(obj);
+    auto* data  = qobject_cast<GtIntelliGraph*>(obj);
     if (!data) return {};
 
-    return objectName() + QStringLiteral(" - ") + data->caption();
+    return tr("IntelliGraph Editor") + QStringLiteral(" - ") + data->caption();
 }

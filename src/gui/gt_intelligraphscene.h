@@ -21,7 +21,7 @@ class GtIntelliGraphScene : public QtNodes::DataFlowGraphicsScene
 
 public:
 
-    GtIntelliGraphScene(GtIntelliGraph& graph, QObject* parent = nullptr);
+    GtIntelliGraphScene(GtIntelliGraph& graph);
 
 public slots:
 

@@ -12,11 +12,13 @@
 
 GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
     GtObject(parent),
-    m_inNodeId("inNodeId", tr("Starting Node Id"), tr("Starting Node Id")),
-    m_inPortIdx("inPortIdx", tr("Starting Port Idx"), tr("Starting Port Idx")),
-    m_outNodeId("outNodeId", tr("Recieving Node Id"), tr("Recieving Node Id")),
-    m_outPortIdx("outPortIdx", tr("Recieving Port Idx"), tr("Recieving Port Idx"))
+    m_inNodeId("inNodeId", tr("Recieving Node Id"), tr("Recieving Node Id")),
+    m_inPortIdx("inPortIdx", tr("Recieving Port Idx"), tr("Recieving Port Idx")),
+    m_outNodeId("outNodeId", tr("Starting Node Id"), tr("Starting Node Id")),
+    m_outPortIdx("outPortIdx", tr("Starting Port Idx"), tr("Starting Port Idx"))
 {
+    setFlag(UserDeletable);
+
     static const QString cat = QStringLiteral("Node");
     registerProperty(m_inNodeId, cat);
     registerProperty(m_inPortIdx, cat);
@@ -69,6 +71,6 @@ GtIntelliGraphConnection::updateObjectName()
     return gt::setUniqueName(
         *this, !isValid() ? QStringLiteral("NodeConnection[N/A]") :
                             QStringLiteral("NodeConnection[%1:%2/%3:%4]")
-                                .arg(m_inNodeId).arg(m_inPortIdx)
-                                .arg(m_outNodeId).arg(m_outPortIdx));
+                              .arg(m_outNodeId).arg(m_outPortIdx)
+                              .arg(m_inNodeId).arg(m_inPortIdx));
 }

@@ -465,8 +465,6 @@ protected:
         return qobject_cast<U const*>(nodeData(id).get());
     }
 
-    void onObjectDataMerged() override { gtDebug() << __FUNCTION__ << objectName(); }
-
 private:
 
     struct Impl;

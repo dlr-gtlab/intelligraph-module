@@ -27,13 +27,14 @@ set(PUBLIC_HEADERS
 
 add_library(GTlabIntelliGraph SHARED
     ${PUBLIC_HEADERS}
-    gt_igjsonadpater.h
     gt_intelligraphmodule.h
+    gt_intelligraphmodeladapter.h
+    gt_intelligraphjsonadapter.h
     data/gt_igpackage.h
     data/gt_intelligraph.h
     data/gt_intelligraphconnection.h
+    data/gt_intelligraphconnectiongroup.h
     data/gt_intelligraphcategory.h
-    data/gt_intelligraphmodelmanager.h
     data/nodes/gt_igabstractgroupprovider.h
     data/nodes/gt_igconditionalnode.h
     data/nodes/gt_igdoubletoboolnode.h
@@ -51,19 +52,21 @@ add_library(GTlabIntelliGraph SHARED
     gui/property_items/gt_igstringselectionpropertyitem.h
     gui/gt_intelligraphscene.h
     gui/gt_intelligraphview.h
+    gui/ui/gt_intelligraphconnectionui.h
     gui/ui/gt_intelligraphpackageui.h
     gui/ui/gt_iggroupproviderui.h
 
-    gt_igjsonadpater.cpp
     gt_intelligraphmodule.cpp
     gt_intelligraphnodefactory.cpp
+    gt_intelligraphjsonadapter.cpp
     gt_intelligraphdatafactory.cpp
+    gt_intelligraphmodeladapter.cpp
     data/gt_igpackage.cpp
     data/gt_intelligraph.cpp
     data/gt_intelligraphconnection.cpp
+    data/gt_intelligraphconnectiongroup.cpp
     data/gt_intelligraphnode.cpp
     data/gt_intelligraphcategory.cpp
-    data/gt_intelligraphmodelmanager.cpp
     data/nodes/gt_igconditionalnode.cpp
     data/nodes/gt_igdoubletoboolnode.cpp
     data/nodes/gt_igfinddirectchildnode.cpp
@@ -88,6 +91,7 @@ add_library(GTlabIntelliGraph SHARED
     gui/models/gt_intelligraphobjectmodel.cpp
     gui/property_items/gt_igobjectlinkpropertyitem.cpp
     gui/property_items/gt_igstringselectionpropertyitem.cpp
+    gui/ui/gt_intelligraphconnectionui.cpp
     gui/ui/gt_intelligraphnodeui.cpp
     gui/ui/gt_intelligraphpackageui.cpp
     gui/ui/gt_iggroupproviderui.cpp

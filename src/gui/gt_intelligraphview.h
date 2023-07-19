@@ -22,13 +22,6 @@ class GtIntelliGraphView : public QGraphicsView
 {
     Q_OBJECT
 
-    using BasicGraphicsScene = QtNodes::BasicGraphicsScene;
-    using DataFlowGraphModel = QtNodes::DataFlowGraphModel;
-
-    using QtNodeId       = QtNodes::NodeId;
-    using QtPortType     = QtNodes::PortType;
-    using QtPortIndex    = QtNodes::PortIndex;
-
 public:
 
     struct ScaleRange
@@ -50,7 +43,7 @@ public:
 
     GtIntelliGraphScene* nodeScene();
 
-    DataFlowGraphModel* graphModel();
+    QtNodes::DataFlowGraphModel* graphModel();
 
 public slots:
 

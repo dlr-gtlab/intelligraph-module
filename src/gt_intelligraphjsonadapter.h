@@ -7,8 +7,8 @@
  */
 
 
-#ifndef GT_IGJSONADPATER_H
-#define GT_IGJSONADPATER_H
+#ifndef gt_intelligraphjsonadapter_H
+#define gt_intelligraphjsonadapter_H
 
 #include <memory>
 

@@ -9,7 +9,7 @@
 
 #include "gt_intelligraphnodeui.h"
 
-#include "gt_igjsonadpater.h"
+#include "gt_intelligraphjsonadapter.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligrapheditor.h"
 

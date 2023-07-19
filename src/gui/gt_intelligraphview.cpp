@@ -422,12 +422,12 @@ GtIntelliGraphView::nodeScene()
     return qobject_cast<GtIntelliGraphScene*>(scene());
 }
 
-GtIntelliGraphView::DataFlowGraphModel*
+QtNodes::DataFlowGraphModel*
 GtIntelliGraphView::graphModel()
 {
     if (auto scene = nodeScene())
     {
-        return static_cast<DataFlowGraphModel*>(&scene->graphModel());
+        return static_cast<QtNodes::DataFlowGraphModel*>(&scene->graphModel());
     }
 
     return nullptr;

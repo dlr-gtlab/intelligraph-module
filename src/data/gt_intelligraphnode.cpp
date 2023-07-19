@@ -17,8 +17,17 @@
 
 #include <QRegExpValidator>
 
-gt::log::Stream& operator<<(gt::log::Stream& s, GtIntelliGraphNode::NodeData const& data)
+#include "gt_igdoubledata.h"
+
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, GtIntelliGraphNode::NodeData const& data)
 {
+    if (auto* d = qobject_cast<GtIgDoubleData const*>(data.get()))
+    {
+        gt::log::StreamStateSaver saver(s);
+        return s.nospace() << data->metaObject()->className() << " (" <<d->value() << ")";
+    }
+
     return s << (data ? data->metaObject()->className() : "nullptr");
 }
 
@@ -422,9 +431,9 @@ GtIntelliGraphNode::setInData(PortIndex idx, NodeData data)
 {
     if (idx >= pimpl->inData.size()) return false;
 
-    gtDebug().verbose().nospace()
+    gtTrace().verbose().nospace()
         << "### Setting in data:  '" << objectName()
-        << "' at idx '" << idx << "': " << data;
+        << "' at input idx  '" << idx << "': " << data;
 
     pimpl->inData.at(idx) = std::move(data);
 
@@ -442,9 +451,9 @@ GtIntelliGraphNode::outData(PortIndex idx)
 {
     if (idx >= pimpl->outData.size()) return {};
 
-    gtDebug().verbose().nospace()
+    gtTrace().verbose().nospace()
         << "### Getting out data: '" << objectName()
-        << "' at idx '" << idx << "': " << pimpl->outData.at(idx);
+        << "' at output idx '" << idx << "': " << pimpl->outData.at(idx);
 
     // trigger node update if no input data is available
     if (pimpl->state == EvalRequired) updatePort(idx);
@@ -491,7 +500,7 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
 
         gtDebug().verbose().nospace()
             << "### Evaluating node:  '" << objectName()
-            << "' at output id '" << id << "'";
+            << (id != gt::ig::invalid<PortId>() ? "' at output idx '" + QString::number(portIndex(PortType::Out, id)) + "'" : "");
 
         auto tmp = eval(id);
 
