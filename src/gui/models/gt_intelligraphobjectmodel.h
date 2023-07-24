@@ -39,8 +39,8 @@ public:
     /// initializes the model with a new node object
     void init(GtIntelliGraphNode& node);
 
-    GtIntelliGraphNode& node() { assert(m_node); return *m_node; }
-    GtIntelliGraphNode const& node() const { assert(m_node); return *m_node; }
+    GtIntelliGraphNode* node() { return m_node; }
+    GtIntelliGraphNode const* node() const { return m_node; }
 
     QtNodeFlags flags() const override;
 

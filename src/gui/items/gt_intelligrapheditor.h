@@ -9,16 +9,15 @@
 #ifndef NDSNODEEDITOR_H
 #define NDSNODEEDITOR_H
 
-#include "gt_mdiitem.h"
-
 #include "gt_intelligraph.h"
+#include "gt_intelligraphscene.h"
+#include "gt_igvolatileptr.h"
 
-#include <QtNodes/Definitions>
-#include <QtNodes/DataFlowGraphModel>
-#include <QtNodes/DataFlowGraphicsScene>
-#include <QtNodes/GraphicsView>
+#include "gt_mdiitem.h"
+#include "gt_utilities.h"
 
 class QMenu;
+class GtIntelliGraphView;
 
 /**
  * @generated 1.2.0
@@ -28,53 +27,25 @@ class GtIntelliGraphEditor : public GtMdiItem
 {
     Q_OBJECT
 
+    struct Cleanup
+    {
+        void operator()() { if (data) data->clearModelAdapter(); }
+        QPointer<GtIntelliGraph> data;
+    };
+
 public:
 
-    using QtNodeId       = QtNodes::NodeId;
-    using QtPortType     = QtNodes::PortType;
-    using QtPortIndex    = QtNodes::PortIndex;
-
     Q_INVOKABLE GtIntelliGraphEditor();
-    ~GtIntelliGraphEditor();
 
     void setData(GtObject* obj) override;
 
 private:
 
-    QPointer<GtIntelliGraph> m_data = nullptr;
-
-    /// model
-    QPointer<QtNodes::DataFlowGraphModel> m_model = nullptr;
+    gt::Finally<Cleanup> m_cleanup{Cleanup{}};
     /// scene
-    QtNodes::DataFlowGraphicsScene* m_scene = nullptr;
+    gt::ig::volatile_ptr<GtIntelliGraphScene> m_scene = nullptr;
     /// view
-    QtNodes::GraphicsView* m_view = nullptr;
-
-    QMenu* m_sceneMenu = nullptr;
-
-private slots:
-
-    void loadFromJson();
-
-    void saveToJson();
-
-    void onNodePositionChanged(QtNodeId nodeId);
-
-    void onNodeSelected(QtNodeId nodeId);
-
-    void onNodeDoubleClicked(QtNodeId nodeId);
-
-    void onNodeContextMenu(QtNodeId nodeId, QPointF pos);
-
-    void onPortContextMenu(QtNodeId nodeId, QtPortType type, QtPortIndex idx, QPointF pos);
-
-private:
-
-    void loadScene(QJsonObject const& scene);
-
-    void deleteNodes(std::vector<QtNodeId> const& nodeIds);
-
-    void makeGroupNode(std::vector<QtNodeId> const& selectedNodeIds);
+    GtIntelliGraphView* m_view = nullptr;
 };
 
 #endif // NDSNODEEDITOR_H

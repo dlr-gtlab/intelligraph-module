@@ -16,6 +16,8 @@
 #include "gt_intelligraphnodefactory.h"
 #include "gt_intelligraphcategory.h"
 #include "gt_intelligraphconnection.h"
+#include "gt_intelligraphconnectiongroup.h"
+#include "gt_intelligraphconnectionui.h"
 #include "gt_intelligraphpackageui.h"
 #include "gt_intelligraphnodeui.h"
 #include "gt_intelligrapheditor.h"
@@ -125,6 +127,11 @@ GtIntelliGraphModule::uiItems()
 
     QMap<const char*, QMetaObject> map;
 
+    map.insert(GT_CLASSNAME(GtIntelliGraphConnection),
+               GT_METADATA(GtIntelliGraphConnectionUI));
+    map.insert(GT_CLASSNAME(GtIntellIGraphConnectionGroup),
+               GT_METADATA(GtIntelliGraphConnectionUI));
+
     map.insert(GT_CLASSNAME(GtIgPackage),
                GT_METADATA(GtIntelliGraphPackageUI));
     map.insert(GT_CLASSNAME(GtIntelliGraphCategory),
@@ -135,8 +142,11 @@ GtIntelliGraphModule::uiItems()
     map.insert(GT_CLASSNAME(GtIgGroupOutputProvider),
                GT_METADATA(GtIgGroupProviderUI));
 
-    QStringList const& registeredNodes = GtIntelliGraphNodeFactory::instance().registeredNodes();
+    QStringList registeredNodes = GtIntelliGraphNodeFactory::instance().registeredNodes();
     buffer.reserve(registeredNodes.size());
+
+    registeredNodes.removeOne(GT_CLASSNAME(GtIgGroupInputProvider));
+    registeredNodes.removeOne(GT_CLASSNAME(GtIgGroupOutputProvider));
 
     for (QString const& node : registeredNodes)
     {

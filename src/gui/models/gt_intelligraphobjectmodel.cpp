@@ -8,6 +8,7 @@
 
 #include "gt_intelligraphobjectmodel.h"
 
+#include "gt_intelligraphjsonadapter.h"
 #include "gt_intelligraphnodefactory.h"
 #include "gt_intelligraphdatafactory.h"
 
@@ -223,7 +224,10 @@ GtIntelliGraphObjectModel::setInData(QtNodeData nodeData, const QtPortIndex port
 QWidget*
 GtIntelliGraphObjectModel::embeddedWidget()
 {
-    return m_node ? m_node->embeddedWidget() : nullptr;
+//    gtDebug() << __FUNCTION__ << m_node;
+    if (!m_node) return nullptr;
+
+    return m_node->embeddedWidget();
 }
 
 QJsonObject
@@ -231,7 +235,7 @@ GtIntelliGraphObjectModel::save() const
 {
     if (m_node)
     {
-        return m_node->toJson()["internal-data"].toObject();
+        return gt::ig::toJson(*m_node)["internal-data"].toObject();
     }
 
     return QtNodes::NodeDelegateModel::save();
@@ -252,7 +256,7 @@ GtIntelliGraphObjectModel::load(const QJsonObject& json)
         return;
     }
 
-    m_node->mergeNodeData(json);
+    gt::ig::mergeFromJson(json, *m_node);
 
     gtDebug().verbose() << "NODE LOADED:" << m_node->objectName();
 
@@ -262,19 +266,12 @@ GtIntelliGraphObjectModel::load(const QJsonObject& json)
 void
 GtIntelliGraphObjectModel::outputConnectionCreated(const QtConnectionId&)
 {
-    if (!m_node) return;
+//    if (!m_node) return;
     
-    auto const& ports = m_node->ports(cast_port_type(QtPortType::In));
+//    auto const& ports = m_node->ports(cast_port_type(QtPortType::In));
 
-    if (ports.empty()) m_node->updateNode();
+//    if (ports.empty()) m_node->updateNode();
 }
 
 void
-GtIntelliGraphObjectModel::outputConnectionDeleted(const QtConnectionId&)
-{
-    if (!m_node) return;
-
-//    auto const& ports = m_node->ports(cast_port_type(PortType::In));
-
-//    if (ports.size() == 0) m_node->updateNode();
-}
+GtIntelliGraphObjectModel::outputConnectionDeleted(const QtConnectionId&) { }

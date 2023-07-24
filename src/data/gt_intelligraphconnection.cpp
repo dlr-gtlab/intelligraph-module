@@ -9,17 +9,18 @@
 #include "gt_intelligraphconnection.h"
 
 #include "gt_qtutilities.h"
-#include "gt_application.h"
 
-#include <QtNodes/ConnectionIdUtils>
+#include <QtNodes/Definitions>
 
 GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
     GtObject(parent),
-    m_inNodeId("inNodeId", tr("Starting Node Id"), tr("Starting Node Id")),
-    m_inPortIdx("inPortIdx", tr("Starting Port Idx"), tr("Starting Port Idx")),
-    m_outNodeId("outNodeId", tr("Recieving Node Id"), tr("Recieving Node Id")),
-    m_outPortIdx("outPortIdx", tr("Recieving Port Idx"), tr("Recieving Port Idx"))
+    m_inNodeId("inNodeId", tr("Recieving Node Id"), tr("Recieving Node Id")),
+    m_inPortIdx("inPortIdx", tr("Recieving Port Idx"), tr("Recieving Port Idx")),
+    m_outNodeId("outNodeId", tr("Starting Node Id"), tr("Starting Node Id")),
+    m_outPortIdx("outPortIdx", tr("Starting Port Idx"), tr("Starting Port Idx"))
 {
+    setFlag(UserDeletable);
+
     static const QString cat = QStringLiteral("Node");
     registerProperty(m_inNodeId, cat);
     registerProperty(m_inPortIdx, cat);
@@ -32,19 +33,22 @@ GtIntelliGraphConnection::GtIntelliGraphConnection(GtObject* parent) :
     m_outPortIdx.setReadOnly(true);
 
     updateObjectName();
-
-    setFlag(UserDeletable);
-    if (!gtApp || !gtApp->devMode()) setFlag(UserHidden);
 }
 
-GtIntelliGraphConnection::QtConnectionId
-GtIntelliGraphConnection::toConnectionId() const
+GtIntelliGraphConnection::GtIntelliGraphConnection(ConnectionId conId, GtObject* parent) :
+    GtIntelliGraphConnection(parent)
 {
-    return QtConnectionId{outNodeId(), outPortIdx(), inNodeId(), inPortIdx()};
+    fromConnectionId(conId);
+}
+
+GtIntelliGraphConnection::ConnectionId
+GtIntelliGraphConnection::connectionId() const
+{
+    return ConnectionId{outNodeId(), outPortIdx(), inNodeId(), inPortIdx()};
 }
 
 bool
-GtIntelliGraphConnection::fromConnectionId(QtConnectionId connection)
+GtIntelliGraphConnection::fromConnectionId(ConnectionId connection)
 {
     m_inNodeId   = connection.inNodeId;
     m_inPortIdx  = connection.inPortIndex;
@@ -54,32 +58,6 @@ GtIntelliGraphConnection::fromConnectionId(QtConnectionId connection)
     updateObjectName();
 
     return isValid();
-}
-
-bool
-GtIntelliGraphConnection::fromJson(const QJsonObject& json)
-{
-    constexpr auto invalid = QtNodes::InvalidPortIndex;
-
-    m_inNodeId   = json["inNodeId"].toInt(invalid);
-    m_inPortIdx  = json["inPortIndex"].toInt(invalid);
-    m_outNodeId  = json["outNodeId"].toInt(invalid);
-    m_outPortIdx = json["outPortIndex"].toInt(invalid);
-
-    updateObjectName();
-
-    return isValid();
-}
-
-QJsonObject
-GtIntelliGraphConnection::toJson() const
-{
-    QJsonObject json;
-    json["inNodeId"]     = m_inNodeId.get();
-    json["inPortIndex"]  = m_inPortIdx.get();
-    json["outNodeId"]    = m_outNodeId.get();
-    json["outPortIndex"] = m_outPortIdx.get();
-    return json;
 }
 
 bool
@@ -101,6 +79,6 @@ GtIntelliGraphConnection::updateObjectName()
     return gt::setUniqueName(
         *this, !isValid() ? QStringLiteral("NodeConnection[N/A]") :
                             QStringLiteral("NodeConnection[%1:%2/%3:%4]")
-                                .arg(m_inNodeId).arg(m_inPortIdx)
-                                .arg(m_outNodeId).arg(m_outPortIdx));
+                              .arg(m_outNodeId).arg(m_outPortIdx)
+                              .arg(m_inNodeId).arg(m_inPortIdx));
 }

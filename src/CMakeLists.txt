@@ -27,10 +27,14 @@ set(PUBLIC_HEADERS
 
 add_library(GTlabIntelliGraph SHARED
     ${PUBLIC_HEADERS}
+    gt_igprivate.h
     gt_intelligraphmodule.h
+    gt_intelligraphmodeladapter.h
+    gt_intelligraphjsonadapter.h
     data/gt_igpackage.h
     data/gt_intelligraph.h
     data/gt_intelligraphconnection.h
+    data/gt_intelligraphconnectiongroup.h
     data/gt_intelligraphcategory.h
     data/nodes/gt_igabstractgroupprovider.h
     data/nodes/gt_igconditionalnode.h
@@ -47,15 +51,21 @@ add_library(GTlabIntelliGraph SHARED
     gui/models/gt_intelligraphobjectmodel.h
     gui/property_items/gt_igobjectlinkpropertyitem.h
     gui/property_items/gt_igstringselectionpropertyitem.h
+    gui/gt_intelligraphscene.h
+    gui/gt_intelligraphview.h
+    gui/ui/gt_intelligraphconnectionui.h
     gui/ui/gt_intelligraphpackageui.h
     gui/ui/gt_iggroupproviderui.h
 
     gt_intelligraphmodule.cpp
     gt_intelligraphnodefactory.cpp
+    gt_intelligraphjsonadapter.cpp
     gt_intelligraphdatafactory.cpp
+    gt_intelligraphmodeladapter.cpp
     data/gt_igpackage.cpp
     data/gt_intelligraph.cpp
     data/gt_intelligraphconnection.cpp
+    data/gt_intelligraphconnectiongroup.cpp
     data/gt_intelligraphnode.cpp
     data/gt_intelligraphcategory.cpp
     data/nodes/gt_igconditionalnode.cpp
@@ -76,10 +86,13 @@ add_library(GTlabIntelliGraph SHARED
     data/properties/gt_igcolorproperty.cpp
     data/properties/gt_igobjectlinkproperty.cpp
     data/properties/gt_igstringselectionproperty.cpp
+    gui/gt_intelligraphscene.cpp
+    gui/gt_intelligraphview.cpp
     gui/items/gt_intelligrapheditor.cpp
     gui/models/gt_intelligraphobjectmodel.cpp
     gui/property_items/gt_igobjectlinkpropertyitem.cpp
     gui/property_items/gt_igstringselectionpropertyitem.cpp
+    gui/ui/gt_intelligraphconnectionui.cpp
     gui/ui/gt_intelligraphnodeui.cpp
     gui/ui/gt_intelligraphpackageui.cpp
     gui/ui/gt_iggroupproviderui.cpp

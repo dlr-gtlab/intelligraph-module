@@ -14,6 +14,8 @@
 #include "gt_intelligraphnode.h"
 #include "gt_intelligraphdatafactory.h"
 #include "gt_igstringselectionproperty.h"
+#include "gt_command.h"
+#include "gt_project.h"
 
 #include "gt_propertystructcontainer.h"
 #include "gt_structproperty.h"
@@ -86,7 +88,9 @@ public:
     {
         if (idx < 0 || static_cast<size_t>(idx) >= m_ports.size()) return;
 
+        auto cmd = gtApp->startCommand(gtApp->currentProject(), tr("Remove port '%1'").arg(idx));
         m_ports.removeEntry(std::next(m_ports.begin(), idx));
+        gtApp->endCommand(cmd);
     }
 
 protected:
@@ -168,7 +172,7 @@ private slots:
         QString caption = entry->template getMemberVal<QString>(S_CAPTION);
 
         gtDebug().verbose() << "Updating port" << idx << "to" << typeId
-                            << gt::brackets("caption: " + caption);
+                            << gt::brackets("caption: " + gt::squoted(caption));
 
         p->typeId = typeId;
         p->caption = caption;

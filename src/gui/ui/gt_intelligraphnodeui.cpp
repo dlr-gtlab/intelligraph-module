@@ -9,8 +9,11 @@
 
 #include "gt_intelligraphnodeui.h"
 
+#include "gt_intelligraphjsonadapter.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligrapheditor.h"
+#include "gt_intelligraphnode.h"
+#include "gt_intelligraphconnection.h"
 
 #include "gt_utilities.h"
 #include "gt_logging.h"
@@ -105,17 +108,25 @@ GtIntelliGraphNodeUI::loadNodeGraph(GtObject* obj)
     QFile file(filePath);
     if (!file.open(QFile::ReadOnly))
     {
-        gtError() << tr("Failed to open intelli flow from file! (%1)")
-                         .arg(filePath);
+        gtError() << tr("Failed to open intelli graph from file! (%1)")
+                     .arg(filePath);
+        return;
+    }
+
+    auto scene = QJsonDocument::fromJson(file.readAll()).object();
+    auto restored = gt::ig::fromJson(scene);
+    if (!restored)
+    {
+        gtError() << tr("Failed to restore intelli graph!");
         return;
     }
 
     auto cmd = gtApp->startCommand(graph, QStringLiteral("Loading IntelliGraph (%1)")
-                                              .arg(graph->objectName()));
+                                          .arg(graph->objectName()));
     auto finally = gt::finally([&](){ gtApp->endCommand(cmd); });
 
-    auto scene = QJsonDocument::fromJson(file.readAll()).object();
-    graph->fromJson(scene);
+    graph->clear();
+    graph->appendObjects(restored->nodes, restored->connections);
 }
 
 bool

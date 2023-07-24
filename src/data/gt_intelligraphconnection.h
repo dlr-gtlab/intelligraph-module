@@ -14,32 +14,25 @@
 #include "gt_object.h"
 #include "gt_intproperty.h"
 
-#include <QtNodes/Definitions>
+namespace QtNodes { struct ConnectionId; }
 
 class GtIntelliGraphConnection : public GtObject
 {
     Q_OBJECT
 
-    using QtConnectionId = QtNodes::ConnectionId;
+    using ConnectionId = QtNodes::ConnectionId;
     using NodeId    = gt::ig::NodeId;
     using PortIndex = gt::ig::PortIndex;
 
 public:
 
     Q_INVOKABLE GtIntelliGraphConnection(GtObject* parent = nullptr);
-    GtIntelliGraphConnection(QtConnectionId conId, GtObject* parent = nullptr) :
-        GtIntelliGraphConnection(parent)
-    {
-        fromConnectionId(conId);
-    }
 
-    QtConnectionId toConnectionId() const;
+    GtIntelliGraphConnection(ConnectionId conId, GtObject* parent = nullptr);
 
-    bool fromConnectionId(QtConnectionId connection);
+    ConnectionId connectionId() const;
 
-    bool fromJson(QJsonObject const& json);
-
-    QJsonObject toJson() const;
+    bool fromConnectionId(ConnectionId connection);
 
     NodeId inNodeId() const { return NodeId{gt::ig::fromInt(m_inNodeId)}; }
     void setInNodeId(NodeId nodeId) { m_inNodeId = nodeId; }
@@ -55,6 +48,8 @@ public:
 
     bool isValid() const;
 
+    void updateObjectName();
+
 private:
 
     /// node id IN (should be unsigned)
@@ -65,8 +60,6 @@ private:
     GtIntProperty m_outNodeId;
     /// port idx IN (should be unsigned)
     GtIntProperty m_outPortIdx;
-
-    void updateObjectName();
 };
 
 #endif // GT_INTELLIGRAPHCONNECTION_H

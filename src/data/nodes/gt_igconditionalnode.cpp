@@ -72,7 +72,7 @@ GtIgConditionalNode::GtIgConditionalNode() :
         }
     };
     auto const updatePorts = [=](){
-        gtDebug() << "Updating ports";
+//        gtDebug() << "Updating ports";
         updatePort(m_inData);
         updatePort(m_outIf);
         updatePort(m_outElse);

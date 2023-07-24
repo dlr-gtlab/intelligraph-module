@@ -118,8 +118,18 @@ public:
 
     /* node specifc methods */
 
+    /**
+     * @brief Sets the node active or disables it. Only an active node can be
+     * evaluated. A node is deactivated by default to evaluate only if necessary
+     * @param isActive Whether the node should be (de-)activated
+     */
     void setActive(bool isActive = true);
 
+    /**
+     * @brief Returns whether the node is active. Only an active node can be
+     * evaluated.
+     * @return Is active
+     */
     bool isActive() const;
 
     /**
@@ -183,6 +193,16 @@ public:
      */
     QString caption() const;
 
+    /**
+     * @brief Returns the object name, that does not contain any symbols or
+     * enumerations to make it unique.
+     *
+     * Example:
+     * #1 "My Fancy Node" -> "My Fancy Node"
+     * #2 "My Fancy Node[2]" -> "My Fancy Node"
+     *
+     * @return Base object name
+     */
     QString baseObjectName() const;
 
     /**
@@ -246,33 +266,6 @@ public:
      */
     NodeData outData(PortIndex idx);
 
-    /* serialization */
-
-    /**
-     * @brief Creates a new node from json data (see "toJson"). May be null.
-     * Method may throw if the node type described by the json data does not
-     * exists.
-     * @param json Json object to use for the node creation
-     * @return Node
-     */
-    static std::unique_ptr<GtIntelliGraphNode> fromJson(QJsonObject const& json
-                                                        ) noexcept(false);
-
-    /**
-     * @brief Serializes this node as a json object.
-     * @param clone Whether to clone the object data (i.e. use the same uuid).
-     * Only set to true if the object should be restored instead of copied.
-     * @return Json object
-     */
-    QJsonObject toJson(bool clone = false) const;
-
-    /**
-     * @brief Will attempt to merge the json data.
-     * @param internals Json object describing the internal node data. Note:
-     * This is not the same as the object returned by "tojson".
-     */
-    bool mergeNodeData(QJsonObject const& internals);
-
 public slots:
 
     /**
@@ -290,7 +283,7 @@ public slots:
 signals:
 
     /**
-     * @brief Emitted if the node has evaluated and the output data have changed.
+     * @brief Emitted if the node has evaluated and the output data has changed.
      * Will be called automatically and should not be triggered by the "user".
      * @param idx Output port index. May be mapped to an output port id.
      */
@@ -321,7 +314,7 @@ signals:
 
     /**
      * @brief Emitted if node specific data hast changed (cpation, number of
-     * ports etc.). May be invoked by the user to update the graphical node
+     * ports etc.). May be invoked by the "user" to update the graphical node
      * in case a port hast changed for example.
      */
     void nodeChanged();
@@ -388,7 +381,7 @@ protected:
     void registerWidgetFactory(WidgetFactory factory);
 
     /**
-     * @brief Setts a node flag
+     * @brief Sets a node flag
      * @param flag Flag to set
      * @param enable Whether to enable or disable the flag
      */

@@ -84,6 +84,24 @@ enum PortType
     NoType
 };
 
+enum ModelPolicy
+{
+    /// Model is just a dummy and may be closed as soon as its
+    /// parent model is closed
+    DummyModel = 0,
+    /// Model is active and should be kept alive if its parent model
+    /// is closed (default)
+    ActiveModel = 1
+};
+
+enum NodeIdPolicy
+{
+    /// Indictaes that the node id may be updated if it already exists
+    UpdateNodeId = 0,
+    /// Indicates that the node id should not be updated.
+    KeepNodeId = 1
+};
+
 template<typename T>
 constexpr inline T invalid() noexcept
 {

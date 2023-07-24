@@ -8,23 +8,27 @@
 
 #include "gt_intelligraphnode.h"
 
-#include "gt_intelligraphnodefactory.h"
 #include "gt_igvolatileptr.h"
 
 #include "gt_intproperty.h"
 #include "gt_doubleproperty.h"
-#include "gt_stringproperty.h"
-#include "gt_regexp.h"
-#include "gt_objectfactory.h"
-#include "gt_objectmemento.h"
 #include "gt_qtutilities.h"
 #include "gt_exceptions.h"
 
-#include <QJsonObject>
 #include <QRegExpValidator>
 
-gt::log::Stream& operator<<(gt::log::Stream& s, GtIntelliGraphNode::NodeData const& data)
+#include "gt_igdoubledata.h"
+
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, GtIntelliGraphNode::NodeData const& data)
 {
+    // temporary
+    if (auto* d = qobject_cast<GtIgDoubleData const*>(data.get()))
+    {
+        gt::log::StreamStateSaver saver(s);
+        return s.nospace() << data->metaObject()->className() << " (" <<d->value() << ")";
+    }
+
     return s << (data ? data->metaObject()->className() : "nullptr");
 }
 
@@ -196,7 +200,7 @@ GtIntelliGraphNode::caption() const
 QString
 GtIntelliGraphNode::baseObjectName() const
 {
-    static QRegularExpression const regExp(QStringLiteral(R"((.+)(\[\d+\]))"));
+    static QRegularExpression const regExp(QStringLiteral(R"((.+)(\s?\[\d+\]))"));
     constexpr int groupNo = 1;
 
     auto const& name = objectName();
@@ -428,9 +432,9 @@ GtIntelliGraphNode::setInData(PortIndex idx, NodeData data)
 {
     if (idx >= pimpl->inData.size()) return false;
 
-    gtDebug().verbose().nospace()
+    gtTrace().verbose().nospace()
         << "### Setting in data:  '" << objectName()
-        << "' at idx '" << idx << "': " << data;
+        << "' at input idx  '" << idx << "': " << data;
 
     pimpl->inData.at(idx) = std::move(data);
 
@@ -448,9 +452,9 @@ GtIntelliGraphNode::outData(PortIndex idx)
 {
     if (idx >= pimpl->outData.size()) return {};
 
-    gtDebug().verbose().nospace()
+    gtTrace().verbose().nospace()
         << "### Getting out data: '" << objectName()
-        << "' at idx '" << idx << "': " << pimpl->outData.at(idx);
+        << "' at output idx '" << idx << "': " << pimpl->outData.at(idx);
 
     // trigger node update if no input data is available
     if (pimpl->state == EvalRequired) updatePort(idx);
@@ -497,7 +501,7 @@ GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
 
         gtDebug().verbose().nospace()
             << "### Evaluating node:  '" << objectName()
-            << "' at output id '" << id << "'";
+            << (id != gt::ig::invalid<PortId>() ? "' at output idx '" + QString::number(portIndex(PortType::Out, id)) + "'" : "");
 
         auto tmp = eval(id);
 
@@ -566,61 +570,4 @@ GtIntelliGraphNode::initWidget()
         auto tmp = pimpl->widgetFactory(*this);
         pimpl->widget = gt::ig::volatile_ptr<QWidget>(tmp.release());
     }
-}
-
-std::unique_ptr<GtIntelliGraphNode>
-GtIntelliGraphNode::fromJson(const QJsonObject& json) noexcept(false)
-{
-    auto internals = json["internal-data"].toObject();
-    auto classname = internals["model-name"].toString();
-
-    auto node = GtIntelliGraphNodeFactory::instance().newNode(classname);
-
-    node->pimpl->id = json["id"].toInt(gt::ig::invalid<PortId>());
-
-    auto position = json["position"];
-    node->pimpl->posX  = position["x"].toDouble();
-    node->pimpl->posY  = position["y"].toDouble();
-
-    node->mergeNodeData(internals);
-
-    return node;
-}
-
-bool
-GtIntelliGraphNode::mergeNodeData(const QJsonObject& internals)
-{
-    auto mementoData = internals["memento"].toString();
-
-    GtObjectMemento memento(mementoData.toUtf8());
-
-    if (memento.isNull() || !memento.mergeTo(*this, *gtObjectFactory))
-    {
-        gtWarning()
-            << tr("Failed to restore memento for '%1', object may be incomplete")
-               .arg(objectName());
-        gtWarning().medium()
-            << tr("Memento:") << mementoData;
-        return false;
-    }
-    return true;
-}
-
-QJsonObject
-GtIntelliGraphNode::toJson(bool clone) const
-{
-    QJsonObject json;
-    json["id"] = pimpl->id.get();
-
-    QJsonObject position;
-    position["x"] = pimpl->posX.get();
-    position["y"] = pimpl->posY.get();
-    json["position"] = position;
-
-    QJsonObject internals;
-    internals["model-name"] = modelName();
-    internals["memento"] = static_cast<QString>(toMemento(clone).toByteArray());
-    json["internal-data"] = internals;
-
-    return json;
 }
