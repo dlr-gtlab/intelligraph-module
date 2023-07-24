@@ -158,6 +158,18 @@ public:
     Position pos() const;
 
     /**
+     * @brief Sets size property. Does not trigger a resize of the widget
+     * @param pos new position
+     */
+    void setSize(QSize size);
+
+    /**
+     * @brief size
+     * @return
+     */
+    QSize size() const;
+
+    /**
      * @brief Will create a unique object name based on the node caption
      */
     void updateObjectName();

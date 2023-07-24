@@ -353,7 +353,7 @@ GtIntelliGraphModelAdapter::appendConnectionToModel(GtIntelliGraphConnection* co
         return false;
     }
 
-    gtInfo().medium() << tr("Appending connection to graph model:") << conId;
+    gtInfo().verbose() << tr("Appending connection to graph model:") << conId;
 
     {
         auto ignore = ignoreSignal(

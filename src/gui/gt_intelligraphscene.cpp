@@ -134,6 +134,8 @@ GtIntelliGraphScene::GtIntelliGraphScene(GtIntelliGraph& graph) :
             this, &GtIntelliGraphScene::onNodeContextMenu);
     connect(this, &QtNodes::DataFlowGraphicsScene::portContextMenu,
             this, &GtIntelliGraphScene::onPortContextMenu);
+    connect(this, &QtNodes::DataFlowGraphicsScene::widgetResized,
+            this, &GtIntelliGraphScene::onWidgetResized);
 
 //    connect(m_model, &QtNodes::DataFlowGraphModel::nodePositionUpdated,
 //            this, &GtIntelliGraphScene::onNodePositionChanged);
@@ -293,6 +295,15 @@ GtIntelliGraphScene::onNodeDoubleClicked(QtNodes::NodeId nodeId)
     if (auto* node = m_data->findNode(gt::ig::NodeId::fromValue(nodeId)))
     {
         gt::gui::handleObjectDoubleClick(*node);
+    }
+}
+
+void
+GtIntelliGraphScene::onWidgetResized(QtNodes::NodeId nodeId, QSize size)
+{
+    if (auto* node = m_data->findNode(gt::ig::NodeId::fromValue(nodeId)))
+    {
+        node->setSize(size);
     }
 }
 

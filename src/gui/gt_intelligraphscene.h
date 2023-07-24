@@ -53,6 +53,8 @@ private slots:
 
     void onNodeDoubleClicked(QtNodes::NodeId nodeId);
 
+    void onWidgetResized(QtNodes::NodeId nodeId, QSize size);
+
     void onNodeContextMenu(QtNodes::NodeId nodeId, QPointF pos);
 
     void onPortContextMenu(QtNodes::NodeId nodeId,
