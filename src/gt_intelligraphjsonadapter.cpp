@@ -31,15 +31,25 @@ gt::ig::toJson(GtIntelliGraphNode const& node, bool clone)
     QJsonObject json;
     json["id"] = static_cast<qlonglong>(node.id());
 
-    QJsonObject position;
     auto pos = node.pos();
+    QJsonObject position;
     position["x"] = pos.x();
     position["y"] = pos.y();
     json["position"] = position;
 
+    QSize nodeSize = node.size();
+    if (node.nodeFlags() & Resizable && nodeSize.isValid())
+    {
+        QJsonObject size;
+        size["width"] = nodeSize.width();
+        size["height"] = nodeSize.height();
+        json["size"] = size;
+    }
+
     auto const& memento = node.toMemento(clone);
     QJsonObject internals;
-    internals["model-name"] = memento.className();
+    internals["model-name"] = node.modelName();
+    internals["class-name"] = memento.className();
     internals["memento"] = static_cast<QString>(memento.toByteArray());
     json["internal-data"] = internals;
 
@@ -89,18 +99,23 @@ fromJsonToNode(const QJsonObject& json)
     using namespace gt::ig;
 
     auto internals = json["internal-data"].toObject();
-    auto classname = internals["model-name"].toString();
+    auto className = internals["class-name"].toString();
 
-    auto node = GtIntelliGraphNodeFactory::instance().newNode(classname);
+    auto node = GtIntelliGraphNodeFactory::instance().newNode(className);
 
     node->setId(NodeId::fromValue(json["id"].toInt(invalid<NodeId>())));
 
     auto position = json["position"];
-    QPointF pos = {
+    node->setPos({
         position["x"].toDouble(),
         position["y"].toDouble()
-    };
-    node->setPos(pos);
+    });
+
+    auto size = json["size"];
+    node->setSize({
+        size["width"].toInt(-1),
+        size["height"].toInt(-1)
+    });
 
     mergeFromJson(internals, *node);
 

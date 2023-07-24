@@ -42,6 +42,10 @@ struct GtIntelliGraphNode::Impl
     GtDoubleProperty posX{"posX", tr("x-Pos"), tr("x-Position")};
     /// y position of node
     GtDoubleProperty posY{"posY", tr("y-Pos"), tr("y-Position")};
+    /// width of node widget
+    GtIntProperty sizeWidth{"sizeWidth", tr("Size width"), tr("Size width"), GtUnit::NonDimensional, -1};
+    /// height of node widget
+    GtIntProperty sizeHeight{"sizeHeight", tr("Size height"), tr("Size height"), GtUnit::NonDimensional, -1};
     /// caption string
     QString modelName;
     /// ports
@@ -98,10 +102,14 @@ GtIntelliGraphNode::GtIntelliGraphNode(QString const& modelName, GtObject* paren
     registerProperty(pimpl->id, cat);
     registerProperty(pimpl->posX, cat);
     registerProperty(pimpl->posY, cat);
+    registerProperty(pimpl->sizeWidth, cat);
+    registerProperty(pimpl->sizeHeight, cat);
 
     pimpl->id.setReadOnly(true);
     pimpl->posX.setReadOnly(true);
     pimpl->posY.setReadOnly(true);
+    pimpl->sizeWidth.setReadOnly(true);
+    pimpl->sizeHeight.setReadOnly(true);
 
     setCaption(modelName);
 
@@ -154,6 +162,23 @@ GtIntelliGraphNode::setPos(QPointF pos)
 GtIntelliGraphNode::Position GtIntelliGraphNode::pos() const
 {
     return { pimpl->posX, pimpl->posY };
+}
+
+void
+GtIntelliGraphNode::setSize(QSize size)
+{
+    if (this->size() != size)
+    {
+        pimpl->sizeWidth = size.width();
+        pimpl->sizeHeight = size.height();
+        changed();
+    }
+}
+
+QSize
+GtIntelliGraphNode::size() const
+{
+    return { pimpl->sizeWidth, pimpl->sizeHeight };
 }
 
 bool
@@ -568,6 +593,12 @@ GtIntelliGraphNode::initWidget()
     if (pimpl->widgetFactory)
     {
         auto tmp = pimpl->widgetFactory(*this);
+        auto* widget = tmp.get();
         pimpl->widget = gt::ig::volatile_ptr<QWidget>(tmp.release());
+
+        if (!widget || !(nodeFlags() & gt::ig::Resizable)) return;
+
+        auto size = this->size();
+        if (size.isValid()) widget->resize(size);
     }
 }
