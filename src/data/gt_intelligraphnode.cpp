@@ -8,79 +8,12 @@
 
 #include "gt_intelligraphnode.h"
 
-#include "gt_igvolatileptr.h"
+#include "private/intelligraphnode_impl.h"
 
-#include "gt_intproperty.h"
-#include "gt_doubleproperty.h"
 #include "gt_qtutilities.h"
 #include "gt_exceptions.h"
 
 #include <QRegExpValidator>
-
-#include "gt_igdoubledata.h"
-
-inline gt::log::Stream&
-operator<<(gt::log::Stream& s, GtIntelliGraphNode::NodeData const& data)
-{
-    // temporary
-    if (auto* d = qobject_cast<GtIgDoubleData const*>(data.get()))
-    {
-        gt::log::StreamStateSaver saver(s);
-        return s.nospace() << data->metaObject()->className() << " (" <<d->value() << ")";
-    }
-
-    return s << (data ? data->metaObject()->className() : "nullptr");
-}
-
-struct GtIntelliGraphNode::Impl
-{
-    Impl(QString const& name) : modelName(name) {}
-
-    /// node id
-    GtIntProperty id{"id", tr("Node Id"), tr("Node Id")};
-    /// x position of node
-    GtDoubleProperty posX{"posX", tr("x-Pos"), tr("x-Position")};
-    /// y position of node
-    GtDoubleProperty posY{"posY", tr("y-Pos"), tr("y-Position")};
-    /// width of node widget
-    GtIntProperty sizeWidth{"sizeWidth", tr("Size width"), tr("Size width"), GtUnit::NonDimensional, -1};
-    /// height of node widget
-    GtIntProperty sizeHeight{"sizeHeight", tr("Size height"), tr("Size height"), GtUnit::NonDimensional, -1};
-    /// caption string
-    QString modelName;
-    /// ports
-    std::vector<PortData> inPorts, outPorts{};
-    /// data
-    std::vector<NodeData> inData, outData{};
-    /// owning pointer to widget, may be deleted earlier
-    gt::ig::volatile_ptr<QWidget> widget{};
-    /// factory for creating the widget
-    WidgetFactory widgetFactory{};
-    /// node flags
-    NodeFlags flags{gt::ig::NoFlag};
-    /// iterator for the next port id
-    PortId nextPortId{0};
-
-    State state{EvalRequired};
-
-    bool active{false};
-
-    bool canEvaluate() const
-    {
-        assert(inData.size() == inPorts.size());
-
-        PortIndex idx{0};
-        for (auto const& data : inData)
-        {
-            auto const& p = inPorts.at(idx++);
-
-            // check if data is requiered and valid
-            if (!p.optional && !data) return false;
-        }
-
-        return true;
-    }
-};
 
 template <typename Ports>
 auto findPort(Ports&& ports, gt::ig::PortId id)
@@ -490,87 +423,13 @@ GtIntelliGraphNode::outData(PortIndex idx)
 void
 GtIntelliGraphNode::updateNode()
 {
-    updatePort(gt::ig::invalid<PortIndex>());
+    return pimpl->executor.evaluateNode(*this);
 }
 
 void
 GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
 {
-    if (pimpl->state == Evaluating)
-    {
-        gtWarning().verbose()
-            << tr("Node already evaluating!") << gt::brackets(objectName());
-        return;
-    }
-
-    if (!isActive())
-    {
-        gtWarning().verbose()
-            << tr("Node is not active!") << gt::brackets(objectName());
-        return;
-    }
-
-    bool canEvaluate = pimpl->canEvaluate();
-
-    if (!canEvaluate)
-    {
-        // not aborting here to allow the triggering of the invalidated signals
-        pimpl->state = EvalRequired;
-        gtWarning().verbose()
-            << tr("Node not ready for evaluation!") << gt::brackets(objectName());
-    }
-
-    // eval helper
-    const auto evalPort = [=](PortId id, NodeData* out = nullptr){
-        pimpl->state = Evaluating;
-
-        gtDebug().verbose().nospace()
-            << "### Evaluating node:  '" << objectName()
-            << (id != gt::ig::invalid<PortId>() ? "' at output idx '" + QString::number(portIndex(PortType::Out, id)) + "'" : "");
-
-        auto tmp = eval(id);
-
-        if (out) *out = std::move(tmp);
-
-        pimpl->state = Evaluated;
-
-        emit evaluated(idx);
-    };
-
-    // update helper
-    const auto updateOutData = [=](PortIndex idx, PortData const& port){
-        if (!port.evaluate) return;
-        // invalidate out data
-        if (!canEvaluate) return emit outDataInvalidated(idx);
-
-        auto& out = pimpl->outData.at(idx);
-
-        evalPort(port.m_id, &out);
-
-        out ? emit outDataUpdated(idx) : emit outDataInvalidated(idx);
-    };
-
-    // update single port
-    if (idx != gt::ig::invalid<PortIndex>())
-    {
-        if (idx >= pimpl->outPorts.size()) return;
-
-        return updateOutData(idx, pimpl->outPorts.at(idx));
-    }
-
-    // trigger eval if no outport exists
-    if (pimpl->outPorts.empty() && !pimpl->inPorts.empty())
-    {
-        evalPort(gt::ig::invalid<PortId>());
-        return;
-    }
-
-    // update all ports
-    idx = PortIndex{0};
-    for (auto const& port : pimpl->outPorts)
-    {
-        updateOutData(idx++, port);
-    }
+    return pimpl->executor.evaluatePort(*this, idx);
 }
 
 void

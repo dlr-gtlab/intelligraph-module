@@ -9,7 +9,7 @@
 
 #include "gt_intelligraphscene.h"
 
-#include "gt_igprivate.h"
+#include "private/utils.h"
 #include "gt_intelligraphnodeui.h"
 #include "gt_intelligraphconnection.h"
 #include "gt_intelligraphdatafactory.h"

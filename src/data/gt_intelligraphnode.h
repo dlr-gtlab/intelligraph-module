@@ -43,6 +43,8 @@ class GT_IG_EXPORT GtIntelliGraphNode : public GtObject
 {
     Q_OBJECT
 
+    friend class GtIntellIGraphExecutor;
+
 public:
 
     using NodeId    = gt::ig::NodeId;
@@ -99,6 +101,7 @@ public:
         // whether the port is required for the node evaluation
         bool optional = true;
 
+        [[deprecated]]
         bool evaluate = true;
 
         /**

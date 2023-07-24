@@ -33,7 +33,7 @@ GtIgConditionalNode::GtIgConditionalNode() :
         m_dataType.selectedValue(), QStringLiteral("data")
     });
 
-    m_outIf   = addOutPort(PortData{
+    m_outIf = addOutPort(PortData{
         m_dataType.selectedValue(), QStringLiteral("if-branch")
     }, DoNotEvaluate);
     m_outElse = addOutPort(PortData{

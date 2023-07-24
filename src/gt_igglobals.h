@@ -61,6 +61,13 @@ public:
     constexpr inline StrongType
     operator++(int) noexcept { StrongType tmp(*this); operator++(); return tmp; }
 
+    // pre decrement
+    constexpr inline StrongType&
+    operator--() noexcept { --m_value; return *this; }
+    // post decrement
+    constexpr inline StrongType
+    operator--(int) noexcept { StrongType tmp(*this); operator--(); return tmp; }
+
     operator T() const { return value(); }
 
     // Access the underlying value

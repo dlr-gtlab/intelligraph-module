@@ -74,7 +74,7 @@ public slots:
      * @param connectionId Connection to append.
      * @return Succes. Will fail if connection was already created
      */
-    bool appendConnectionFromModel(QtNodes::ConnectionId connectionId);
+    bool appendConnectionFromModel(QtNodes::ConnectionId conId);
 
     /**
      * @brief Appends the node to the graph model.

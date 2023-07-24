@@ -10,7 +10,7 @@
 #include "gt_intelligraphmodeladapter.h"
 
 #include "gt_command.h"
-#include "gt_igprivate.h"
+#include "private/utils.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligraphnode.h"
 #include "gt_intelligraphconnection.h"
@@ -262,15 +262,15 @@ GtIntelliGraphModelAdapter::appendNodeFromModel(QtNodes::NodeId nodeId)
 }
 
 bool
-GtIntelliGraphModelAdapter::appendConnectionFromModel(QtNodes::ConnectionId connectionId)
+GtIntelliGraphModelAdapter::appendConnectionFromModel(QtNodes::ConnectionId conId)
 {
     auto& ig = intelliGraph();
 
     auto cmd = gtApp->startCommand(&ig, tr("Appending connection '%1:%2/%3:%4'")
-                                            .arg(connectionId.outNodeId)
-                                            .arg(connectionId.outPortIndex)
-                                            .arg(connectionId.inNodeId)
-                                            .arg(connectionId.inPortIndex));
+                                            .arg(conId.outNodeId)
+                                            .arg(conId.outPortIndex)
+                                            .arg(conId.inNodeId)
+                                            .arg(conId.inPortIndex));
     auto finally = gt::finally([&](){
         gtApp->endCommand(cmd);
     });
@@ -280,14 +280,14 @@ GtIntelliGraphModelAdapter::appendConnectionFromModel(QtNodes::ConnectionId conn
         this, &GtIntelliGraphModelAdapter::appendConnectionToModel
     );
 
-    if (auto* con = ig.appendConnection(std::make_unique<GtIntelliGraphConnection>(connectionId)))
+    if (auto* con = ig.appendConnection(std::make_unique<GtIntelliGraphConnection>(conId)))
     {
         setupConnection(*con);
         return true;
     }
 
     gtError() << tr("Failed to append connection to graph model!")
-              << connectionId;
+              << conId;
     return false;
 }
 
@@ -453,6 +453,12 @@ void
 GtIntelliGraphModelAdapter::onNodeDeletedFromModel(QtNodes::NodeId nodeId)
 {
     auto& ig = intelliGraph();
+
+    auto cmd = gtApp->startCommand(&ig, tr("Deleting node '%1'").arg(nodeId));
+    auto finally = gt::finally([&](){
+        gtApp->endCommand(cmd);
+    });
+
     ig.deleteNode(gt::ig::NodeId::fromValue(nodeId));
 }
 
@@ -460,6 +466,16 @@ void
 GtIntelliGraphModelAdapter::onConnectionDeletedFromModel(QtNodes::ConnectionId conId)
 {
     auto& ig = intelliGraph();
+
+    auto cmd = gtApp->startCommand(&ig, tr("Deleting connection '%1:%2/%3:%4'")
+                                            .arg(conId.outNodeId)
+                                            .arg(conId.outPortIndex)
+                                            .arg(conId.inNodeId)
+                                            .arg(conId.inPortIndex));
+    auto finally = gt::finally([&](){
+        gtApp->endCommand(cmd);
+    });
+
     ig.deleteConnection(conId);
 }
 

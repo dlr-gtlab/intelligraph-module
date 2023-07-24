@@ -8,13 +8,14 @@
 
 #include "gt_intelligraph.h"
 
-#include "gt_igprivate.h"
 #include "gt_intelligraphconnection.h"
 #include "gt_intelligraphconnectiongroup.h"
 #include "gt_intelligraphnodefactory.h"
 #include "gt_intelligraphmodeladapter.h"
 #include "gt_iggroupinputprovider.h"
 #include "gt_iggroupoutputprovider.h"
+
+#include "private/utils.h"
 
 #include "gt_qtutilities.h"
 
