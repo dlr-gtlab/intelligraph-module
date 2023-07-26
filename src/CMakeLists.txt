@@ -27,7 +27,6 @@ set(PUBLIC_HEADERS
 
 add_library(GTlabIntelliGraph SHARED
     ${PUBLIC_HEADERS}
-    gt_intelligraphexecutor.h
     gt_intelligraphmodule.h
     gt_intelligraphmodeladapter.h
     gt_intelligraphjsonadapter.h
@@ -46,7 +45,11 @@ add_library(GTlabIntelliGraph SHARED
     data/nodes/gt_ignumbersourcenode.h
     data/nodes/gt_igobjectmementonode.h
     data/nodes/gt_igobjectsourcenode.h
+    data/nodes/gt_igsleepynode.h
     data/nodes/gt_igstringlistinputnode.h
+    exec/gt_intelligraphexecutor.h
+    exec/gt_intelligraphparallelexecutor.h
+    exec/gt_intelligraphsequentialexecutor.h
     gui/items/gt_intelligrapheditor.h
     gui/models/gt_intelligraphobjectmodel.h
     gui/property_items/gt_igobjectlinkpropertyitem.h
@@ -59,7 +62,6 @@ add_library(GTlabIntelliGraph SHARED
     private/intelligraphnode_impl.h
     private/utils.h
 
-    gt_intelligraphexecutor.cpp
     gt_intelligraphmodule.cpp
     gt_intelligraphnodefactory.cpp
     gt_intelligraphjsonadapter.cpp
@@ -80,6 +82,7 @@ add_library(GTlabIntelliGraph SHARED
     data/nodes/gt_ignumbersourcenode.cpp
     data/nodes/gt_igobjectmementonode.cpp
     data/nodes/gt_igobjectsourcenode.cpp
+    data/nodes/gt_igsleepynode.cpp
     data/nodes/gt_igstringlistinputnode.cpp
     data/node_data/gt_igbooldata.cpp
     data/node_data/gt_igdoubledata.cpp
@@ -89,6 +92,9 @@ add_library(GTlabIntelliGraph SHARED
     data/properties/gt_igcolorproperty.cpp
     data/properties/gt_igobjectlinkproperty.cpp
     data/properties/gt_igstringselectionproperty.cpp
+    exec/gt_intelligraphexecutor.cpp
+    exec/gt_intelligraphparallelexecutor.cpp
+    exec/gt_intelligraphsequentialexecutor.cpp
     gui/gt_intelligraphscene.cpp
     gui/gt_intelligraphview.cpp
     gui/items/gt_intelligrapheditor.cpp
@@ -104,6 +110,7 @@ add_library(GTlabIntelliGraph SHARED
 target_link_libraries(GTlabIntelliGraph
   PRIVATE
   Qt5::Xml
+  Qt5::Concurrent
   GTlab::Logging
   GTlab::Gui
   QtNodes::QtNodes
@@ -127,6 +134,7 @@ target_include_directories(GTlabIntelliGraph PRIVATE
     data/nodes
     data/node_data
     data/properties
+    exec
     gui
     gui/items
     gui/property_items

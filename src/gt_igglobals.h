@@ -13,6 +13,9 @@
 
 #include <QPointF>
 
+class GtIntelliGraphNode;
+class GtIgNodeData;
+
 namespace gt
 {
 namespace ig

@@ -10,6 +10,7 @@
 #define GT_INTELLIGRAPHOBJECTMODEL_H
 
 #include "gt_intelligraphnode.h"
+#include "gt_ignodedata.h"
 
 #include <QtNodes/NodeDelegateModel>
 

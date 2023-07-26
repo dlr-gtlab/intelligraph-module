@@ -9,7 +9,8 @@
 
 #include "gt_intelligraphmodeladapter.h"
 
-#include "gt_command.h"
+#include "gt_intelligraphparallelexecutor.h"
+#include "gt_intelligraphsequentialexecutor.h"
 #include "private/utils.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligraphnode.h"
@@ -19,6 +20,7 @@
 #include "models/gt_intelligraphobjectmodel.h"
 
 #include "gt_coreapplication.h"
+#include "gt_command.h"
 
 template <typename Sender, typename SignalSender,
           typename Reciever, typename SignalReciever>
@@ -83,7 +85,6 @@ GtIntelliGraphModelAdapter::GtIntelliGraphModelAdapter(GtIntelliGraph& parent,
     // merge all existing nodes and connections
     for (auto* node : ig.nodes())
     {
-        node->setActive(true);
         appendNodeToModel(node);
     }
 
@@ -106,7 +107,7 @@ GtIntelliGraphModelAdapter::~GtIntelliGraphModelAdapter()
 {
     for (auto* node : intelliGraph().nodes())
     {
-        node->setActive(false);
+        node->setExecutor(nullptr);
     }
 }
 
@@ -430,7 +431,7 @@ GtIntelliGraphModelAdapter::setupNode(GtIntelliGraphNode& node)
         group->makeModelAdapter(gt::ig::DummyModel);
     }
 
-    node.setActive(true);
+    node.setExecutor(std::make_unique<GtIntelliGraphParallelExecutor>());
 }
 
 void

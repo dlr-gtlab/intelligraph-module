@@ -193,11 +193,6 @@ private slots:
             TYPE() == PortType::In ?
                 graph->insertInPort(*port, idx) :
                 graph->insertOutPort(*port, idx);
-
-            if (TYPE() == PortType::Out)
-            {
-                graph->insertOutData(idx);
-            }
         }
     }
 

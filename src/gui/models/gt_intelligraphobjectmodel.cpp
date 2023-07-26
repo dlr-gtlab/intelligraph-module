@@ -53,7 +53,6 @@ GtIntelliGraphObjectModel::init(GtIntelliGraphNode& node)
     }
 
     m_node = &node;
-    m_node->setActive();
 
     connect(this, &GtIntelliGraphObjectModel::dataUpdated,
             m_node, [=](unsigned idx){

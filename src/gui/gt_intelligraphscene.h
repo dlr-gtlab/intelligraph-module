@@ -7,8 +7,8 @@
  */
 
 
-#ifndef GTINTELLIGRAPHSCENE_H
-#define GTINTELLIGRAPHSCENE_H
+#ifndef GT_INTELLIGRAPHSCENE_H
+#define GT_INTELLIGRAPHSCENE_H
 
 #include "gt_intelligraph.h"
 

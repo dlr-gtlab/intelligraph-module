@@ -36,7 +36,8 @@ GtIntelliGraphNodeUI::GtIntelliGraphNodeUI()
     addSingleAction(tr("Rename Node"), renameNode)
         .setIcon(gt::gui::icon::rename())
         .setVisibilityMethod(isNodeObject)
-        .setVerificationMethod(canRenameNodeObject);
+        .setVerificationMethod(canRenameNodeObject)
+        .setShortCut(gtApp->getShortCutSequence("rename"));
 
     addSingleAction(tr("Clear Intelli Graph"), clearNodeGraph)
         .setIcon(gt::gui::icon::clear())

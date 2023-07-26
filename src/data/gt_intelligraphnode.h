@@ -11,7 +11,6 @@
 
 #include "gt_igglobals.h"
 #include "gt_intelligraph_exports.h"
-#include "gt_ignodedata.h"
 
 #include "gt_object.h"
 
@@ -39,11 +38,14 @@ using NodeFlags  = int;
 
 } // namespace gt
 
+struct GtIntelliGraphNodeImpl;
+
 class GT_IG_EXPORT GtIntelliGraphNode : public GtObject
 {
     Q_OBJECT
 
     friend class GtIntellIGraphExecutor;
+    friend class RunNode;
 
 public:
 
@@ -62,20 +64,11 @@ public:
     using WidgetFactory =
         std::function<std::unique_ptr<QWidget>(GtIntelliGraphNode& thisNode)>;
 
-    /// state enum
-    enum State
-    {
-        EvalRequired = 0,
-        Evaluated    = 1,
-        Evaluating   = 2
-    };
-
     /// enum for defining whether a port is optional
     enum PortPolicy
     {
         Required,
-        Optional,
-        DoNotEvaluate
+        Optional
     };
 
     /// port data struct
@@ -101,9 +94,6 @@ public:
         // whether the port is required for the node evaluation
         bool optional = true;
 
-        [[deprecated]]
-        bool evaluate = true;
-
         /**
          * @brief Returns the port id
          * @return port id
@@ -122,18 +112,11 @@ public:
     /* node specifc methods */
 
     /**
-     * @brief Sets the node active or disables it. Only an active node can be
-     * evaluated. A node is deactivated by default to evaluate only if necessary
-     * @param isActive Whether the node should be (de-)activated
+     * @brief Sets the node executor or disables it. Only an active node can be
+     * evaluated. A node has no executor assigned by default
+     * @param executor New executor
      */
-    void setActive(bool isActive = true);
-
-    /**
-     * @brief Returns whether the node is active. Only an active node can be
-     * evaluated.
-     * @return Is active
-     */
-    bool isActive() const;
+    void setExecutor(std::unique_ptr<GtIntellIGraphExecutor> executor);
 
     /**
      * @brief Sets the node id. handle with care, as this may result in
@@ -376,6 +359,8 @@ protected:
      */
     GtIntelliGraphNode(QString const& modelName, GtObject* parent = nullptr);
 
+    bool setOutData(PortIndex idx, NodeData data);
+
     /**
      * @brief Main evaluation method to override. Will be called for each output
      * port. If no output ports are registered, but input ports are, an invalid
@@ -414,7 +399,7 @@ protected:
      * @param port Port data to append
      * @return Port id
      */
-    PortId addOutPort(PortData port, PortPolicy policy = PortPolicy::Optional) noexcept(false);
+    PortId addOutPort(PortData port) noexcept(false);
 
     /**
      * @brief Inserts an input port at the given location
@@ -432,7 +417,7 @@ protected:
      * @param idx Where to insert the port
      * @return Port id
      */
-    PortId insertOutPort(PortData port, int idx, PortPolicy policy = PortPolicy::Optional) noexcept(false);
+    PortId insertOutPort(PortData port, int idx) noexcept(false);
 
     /**
      * @brief Removes the port specified by id
@@ -482,22 +467,17 @@ protected:
 
 private:
 
-    struct Impl;
+    using Impl = GtIntelliGraphNodeImpl;
     std::unique_ptr<Impl> pimpl;
 
     // hide object name setter
     using GtObject::setObjectName;
 
-    /// initialzes the widgets
+    /// initializes the widgets
     void initWidget();
 
     /// helper method for inserting a port
     PortId insertPort(PortType type, PortData port, int idx = -1) noexcept(false);
-
-    /// internal use only
-    std::vector<PortData>& ports_(PortType type) const noexcept(false);
-    /// internal use only
-    std::vector<NodeData>& nodeData_(PortType type) const noexcept(false);
 };
 
 inline gt::log::Stream&

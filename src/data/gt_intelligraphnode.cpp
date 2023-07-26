@@ -9,20 +9,11 @@
 #include "gt_intelligraphnode.h"
 
 #include "private/intelligraphnode_impl.h"
+#include "private/utils.h"
 
 #include "gt_qtutilities.h"
-#include "gt_exceptions.h"
 
 #include <QRegExpValidator>
-
-template <typename Ports>
-auto findPort(Ports&& ports, gt::ig::PortId id)
-{
-    return std::find_if(ports.begin(), ports.end(),
-                        [id](auto const& p){
-        return p.id() == id;
-    });
-}
 
 GtIntelliGraphNode::GtIntelliGraphNode(QString const& modelName, GtObject* parent) :
     GtObject(parent),
@@ -59,15 +50,17 @@ GtIntelliGraphNode::GtIntelliGraphNode(QString const& modelName, GtObject* paren
 GtIntelliGraphNode::~GtIntelliGraphNode() = default;
 
 void
-GtIntelliGraphNode::setActive(bool isActive)
+GtIntelliGraphNode::setExecutor(std::unique_ptr<GtIntellIGraphExecutor> executor)
 {
-    pimpl->active = isActive;
-}
-
-bool
-GtIntelliGraphNode::isActive() const
-{
-    return pimpl->active;
+    if (pimpl->executor)
+    {
+        if (!pimpl->executor->isReady())
+        {
+            gtWarning() << tr("Replacing executor of node '%1', which is not ready!")
+                               .arg(objectName());
+        }
+    }
+    pimpl->executor = std::move(executor);
 }
 
 void
@@ -175,43 +168,7 @@ GtIntelliGraphNode::modelName() const
 std::vector<GtIntelliGraphNode::PortData> const&
 GtIntelliGraphNode::ports(PortType type) const noexcept(false)
 {
-    return ports_(type);
-}
-
-std::vector<GtIntelliGraphNode::PortData>&
-GtIntelliGraphNode::ports_(PortType type) const noexcept(false)
-{
-    switch (type)
-    {
-    case PortType::In:
-        return pimpl->inPorts;
-    case PortType::Out:
-        return pimpl->outPorts;
-    case PortType::NoType:
-        break;
-    }
-
-    throw GTlabException{
-        __FUNCTION__, QStringLiteral("Invalid port type specified!")
-    };
-}
-
-std::vector<GtIntelliGraphNode::NodeData>&
-GtIntelliGraphNode::nodeData_(PortType type) const noexcept(false)
-{
-    switch (type)
-    {
-    case PortType::In:
-        return pimpl->inData;
-    case PortType::Out:
-        return pimpl->outData;
-    case PortType::NoType:
-        break;
-    }
-
-    throw GTlabException{
-        __FUNCTION__, QStringLiteral("Invalid port type specified!")
-    };
+    return pimpl->ports(type);
 }
 
 GtIntelliGraphNode::PortId
@@ -221,9 +178,9 @@ GtIntelliGraphNode::addInPort(PortData port, PortPolicy policy) noexcept(false)
 }
 
 GtIntelliGraphNode::PortId
-GtIntelliGraphNode::addOutPort(PortData port, PortPolicy policy) noexcept(false)
+GtIntelliGraphNode::addOutPort(PortData port) noexcept(false)
 {
-    return insertOutPort(std::move(port), -1, policy);
+    return insertOutPort(std::move(port), -1);
 }
 
 GtIntelliGraphNode::PortId
@@ -234,9 +191,8 @@ GtIntelliGraphNode::insertInPort(PortData port, int idx, PortPolicy policy) noex
 }
 
 GtIntelliGraphNode::PortId
-GtIntelliGraphNode::insertOutPort(PortData port, int idx, PortPolicy policy) noexcept(false)
+GtIntelliGraphNode::insertOutPort(PortData port, int idx) noexcept(false)
 {
-    port.evaluate = policy != PortPolicy::DoNotEvaluate;
     return insertPort(PortType::Out, std::move(port), idx);
 }
 
@@ -249,8 +205,8 @@ GtIntelliGraphNode::insertPort(PortType type, PortData port, int idx) noexcept(f
         return PortId{};
     }
 
-    auto& ports = ports_(type);
-    auto& data  = nodeData_(type);
+    auto& ports = pimpl->ports(type);
+    auto& data  = pimpl->nodeData(type);
 
     assert(ports.size() == data.size());
 
@@ -266,72 +222,45 @@ GtIntelliGraphNode::insertPort(PortType type, PortData port, int idx) noexcept(f
     emit portAboutToBeInserted(type, pidx);
     auto finally = gt::finally([=](){ emit portInserted(type, pidx); });
 
-    port.m_id = pimpl->nextPortId++;
-    PortId id = ports.insert(iter, std::move(port))->m_id;
+    PortId id = pimpl->nextPortId++;
+    port.m_id = id;
+    ports.insert(iter, std::move(port));
     data.resize(ports.size());
+
     return id;
 }
 
 bool
 GtIntelliGraphNode::removePort(PortId id)
 {
-    PortType type = PortType::In;
+    auto find = pimpl->find(id);
+    if (!find) return false;
 
-    for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
-    {
-        auto iter = findPort(*ports, id);
+    // notify model
+    emit portAboutToBeDeleted(find.type, find.idx);
+    auto finally = gt::finally([type = find.type, idx = find.idx, this](){
+        emit portDeleted(type, idx);
+    });
 
-        if (iter != ports->end())
-        {
-            auto idx   = std::distance(ports->begin(), iter);
-            auto& data = nodeData_(type);
-
-            assert(ports->size() == data.size());
-
-            // notify model
-            PortIndex pidx = PortIndex::fromValue(idx);
-            emit portAboutToBeDeleted(type, pidx);
-            auto finally = gt::finally([=](){ emit portDeleted(type, pidx); });
-
-            ports->erase(iter);
-            data.erase(std::next(data.begin(), idx));
-            return true;
-        }
-        // switch type
-        type = PortType::Out;
-    }
-
-    return false;
+    find.ports->erase(std::next(find.ports->begin(), find.idx));
+    find.data->erase(std::next(find.data->begin(), find.idx));
+    return true;
 }
 
 GtIntelliGraphNode::NodeData const&
 GtIntelliGraphNode::nodeData(PortId id) const
 {
-    PortIndex idx;
-    PortType type = PortType::In;
-
-    for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
+    auto find = pimpl->find(id);
+    if (!find)
     {
-        auto iter = findPort(*ports, id);
-
-        if (iter != ports->end())
-        {
-            idx = PortIndex::fromValue(std::distance(ports->begin(), iter));
-            break;
-        }
-        // switch type
-        type = PortType::Out;
-    }
-
-    auto& data = nodeData_(type);
-    if (idx >= data.size())
-    {
-        gtWarning() << tr("PortId out of bound!") << id << idx;
+        gtWarning() << tr("PortId '%1' not found!").arg(id);
         static const NodeData dummy{};
         return dummy;
     }
 
-    return data.at(idx);
+    assert (find.idx < find.data->size());
+
+    return find.data->at(find.idx);
 }
 
 GtIntelliGraphNode::PortData*
@@ -339,7 +268,7 @@ GtIntelliGraphNode::port(PortId id) noexcept
 {
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
     {
-        auto iter = findPort(*ports, id);
+        auto iter = gt::ig::findPort(*ports, id);
 
         if (iter != ports->end()) return &(*iter);
     }
@@ -358,7 +287,7 @@ GtIntelliGraphNode::portIndex(PortType type, PortId id) const noexcept(false)
 {
     auto& ports = this->ports(type);
 
-    auto iter = findPort(ports, id);
+    auto iter = gt::ig::findPort(ports, id);
 
     if (iter != ports.end())
     {
@@ -396,7 +325,7 @@ GtIntelliGraphNode::setInData(PortIndex idx, NodeData data)
 
     pimpl->inData.at(idx) = std::move(data);
 
-    pimpl->state = EvalRequired;
+    pimpl->requiresEvaluation = true;
 
     emit inputDataRecieved(idx);
 
@@ -404,6 +333,25 @@ GtIntelliGraphNode::setInData(PortIndex idx, NodeData data)
 
     return true;
 }
+
+bool
+GtIntelliGraphNode::setOutData(PortIndex idx, NodeData data)
+{
+    if (idx >= pimpl->outData.size()) return false;
+
+    gtTrace().verbose().nospace()
+        << "### Setting out data:  '" << objectName()
+        << "' at output idx  '" << idx << "': " << data;
+
+    auto& out = pimpl->outData.at(idx);
+
+    out = std::move(data);
+
+    out ? emit outDataUpdated(idx) : emit outDataInvalidated(idx);
+
+    return true;
+}
+
 
 GtIntelliGraphNode::NodeData
 GtIntelliGraphNode::outData(PortIndex idx)
@@ -415,7 +363,7 @@ GtIntelliGraphNode::outData(PortIndex idx)
         << "' at output idx '" << idx << "': " << pimpl->outData.at(idx);
 
     // trigger node update if no input data is available
-    if (pimpl->state == EvalRequired) updatePort(idx);
+    if (pimpl->requiresEvaluation) updatePort(idx);
 
     return pimpl->outData.at(idx);
 }
@@ -423,13 +371,27 @@ GtIntelliGraphNode::outData(PortIndex idx)
 void
 GtIntelliGraphNode::updateNode()
 {
-    return pimpl->executor.evaluateNode(*this);
+    if (pimpl->executor)
+    {
+        pimpl->requiresEvaluation = false;
+        // if we failed to start the evaluation the node needs to be evaluated
+        // at a later point
+        bool successfullyStarted = pimpl->executor->evaluateNode(*this);
+        pimpl->requiresEvaluation = !successfullyStarted;
+    }
 }
 
 void
 GtIntelliGraphNode::updatePort(gt::ig::PortIndex idx)
 {
-    return pimpl->executor.evaluatePort(*this, idx);
+    if (pimpl->executor)
+    {
+        pimpl->requiresEvaluation = false;
+        // if we failed to start the evaluation the node needs to be evaluated
+        // at a later point
+        bool successfullyStarted = pimpl->executor->evaluatePort(*this, idx);
+        pimpl->requiresEvaluation = !successfullyStarted;
+    }
 }
 
 void
