@@ -381,6 +381,8 @@ GtIntelliGraphView::drawBackground(QPainter* painter, const QRectF& r)
 {
     QGraphicsView::drawBackground(painter, r);
 
+    if (!scene()) return;
+
     auto drawGrid = [&](double gridStep) {
         QRect windowRect = rect();
         QPointF tl = mapToScene(windowRect.topLeft());

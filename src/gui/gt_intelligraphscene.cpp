@@ -228,6 +228,7 @@ GtIntelliGraphScene::pasteObjects()
     // append objects
     auto newNodeIds = m_data->appendObjects(objects->nodes, objects->connections);
 
+    // set selection
     auto nodes = findItems<QtNodes::NodeGraphicsObject*>(*this);
     auto iter = 0;
     foreach (auto* node, nodes)

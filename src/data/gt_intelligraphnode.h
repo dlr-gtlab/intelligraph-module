@@ -38,6 +38,7 @@ using NodeFlags  = int;
 
 } // namespace gt
 
+class GtIntellIGraphExecutor;
 struct GtIntelliGraphNodeImpl;
 
 class GT_IG_EXPORT GtIntelliGraphNode : public GtObject

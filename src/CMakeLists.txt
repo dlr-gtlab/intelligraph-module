@@ -21,12 +21,18 @@ set(PUBLIC_HEADERS
     data/properties/gt_igcolorproperty.h
     data/properties/gt_igobjectlinkproperty.h
     data/properties/gt_igstringselectionproperty.h
+    gui/gt_igicons.h
     gui/gt_igportuiaction.h
     gui/ui/gt_intelligraphnodeui.h
 )
 
+ qt5_add_resources (RCC_SOURCES
+     ./resources/icons.qrc
+ )
+
 add_library(GTlabIntelliGraph SHARED
     ${PUBLIC_HEADERS}
+    ${RCC_SOURCES}
     gt_intelligraphmodule.h
     gt_intelligraphmodeladapter.h
     gt_intelligraphjsonadapter.h
@@ -50,12 +56,13 @@ add_library(GTlabIntelliGraph SHARED
     exec/gt_intelligraphexecutor.h
     exec/gt_intelligraphparallelexecutor.h
     exec/gt_intelligraphsequentialexecutor.h
+    gui/gt_igicons.cpp
+    gui/gt_intelligraphscene.h
+    gui/gt_intelligraphview.h
     gui/items/gt_intelligrapheditor.h
     gui/models/gt_intelligraphobjectmodel.h
     gui/property_items/gt_igobjectlinkpropertyitem.h
     gui/property_items/gt_igstringselectionpropertyitem.h
-    gui/gt_intelligraphscene.h
-    gui/gt_intelligraphview.h
     gui/ui/gt_intelligraphconnectionui.h
     gui/ui/gt_intelligraphpackageui.h
     gui/ui/gt_iggroupproviderui.h

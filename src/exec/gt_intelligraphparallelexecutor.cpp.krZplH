@@ -85,7 +85,7 @@ GtIntelliGraphParallelExecutor::onFinished()
         if (pimpl.requiresEvaluation)
         {
             gtDebug() << "reavluating node!" << m_node;
-            m_node->updateNode();
+            evaluateNode(*m_node);
         }
     }
 }
