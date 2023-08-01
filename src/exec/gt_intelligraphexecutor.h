@@ -36,11 +36,11 @@ protected:
 
     virtual bool canEvaluateNode(GtIntelliGraphNode& node, PortIndex outIdx = PortIndex{});
 
-    bool doEvaluate(GtIntelliGraphNode& node, PortIndex idx);
+    static bool doEvaluate(GtIntelliGraphNode& node, PortIndex idx);
 
-    void doEvaluateAndDiscard(GtIntelliGraphNode& node);
+    static void doEvaluateAndDiscard(GtIntelliGraphNode& node);
 
-    GtIntelliGraphNodeImpl& accessImpl(GtIntelliGraphNode& node);
+    static GtIntelliGraphNodeImpl& accessImpl(GtIntelliGraphNode& node);
 };
 
 #endif // GTINTELLIGRAPHEXECUTOR_H

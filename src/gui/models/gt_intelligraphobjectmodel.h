@@ -82,6 +82,8 @@ signals:
 private:
 
     QPointer<GtIntelliGraphNode> m_node;
+
+    bool m_evaluating = false;
 };
 
 class GtIgObjectModelData : public QtNodes::NodeData

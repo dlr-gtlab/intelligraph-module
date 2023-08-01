@@ -311,6 +311,10 @@ signals:
      */
     void inputDataRecieved(gt::ig::PortIndex idx = PortIndex{0});
 
+    void computingStarted();
+    
+    void computingFinished();
+
     /**
      * @brief Emitted if node specific data hast changed (cpation, number of
      * ports etc.). May be invoked by the "user" to update the graphical node

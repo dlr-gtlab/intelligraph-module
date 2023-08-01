@@ -418,11 +418,22 @@ GtIntelliGraphModelAdapter::setupNode(GtIntelliGraphNode& node)
                             << "(" << nodeId << ")";;
         model->deleteNode(nodeId);
     });
+
     connect(&node, &GtIntelliGraphNode::nodeChanged, m_graphModel.get(),
             [model = m_graphModel.get(),
              nodeId = node.id()](){
         emit model->nodeUpdated(nodeId);
     });
+
+    auto updateNodeFlags = [model = m_graphModel.get(),
+                            nodeId = node.id()](){
+        emit model->nodeFlagsUpdated(nodeId);
+    };
+
+    connect(&node, &GtIntelliGraphNode::computingStarted,
+            m_graphModel.get(), updateNodeFlags);
+    connect(&node, &GtIntelliGraphNode::computingFinished,
+            m_graphModel.get(), updateNodeFlags);
 
     // init input output providers
     if (auto group = qobject_cast<GtIntelliGraph*>(&node))

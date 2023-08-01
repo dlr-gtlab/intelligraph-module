@@ -60,6 +60,7 @@ GtIntelliGraphNode::setExecutor(std::unique_ptr<GtIntellIGraphExecutor> executor
                                .arg(objectName());
         }
     }
+    emit computingFinished();
     pimpl->executor = std::move(executor);
 }
 

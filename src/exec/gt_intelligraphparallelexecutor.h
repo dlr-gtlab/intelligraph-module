@@ -22,6 +22,7 @@ class GtIntelliGraphParallelExecutor : public GtIntellIGraphExecutor
 public:
 
     using NodeData = GtIntelliGraphNode::NodeData;
+    using PortIndex = gt::ig::PortIndex;
 
     GtIntelliGraphParallelExecutor();
     ~GtIntelliGraphParallelExecutor();
@@ -42,7 +43,11 @@ private:
 
     QFutureWatcher<std::vector<NodeData>> m_watcher;
 
+    PortIndex m_port;
+
     bool m_collected = true;
+
+    bool evaluateNodeHelper(GtIntelliGraphNode& node);
 
 private slots:
 

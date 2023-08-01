@@ -86,6 +86,13 @@ GtIntelliGraphObjectModel::init(GtIntelliGraphNode& node)
     connect(m_node, &GtIntelliGraphNode::portInserted,
             this, &GtIntelliGraphObjectModel::portsInserted);
 
+    connect(m_node, &GtIntelliGraphNode::computingStarted, this, [this](){
+        m_evaluating = true;
+    });
+    connect(m_node, &GtIntelliGraphNode::computingFinished, this, [this](){
+        m_evaluating = false;
+    });
+
 //    GTIG_SETUP_SIGNALS(dataUpdated, outDataUpdated);
 //    GTIG_SETUP_SIGNALS(dataInvalidated, outDataInvalidated);
 //    GTIG_SETUP_SIGNALS(computingStarted);
@@ -107,12 +114,14 @@ GtIntelliGraphObjectModel::flags() const
 
     QtNodeFlags flags{};
 
-    if (m_node->nodeFlags() & NodeFlag::Resizable)
+    auto nodeFlags = m_node->nodeFlags();
+
+    if (nodeFlags & NodeFlag::Resizable)
     {
         flags |= QtNodeFlag::Resizable;
     }
 
-    if (m_node->nodeFlags() & NodeFlag::Unique)
+    if (nodeFlags & NodeFlag::Unique)
     {
         flags |= QtNodeFlag::Unique;
     }
@@ -121,6 +130,9 @@ GtIntelliGraphObjectModel::flags() const
     {
         flags |= QtNodeFlag::Deletable;
     }
+
+    m_evaluating ? flags |=  QtNodeFlag::Evaluating :
+                   flags &= ~QtNodeFlag::Evaluating;
 
     return flags;
 }
@@ -167,8 +179,8 @@ GtIntelliGraphObjectModel::dataType(const QtPortType type, const QtPortIndex idx
     if (typeName.isEmpty())
     {
         return QtNodeDataType{
-            QStringLiteral("__unkown__"),
-            QStringLiteral("<unkown>")
+            QStringLiteral("__unknown__"),
+            QStringLiteral("<unknown>")
         };
     }
 

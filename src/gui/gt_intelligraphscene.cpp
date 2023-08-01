@@ -659,7 +659,7 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
         }
     }
 
-    // remove old nodes and connections. COnnections must be deleted before
+    // remove old nodes and connections. Connections must be deleted before
     // appending new connections
     qDeleteAll(selectedNodes);
 

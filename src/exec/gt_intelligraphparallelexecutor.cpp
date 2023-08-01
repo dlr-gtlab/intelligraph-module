@@ -78,15 +78,12 @@ GtIntelliGraphParallelExecutor::onFinished()
 
 //    m_node.clear();
     m_collected = true;
+    emit m_node->computingFinished();
 
-    if (m_node)
+    auto& pimpl = accessImpl(*m_node);
+    if (pimpl.requiresEvaluation)
     {
-        auto& pimpl = accessImpl(*m_node);
-        if (pimpl.requiresEvaluation)
-        {
-            gtDebug() << "reavluating node!" << m_node;
-            m_node->updateNode();
-        }
+        m_node->updateNode();
     }
 }
 
@@ -107,6 +104,12 @@ GtIntelliGraphParallelExecutor::onResultReady(int idx)
         return;
     }
 
+    auto finally = [this](){
+        m_collected = true;
+        emit m_node->computingFinished();
+    };
+    Q_UNUSED(finally);
+
     std::vector<NodeData> outData = m_watcher.resultAt(idx);
 
     auto& p = accessImpl(*m_node);
@@ -126,17 +129,23 @@ GtIntelliGraphParallelExecutor::onResultReady(int idx)
         return emit m_node->evaluated();
     }
 
+    auto const emitOutDataUpdated = [&p, this](PortIndex idx){
+        auto& out = p.outData.at(idx);
+
+        emit m_node->evaluated(idx);
+
+        out ? emit m_node->outDataUpdated(idx) :
+              emit m_node->outDataInvalidated(idx);
+    };
+
+    if (m_port != gt::ig::invalid<PortIndex>())
+    {
+        return emitOutDataUpdated(m_port);
+    }
     for (PortIndex outIdx{0}; outIdx < p.outPorts.size(); ++outIdx)
     {
-        auto& out = p.outData.at(outIdx);
-
-        emit m_node->evaluated(outIdx);
-
-        out ? emit m_node->outDataUpdated(outIdx) :
-              emit m_node->outDataInvalidated(outIdx);
+        emitOutDataUpdated(outIdx);
     }
-
-    m_collected = true;
 }
 
 void
@@ -148,21 +157,37 @@ GtIntelliGraphParallelExecutor::onResultsReady(int begin, int end)
 bool
 GtIntelliGraphParallelExecutor::evaluateNode(GtIntelliGraphNode& node)
 {
+    m_port = gt::ig::invalid<PortIndex>();
+    return evaluateNodeHelper(node);
+}
+
+bool
+GtIntelliGraphParallelExecutor::evaluatePort(GtIntelliGraphNode& node, PortIndex idx)
+{
+    m_port = idx;
+    return evaluateNodeHelper(node);
+}
+
+bool
+GtIntelliGraphParallelExecutor::evaluateNodeHelper(GtIntelliGraphNode& node)
+{
     if (!canEvaluateNode(node)) return false;
 
     m_node = &node;
     m_collected = false;
+    emit m_node->computingStarted();
 
     auto& p = accessImpl(node);
 
-    auto run = [inData = p.inData,
+    auto run = [targetPort = m_port,
+                inData = p.inData,
                 outData = p.outData,
                 memento = node.toMemento(),
                 this]() -> std::vector<NodeData>
     {
         auto clone = gt::unique_qobject_cast<GtIntelliGraphNode>(
             memento.toObject(*gtObjectFactory)
-        );
+            );
 
         if (!clone)
         {
@@ -179,10 +204,17 @@ GtIntelliGraphParallelExecutor::evaluateNode(GtIntelliGraphNode& node)
         p.inData = std::move(inData);
         p.outData = std::move(outData);
 
-        if (auto* graph = qobject_cast<GtIntelliGraph*>(clone.get()))
+//        if (auto* graph = qobject_cast<GtIntelliGraph*>(clone.get()))
+//        {
+//            graph->initGroupProviders();
+//            graph->makeModelAdapter(gt::ig::DummyModel);
+//        }
+
+        // evalutae single port
+        if (targetPort != gt::ig::invalid<PortIndex>())
         {
-            graph->initGroupProviders();
-            graph->makeModelAdapter(gt::ig::DummyModel);
+            this->doEvaluate(*clone, targetPort);
+            return p.outData;
         }
 
         // trigger eval if no outport exists
@@ -206,12 +238,6 @@ GtIntelliGraphParallelExecutor::evaluateNode(GtIntelliGraphNode& node)
     m_watcher.setFuture(future);
 
     return true;
-}
-
-bool
-GtIntelliGraphParallelExecutor::evaluatePort(GtIntelliGraphNode& node, PortIndex idx)
-{
-    return evaluateNode(node);
 }
 
 bool

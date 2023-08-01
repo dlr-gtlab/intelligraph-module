@@ -29,11 +29,17 @@ GtIntelliGraphSequentialExecutor::evaluateNode(GtIntelliGraphNode& node)
 {
     if (!canEvaluateNode(node)) return false;
 
+
     auto const& outPorts = node.ports(PortType::Out);
     auto const& inPorts  = node.ports(PortType::In);
 
+    emit node.computingStarted();
     m_evaluating = true;
-    auto finally = gt::finally([this](){ m_evaluating = false; });
+    auto finally = gt::finally([this, &node](){
+        m_evaluating = false;
+        emit node.computingFinished();
+    });
+    Q_UNUSED(finally);
 
     // trigger eval if no outport exists
     if (outPorts.empty() && !inPorts.empty())
