@@ -38,14 +38,14 @@ using NodeFlags  = int;
 
 } // namespace gt
 
-class GtIntellIGraphExecutor;
+class GtIntelliGraphExecutor;
 struct GtIntelliGraphNodeImpl;
 
 class GT_IG_EXPORT GtIntelliGraphNode : public GtObject
 {
     Q_OBJECT
-
-    friend class GtIntellIGraphExecutor;
+    
+    friend class GtIntelliGraphExecutor;
     friend class RunNode;
 
 public:
@@ -57,8 +57,8 @@ public:
     using PortId    = gt::ig::PortId;
     using PortIndex = gt::ig::PortIndex;
     using Position  = gt::ig::Position;
-
-    using NodeData = std::shared_ptr<const GtIgNodeData>;
+    using NodeData  = std::shared_ptr<const GtIgNodeData>;
+    using ExecutorType = gt::ig::ExecutorType;
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
@@ -113,11 +113,11 @@ public:
     /* node specifc methods */
 
     /**
-     * @brief Sets the node executor or disables it. Only an active node can be
-     * evaluated. A node has no executor assigned by default
+     * @brief Sets the node executor or disables it. Only a node with a valid
+     * eecuted can be evaluated. A node has no executor assigned by default.
      * @param executor New executor
      */
-    void setExecutor(std::unique_ptr<GtIntellIGraphExecutor> executor);
+    void setExecutor(ExecutorType executorType);
 
     /**
      * @brief Sets the node id. handle with care, as this may result in
@@ -311,8 +311,14 @@ signals:
      */
     void inputDataRecieved(gt::ig::PortIndex idx = PortIndex{0});
 
+    /**
+     * @brief Emitted once the node evaluation has started
+     */
     void computingStarted();
     
+    /**
+     * @brief Emitted once the node evaluation has finished
+     */
     void computingFinished();
 
     /**

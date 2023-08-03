@@ -21,6 +21,7 @@ set(PUBLIC_HEADERS
     data/properties/gt_igcolorproperty.h
     data/properties/gt_igobjectlinkproperty.h
     data/properties/gt_igstringselectionproperty.h
+    exec/gt_intelligraphexecutorfactory.h
     gui/gt_igicons.h
     gui/gt_igportuiaction.h
     gui/ui/gt_intelligraphnodeui.h
@@ -54,6 +55,7 @@ add_library(GTlabIntelliGraph SHARED
     data/nodes/gt_igsleepynode.h
     data/nodes/gt_igstringlistinputnode.h
     exec/gt_intelligraphexecutor.h
+    exec/gt_intelligraphexecutorfactory.cpp
     exec/gt_intelligraphparallelexecutor.h
     exec/gt_intelligraphsequentialexecutor.h
     gui/gt_igicons.cpp

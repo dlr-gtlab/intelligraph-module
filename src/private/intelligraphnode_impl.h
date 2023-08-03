@@ -80,6 +80,8 @@ struct GtIntelliGraphNodeImpl
     std::vector<PortData> inPorts, outPorts{};
     /// data
     std::vector<NodeData> inData, outData{};
+    /// node executor
+    std::unique_ptr<GtIntelliGraphExecutor> executor;
     /// owning pointer to widget, may be deleted earlier
     gt::ig::volatile_ptr<QWidget> widget{};
     /// factory for creating the widget
@@ -88,8 +90,6 @@ struct GtIntelliGraphNodeImpl
     NodeFlags flags{gt::ig::NoFlag};
     /// iterator for the next port id
     PortId nextPortId{0};
-
-    std::unique_ptr<GtIntellIGraphExecutor> executor;
 
     bool requiresEvaluation{true};
 

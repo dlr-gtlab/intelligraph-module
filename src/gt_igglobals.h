@@ -112,6 +112,14 @@ enum NodeIdPolicy
     KeepNodeId = 1
 };
 
+enum ExecutorType
+{
+    NoExecutor = 0,
+    SequentialExecutor,
+    ParallelExecutor,
+    DefaultExecutor = 255
+};
+
 template<typename T>
 constexpr inline T invalid() noexcept
 {

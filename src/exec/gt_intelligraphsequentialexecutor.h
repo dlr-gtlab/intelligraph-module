@@ -12,7 +12,7 @@
 
 #include "gt_intelligraphexecutor.h"
 
-class GtIntelliGraphSequentialExecutor : public GtIntellIGraphExecutor
+class GtIntelliGraphSequentialExecutor : public GtIntelliGraphExecutor
 {
     Q_OBJECT
 

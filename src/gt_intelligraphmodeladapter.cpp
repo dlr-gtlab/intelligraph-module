@@ -9,9 +9,8 @@
 
 #include "gt_intelligraphmodeladapter.h"
 
-#include "gt_intelligraphparallelexecutor.h"
-#include "gt_intelligraphsequentialexecutor.h"
 #include "private/utils.h"
+#include "gt_intelligraphexecutorfactory.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligraphnode.h"
 #include "gt_intelligraphconnection.h"
@@ -107,7 +106,7 @@ GtIntelliGraphModelAdapter::~GtIntelliGraphModelAdapter()
 {
     for (auto* node : intelliGraph().nodes())
     {
-        node->setExecutor(nullptr);
+        node->setExecutor(gt::ig::NoExecutor);
     }
 }
 
@@ -442,7 +441,7 @@ GtIntelliGraphModelAdapter::setupNode(GtIntelliGraphNode& node)
         group->makeModelAdapter(gt::ig::DummyModel);
     }
 
-    node.setExecutor(std::make_unique<GtIntelliGraphParallelExecutor>());
+    node.setExecutor(gt::ig::DefaultExecutor);
 }
 
 void

@@ -14,9 +14,6 @@
 #include "gt_intelligraphmodeladapter.h"
 #include "gt_iggroupinputprovider.h"
 #include "gt_iggroupoutputprovider.h"
-#include "gt_eventloop.h"
-
-#include "gt_intelligraphsequentialexecutor.h"
 #include "private/utils.h"
 
 #include "gt_qtutilities.h"
@@ -209,6 +206,23 @@ GtIntelliGraph::findModelAdapter() const
     return const_cast<GtIntelliGraph*>(this)->findModelAdapter();
 }
 
+inline auto
+makeTemporaryModelAdapter(GtIntelliGraph* this_)
+{
+    auto finally = gt::finally([=](){
+        this_->clearModelAdapter(false);
+    });
+
+    if (!this_->findModelAdapter())
+    {
+        this_->makeModelAdapter(gt::ig::DummyModel);
+        return finally;
+    }
+
+    finally.clear();
+    return finally;
+}
+
 GtIntelliGraphNode::NodeData
 GtIntelliGraph::eval(PortId outId)
 {
@@ -226,16 +240,14 @@ GtIntelliGraph::eval(PortId outId)
         return {};
     }
 
-    // force subnodes to use a sequential execution
-    auto finally = gt::finally([=](){
-        clearModelAdapter(false);
-    });
-    if (findModelAdapter()) finally.clear();
-    else makeModelAdapter(gt::ig::DummyModel);
+    // make sure a model exist and i cleaned up if needed
+    auto cleanup = makeTemporaryModelAdapter(this);
+    Q_UNUSED(cleanup);
 
+    // force subnodes to use a sequential execution
     for (auto* node : nodes())
     {
-        node->setExecutor(std::make_unique<GtIntelliGraphSequentialExecutor>());
+        node->setExecutor(ExecutorType::SequentialExecutor);
     }
 
     // this will trigger the evaluation

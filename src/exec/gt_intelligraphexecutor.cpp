@@ -14,34 +14,18 @@
 
 using namespace gt::ig;
 
-GtIntellIGraphExecutor::GtIntellIGraphExecutor() = default;
+GtIntelliGraphExecutor::GtIntelliGraphExecutor() = default;
 
 bool
-GtIntellIGraphExecutor::isReady() const
+GtIntelliGraphExecutor::isReady() const
 {
     return true;
 }
 
 bool
-GtIntellIGraphExecutor::canEvaluateNode(GtIntelliGraphNode& node, PortIndex outIdx)
+GtIntelliGraphExecutor::canEvaluateNode(GtIntelliGraphNode& node, PortIndex outIdx)
 {
     auto* p = node.pimpl.get();
-
-//    if (!p->active)
-//    {
-//        gtWarning().verbose()
-//            << tr("Node is not active!")
-//            << gt::brackets(node.objectPath());
-//        return false;
-//    }
-
-//    if (p->state == GtIntelliGraphNode::Evaluating)
-//    {
-//        gtWarning().medium()
-//            << tr("Node already evaluating!")
-//            << gt::brackets(node.objectPath());
-//        return false;
-//    }
 
     PortIndex inIdx{0};
     for (auto const& data : p->inData)
@@ -74,7 +58,7 @@ GtIntellIGraphExecutor::canEvaluateNode(GtIntelliGraphNode& node, PortIndex outI
 }
 
 bool
-GtIntellIGraphExecutor::doEvaluate(GtIntelliGraphNode& node, PortIndex idx)
+GtIntelliGraphExecutor::doEvaluate(GtIntelliGraphNode& node, PortIndex idx)
 {
     auto& p = *node.pimpl;
 
@@ -94,7 +78,7 @@ GtIntellIGraphExecutor::doEvaluate(GtIntelliGraphNode& node, PortIndex idx)
 }
 
 void
-GtIntellIGraphExecutor::doEvaluateAndDiscard(GtIntelliGraphNode& node)
+GtIntelliGraphExecutor::doEvaluateAndDiscard(GtIntelliGraphNode& node)
 {
     gtDebug().verbose().nospace()
         << "### Evaluating node:  '" << node.objectName() << "'";
@@ -105,7 +89,7 @@ GtIntellIGraphExecutor::doEvaluateAndDiscard(GtIntelliGraphNode& node)
 }
 
 GtIntelliGraphNodeImpl&
-GtIntellIGraphExecutor::accessImpl(GtIntelliGraphNode& node)
+GtIntelliGraphExecutor::accessImpl(GtIntelliGraphNode& node)
 {
     return *node.pimpl;
 }

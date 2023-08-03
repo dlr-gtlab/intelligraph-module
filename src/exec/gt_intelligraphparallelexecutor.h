@@ -15,7 +15,7 @@
 
 #include <QFutureWatcher>
 
-class GtIntelliGraphParallelExecutor : public GtIntellIGraphExecutor
+class GtIntelliGraphParallelExecutor : public GtIntelliGraphExecutor
 {
     Q_OBJECT
 
@@ -51,11 +51,9 @@ private:
 
 private slots:
 
-    void onStarted();
     void onFinished();
     void onCanceled();
     void onResultReady(int idx);
-    void onResultsReady(int begin, int end);
 };
 
 #endif // GTINTELLIGRAPHPARALLELEXECUTOR_H

@@ -8,6 +8,7 @@
 
 #include "gt_intelligraphnode.h"
 
+#include "gt_intelligraphexecutorfactory.h"
 #include "private/intelligraphnode_impl.h"
 #include "private/utils.h"
 
@@ -50,8 +51,10 @@ GtIntelliGraphNode::GtIntelliGraphNode(QString const& modelName, GtObject* paren
 GtIntelliGraphNode::~GtIntelliGraphNode() = default;
 
 void
-GtIntelliGraphNode::setExecutor(std::unique_ptr<GtIntellIGraphExecutor> executor)
+GtIntelliGraphNode::setExecutor(ExecutorType executorType)
 {
+    auto executor = GtIntelliGraphExecutorFactory::makeExecutor(executorType);
+
     if (pimpl->executor)
     {
         if (!pimpl->executor->isReady())

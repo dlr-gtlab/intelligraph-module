@@ -21,7 +21,7 @@ GtIntelliGraphSequentialExecutor::canEvaluateNode(GtIntelliGraphNode& node, Port
                            .arg(node.objectName());
         return false;
     }
-    return GtIntellIGraphExecutor::canEvaluateNode(node, outIdx);
+    return GtIntelliGraphExecutor::canEvaluateNode(node, outIdx);
 }
 
 bool
@@ -35,6 +35,7 @@ GtIntelliGraphSequentialExecutor::evaluateNode(GtIntelliGraphNode& node)
 
     emit node.computingStarted();
     m_evaluating = true;
+
     auto finally = gt::finally([this, &node](){
         m_evaluating = false;
         emit node.computingFinished();

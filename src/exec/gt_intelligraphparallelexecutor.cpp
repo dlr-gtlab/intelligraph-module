@@ -27,17 +27,12 @@ GtIntelliGraphParallelExecutor::GtIntelliGraphParallelExecutor()
 {
     using Watcher= decltype(m_watcher);
 
-    connect(&m_watcher, &Watcher::started,
-            this, &GtIntelliGraphParallelExecutor::onStarted);
     connect(&m_watcher, &Watcher::finished,
             this, &GtIntelliGraphParallelExecutor::onFinished);
     connect(&m_watcher, &Watcher::canceled,
             this, &GtIntelliGraphParallelExecutor::onCanceled);
     connect(&m_watcher, &Watcher::resultReadyAt,
             this, &GtIntelliGraphParallelExecutor::onResultReady);
-
-//    connect(&m_watcher, &Watcher::resultsReadyAt,
-//            this, &GtIntelliGraphParallelExecutor::onResultsReady);
 }
 
 bool
@@ -49,7 +44,7 @@ GtIntelliGraphParallelExecutor::canEvaluateNode(GtIntelliGraphNode& node, PortIn
                            .arg(node.objectName());
         return false;
     }
-    return GtIntellIGraphExecutor::canEvaluateNode(node, outIdx);
+    return GtIntelliGraphExecutor::canEvaluateNode(node, outIdx);
 
 }
 
@@ -59,16 +54,8 @@ GtIntelliGraphParallelExecutor::~GtIntelliGraphParallelExecutor()
 }
 
 void
-GtIntelliGraphParallelExecutor::onStarted()
-{
-    gtTrace().verbose() << std::left << std::setw(15) << __func__;
-}
-
-void
 GtIntelliGraphParallelExecutor::onFinished()
 {
-    gtTrace().verbose() << std::left << std::setw(15) << __func__ << m_node << m_watcher.isRunning();
-
     if (!m_node)
     {
         gtError() << QObject::tr("Cannot finish transfer of node data! "
@@ -90,14 +77,12 @@ GtIntelliGraphParallelExecutor::onFinished()
 void
 GtIntelliGraphParallelExecutor::onCanceled()
 {
-    gtWarning().verbose() << std::left << std::setw(15) << __func__ << m_node;
+    gtWarning().verbose() << __func__ << m_node;
 }
 
 void
 GtIntelliGraphParallelExecutor::onResultReady(int idx)
 {
-    gtTrace().verbose() << std::left << std::setw(15) << __func__ << m_node;
-
     if (!m_node)
     {
         gtError() << tr("Cannot transfer node data! (Invalid node)");
@@ -146,12 +131,6 @@ GtIntelliGraphParallelExecutor::onResultReady(int idx)
     {
         emitOutDataUpdated(outIdx);
     }
-}
-
-void
-GtIntelliGraphParallelExecutor::onResultsReady(int begin, int end)
-{
-    gtTrace().verbose() << std::left << std::setw(15) << __func__ << begin << end;
 }
 
 bool
@@ -204,12 +183,6 @@ GtIntelliGraphParallelExecutor::evaluateNodeHelper(GtIntelliGraphNode& node)
         p.inData = std::move(inData);
         p.outData = std::move(outData);
 
-//        if (auto* graph = qobject_cast<GtIntelliGraph*>(clone.get()))
-//        {
-//            graph->initGroupProviders();
-//            graph->makeModelAdapter(gt::ig::DummyModel);
-//        }
-
         // evalutae single port
         if (targetPort != gt::ig::invalid<PortIndex>())
         {
@@ -243,5 +216,5 @@ GtIntelliGraphParallelExecutor::evaluateNodeHelper(GtIntelliGraphNode& node)
 bool
 GtIntelliGraphParallelExecutor::isReady() const
 {
-    return m_watcher.isFinished();
+    return m_watcher.isCanceled() || m_watcher.isFinished();
 }

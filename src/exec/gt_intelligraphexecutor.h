@@ -16,7 +16,7 @@ struct GtIntelliGraphNodeImpl;
 class GtIntelliGraphNode;
 class GtIgNodeData;
 
-class GtIntellIGraphExecutor : public QObject
+class GtIntelliGraphExecutor : public QObject
 {
     Q_OBJECT
 
@@ -24,7 +24,7 @@ public:
 
     using PortIndex = gt::ig::PortIndex;
 
-    GtIntellIGraphExecutor();
+    GtIntelliGraphExecutor();
 
     virtual bool evaluateNode(GtIntelliGraphNode& node) = 0;
 
