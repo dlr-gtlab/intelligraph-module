@@ -14,10 +14,10 @@
 #include "gt_intelligrapheditor.h"
 #include "gt_intelligraphnode.h"
 #include "gt_intelligraphconnection.h"
+#include "gt_igicons.h"
 
 #include "gt_utilities.h"
 #include "gt_logging.h"
-#include "gt_icons.h"
 #include "gt_inputdialog.h"
 #include "gt_application.h"
 #include "gt_command.h"
@@ -36,7 +36,8 @@ GtIntelliGraphNodeUI::GtIntelliGraphNodeUI()
     addSingleAction(tr("Rename Node"), renameNode)
         .setIcon(gt::gui::icon::rename())
         .setVisibilityMethod(isNodeObject)
-        .setVerificationMethod(canRenameNodeObject);
+        .setVerificationMethod(canRenameNodeObject)
+        .setShortCut(gtApp->getShortCutSequence("rename"));
 
     addSingleAction(tr("Clear Intelli Graph"), clearNodeGraph)
         .setIcon(gt::gui::icon::clear())
@@ -52,10 +53,10 @@ GtIntelliGraphNodeUI::icon(GtObject* obj) const
 {
     if (qobject_cast<GtIntelliGraph*>(obj))
     {
-        return gt::gui::icon::application();
+        return gt::gui::icon::ig::intelliGraph();
     }
 
-    return gt::gui::icon::objectEmpty();
+    return gt::gui::icon::ig::node();
 }
 
 void

@@ -18,21 +18,6 @@ GtIgGroupOutputProvider::GtIgGroupOutputProvider() :
     GtIgAbstractGroupProvider("Output Provider")
 {
     setPos({250, 0});
-
-    connect(this, &GtIntelliGraphNode::outDataUpdated,
-            this, [t = this](PortIndex idx){
-        if (auto* graph = t->findParent<GtIntelliGraph*>())
-        {
-            graph->outDataUpdated(idx);
-        }
-    });
-    connect(this, &GtIntelliGraphNode::outDataInvalidated,
-            this, [t = this](PortIndex idx){
-        if (auto* graph = t->findParent<GtIntelliGraph*>())
-        {
-            graph->outDataInvalidated(idx);
-        }
-    });
 }
 
 GtIntelliGraphNode::NodeData

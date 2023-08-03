@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/intelligraph-icons">
+        <file>intelligraph.svg</file>
+        <file>node.svg</file>
+    </qresource>
+</RCC>

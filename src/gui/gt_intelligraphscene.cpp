@@ -228,6 +228,7 @@ GtIntelliGraphScene::pasteObjects()
     // append objects
     auto newNodeIds = m_data->appendObjects(objects->nodes, objects->connections);
 
+    // set selection
     auto nodes = findItems<QtNodes::NodeGraphicsObject*>(*this);
     auto iter = 0;
     foreach (auto* node, nodes)
@@ -658,7 +659,7 @@ GtIntelliGraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedN
         }
     }
 
-    // remove old nodes and connections. COnnections must be deleted before
+    // remove old nodes and connections. Connections must be deleted before
     // appending new connections
     qDeleteAll(selectedNodes);
 

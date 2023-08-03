@@ -77,10 +77,6 @@ public:
     GtIntelliGraphModelAdapter* findModelAdapter();
     GtIntelliGraphModelAdapter const* findModelAdapter() const;
 
-    void insertOutData(PortIndex idx);
-
-    bool setOutData(PortIndex idx, NodeData data);
-
     /**
      * @brief Clears all nodes and connections
      */
@@ -165,10 +161,6 @@ signals:
     void nodeAppended(GtIntelliGraphNode* node);
 
     void nodePositionChanged(gt::ig::NodeId nodeId, QPointF pos);
-
-private:
-
-    std::vector<NodeData> m_outData;
 };
 
 #endif // GT_INTELLIGRAPH_H

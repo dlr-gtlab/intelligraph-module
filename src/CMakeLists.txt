@@ -21,13 +21,19 @@ set(PUBLIC_HEADERS
     data/properties/gt_igcolorproperty.h
     data/properties/gt_igobjectlinkproperty.h
     data/properties/gt_igstringselectionproperty.h
+    exec/gt_intelligraphexecutorfactory.h
+    gui/gt_igicons.h
     gui/gt_igportuiaction.h
     gui/ui/gt_intelligraphnodeui.h
 )
 
+ qt5_add_resources (RCC_SOURCES
+     ./resources/icons.qrc
+ )
+
 add_library(GTlabIntelliGraph SHARED
     ${PUBLIC_HEADERS}
-    gt_intelligraphexecutor.h
+    ${RCC_SOURCES}
     gt_intelligraphmodule.h
     gt_intelligraphmodeladapter.h
     gt_intelligraphjsonadapter.h
@@ -46,20 +52,25 @@ add_library(GTlabIntelliGraph SHARED
     data/nodes/gt_ignumbersourcenode.h
     data/nodes/gt_igobjectmementonode.h
     data/nodes/gt_igobjectsourcenode.h
+    data/nodes/gt_igsleepynode.h
     data/nodes/gt_igstringlistinputnode.h
+    exec/gt_intelligraphexecutor.h
+    exec/gt_intelligraphexecutorfactory.cpp
+    exec/gt_intelligraphparallelexecutor.h
+    exec/gt_intelligraphsequentialexecutor.h
+    gui/gt_igicons.cpp
+    gui/gt_intelligraphscene.h
+    gui/gt_intelligraphview.h
     gui/items/gt_intelligrapheditor.h
     gui/models/gt_intelligraphobjectmodel.h
     gui/property_items/gt_igobjectlinkpropertyitem.h
     gui/property_items/gt_igstringselectionpropertyitem.h
-    gui/gt_intelligraphscene.h
-    gui/gt_intelligraphview.h
     gui/ui/gt_intelligraphconnectionui.h
     gui/ui/gt_intelligraphpackageui.h
     gui/ui/gt_iggroupproviderui.h
     private/intelligraphnode_impl.h
     private/utils.h
 
-    gt_intelligraphexecutor.cpp
     gt_intelligraphmodule.cpp
     gt_intelligraphnodefactory.cpp
     gt_intelligraphjsonadapter.cpp
@@ -80,6 +91,7 @@ add_library(GTlabIntelliGraph SHARED
     data/nodes/gt_ignumbersourcenode.cpp
     data/nodes/gt_igobjectmementonode.cpp
     data/nodes/gt_igobjectsourcenode.cpp
+    data/nodes/gt_igsleepynode.cpp
     data/nodes/gt_igstringlistinputnode.cpp
     data/node_data/gt_igbooldata.cpp
     data/node_data/gt_igdoubledata.cpp
@@ -89,6 +101,9 @@ add_library(GTlabIntelliGraph SHARED
     data/properties/gt_igcolorproperty.cpp
     data/properties/gt_igobjectlinkproperty.cpp
     data/properties/gt_igstringselectionproperty.cpp
+    exec/gt_intelligraphexecutor.cpp
+    exec/gt_intelligraphparallelexecutor.cpp
+    exec/gt_intelligraphsequentialexecutor.cpp
     gui/gt_intelligraphscene.cpp
     gui/gt_intelligraphview.cpp
     gui/items/gt_intelligrapheditor.cpp
@@ -104,6 +119,7 @@ add_library(GTlabIntelliGraph SHARED
 target_link_libraries(GTlabIntelliGraph
   PRIVATE
   Qt5::Xml
+  Qt5::Concurrent
   GTlab::Logging
   GTlab::Gui
   QtNodes::QtNodes
@@ -127,6 +143,7 @@ target_include_directories(GTlabIntelliGraph PRIVATE
     data/nodes
     data/node_data
     data/properties
+    exec
     gui
     gui/items
     gui/property_items

@@ -14,10 +14,12 @@
 #include "gt_intelligraphmodeladapter.h"
 #include "gt_iggroupinputprovider.h"
 #include "gt_iggroupoutputprovider.h"
-
 #include "private/utils.h"
 
 #include "gt_qtutilities.h"
+
+#include <QThread>
+#include <QCoreApplication>
 
 GTIG_REGISTER_NODE(GtIntelliGraph, "Group")
 
@@ -204,28 +206,21 @@ GtIntelliGraph::findModelAdapter() const
     return const_cast<GtIntelliGraph*>(this)->findModelAdapter();
 }
 
-void
-GtIntelliGraph::insertOutData(PortIndex idx)
+inline auto
+makeTemporaryModelAdapter(GtIntelliGraph* this_)
 {
-    m_outData.insert(std::next(m_outData.begin(), idx), NodeData{});
-}
+    auto finally = gt::finally([=](){
+        this_->clearModelAdapter(false);
+    });
 
-bool
-GtIntelliGraph::setOutData(PortIndex idx, NodeData data)
-{
-    if (idx >= m_outData.size())
+    if (!this_->findModelAdapter())
     {
-        gtError().medium() << tr("Failed to set out data! (Index out of bounds)");
-        return false;
+        this_->makeModelAdapter(gt::ig::DummyModel);
+        return finally;
     }
 
-    gtDebug().verbose() << "Setting group output data:" << data;
-
-    m_outData.at(idx) = std::move(data);
-
-    updatePort(idx);
-
-    return true;
+    finally.clear();
+    return finally;
 }
 
 GtIntelliGraphNode::NodeData
@@ -245,34 +240,27 @@ GtIntelliGraph::eval(PortId outId)
         return {};
     }
 
-    PortIndex idx{0};
+    // make sure a model exist and i cleaned up if needed
+    auto cleanup = makeTemporaryModelAdapter(this);
+    Q_UNUSED(cleanup);
+
+    // force subnodes to use a sequential execution
+    for (auto* node : nodes())
+    {
+        node->setExecutor(ExecutorType::SequentialExecutor);
+    }
 
     // this will trigger the evaluation
     in->updateNode();
 
-    // idealy now the data should have been set
-    if (m_outData.size() != out->ports(PortType::In).size())
-    {
-        gtWarning().medium()
-            << tr("Group out data mismatches output provider! (%1 vs %2)")
-                   .arg(out->ports(PortType::In).size())
-                   .arg(m_outData.size());
-        return {};
-    }
-
-    idx = portIndex(PortType::Out, outId);
-
-    return m_outData.at(idx);
+    return nodeData(outId);
 }
 
 void
 GtIntelliGraph::clear()
 {
-    auto cons = findDirectChildren<GtIntelliGraphConnection*>();
-    auto nodes = findDirectChildren<GtIntelliGraphNode*>();
-
-    qDeleteAll(cons);
-    qDeleteAll(nodes);
+    qDeleteAll(connections());
+    qDeleteAll(nodes());
 }
 
 GtIntelliGraphNode*

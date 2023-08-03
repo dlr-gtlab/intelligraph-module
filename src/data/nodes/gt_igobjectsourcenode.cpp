@@ -15,7 +15,7 @@ GTIG_REGISTER_NODE(GtIgObjectSourceNode, "Object");
 GtIgObjectSourceNode::GtIgObjectSourceNode() :
     GtIntelliGraphNode(tr("Object Source")),
     m_object("target", tr("Target"), tr("Target Object"),
-             this, gtObjectFactory->knownClasses())
+             gtApp->currentProject(), gtObjectFactory->knownClasses())
 {
     registerProperty(m_object);
 

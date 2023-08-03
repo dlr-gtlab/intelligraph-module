@@ -13,7 +13,7 @@ include(GTlab)
 gtlab_standard_setup()
 enable_gtlab_devtools()
 
-find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui Xml)
+find_package(Qt5 REQUIRED COMPONENTS Widgets Core Concurrent Gui Xml)
 
 find_package(GTlabLogging REQUIRED)
 find_package(GTlab REQUIRED)

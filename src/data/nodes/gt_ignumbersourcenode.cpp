@@ -46,7 +46,8 @@ GtIgNumberSourceNode::GtIgNumberSourceNode() :
         auto const updateText = [this, w_ = w.get()](){
             w_->setText(QString::number(m_value.get()));
         };
-        connect(this, &GtIntelliGraphNode::outDataUpdated, w.get(),updateText );
+        connect(this, &GtIntelliGraphNode::outDataUpdated, w.get(), updateText);
+
         updateText();
 
         return w;

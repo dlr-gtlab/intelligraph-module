@@ -9,8 +9,8 @@
 
 #include "gt_intelligraphmodeladapter.h"
 
-#include "gt_command.h"
 #include "private/utils.h"
+#include "gt_intelligraphexecutorfactory.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligraphnode.h"
 #include "gt_intelligraphconnection.h"
@@ -19,6 +19,7 @@
 #include "models/gt_intelligraphobjectmodel.h"
 
 #include "gt_coreapplication.h"
+#include "gt_command.h"
 
 template <typename Sender, typename SignalSender,
           typename Reciever, typename SignalReciever>
@@ -83,7 +84,6 @@ GtIntelliGraphModelAdapter::GtIntelliGraphModelAdapter(GtIntelliGraph& parent,
     // merge all existing nodes and connections
     for (auto* node : ig.nodes())
     {
-        node->setActive(true);
         appendNodeToModel(node);
     }
 
@@ -106,7 +106,7 @@ GtIntelliGraphModelAdapter::~GtIntelliGraphModelAdapter()
 {
     for (auto* node : intelliGraph().nodes())
     {
-        node->setActive(false);
+        node->setExecutor(gt::ig::NoExecutor);
     }
 }
 
@@ -417,11 +417,22 @@ GtIntelliGraphModelAdapter::setupNode(GtIntelliGraphNode& node)
                             << "(" << nodeId << ")";;
         model->deleteNode(nodeId);
     });
+
     connect(&node, &GtIntelliGraphNode::nodeChanged, m_graphModel.get(),
             [model = m_graphModel.get(),
              nodeId = node.id()](){
         emit model->nodeUpdated(nodeId);
     });
+
+    auto updateNodeFlags = [model = m_graphModel.get(),
+                            nodeId = node.id()](){
+        emit model->nodeFlagsUpdated(nodeId);
+    };
+
+    connect(&node, &GtIntelliGraphNode::computingStarted,
+            m_graphModel.get(), updateNodeFlags);
+    connect(&node, &GtIntelliGraphNode::computingFinished,
+            m_graphModel.get(), updateNodeFlags);
 
     // init input output providers
     if (auto group = qobject_cast<GtIntelliGraph*>(&node))
@@ -430,7 +441,7 @@ GtIntelliGraphModelAdapter::setupNode(GtIntelliGraphNode& node)
         group->makeModelAdapter(gt::ig::DummyModel);
     }
 
-    node.setActive(true);
+    node.setExecutor(gt::ig::DefaultExecutor);
 }
 
 void

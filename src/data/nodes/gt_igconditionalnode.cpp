@@ -16,7 +16,7 @@
 #include "gt_igstringselectionpropertyitem.h"
 
 #ifdef GTIG_DEVELOPER_PREVIEW
-GTIG_REGISTER_NODE(GtIgConditionalNode, "Conditional")
+//GTIG_REGISTER_NODE(GtIgConditionalNode, "Conditional")
 #endif
 
 GtIgConditionalNode::GtIgConditionalNode() :
@@ -35,10 +35,10 @@ GtIgConditionalNode::GtIgConditionalNode() :
 
     m_outIf = addOutPort(PortData{
         m_dataType.selectedValue(), QStringLiteral("if-branch")
-    }, DoNotEvaluate);
+    }/*, DoNotEvaluate*/);
     m_outElse = addOutPort(PortData{
         m_dataType.selectedValue(), QStringLiteral("else-branch")
-    }, DoNotEvaluate);
+    }/*, DoNotEvaluate*/);
 
     registerWidgetFactory([this](GtIntelliGraphNode&){
         auto w = std::make_unique<GtIgComboBox>();
@@ -88,8 +88,8 @@ GtIgConditionalNode::GtIgConditionalNode() :
             auto* elsePort = port(m_outElse);
             if (!ifPort || !elsePort) return;
 
-            ifPort->evaluate = condition->value();
-            elsePort->evaluate = !condition->value();
+//            ifPort->evaluate = condition->value();
+//            elsePort->evaluate = !condition->value();
         }
     }, Qt::DirectConnection);
 

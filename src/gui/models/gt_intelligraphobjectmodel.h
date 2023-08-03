@@ -10,6 +10,7 @@
 #define GT_INTELLIGRAPHOBJECTMODEL_H
 
 #include "gt_intelligraphnode.h"
+#include "gt_ignodedata.h"
 
 #include <QtNodes/NodeDelegateModel>
 
@@ -81,6 +82,8 @@ signals:
 private:
 
     QPointer<GtIntelliGraphNode> m_node;
+
+    bool m_evaluating = false;
 };
 
 class GtIgObjectModelData : public QtNodes::NodeData

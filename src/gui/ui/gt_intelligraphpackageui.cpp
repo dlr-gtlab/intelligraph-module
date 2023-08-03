@@ -37,6 +37,9 @@ template <typename T>
 inline void addNamedChild(GtObject& obj)
 {
     GtInputDialog dialog{GtInputDialog::TextInput};
+    dialog.setWindowTitle(QObject::tr("Name new Object"));
+    dialog.setWindowIcon(gt::gui::icon::rename());
+    dialog.setLabelText(QObject::tr("Enter a name for the new object."));
 
     dialog.setTextValidator(new QRegExpValidator{
         gt::re::onlyLettersAndNumbersAndSpace()

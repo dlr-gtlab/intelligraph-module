@@ -13,6 +13,9 @@
 
 #include <QPointF>
 
+class GtIntelliGraphNode;
+class GtIgNodeData;
+
 namespace gt
 {
 namespace ig
@@ -107,6 +110,14 @@ enum NodeIdPolicy
     UpdateNodeId = 0,
     /// Indicates that the node id should not be updated.
     KeepNodeId = 1
+};
+
+enum ExecutorType
+{
+    NoExecutor = 0,
+    SequentialExecutor,
+    ParallelExecutor,
+    DefaultExecutor = 255
 };
 
 template<typename T>

@@ -30,6 +30,16 @@
 #include "gt_iggroupoutputprovider.h"
 #include "gt_iggroupproviderui.h"
 
+static const int meta_port_index = [](){
+    return qRegisterMetaType<gt::ig::PortIndex>("gt::ig::PortIndex");
+}();
+static const int meta_port_id = [](){
+    return qRegisterMetaType<gt::ig::PortId>("gt::ig::PortId");
+}();
+static const int meta_node_id = [](){
+    return qRegisterMetaType<gt::ig::NodeId>("gt::ig::NodeId");
+}();
+
 GtVersionNumber
 GtIntelliGraphModule::version()
 {

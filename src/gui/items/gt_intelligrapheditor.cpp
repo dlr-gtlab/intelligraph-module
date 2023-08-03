@@ -140,7 +140,12 @@ void
 GtIntelliGraphEditor::setData(GtObject* obj)
 {
     auto data  = qobject_cast<GtIntelliGraph*>(obj);
-    if (!data) return;
+    if (!data)
+    {
+        gtError().verbose()
+            << tr("Not an intelli graph!") << obj;
+        return;
+    }
 
     if (m_scene)
     {
