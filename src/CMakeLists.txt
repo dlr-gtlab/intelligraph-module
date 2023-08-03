@@ -12,6 +12,7 @@ set(PUBLIC_HEADERS
     gt_intelligraph_exports.h
     gt_intelligraphnodefactory.h
     gt_intelligraphdatafactory.h
+    data/gt_intelligraphdynamicnode.h
     data/gt_intelligraphnode.h
     data/node_data/gt_igbooldata.h
     data/node_data/gt_igdoubledata.h
@@ -80,6 +81,7 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_intelligraph.cpp
     data/gt_intelligraphconnection.cpp
     data/gt_intelligraphconnectiongroup.cpp
+    data/gt_intelligraphdynamicnode.cpp
     data/gt_intelligraphnode.cpp
     data/gt_intelligraphcategory.cpp
     data/nodes/gt_igconditionalnode.cpp

@@ -14,33 +14,29 @@
 #include "gt_igportuiaction.h"
 #include "gt_intelligraph_exports.h"
 
+class GtIntelliGraph;
+class GtIntelliGraphNode;
+class GtIntelliGraphDynamicNode;
+
 class GT_IG_EXPORT GtIntelliGraphNodeUI : public GtObjectUI
 {
     Q_OBJECT
 
 public:
 
+    enum Option
+    {
+        NoOption = 0,
+        NoDefaultPortActions = 1,
+    };
+
     using PortActionFunction = typename GtIgPortUIAction::ActionMethod;
     using PortType = gt::ig::PortType;
     using PortIndex = gt::ig::PortIndex;
 
-    Q_INVOKABLE GtIntelliGraphNodeUI();
+    Q_INVOKABLE GtIntelliGraphNodeUI(Option option = NoOption);
 
     QIcon icon(GtObject* obj) const override;
-
-    /**
-     * @brief Returns true if the object is an intelli graph object
-     * @param obj Object to check
-     * @return Is intelli graph
-     */
-    static bool isGraphObject(GtObject* obj);
-
-    /**
-     * @brief Returns true if the object is a node object
-     * @param obj Object to check
-     * @return Is node
-     */
-    static bool isNodeObject(GtObject* obj);
 
     /**
      * @brief Returns the list of mdi items to open the object with
@@ -49,7 +45,19 @@ public:
      */
     QStringList openWith(GtObject* obj) override;
 
+    /**
+     * @brief Returns true if the object is a node object
+     * @param obj Object to check
+     * @return Is node
+     */
+    static GtIntelliGraphNode* toNode(GtObject* obj);
+
     QList<GtIgPortUIAction> const& portActions() const { return m_portActions; }
+
+    /** DYNAMIC NODES **/
+
+    static GtIntelliGraphDynamicNode* toDynamicNode2(GtObject* obj, PortType, PortIndex);
+    static GtIntelliGraphDynamicNode* toDynamicNode(GtObject* obj) { return toDynamicNode2(obj, {}, PortIndex{}); }
 
 protected:
 
@@ -60,6 +68,13 @@ private:
 
     /// List of custom port actions
     QList<GtIgPortUIAction> m_portActions;
+
+    /**
+     * @brief Returns true if the object is an intelli graph object
+     * @param obj Object to check
+     * @return Is intelli graph
+     */
+    static GtIntelliGraph* toGraph(GtObject* obj);
 
     /**
      * @brief Prompts the user to rename the node
@@ -85,6 +100,14 @@ private:
      * @param obj
      */
     static void loadNodeGraph(GtObject* obj);
+
+    /** DYNAMIC NODES **/
+
+    static void addInPort(GtObject* obj);
+
+    static void addOutPort(GtObject* obj);
+
+    static void deleteDynamicPort(GtIntelliGraphNode* obj, PortType type, PortIndex idx);
 };
 
 #endif // GTINTELLIGRAPHNODEUI_H

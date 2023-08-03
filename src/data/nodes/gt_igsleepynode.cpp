@@ -21,7 +21,7 @@ GTIG_REGISTER_NODE(GtIgSleepyNode, "Number");
 #endif
 
 GtIgSleepyNode::GtIgSleepyNode() :
-    GtIntelliGraphNode("Sleeping Node"),
+    GtIntelliGraphDynamicNode("Sleeping Node"),
     m_timer("timer", tr("Timer"), tr("Timer"), GtUnit::Time, 5)
 {
     registerProperty(m_timer);

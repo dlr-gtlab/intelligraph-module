@@ -22,7 +22,7 @@ namespace ig
 {
 
 // Base class for typesafe type aliases
-template <typename T, typename Tag>
+template <typename T, typename Tag, T InitValue = 0>
 class StrongType
 {
 public:
@@ -78,12 +78,12 @@ public:
     value() const { return m_value; }
 
 private:
-    T m_value = std::numeric_limits<T>::max();
+    T m_value = InitValue;
 };
 
-using NodeId    = StrongType<unsigned, struct NodeId_>;
-using PortIndex = StrongType<unsigned, struct PortIndex_>;
-using PortId    = StrongType<unsigned, struct PortId_>;
+using NodeId    = StrongType<unsigned, struct NodeId_, std::numeric_limits<unsigned>::max()>;
+using PortIndex = StrongType<unsigned, struct PortIndex_, std::numeric_limits<unsigned>::max()>;
+using PortId    = StrongType<unsigned, struct PortId_, std::numeric_limits<unsigned>::max()>;
 
 using Position = QPointF;
 
@@ -120,10 +120,29 @@ enum ExecutorType
     DefaultExecutor = 255
 };
 
+namespace detail
+{
+
+template <typename T>
+struct InvalidValue
+{
+    constexpr static T get() { return std::numeric_limits<T>::max(); }
+};
+
+template <typename T, typename Tag, T InitVal>
+struct InvalidValue<StrongType<T, Tag, InitVal>>
+{
+    using StrongTypeDef = StrongType<T, Tag, InitVal>;
+
+    constexpr static StrongTypeDef get() { return StrongTypeDef{InitVal}; };
+};
+
+} // namespace detail
+
 template<typename T>
 constexpr inline T invalid() noexcept
 {
-    return T{ std::numeric_limits<typename T::value_type>::max() };
+    return detail::InvalidValue<T>::get();
 }
 
 inline unsigned fromInt(GtIntProperty const& p) noexcept
@@ -151,28 +170,29 @@ inline QRegExp forClassNames()
 
 } // namespace gt
 
-template <typename T, typename Tag>
+template <typename T, typename Tag, T InitVal>
 constexpr inline bool
-operator+=(gt::ig::StrongType<T, Tag> const& a,
-           gt::ig::StrongType<T, Tag> const& b) noexcept { return a += b; }
+operator+=(gt::ig::StrongType<T, Tag, InitVal> const& a,
+           gt::ig::StrongType<T, Tag, InitVal> const& b) noexcept { return a += b; }
 
-template <typename T, typename Tag>
+template <typename T, typename Tag, T InitVal>
 constexpr inline bool
-operator-=(gt::ig::StrongType<T, Tag> const& a,
-           gt::ig::StrongType<T, Tag> const& b) noexcept { return a -= b; }
+operator-=(gt::ig::StrongType<T, Tag, InitVal> const& a,
+           gt::ig::StrongType<T, Tag, InitVal> const& b) noexcept { return a -= b; }
 
-template <typename T, typename Tag>
+template <typename T, typename Tag, T InitVal>
 constexpr inline bool
-operator*=(gt::ig::StrongType<T, Tag> const& a,
-           gt::ig::StrongType<T, Tag> const& b) noexcept{ return a *= b; }
+operator*=(gt::ig::StrongType<T, Tag, InitVal> const& a,
+           gt::ig::StrongType<T, Tag, InitVal> const& b) noexcept{ return a *= b; }
 
-template <typename T, typename Tag>
+template <typename T, typename Tag, T InitVal>
 constexpr inline bool
-operator/=(gt::ig::StrongType<T, Tag> const& a,
-           gt::ig::StrongType<T, Tag> const& b) noexcept { return a /= b; }
+operator/=(gt::ig::StrongType<T, Tag, InitVal> const& a,
+           gt::ig::StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
 
-template <typename T, typename Tag>
-inline gt::log::Stream& operator<<(gt::log::Stream& s, gt::ig::StrongType<T, Tag> const& t)
+template <typename T, typename Tag, T InitVal>
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, gt::ig::StrongType<T, Tag, InitVal> const& t)
 {
     return s << t.value();
 }
