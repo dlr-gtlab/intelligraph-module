@@ -11,24 +11,13 @@
 #define GT_IGABSTRACTGROUPPROVIDER_H
 
 #include "gt_coreapplication.h"
-#include "gt_intelligraphnode.h"
-#include "gt_intelligraphdatafactory.h"
-#include "gt_igstringselectionproperty.h"
-#include "gt_command.h"
-#include "gt_project.h"
-
-#include "gt_propertystructcontainer.h"
-#include "gt_structproperty.h"
 #include "gt_intelligraph.h"
+#include "gt_intelligraphdynamicnode.h"
 
 template <gt::ig::PortType Type>
-class GtIgAbstractGroupProvider : public GtIntelliGraphNode
+class GtIgAbstractGroupProvider : public GtIntelliGraphDynamicNode
 {
 public:
-
-    static QString const S_STRUCT_ID;
-    static QString const S_TYPEID;
-    static QString const S_CAPTION;
 
     static constexpr inline PortType INVERSE_TYPE() noexcept
     {
@@ -41,61 +30,29 @@ public:
     }
 
     GtIgAbstractGroupProvider(QString const& modelName) :
-        GtIntelliGraphNode(modelName),
-        m_ports("ports", tr("Port Types"))
+        GtIntelliGraphDynamicNode(modelName, Type == PortType::In ? DynamicOutputOnly : DynamicInputOnly)
     {
-        setId(NodeId{TYPE()});
+        setId(NodeId{static_cast<int>(Type)});
         setFlag(UserDeletable, false);
         setNodeFlag(NodeFlag::Unique, true);
 
         if (!gtApp || !gtApp->devMode()) setFlag(UserHidden, true);
 
-        GtPropertyStructDefinition portEntry{S_STRUCT_ID};
-
-        auto allowedTypes = GtIntelliGraphDataFactory::instance().knownClasses();
-        portEntry.defineMember(S_TYPEID,  gt::ig::makeStringSelectionProperty(std::move(allowedTypes)));
-        portEntry.defineMember(S_CAPTION, gt::makeStringProperty());
-
-        m_ports.registerAllowedType(portEntry);
-
-        registerPropertyStructContainer(m_ports);
-
-        connect(&m_ports, &GtPropertyStructContainer::entryAdded,
-            this, &GtIgAbstractGroupProvider::onEntryAdded);
-
-        connect(&m_ports, &GtPropertyStructContainer::entryRemoved,
-            this, &GtIgAbstractGroupProvider::onEntryRemoved);
-
-        connect(&m_ports, &GtPropertyStructContainer::entryChanged,
-                this, &GtIgAbstractGroupProvider::onEntryChanged);
+        connect(this, &GtIntelliGraphNode::portInserted,
+                this, &GtIgAbstractGroupProvider::onPortInserted,
+                Qt::UniqueConnection);
+        connect(this, &GtIntelliGraphNode::portChanged,
+                this, &GtIgAbstractGroupProvider::onPortChanged,
+                Qt::UniqueConnection);
+        connect(this, &GtIntelliGraphNode::portAboutToBeDeleted,
+                this, &GtIgAbstractGroupProvider::onPortDeleted,
+                Qt::UniqueConnection);
     }
 
-    void insertPort(PortData data, int idx = -1)
+    bool insertPort(PortData data, int idx = -1)
     {
-        auto& ports = this->ports(INVERSE_TYPE());
-
-        if (idx < 0 || static_cast<size_t>(idx) > ports.size())
-        {
-            idx = ports.size();
-        }
-
-        auto& entry = m_ports.newEntry(S_STRUCT_ID, std::next(m_ports.begin(), idx));
-        entry.setMemberVal(S_TYPEID,  data.typeId);
-        entry.setMemberVal(S_CAPTION, data.caption);
+        return GtIntelliGraphDynamicNode::insertPort(INVERSE_TYPE(), data, idx);
     }
-
-    void removePort(int idx)
-    {
-        if (idx < 0 || static_cast<size_t>(idx) >= m_ports.size()) return;
-
-        auto cmd = gtApp->startCommand(gtApp->currentProject(), tr("Remove port '%1'").arg(idx));
-        m_ports.removeEntry(std::next(m_ports.begin(), idx));
-        gtApp->endCommand(cmd);
-    }
-
-protected:
-
-    GtPropertyStructContainer m_ports;
 
 private:
 
@@ -104,85 +61,11 @@ private:
     using GtIntelliGraphNode::addOutPort;
     using GtIntelliGraphNode::insertInPort;
     using GtIntelliGraphNode::insertOutPort;
-    using GtIntelliGraphNode::removePort;
+    using GtIntelliGraphNode::insertPort;
 
 private slots:
 
-    GtPropertyStructInstance* propertyAt(int idx)
-    {
-        try
-        {
-            return &m_ports.at(idx);
-        }
-        catch (std::out_of_range const& e)
-        {
-            gtError() << e.what();
-        }
-        return nullptr;
-    }
-
-    void onEntryAdded(int idx)
-    {
-        auto const* entry = propertyAt(idx);
-        if (!entry) return;
-
-        QString typeId  = entry->template getMemberVal<QString>(S_TYPEID);
-        QString caption = entry->template getMemberVal<QString>(S_CAPTION);
-
-        gtDebug().verbose() << "Adding port" << typeId
-                            << gt::brackets("caption: " + gt::squoted(caption));
-
-        Type == PortType::In ?
-            insertOutPort({typeId, caption}, idx) :
-            insertInPort({typeId, caption}, idx);
-
-        onPortInserted(INVERSE_TYPE(), PortIndex::fromValue(idx));
-    }
-
-    void onEntryRemoved(int idx)
-    {
-        PortId id = portId(INVERSE_TYPE(), PortIndex::fromValue(idx));
-        if (id == gt::ig::invalid<PortId>())
-        {
-            gtWarning() << tr("Failed to remove port idx '%1'!").arg(idx);
-            return;
-        }
-
-        gtDebug().verbose() << "Removing port idx" << idx;
-
-        GtIntelliGraphNode::removePort(id);
-
-        onPortDeleted(PortIndex::fromValue(idx));
-    }
-
-    void onEntryChanged(int idx, GtAbstractProperty*)
-    {
-        PortId id   = portId(INVERSE_TYPE(), PortIndex::fromValue(idx));
-        PortData* p = port(id);
-        if (!p)
-        {
-            gtWarning() << tr("Failed to access port idx '%1'!").arg(idx);
-            return;
-        }
-
-        auto const* entry = propertyAt(idx);
-        if (!entry) return;
-
-        QString typeId  = entry->template getMemberVal<QString>(S_TYPEID);
-        QString caption = entry->template getMemberVal<QString>(S_CAPTION);
-
-        gtDebug().verbose() << "Updating port" << idx << "to" << typeId
-                            << gt::brackets("caption: " + gt::squoted(caption));
-
-        p->typeId = typeId;
-        p->caption = caption;
-
-        emit portChanged(id);
-
-        onPortChanged(id);
-    }
-
-    void onPortInserted(PortType type, PortIndex idx)
+    void onPortInserted(PortType, PortIndex idx)
     {
         auto* graph = findParent<GtIntelliGraph*>();
         if (!graph) return;
@@ -190,7 +73,7 @@ private slots:
         PortId id = portId(INVERSE_TYPE(), idx);
         if (auto* port = this->port(id))
         {
-            TYPE() == PortType::In ?
+            Type == PortType::In ?
                 graph->insertInPort(*port, idx) :
                 graph->insertOutPort(*port, idx);
         }
@@ -201,34 +84,28 @@ private slots:
         auto* graph = findParent<GtIntelliGraph*>();
         if (!graph) return;
 
-        auto* inPort = port(id);
+        auto* port = this->port(id);
+        if (!port) return;
+
         auto  idx    = portIndex(INVERSE_TYPE(), id);
-        auto* port   = graph->port(graph->portId(TYPE(), idx));
+        auto* graphPort   = graph->port(graph->portId(Type, idx));
+        if (!graphPort) return;
 
-        if (!inPort || !port) return;
-
-        port->typeId = inPort->typeId;
-        port->caption = inPort->caption;
-        emit graph->portChanged(port->id());
+        graphPort->typeId = port->typeId;
+        graphPort->caption = port->caption;
+        emit graph->portChanged(graphPort->id());
     }
 
-    void onPortDeleted(PortIndex idx)
+    void onPortDeleted(PortType, PortIndex idx)
     {
         auto* graph = findParent<GtIntelliGraph*>();
         if (!graph) return;
 
-        graph->removePort(graph->portId(TYPE(), idx));
+        graph->removePort(graph->portId(Type, idx));
     }
 };
 
 // disbale template class for none type
 template <> class GtIgAbstractGroupProvider<gt::ig::NoType>;
-
-template <gt::ig::PortType type>
-QString const GtIgAbstractGroupProvider<type>::S_STRUCT_ID = QStringLiteral("Port");
-template <gt::ig::PortType type>
-QString const GtIgAbstractGroupProvider<type>::S_TYPEID = QStringLiteral("type_id");
-template <gt::ig::PortType type>
-QString const GtIgAbstractGroupProvider<type>::S_CAPTION = QStringLiteral("caption");
 
 #endif // GT_IGABSTRACTGROUPPROVIDER_H

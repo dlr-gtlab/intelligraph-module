@@ -33,6 +33,12 @@
 
 GtIntelliGraphNodeUI::GtIntelliGraphNodeUI(Option option)
 {
+    static auto const LOGICAL_AND = [](auto fA, auto fB){
+        return [a = std::move(fA), b = std::move(fB)](GtObject* obj){
+            return a(obj) && b(obj);
+        };
+    };
+
     setObjectName(QStringLiteral("IntelliGraphNodeUI"));
 
     addSingleAction(tr("Rename Node"), renameNode)
@@ -49,24 +55,32 @@ GtIntelliGraphNodeUI::GtIntelliGraphNodeUI(Option option)
         .setIcon(gt::gui::icon::import())
         .setVisibilityMethod(toGraph);
 
-
     if ((option & NoDefaultPortActions)) return;
+
+    auto const hasOutputPorts = [](GtObject* obj){
+        return !(static_cast<GtIntelliGraphDynamicNode*>(obj)->dynamicNodeOption() &
+                 GtIntelliGraphDynamicNode::DynamicInputOnly);
+    };
+    auto const hasInputPorts = [](GtObject* obj){
+        return !(static_cast<GtIntelliGraphDynamicNode*>(obj)->dynamicNodeOption() &
+                 GtIntelliGraphDynamicNode::DynamicOutputOnly);
+    };
 
     addSeparator();
 
     addSingleAction(tr("Add In Port"), addInPort)
         .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(toDynamicNode);
+        .setVisibilityMethod(LOGICAL_AND(toDynamicNode, hasInputPorts));
 
-    addSingleAction(tr("Add Out Port"), addInPort)
+    addSingleAction(tr("Add Out Port"), addOutPort)
         .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(toDynamicNode);
+        .setVisibilityMethod(LOGICAL_AND(toDynamicNode, hasOutputPorts));
 
     /** PORT ACTIONS **/
 
     addPortAction(tr("Delete Port"), deleteDynamicPort)
         .setIcon(gt::gui::icon::delete_())
-        .setVisibilityMethod(toDynamicNode2);
+        .setVisibilityMethod(isDynamicNode);
 }
 
 QIcon
@@ -114,9 +128,15 @@ GtIntelliGraphNodeUI::toNode(GtObject* obj)
 }
 
 GtIntelliGraphDynamicNode*
-GtIntelliGraphNodeUI::toDynamicNode2(GtObject* obj, PortType, PortIndex)
+GtIntelliGraphNodeUI::isDynamicNode(GtObject* obj, PortType, PortIndex)
 {
     return qobject_cast<GtIntelliGraphDynamicNode*>(obj);
+}
+
+GtIntelliGraphDynamicNode*
+GtIntelliGraphNodeUI::toDynamicNode(GtObject* obj)
+{
+    return isDynamicNode(obj, {}, PortIndex{});
 }
 
 bool
@@ -227,4 +247,3 @@ GtIntelliGraphNodeUI::deleteDynamicPort(GtIntelliGraphNode* obj, PortType type, 
 
     node->removePort(node->portId(type, idx));
 }
-

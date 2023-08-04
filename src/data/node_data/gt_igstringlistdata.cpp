@@ -14,7 +14,7 @@
 GTIG_REGISTER_DATA(GtIgStringListData)
 
 GtIgStringListData::GtIgStringListData(QStringList list) :
-    GtIgTemplateData("string list", std::move(list))
+    GtIgTemplateData("stringlist", std::move(list))
 {
 
 }

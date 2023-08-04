@@ -68,7 +68,6 @@ add_library(GTlabIntelliGraph SHARED
     gui/property_items/gt_igstringselectionpropertyitem.h
     gui/ui/gt_intelligraphconnectionui.h
     gui/ui/gt_intelligraphpackageui.h
-    gui/ui/gt_iggroupproviderui.h
     private/intelligraphnode_impl.h
     private/utils.h
 
@@ -115,7 +114,6 @@ add_library(GTlabIntelliGraph SHARED
     gui/ui/gt_intelligraphconnectionui.cpp
     gui/ui/gt_intelligraphnodeui.cpp
     gui/ui/gt_intelligraphpackageui.cpp
-    gui/ui/gt_iggroupproviderui.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

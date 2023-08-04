@@ -10,9 +10,9 @@
 #ifndef GT_IGSLEEPYNODE_H
 #define GT_IGSLEEPYNODE_H
 
-#include "gt_intelligraphdynamicnode.h"
+#include "gt_intelligraphnode.h"
 
-class GtIgSleepyNode : public GtIntelliGraphDynamicNode
+class GtIgSleepyNode : public GtIntelliGraphNode
 {
     Q_OBJECT
 
