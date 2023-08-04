@@ -46,7 +46,6 @@ class GT_IG_EXPORT GtIntelliGraphNode : public GtObject
     Q_OBJECT
     
     friend class GtIntelliGraphExecutor;
-    friend class RunNode;
 
 public:
 
@@ -80,10 +79,14 @@ public:
         // cppcheck-suppress noExplicitConstructor
         PortData(QString _typeId) : PortData(std::move(_typeId), {}) {}
 
-        PortData(QString _typeId, QString _caption, bool _captionVisible = true) :
+        PortData(QString _typeId,
+                 QString _caption,
+                 bool _captionVisible = true,
+                 bool _optional = true) :
             typeId(std::move(_typeId)),
             caption(std::move(_caption)),
-            captionVisible(_captionVisible)
+            captionVisible(_captionVisible),
+            optional(_optional)
         {}
 
         // type id for port data (classname)
@@ -91,7 +94,7 @@ public:
         // custom port caption (optional)
         QString caption;
         // whether port caption should be visible
-        bool captionVisible;
+        bool captionVisible = true;
         // whether the port is required for the node evaluation
         bool optional = true;
 
@@ -415,7 +418,7 @@ protected:
     /**
      * @brief Inserts an input port at the given location
      * (-1 will append to back)
-     * @param port Port data to append
+     * @param port Port data to insert
      * @param idx Where to insert the port
      * @param policy Input port policy
      * @return Port id
@@ -424,11 +427,21 @@ protected:
     /**
      * @brief Inserts an output port at the given location
      * (-1 will append to back)
-     * @param port Port data to append
+     * @param port Port data to insert
      * @param idx Where to insert the port
      * @return Port id
      */
     PortId insertOutPort(PortData port, int idx) noexcept(false);
+
+    /**
+     * @brief Helper method for inserting a port. Prefer the explicit insert/add
+     * methods.
+     * @param type Whether to insert an in or out port
+     * @param port Port data to insert
+     * @param idx Where to insert the port
+     * @return Port id
+    */
+    PortId insertPort(PortType type, PortData port, int idx = -1) noexcept(false);
 
     /**
      * @brief Removes the port specified by id
@@ -486,9 +499,6 @@ private:
 
     /// initializes the widgets
     void initWidget();
-
-    /// helper method for inserting a port
-    PortId insertPort(PortType type, PortData port, int idx = -1) noexcept(false);
 };
 
 inline gt::log::Stream&
@@ -497,7 +507,7 @@ operator<<(gt::log::Stream& s, GtIntelliGraphNode::PortData const& d)
     {
         gt::log::StreamStateSaver saver(s);
         s.nospace()
-            << "PortData[" << d.typeId << "]";
+            << "PortData[" << d.typeId << "/" << d.id() << "]";
     }
     return s;
 }

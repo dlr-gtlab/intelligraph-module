@@ -12,6 +12,7 @@ set(PUBLIC_HEADERS
     gt_intelligraph_exports.h
     gt_intelligraphnodefactory.h
     gt_intelligraphdatafactory.h
+    data/gt_intelligraphdynamicnode.h
     data/gt_intelligraphnode.h
     data/node_data/gt_igbooldata.h
     data/node_data/gt_igdoubledata.h
@@ -67,7 +68,6 @@ add_library(GTlabIntelliGraph SHARED
     gui/property_items/gt_igstringselectionpropertyitem.h
     gui/ui/gt_intelligraphconnectionui.h
     gui/ui/gt_intelligraphpackageui.h
-    gui/ui/gt_iggroupproviderui.h
     private/intelligraphnode_impl.h
     private/utils.h
 
@@ -80,6 +80,7 @@ add_library(GTlabIntelliGraph SHARED
     data/gt_intelligraph.cpp
     data/gt_intelligraphconnection.cpp
     data/gt_intelligraphconnectiongroup.cpp
+    data/gt_intelligraphdynamicnode.cpp
     data/gt_intelligraphnode.cpp
     data/gt_intelligraphcategory.cpp
     data/nodes/gt_igconditionalnode.cpp
@@ -113,7 +114,6 @@ add_library(GTlabIntelliGraph SHARED
     gui/ui/gt_intelligraphconnectionui.cpp
     gui/ui/gt_intelligraphnodeui.cpp
     gui/ui/gt_intelligraphpackageui.cpp
-    gui/ui/gt_iggroupproviderui.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

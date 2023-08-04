@@ -8,9 +8,6 @@
 
 #include "gt_iggroupoutputprovider.h"
 #include "gt_intelligraphnodefactory.h"
-#include "gt_intelligraph.h"
-
-#include "gt_igobjectdata.h"
 
 GTIG_REGISTER_NODE(GtIgGroupOutputProvider, "")
 

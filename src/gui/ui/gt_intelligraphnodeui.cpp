@@ -9,6 +9,8 @@
 
 #include "gt_intelligraphnodeui.h"
 
+#include "gt_igdoubledata.h"
+#include "gt_intelligraphdynamicnode.h"
 #include "gt_intelligraphjsonadapter.h"
 #include "gt_intelligraph.h"
 #include "gt_intelligrapheditor.h"
@@ -29,29 +31,62 @@
 #include <QFileInfo>
 #include <QFile>
 
-GtIntelliGraphNodeUI::GtIntelliGraphNodeUI()
+GtIntelliGraphNodeUI::GtIntelliGraphNodeUI(Option option)
 {
+    static auto const LOGICAL_AND = [](auto fA, auto fB){
+        return [a = std::move(fA), b = std::move(fB)](GtObject* obj){
+            return a(obj) && b(obj);
+        };
+    };
+
     setObjectName(QStringLiteral("IntelliGraphNodeUI"));
 
     addSingleAction(tr("Rename Node"), renameNode)
         .setIcon(gt::gui::icon::rename())
-        .setVisibilityMethod(isNodeObject)
+        .setVisibilityMethod(toNode)
         .setVerificationMethod(canRenameNodeObject)
         .setShortCut(gtApp->getShortCutSequence("rename"));
 
     addSingleAction(tr("Clear Intelli Graph"), clearNodeGraph)
         .setIcon(gt::gui::icon::clear())
-        .setVisibilityMethod(isGraphObject);
+        .setVisibilityMethod(toGraph);
 
     addSingleAction(tr("Load Intelli Graph..."), loadNodeGraph)
         .setIcon(gt::gui::icon::import())
-        .setVisibilityMethod(isGraphObject);
+        .setVisibilityMethod(toGraph);
+
+    if ((option & NoDefaultPortActions)) return;
+
+    auto const hasOutputPorts = [](GtObject* obj){
+        return !(static_cast<GtIntelliGraphDynamicNode*>(obj)->dynamicNodeOption() &
+                 GtIntelliGraphDynamicNode::DynamicInputOnly);
+    };
+    auto const hasInputPorts = [](GtObject* obj){
+        return !(static_cast<GtIntelliGraphDynamicNode*>(obj)->dynamicNodeOption() &
+                 GtIntelliGraphDynamicNode::DynamicOutputOnly);
+    };
+
+    addSeparator();
+
+    addSingleAction(tr("Add In Port"), addInPort)
+        .setIcon(gt::gui::icon::add())
+        .setVisibilityMethod(LOGICAL_AND(toDynamicNode, hasInputPorts));
+
+    addSingleAction(tr("Add Out Port"), addOutPort)
+        .setIcon(gt::gui::icon::add())
+        .setVisibilityMethod(LOGICAL_AND(toDynamicNode, hasOutputPorts));
+
+    /** PORT ACTIONS **/
+
+    addPortAction(tr("Delete Port"), deleteDynamicPort)
+        .setIcon(gt::gui::icon::delete_())
+        .setVisibilityMethod(isDynamicNode);
 }
 
 QIcon
 GtIntelliGraphNodeUI::icon(GtObject* obj) const
 {
-    if (qobject_cast<GtIntelliGraph*>(obj))
+    if (toGraph(obj))
     {
         return gt::gui::icon::ig::intelliGraph();
     }
@@ -59,10 +94,65 @@ GtIntelliGraphNodeUI::icon(GtObject* obj) const
     return gt::gui::icon::ig::node();
 }
 
+QStringList
+GtIntelliGraphNodeUI::openWith(GtObject* obj)
+{
+    QStringList list;
+
+    if (toGraph(obj))
+    {
+        list << GT_CLASSNAME(GtIntelliGraphEditor);
+    }
+
+    return list;
+}
+
+GtIgPortUIAction&
+GtIntelliGraphNodeUI::addPortAction(const QString& actionText,
+                                    PortActionFunction actionMethod)
+{
+    m_portActions.append(GtIgPortUIAction(actionText, std::move(actionMethod)));
+    return m_portActions.back();
+}
+
+GtIntelliGraph*
+GtIntelliGraphNodeUI::toGraph(GtObject* obj)
+{
+    return qobject_cast<GtIntelliGraph*>(obj);
+}
+
+GtIntelliGraphNode*
+GtIntelliGraphNodeUI::toNode(GtObject* obj)
+{
+    return qobject_cast<GtIntelliGraphNode*>(obj);
+}
+
+GtIntelliGraphDynamicNode*
+GtIntelliGraphNodeUI::isDynamicNode(GtObject* obj, PortType, PortIndex)
+{
+    return qobject_cast<GtIntelliGraphDynamicNode*>(obj);
+}
+
+GtIntelliGraphDynamicNode*
+GtIntelliGraphNodeUI::toDynamicNode(GtObject* obj)
+{
+    return isDynamicNode(obj, {}, PortIndex{});
+}
+
+bool
+GtIntelliGraphNodeUI::canRenameNodeObject(GtObject* obj)
+{
+    if (auto* node = toNode(obj))
+    {
+        return !(node->nodeFlags() & gt::ig::Unique);
+    }
+    return true;
+}
+
 void
 GtIntelliGraphNodeUI::renameNode(GtObject* obj)
 {
-    auto* node = qobject_cast<GtIntelliGraphNode*>(obj);
+    auto* node = toNode(obj);
     if (!node) return;
 
     GtInputDialog dialog(GtInputDialog::TextInput);
@@ -84,8 +174,7 @@ GtIntelliGraphNodeUI::renameNode(GtObject* obj)
 void
 GtIntelliGraphNodeUI::clearNodeGraph(GtObject* obj)
 {
-    auto graph = qobject_cast<GtIntelliGraph*>(obj);
-
+    auto graph = toGraph(obj);
     if (!graph) return;
 
     auto cmd = gtApp->startCommand(graph, QStringLiteral("Clear '%1'")
@@ -98,7 +187,7 @@ GtIntelliGraphNodeUI::clearNodeGraph(GtObject* obj)
 void
 GtIntelliGraphNodeUI::loadNodeGraph(GtObject* obj)
 {
-    auto graph = qobject_cast<GtIntelliGraph*>(obj);
+    auto graph = toGraph(obj);
 
     if (!graph) return;
 
@@ -130,46 +219,31 @@ GtIntelliGraphNodeUI::loadNodeGraph(GtObject* obj)
     graph->appendObjects(restored->nodes, restored->connections);
 }
 
-bool
-GtIntelliGraphNodeUI::isGraphObject(GtObject* obj)
+void
+GtIntelliGraphNodeUI::addInPort(GtObject* obj)
 {
-    return qobject_cast<GtIntelliGraph*>(obj);
+    auto* node = toDynamicNode(obj);
+    if (!node) return;
+
+    auto id = node->addInPort(gt::ig::typeId<GtIgDoubleData>());
+    gtDebug() << id;
 }
 
-bool
-GtIntelliGraphNodeUI::isNodeObject(GtObject* obj)
+void
+GtIntelliGraphNodeUI::addOutPort(GtObject* obj)
 {
-    return qobject_cast<GtIntelliGraphNode*>(obj);
+    auto* node = toDynamicNode(obj);
+    if (!node) return;
+
+    auto id = node->addOutPort(gt::ig::typeId<GtIgDoubleData>());
+    gtDebug() << id;
 }
 
-bool
-GtIntelliGraphNodeUI::canRenameNodeObject(GtObject* obj)
+void
+GtIntelliGraphNodeUI::deleteDynamicPort(GtIntelliGraphNode* obj, PortType type, PortIndex idx)
 {
-    if (auto* node = qobject_cast<GtIntelliGraphNode*>(obj))
-    {
-        return !(node->nodeFlags() & gt::ig::Unique);
-    }
-    return true;
+    auto* node = toDynamicNode(obj);
+    if (!node) return;
+
+    node->removePort(node->portId(type, idx));
 }
-
-QStringList
-GtIntelliGraphNodeUI::openWith(GtObject* obj)
-{
-    QStringList list;
-
-    if (isGraphObject(obj))
-    {
-        list << GT_CLASSNAME(GtIntelliGraphEditor);
-    }
-
-    return list;
-}
-
-GtIgPortUIAction&
-GtIntelliGraphNodeUI::addPortAction(const QString& actionText,
-                                    PortActionFunction actionMethod)
-{
-    m_portActions.append(GtIgPortUIAction(actionText, std::move(actionMethod)));
-    return m_portActions.back();
-}
-

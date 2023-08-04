@@ -26,10 +26,6 @@
 #include "gt_igstringselectionproperty.h"
 #include "gt_igstringselectionpropertyitem.h"
 
-#include "gt_iggroupinputprovider.h"
-#include "gt_iggroupoutputprovider.h"
-#include "gt_iggroupproviderui.h"
-
 static const int meta_port_index = [](){
     return qRegisterMetaType<gt::ig::PortIndex>("gt::ig::PortIndex");
 }();
@@ -43,13 +39,13 @@ static const int meta_node_id = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber{0, 1, 0};
+    return GtVersionNumber{0, 2, 0};
 }
 
 QString
 GtIntelliGraphModule::description() const
 {
-    return QStringLiteral("GTlab Nodes Module");
+    return QStringLiteral("GTlab IntelliGraph Module");
 }
 
 void
@@ -63,7 +59,7 @@ GtIntelliGraphModule::metaInformation() const
 {
     MetaInformation m;
 
-    m.author =    QStringLiteral("S. Reitenbach, M. Bröcker");
+    m.author =    QStringLiteral("M. Bröcker, S. Reitenbach");
     m.authorContact = QStringLiteral("AT-TWK");
 
     // TODO: set license
@@ -83,7 +79,6 @@ GtIntelliGraphModule::data()
 {
     QList<QMetaObject> list;
 
-//    list << GT_METADATA(GtIntelliGraph);
     list << GT_METADATA(GtIntelliGraphCategory);
     list << GT_METADATA(GtIntelliGraphConnection);
 
@@ -147,18 +142,10 @@ GtIntelliGraphModule::uiItems()
     map.insert(GT_CLASSNAME(GtIntelliGraphCategory),
                GT_METADATA(GtIntelliGraphPackageUI));
 
-    map.insert(GT_CLASSNAME(GtIgGroupInputProvider),
-               GT_METADATA(GtIgGroupProviderUI));
-    map.insert(GT_CLASSNAME(GtIgGroupOutputProvider),
-               GT_METADATA(GtIgGroupProviderUI));
-
     QStringList registeredNodes = GtIntelliGraphNodeFactory::instance().registeredNodes();
     buffer.reserve(registeredNodes.size());
 
-    registeredNodes.removeOne(GT_CLASSNAME(GtIgGroupInputProvider));
-    registeredNodes.removeOne(GT_CLASSNAME(GtIgGroupOutputProvider));
-
-    for (QString const& node : registeredNodes)
+    for (QString const& node : qAsConst(registeredNodes))
     {
         buffer.push_back(node.toLatin1());
         map.insert(buffer.constLast(), GT_METADATA(GtIntelliGraphNodeUI));

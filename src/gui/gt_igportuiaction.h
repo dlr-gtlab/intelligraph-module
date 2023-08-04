@@ -16,6 +16,10 @@
 
 #include <QIcon>
 
+/**
+ * @brief The GtIgPortUIAction class
+ * Holds the data for a single port action
+ */
 class GtIgPortUIAction
 {
 public:
