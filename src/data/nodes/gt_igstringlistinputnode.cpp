@@ -33,7 +33,7 @@ GtIgStringListInputNode::GtIgStringListInputNode() :
 
     addOutPort(gt::ig::typeId<GtIgStringListData>());
 
-    registerWidgetFactory([this](GtIntelliGraphNode&) {
+    registerWidgetFactory([this]() {
         auto w = std::make_unique<QTextEdit>();
         w->setReadOnly(true);
         w->setToolTip(tr("Use the properties dock to add entries."));

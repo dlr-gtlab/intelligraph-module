@@ -51,17 +51,19 @@ public:
 
     bool insertPort(PortData data, int idx = -1)
     {
-        return GtIntelliGraphDynamicNode::insertPort(INVERSE_TYPE(), data, idx);
+        PortId id;
+        switch (INVERSE_TYPE())
+        {
+        case PortType::In:
+            id = insertInPort(data, idx);
+            break;
+        case PortType::Out:
+            id = insertOutPort(data, idx);
+            break;
+        }
+
+        return id != gt::ig::invalid<PortId>();
     }
-
-private:
-
-    // "hide" unused methods
-    using GtIntelliGraphNode::addInPort;
-    using GtIntelliGraphNode::addOutPort;
-    using GtIntelliGraphNode::insertInPort;
-    using GtIntelliGraphNode::insertOutPort;
-    using GtIntelliGraphNode::insertPort;
 
 private slots:
 

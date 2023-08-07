@@ -81,7 +81,8 @@ public:
      * @param obj Object to cast
      * @return node object (may be null)
      */
-    static GtIntelliGraphDynamicNode* isDynamicNode(GtObject* obj, PortType, PortIndex);
+    static bool isDynamicPort(GtObject* obj, PortType type, PortIndex idx);
+    static bool isDynamicNode(GtObject* obj, PortType, PortIndex);
 
 protected:
 

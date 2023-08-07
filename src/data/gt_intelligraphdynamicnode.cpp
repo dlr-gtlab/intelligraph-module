@@ -58,9 +58,6 @@ GtIntelliGraphDynamicNode::GtIntelliGraphDynamicNode(QString const& modelName,
     if (m_option != DynamicOutputOnly) registerPropertyStructContainer(m_inPorts);
     if (m_option != DynamicInputOnly)  registerPropertyStructContainer(m_outPorts);
 
-    connect(this, &GtIntelliGraphNode::portInserted,
-            this, &GtIntelliGraphDynamicNode::onPortInserted,
-            Qt::UniqueConnection);
     connect(this, &GtIntelliGraphNode::portAboutToBeDeleted,
             this, &GtIntelliGraphDynamicNode::onPortDeleted,
             Qt::UniqueConnection);
@@ -85,48 +82,101 @@ GtIntelliGraphDynamicNode::dynamicNodeOption() const
     return m_option;
 }
 
-void
-GtIntelliGraphDynamicNode::onPortInserted(PortType type, PortIndex idx)
+int GtIntelliGraphDynamicNode::offset(PortType type) const
 {
-    auto portId = this->portId(type, idx);
-    auto* port = this->port(portId);
-    if (!port)
-    {
-        gtWarning() << tr("Adding dynamic port failed! (Port '%1' not found, type: %2)")
-                           .arg(portId).arg(type);
-        return;
-    }
+    auto const& dynamicPorts = this->dynamicPorts(type);
+    auto const& allPorts     = this->ports(type);
+    int offset = allPorts.size() - dynamicPorts.size();
+    return offset;
+}
 
-    auto& ports = dynamicPorts(type);
+bool
+GtIntelliGraphDynamicNode::isDynamicPort(PortType type, PortIndex idx) const
+{
+    return static_cast<int>(idx) >= offset(type);
+}
+
+GtIntelliGraphNode::PortId
+GtIntelliGraphDynamicNode::addStaticInPort(PortData port, PortPolicy policy)
+{
+    port.optional = policy & PortPolicy::Optional;
+    return insertPort(StaticPort, PortType::In, std::move(port));
+}
+
+GtIntelliGraphNode::PortId
+GtIntelliGraphDynamicNode::addStaticOutPort(PortData port)
+{
+    return insertPort(StaticPort, PortType::Out, std::move(port));
+}
+
+GtIntelliGraphNode::PortId
+GtIntelliGraphDynamicNode::addInPort(PortData port, PortPolicy policy)
+{
+    return insertInPort(std::move(port), -1, policy);
+}
+
+GtIntelliGraphNode::PortId
+GtIntelliGraphDynamicNode::addOutPort(PortData port)
+{
+    return insertOutPort(std::move(port), -1);
+}
+
+GtIntelliGraphNode::PortId
+GtIntelliGraphDynamicNode::insertInPort(PortData port, int idx, PortPolicy policy)
+{
+    port.optional = policy & PortPolicy::Optional;
+    return insertPort(DynamicPort, PortType::In, std::move(port), idx);
+}
+
+GtIntelliGraphNode::PortId
+GtIntelliGraphDynamicNode::insertOutPort(PortData port, int idx)
+{
+    return insertPort(DynamicPort, PortType::Out, std::move(port), idx);
+}
+
+GtIntelliGraphNode::PortId
+GtIntelliGraphDynamicNode::insertPort(DynamicPortOption option, PortType type, PortData port, int idx)
+{
+    if (idx < 0) idx = std::numeric_limits<int>::max();
+
+    auto& allPorts     = this->ports(type);
+    auto& dynamicPorts = this->dynamicPorts(type);
+
+    if (option == StaticPort)
+    {
+        return GtIntelliGraphNode::insertPort(
+            type, std::move(port), gt::clamp(idx, 0, (int)offset(type))
+        );
+    }
 
     // ignore changed signals of property container
     auto ignoreAdded = ignoreSignal(
-        &ports, &GtPropertyStructContainer::entryAdded,
+        &dynamicPorts, &GtPropertyStructContainer::entryAdded,
         this, &GtIntelliGraphDynamicNode::onPortEntryAdded
     );
     auto ignoreChanged = ignoreSignal(
-        &ports, &GtPropertyStructContainer::entryChanged,
+        &dynamicPorts, &GtPropertyStructContainer::entryChanged,
         this, &GtIntelliGraphDynamicNode::onPortEntryChanged
     );
     Q_UNUSED(ignoreAdded);
     Q_UNUSED(ignoreChanged);
 
-    auto iter = std::find_if(ports.begin(), ports.end(), [=](auto const& iter){
-        bool ok = true;
-        auto id = PortId::fromValue(iter.template getMemberVal<int>(S_PORT_ID, &ok));
-        return ok && id == portId;
-    });
+    int offset = this->offset(type);
 
-    if (iter != ports.end()) return;
+    int actualPortIdx = gt::clamp(idx, offset, (int)allPorts.size());
 
-    gtInfo().verbose() << tr("Adding dynamic port entry:") << *port;
+    PortId portId = GtIntelliGraphNode::insertPort(type, port, actualPortIdx);
 
-    auto& entry = ports.newEntry(S_PORT_DATA, std::next(ports.begin(), idx));
+    int dynamicPortIdx = gt::clamp(idx, 0, (int)dynamicPorts.size());
+
+    auto& entry = dynamicPorts.newEntry(S_PORT_DATA, std::next(dynamicPorts.begin(), dynamicPortIdx), QString::number(portId));
     entry.setMemberVal(S_PORT_ID, portId.value());
-    entry.setMemberVal(S_PORT_TYPE, port->typeId);
-    entry.setMemberVal(S_PORT_CAPTION, port->caption);
-    entry.setMemberVal(S_PORT_CAPTION_VISIBLE, port->captionVisible);
-    entry.setMemberVal(S_PORT_OPTIONAL, port->optional);
+    entry.setMemberVal(S_PORT_TYPE, port.typeId);
+    entry.setMemberVal(S_PORT_CAPTION, port.caption);
+    entry.setMemberVal(S_PORT_CAPTION_VISIBLE, port.captionVisible);
+    entry.setMemberVal(S_PORT_OPTIONAL, port.optional);
+
+    return portId;
 }
 
 void
@@ -165,25 +215,61 @@ GtIntelliGraphDynamicNode::onPortDeleted(PortType type, PortIndex idx)
 void
 GtIntelliGraphDynamicNode::onPortEntryAdded(int idx)
 {
-    if (!m_merged) return;
-
-    auto* ports = toDynamicPorts(sender());
-    auto* entry = propertyAt(ports, idx);
+    auto* dynamicPorts = toDynamicPorts(sender());
+    auto* entry = propertyAt(dynamicPorts, idx);
     if (!entry) return;
 
-    addPortFromEntry(*entry, toPortType(*ports));
+    auto type = toPortType(*dynamicPorts);
+
+    // get port id from entry ident
+    bool ok = true;
+    auto portId = PortId::fromValue(entry->ident().toInt(&ok));
+    ok &= portId != gt::ig::invalid<PortId>();
+
+    // check if port id already exists (entry probably added in constructor)
+    if (ok && port(portId))
+    {
+        gtWarning() << tr("Adding dynamic port entry failed! (Port '%1' "
+                          "was already added)").arg(portId);
+        return;
+    }
+
+    QString typeId  = entry->template getMemberVal<QString>(S_PORT_TYPE);
+    QString caption = entry->template getMemberVal<QString>(S_PORT_CAPTION);
+    bool captionVisible = entry->template getMemberVal<bool>(S_PORT_CAPTION_VISIBLE);
+    bool optional = entry->template getMemberVal<bool>(S_PORT_OPTIONAL);
+    portId = PortId::fromValue(entry->template getMemberVal<int>(S_PORT_ID));
+
+    if (auto* p = port(portId))
+    {
+        gtWarning().nospace() << tr("Adding dynamic port entry failed! "
+                                    "(Port already exists: ") << *p << ")";
+        return;
+    }
+
+    PortData portData = { typeId, caption, captionVisible, optional };
+
+    idx += offset(type) + 1;
+
+    portId = GtIntelliGraphNode::insertPort(type, portData, idx);
+
+    entry->setMemberVal(S_PORT_ID, portId.value());
 }
 
 void
 GtIntelliGraphDynamicNode::onPortEntryChanged(int idx, GtAbstractProperty*)
 {
-    if (!m_merged) return;
+    auto* dynamicPorts = toDynamicPorts(sender());
+    if (!dynamicPorts) return;
 
-    auto* ports = toDynamicPorts(sender());
-    auto* entry = propertyAt(ports, idx);
+    PortType type = toPortType(*dynamicPorts);
+
+    auto* entry = propertyAt(dynamicPorts, idx);
     if (!entry) return;
 
-    auto portId = PortId::fromValue(entry->template getMemberVal<int>(S_PORT_ID));
+    idx += offset(type);
+
+    PortId portId = this->portId(type, PortIndex::fromValue(idx));
     auto* port = this->port(portId);
     if (!port)
     {
@@ -191,8 +277,6 @@ GtIntelliGraphDynamicNode::onPortEntryChanged(int idx, GtAbstractProperty*)
                            .arg(idx);
         return;
     }
-
-    gtInfo().verbose() << tr("Updating dynamic port entry:") << *port;
 
     QString typeId  = entry->template getMemberVal<QString>(S_PORT_TYPE);
     QString caption = entry->template getMemberVal<QString>(S_PORT_CAPTION);
@@ -210,10 +294,13 @@ GtIntelliGraphDynamicNode::onPortEntryChanged(int idx, GtAbstractProperty*)
 void
 GtIntelliGraphDynamicNode::onPortEntryRemoved(int idx)
 {
-    auto* ports = toDynamicPorts(sender());
-    if (!ports) return;
+    auto* dynamicPorts = toDynamicPorts(sender());
+    if (!dynamicPorts) return;
 
-    auto type = toPortType(*ports);
+    PortType type = toPortType(*dynamicPorts);
+
+    idx += offset(type) - 1;
+
     PortId portId = this->portId(type, PortIndex::fromValue(idx));
 
     if (portId == gt::ig::invalid<PortId>())
@@ -231,35 +318,6 @@ GtIntelliGraphDynamicNode::onPortEntryRemoved(int idx)
     Q_UNUSED(ignoreRemoved);
 
     removePort(portId);
-}
-
-void
-GtIntelliGraphDynamicNode::addPortFromEntry(GtPropertyStructInstance& entry, PortType type)
-{
-    QString typeId  = entry.template getMemberVal<QString>(S_PORT_TYPE);
-    QString caption = entry.template getMemberVal<QString>(S_PORT_CAPTION);
-    bool captionVisible = entry.template getMemberVal<bool>(S_PORT_CAPTION_VISIBLE);
-    bool optional = entry.template getMemberVal<bool>(S_PORT_OPTIONAL);
-    auto portId = PortId::fromValue(entry.template getMemberVal<int>(S_PORT_ID));
-
-    auto ignoreInserted = ignoreSignal(
-        this, &GtIntelliGraphNode::portInserted,
-        this, &GtIntelliGraphDynamicNode::onPortInserted
-    );
-    Q_UNUSED(ignoreInserted);
-
-    if (auto* p = port(portId))
-    {
-        gtWarning().nospace() << tr("Adding dynamic port entry failed! "
-                                    "(Port already exists: ") << *p << ")";
-        return;
-    }
-
-    PortData portData = { typeId, caption, captionVisible, optional };
-
-    portId = insertPort(type, portData);
-
-    entry.setMemberVal(S_PORT_ID, portId.value());
 }
 
 GtIntelliGraphNode::PortType
@@ -288,6 +346,12 @@ GtIntelliGraphDynamicNode::dynamicPorts(PortType type) noexcept(false)
     };
 }
 
+GtPropertyStructContainer const&
+GtIntelliGraphDynamicNode::dynamicPorts(PortType type) const noexcept(false)
+{
+    return const_cast<GtIntelliGraphDynamicNode*>(this)->dynamicPorts(type);
+}
+
 GtPropertyStructContainer*
 GtIntelliGraphDynamicNode::toDynamicPorts(QObject* obj)
 {
@@ -310,21 +374,4 @@ GtIntelliGraphDynamicNode::propertyAt(GtPropertyStructContainer* container, int 
         gtError().nospace() << __FUNCTION__ << ":" << e.what();
     }
     return nullptr;
-}
-
-void
-GtIntelliGraphDynamicNode::onObjectDataMerged()
-{
-    if (!m_merged)
-    {
-        for (auto* ports : { &m_inPorts, &m_outPorts})
-        {
-            for (auto& entry : *ports)
-            {
-                addPortFromEntry(entry, toPortType(*ports));
-            }
-        }
-        m_merged = true;
-    }
-    return GtIntelliGraphNode::onObjectDataMerged();
 }

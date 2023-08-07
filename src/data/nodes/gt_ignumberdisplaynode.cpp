@@ -21,7 +21,7 @@ GtIgNubmerDisplayNode::GtIgNubmerDisplayNode() :
 {
     PortId in = addInPort(gt::ig::typeId<GtIgDoubleData>());
 
-    registerWidgetFactory([=](GtIntelliGraphNode&){
+    registerWidgetFactory([=](){
         auto w = std::make_unique<QLineEdit>();
         w->setReadOnly(true);
         w->setFixedWidth(50);

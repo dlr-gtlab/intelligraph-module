@@ -17,7 +17,7 @@ GtIgObjectMementoNode::GtIgObjectMementoNode() :
 
     PortId inPort = addInPort(gt::ig::typeId<GtIgObjectData>());
 
-    registerWidgetFactory([=](GtIntelliGraphNode&) {
+    registerWidgetFactory([=]() {
         auto w = std::make_unique<GtCodeEditor>();
         w->setMinimumSize(300, 300);
         w->setReadOnly(true);

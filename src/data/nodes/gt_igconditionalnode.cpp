@@ -16,7 +16,7 @@
 #include "gt_igstringselectionpropertyitem.h"
 
 #ifdef GTIG_DEVELOPER_PREVIEW
-//GTIG_REGISTER_NODE(GtIgConditionalNode, "Conditional")
+GTIG_REGISTER_NODE(GtIgConditionalNode, "Conditional")
 #endif
 
 GtIgConditionalNode::GtIgConditionalNode() :
@@ -40,7 +40,7 @@ GtIgConditionalNode::GtIgConditionalNode() :
         m_dataType.selectedValue(), QStringLiteral("else-branch")
     }/*, DoNotEvaluate*/);
 
-    registerWidgetFactory([this](GtIntelliGraphNode&){
+    registerWidgetFactory([this](){
         auto w = std::make_unique<GtIgComboBox>();
         w->addItems(m_dataType.values());
         w->setCurrentText(m_dataType.selectedValue());

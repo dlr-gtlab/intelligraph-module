@@ -49,13 +49,13 @@ public:
     operator!=(StrongType const& other) const noexcept { return !(*this == other); }
 
     constexpr inline StrongType&
-    operator+=(StrongType const& o) noexcept { m_value + o.m_value; return *this; }
+    operator+=(StrongType const& o) noexcept { m_value += o.m_value; return *this; }
     constexpr inline StrongType&
-    operator-=(StrongType const& o) noexcept { m_value - o.m_value; return *this; }
+    operator-=(StrongType const& o) noexcept { m_value -= o.m_value; return *this; }
     constexpr inline StrongType&
-    operator*=(StrongType const& o) noexcept { m_value * o.m_value; return *this; }
+    operator*=(StrongType const& o) noexcept { m_value *= o.m_value; return *this; }
     constexpr inline StrongType&
-    operator/=(StrongType const& o) noexcept { m_value / o.m_value; return *this; }
+    operator/=(StrongType const& o) noexcept { m_value /= o.m_value; return *this; }
 
     // pre increment
     constexpr inline StrongType&
