@@ -10,6 +10,8 @@
 #include "gt_intelligraphsequentialexecutor.h"
 #include "gt_intelligraphnode.h"
 
+#include "gt_utilities.h"
+
 using namespace gt::ig;
 
 bool

@@ -10,8 +10,10 @@
 #ifndef GT_IGUTILS_H
 #define GT_IGUTILS_H
 
-#include "gt_logstream.h"
 #include "gt_igdoubledata.h"
+
+#include "gt_logstream.h"
+#include "gt_intproperty.h"
 
 #include <QtNodes/Definitions>
 
@@ -72,5 +74,21 @@ auto ignoreSignal(Sender sender, SignalSender signalSender,
         sender, signalSender, reciever, signalReciever
     };
 }
+
+namespace gt
+{
+namespace ig
+{
+
+inline unsigned fromInt(GtIntProperty const& p) noexcept
+{
+    return p.get() >= 0 ? static_cast<unsigned>(p) :
+
+               std::numeric_limits<unsigned>::max();
+}
+
+} // namespace ig
+
+} // namespace gt
 
 #endif // GT_IGUTILS_H

@@ -14,6 +14,7 @@
 
 #include <QtNodes/NodeDelegateModel>
 
+#include <QPointer>
 
 class GtIntelliGraphObjectModel final : public QtNodes::NodeDelegateModel
 {

@@ -11,6 +11,7 @@
 #define GT_IGSLEEPYNODE_H
 
 #include "gt_intelligraphnode.h"
+#include "gt_intproperty.h"
 
 class GtIgSleepyNode : public GtIntelliGraphNode
 {

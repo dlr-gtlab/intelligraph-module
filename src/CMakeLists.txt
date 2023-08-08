@@ -1,8 +1,5 @@
 set(CMAKE_DEBUG_POSTFIX -d)
 
-set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-set(CMAKE_INSTALL_RPATH "$ORIGIN:$ORIGIN/..")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set(INTELLIGRAPH_VERSION 0.1.0)
 
@@ -32,7 +29,8 @@ set(PUBLIC_HEADERS
      ./resources/icons.qrc
  )
 
-add_library(GTlabIntelliGraph SHARED
+add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
+    SOURCES
     ${PUBLIC_HEADERS}
     ${RCC_SOURCES}
     gt_intelligraphmodule.h
@@ -117,72 +115,43 @@ add_library(GTlabIntelliGraph SHARED
 )
 
 target_link_libraries(GTlabIntelliGraph
-  PRIVATE
-  Qt5::Xml
-  Qt5::Concurrent
+  PUBLIC
+  Qt5::Core
   GTlab::Logging
   GTlab::Gui
+  PRIVATE
+  Qt5::Concurrent
   QtNodes::QtNodes
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 
-if (${BUILD_SHARED_LIBS})
-    target_compile_definitions(GTlabIntelliGraph PRIVATE GT_INTELLIGRAPH_DLL)
-else()
-    target_compile_definitions(GTlabIntelliGraph PUBLIC  GT_INTELLIGRAPH_STATIC)
-endif()
-
 target_compile_definitions(GTlabIntelliGraph PRIVATE
-    GT_MODULE_ID="IntelliGraph"
     GT_LOG_USE_QT_BINDINGS # enable Qt operator<< for logging
 )
 
-target_include_directories(GTlabIntelliGraph PRIVATE
-    .
-    data
-    data/nodes
-    data/node_data
-    data/properties
-    exec
-    gui
-    gui/items
-    gui/property_items
-    gui/ui)
+target_include_directories(GTlabIntelliGraph PUBLIC
+
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/.>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/data>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/data/nodes>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/data/node_data>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/data/properties>
+     # TODO. what is really public, what is private???
+    PRIVATE
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/exec>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gui>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gui/items>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gui/property_items>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gui/ui>
+
+     # we install a flat file hierachy, so we include only this folder
+     PUBLIC $<INSTALL_INTERFACE:include/intelligraph>
+)
 
 install (TARGETS GTlabIntelliGraph
     EXPORT GTlabIntelliGraph-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/intelligraph
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/intelligraph
-)
-
-if (IS_DIRECTORY ${CMAKE_INSTALL_PREFIX}/build)
-    message(STATUS "Deploying into GTlab build dir")
-
-    if (UNIX)
-        install (TARGETS GTlabIntelliGraph
-            LIBRARY DESTINATION build/modules
-        )
-    else(UNIX)
-        install (TARGETS GTlabIntelliGraph
-            RUNTIME DESTINATION build/modules
-        )
-    endif(UNIX)
-else ()
-    if (UNIX)
-        install (TARGETS GTlabIntelliGraph
-            LIBRARY DESTINATION
-            $<IF:$<CONFIG:Debug>,binDebug/modules,bin/modules>
-        )
-    else(UNIX)
-        install (TARGETS GTlabIntelliGraph
-            RUNTIME DESTINATION
-            $<IF:$<CONFIG:Debug>,binDebug/modules,bin/modules>
-        )
-    endif(UNIX)
-endif ()
-
-file(GLOB_RECURSE HEADERS
-    "*.h"
 )
 
 install (FILES ${PUBLIC_HEADERS} DESTINATION include/intelligraph)

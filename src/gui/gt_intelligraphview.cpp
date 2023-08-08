@@ -36,6 +36,8 @@
 #include <QJsonDocument>
 #include <QVBoxLayout>
 
+#include <cmath>
+
 GtIntelliGraphView::GtIntelliGraphView(QWidget *parent) :
     QGraphicsView(parent)
 {

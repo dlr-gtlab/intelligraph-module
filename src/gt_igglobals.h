@@ -9,9 +9,10 @@
 #ifndef GT_IGGLOBALS_H
 #define GT_IGGLOBALS_H
 
-#include "gt_intproperty.h"
+#include <gt_logging.h>
 
 #include <QPointF>
+#include <QRegExp>
 
 class GtIntelliGraphNode;
 class GtIgNodeData;
@@ -29,7 +30,7 @@ public:
 
     using value_type = T;
 
-    constexpr inline explicit StrongType(T value = {}) noexcept :
+    constexpr inline explicit StrongType(T value = InitValue) noexcept :
         m_value(std::move(value))
     {}
     StrongType(StrongType const&) = default;
@@ -143,12 +144,6 @@ template<typename T>
 constexpr inline T invalid() noexcept
 {
     return detail::InvalidValue<T>::get();
-}
-
-inline unsigned fromInt(GtIntProperty const& p) noexcept
-{
-    return p.get() >= 0 ? static_cast<unsigned>(p) :
-                          std::numeric_limits<unsigned>::max();
 }
 
 } // namespace ig

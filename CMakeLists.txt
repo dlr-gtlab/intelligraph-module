@@ -13,10 +13,16 @@ include(GTlab)
 gtlab_standard_setup()
 enable_gtlab_devtools()
 
-find_package(Qt5 REQUIRED COMPONENTS Widgets Core Concurrent Gui Xml)
+find_package(Qt5 REQUIRED COMPONENTS Widgets Core Concurrent Gui)
 
-find_package(GTlabLogging REQUIRED)
-find_package(GTlab REQUIRED)
+if (NOT TARGET GTlab::Logging)
+    find_package(GTlabLogging REQUIRED)
+endif()
+
+if (NOT TARGET GTlab::Core)
+    find_package(GTlab REQUIRED)
+endif()
 
 add_subdirectory(thirdparty)
 add_subdirectory(src)
+add_subdirectory(tests/unittests)
