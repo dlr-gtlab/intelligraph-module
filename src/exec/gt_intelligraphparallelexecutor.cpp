@@ -50,7 +50,10 @@ GtIntelliGraphParallelExecutor::canEvaluateNode(GtIntelliGraphNode& node, PortIn
 
 GtIntelliGraphParallelExecutor::~GtIntelliGraphParallelExecutor()
 {
-    gtTrace().verbose() << __func__ << "is ready for deletion?:" << isReady();
+    if (!GtIntelliGraphParallelExecutor::isReady())
+    {
+        gtWarning().verbose() << __func__ << "is not ready for deletion!";
+    }
 }
 
 void

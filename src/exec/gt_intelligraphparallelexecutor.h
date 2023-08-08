@@ -14,6 +14,7 @@
 #include "gt_intelligraphnode.h"
 
 #include <QFutureWatcher>
+#include <QPointer>
 
 class GtIntelliGraphParallelExecutor : public GtIntelliGraphExecutor
 {

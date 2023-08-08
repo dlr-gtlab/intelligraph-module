@@ -34,16 +34,16 @@ public:
 
     bool fromConnectionId(ConnectionId connection);
 
-    NodeId inNodeId() const { return NodeId{gt::ig::fromInt(m_inNodeId)}; }
+    NodeId inNodeId() const;
     void setInNodeId(NodeId nodeId) { m_inNodeId = nodeId; }
     
-    PortIndex inPortIdx() const { return PortIndex{gt::ig::fromInt(m_inPortIdx)}; }
+    PortIndex inPortIdx() const;
     void setInPortIdx(PortIndex port) { m_inPortIdx = port; }
 
-    NodeId outNodeId() const { return NodeId{gt::ig::fromInt(m_outNodeId)}; }
+    NodeId outNodeId() const;
     void setOutNodeId(NodeId nodeId) { m_outNodeId = nodeId; }
     
-    PortIndex outPortIdx() const { return PortIndex{gt::ig::fromInt(m_outPortIdx)}; }
+    PortIndex outPortIdx() const;
     void setOutPortIdx(PortIndex port) { m_outPortIdx = port; }
 
     bool isValid() const;

@@ -12,6 +12,7 @@
 #include "models/gt_intelligraphobjectmodel.h"
 
 #include "gt_objectfactory.h"
+#include "gt_utilities.h"
 #include "gt_qtutilities.h"
 #include "gt_algorithms.h"
 

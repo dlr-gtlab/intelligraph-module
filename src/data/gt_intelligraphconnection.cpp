@@ -8,6 +8,8 @@
 
 #include "gt_intelligraphconnection.h"
 
+#include "private/utils.h"
+
 #include "gt_qtutilities.h"
 
 #include <QtNodes/Definitions>
@@ -60,13 +62,37 @@ GtIntelliGraphConnection::fromConnectionId(ConnectionId connection)
     return isValid();
 }
 
+GtIntelliGraphConnection::NodeId
+GtIntelliGraphConnection::inNodeId() const
+{
+    return NodeId{gt::ig::fromInt(m_inNodeId)};
+}
+
+GtIntelliGraphConnection::PortIndex
+GtIntelliGraphConnection::inPortIdx() const
+{
+    return PortIndex{gt::ig::fromInt(m_inPortIdx)};
+}
+
+GtIntelliGraphConnection::NodeId
+GtIntelliGraphConnection::outNodeId() const
+{
+    return NodeId{gt::ig::fromInt(m_outNodeId)};
+}
+
+GtIntelliGraphConnection::PortIndex
+GtIntelliGraphConnection::outPortIdx() const
+{
+    return PortIndex{gt::ig::fromInt(m_outPortIdx)};
+}
+
 bool
 GtIntelliGraphConnection::isValid() const
 {
     constexpr auto invalid = QtNodes::InvalidPortIndex;
 
     std::array<unsigned, 4> const ids{
-        inNodeId(), inPortIdx(), outNodeId(), outPortIdx()
+                                      inNodeId(), inPortIdx(), outNodeId(), outPortIdx()
     };
     return std::all_of(std::begin(ids), std::end(ids), [=](auto id){
         return id != invalid;
