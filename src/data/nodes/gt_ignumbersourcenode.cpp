@@ -30,7 +30,7 @@ GtIgNumberSourceNode::GtIgNumberSourceNode() :
     connect(&m_value, &GtAbstractProperty::changed,
             this, &GtIntelliGraphNode::updateNode);
 
-    registerWidgetFactory([=](GtIntelliGraphNode&){
+    registerWidgetFactory([=](){
         auto w = std::make_unique<GtLineEdit>();
         w->setFixedWidth(50);
         w->setValidator(new QRegExpValidator(gt::re::forDoubles()));

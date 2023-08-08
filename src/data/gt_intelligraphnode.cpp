@@ -404,6 +404,14 @@ GtIntelliGraphNode::registerWidgetFactory(WidgetFactory factory)
     pimpl->widgetFactory = std::move(factory);
 }
 
+void
+GtIntelliGraphNode::registerWidgetFactory(WidgetFactoryNoArgs factory)
+{
+    registerWidgetFactory([f = std::move(factory)](GtIntelliGraphNode&){
+        return f();
+    });
+}
+
 QWidget*
 GtIntelliGraphNode::embeddedWidget()
 {

@@ -29,7 +29,7 @@ GtIgFindDirectChildNode::GtIgFindDirectChildNode() :
 
     m_out = addOutPort(gt::ig::typeId<GtIgObjectData>());
 
-    registerWidgetFactory([this](GtIntelliGraphNode&) {
+    registerWidgetFactory([this]() {
         auto w = std::make_unique<GtLineEdit>();
         w->setValidator(new QRegExpValidator(gt::re::ig::forClassNames()));
         w->setPlaceholderText(QStringLiteral("class name"));

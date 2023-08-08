@@ -80,6 +80,7 @@ GtIntelliGraphNodeUI::GtIntelliGraphNodeUI(Option option)
 
     addPortAction(tr("Delete Port"), deleteDynamicPort)
         .setIcon(gt::gui::icon::delete_())
+        .setVerificationMethod(isDynamicPort)
         .setVisibilityMethod(isDynamicNode);
 }
 
@@ -127,16 +128,26 @@ GtIntelliGraphNodeUI::toNode(GtObject* obj)
     return qobject_cast<GtIntelliGraphNode*>(obj);
 }
 
-GtIntelliGraphDynamicNode*
+bool
+GtIntelliGraphNodeUI::isDynamicPort(GtObject* obj, PortType type, PortIndex idx)
+{
+    if (auto* node = toDynamicNode(obj))
+    {
+        return node->isDynamicPort(type, idx);
+    }
+    return false;
+}
+
+bool
 GtIntelliGraphNodeUI::isDynamicNode(GtObject* obj, PortType, PortIndex)
 {
-    return qobject_cast<GtIntelliGraphDynamicNode*>(obj);
+    return toDynamicNode(obj);
 }
 
 GtIntelliGraphDynamicNode*
 GtIntelliGraphNodeUI::toDynamicNode(GtObject* obj)
 {
-    return isDynamicNode(obj, {}, PortIndex{});
+    return qobject_cast<GtIntelliGraphDynamicNode*>(obj);;
 }
 
 bool
@@ -226,7 +237,7 @@ GtIntelliGraphNodeUI::addInPort(GtObject* obj)
     if (!node) return;
 
     auto id = node->addInPort(gt::ig::typeId<GtIgDoubleData>());
-    gtDebug() << id;
+    gtInfo().verbose() << tr("Added dynamic in port with id") << id;
 }
 
 void
@@ -236,7 +247,7 @@ GtIntelliGraphNodeUI::addOutPort(GtObject* obj)
     if (!node) return;
 
     auto id = node->addOutPort(gt::ig::typeId<GtIgDoubleData>());
-    gtDebug() << id;
+    gtInfo().verbose() << tr("Added dynamic out port with id") << id;
 }
 
 void

@@ -19,18 +19,17 @@
  * Extends the basic GtIntelliGraphNode class with the feature to store
  * ports, that have been added at runtime persistently.
  */
-class GtIntelliGraphDynamicNode : public GtIntelliGraphNode
+class GT_IG_EXPORT GtIntelliGraphDynamicNode : public GtIntelliGraphNode
 {
     Q_OBJECT
 
-public:
+    enum DynamicPortOption
+    {
+        StaticPort = 0,
+        DynamicPort,
+    };
 
-    // make add/insert/remove port functions public
-    using GtIntelliGraphNode::addInPort;
-    using GtIntelliGraphNode::addOutPort;
-    using GtIntelliGraphNode::insertInPort;
-    using GtIntelliGraphNode::insertOutPort;
-    using GtIntelliGraphNode::removePort;
+public:
 
     /// Option for the node creation
     enum DynamicNodeOption
@@ -46,10 +45,82 @@ public:
     };
 
     /**
-     * @brief Getter for the node option used at creation
+     * @brief Getter for the node option used
      * @return
      */
     DynamicNodeOption dynamicNodeOption() const;
+
+    /**
+     * @brief Retruns true if a port is considered dynamic (i.e. was added at
+     * runtime and may be deleted by the user)
+     * @param type Port type
+     * @param idx Port Index to check
+     * @return Is port dynamic
+     */
+    bool isDynamicPort(PortType type, PortIndex idx) const;
+
+    /**
+     * @brief Appends a static input port. Static ports are like the regular
+     * ports and are not saved persistently. They should only be created within
+     * the constructor scope. The port will always be inserted
+     * before any dynamic port.
+     * @param port Port to append
+     * @param policy Port policy
+     * @return Port id
+     */
+    PortId addStaticInPort(PortData port, PortPolicy policy = DefaultPortPolicy);
+
+    /**
+     * @brief Appends a static output port. Static ports are like the regular
+     * ports and are not saved persistently. They should only be created within
+     * the constructor scope. The port will always be inserted
+     * before any dynamic port.
+     * @param port Port to append
+     * @return Port id
+     */
+    PortId addStaticOutPort(PortData port);
+
+    /**
+     * @brief Appends a dynamic/user input port. User ports are saved
+     * persistently and may be added, modifed or removed at runtime. Ideally
+     * these should only be outside the constructor scope.
+     * @param port Port to append
+     * @param policy Port policy
+     * @return Port id
+     */
+    PortId addInPort(PortData port, PortPolicy policy = DefaultPortPolicy);
+
+    /**
+     * @brief Appends a dynamic/user output port. User ports are saved
+     * persistently and may be added, modifed or removed at runtime. Ideally
+     * these should only be outside the constructor scope.
+     * @param port Port to append
+     * @param policy Port policy
+     * @return Port id
+     */
+    PortId addOutPort(PortData port);
+
+    /**
+     * @brief Inserts a user input port at the given position.
+     * @param port Port to insert
+     * @param idx Where to insert the port. The port will always be inserted
+     * behind the last static port if any was registered.
+     * @param policy Port policy
+     * @return Port id
+     */
+    PortId insertInPort(PortData port,int idx = -1, PortPolicy policy = DefaultPortPolicy);
+
+    /**
+     * @brief Inserts a user output port at the given position.
+     * @param port Port to insert
+     * @param idx Where to insert the port. The port will always be inserted
+     * behind the last static port if any was registered.
+     * @param policy Port policy
+     * @return Port id
+     */
+    PortId insertOutPort(PortData port, int idx = -1);
+
+    using GtIntelliGraphNode::removePort;
 
 protected:
 
@@ -64,20 +135,7 @@ protected:
                               DynamicNodeOption option = {},
                               GtObject* parent = nullptr);
 
-    /**
-     * @brief Used to eliminate duplicate registration of nodes in the constructor
-     * and when the first memento was merged
-     */
-    void onObjectDataMerged() override;
-
 private slots:
-
-    /**
-     * @brief Will add the property container entry for the added port
-     * @param type
-     * @param idx
-     */
-    void onPortInserted(PortType type, PortIndex idx);
 
     /**
      * @brief Removes the property container entry for the removed port
@@ -98,7 +156,7 @@ private slots:
      * @param idx
      * @param property
      */
-    void onPortEntryChanged(int idx, GtAbstractProperty* property);
+    void onPortEntryChanged(int idx, GtAbstractProperty* = nullptr);
 
     /**
      * @brief Removes the given port
@@ -108,25 +166,38 @@ private slots:
 
 private:
 
+    // hide defaul add/insert/remove port method in favor of custom methods
+    using GtIntelliGraphNode::addInPort;
+    using GtIntelliGraphNode::addOutPort;
+    using GtIntelliGraphNode::insertInPort;
+    using GtIntelliGraphNode::insertOutPort;
+    using GtIntelliGraphNode::insertPort;
+
     /// property container for the in ports
     GtPropertyStructContainer m_inPorts;
     /// property container for the out ports
     GtPropertyStructContainer m_outPorts;
 
     /// Node option
-    DynamicNodeOption m_option = {};
-
-    /// inidcates whether the port from the very first memento just after
-    /// instantiation were merged. Used to prohibit duplicated registration of
-    /// ports. (TODO: may pose problems when a node was not restored by memento)
-    bool m_merged = false;
+    DynamicNodeOption m_option = DynamicInputAndOutput;
 
     /**
-     * @brief Helper method to add the port for the property container entry
-     * @param entry
-     * @param type
+     * @brief Common helper method for inserting a port at a given location.
+     * It can both insert a static and dynamic/user port
+     * @param option Port option (static or dynamic)
+     * @param type Port type
+     * @param port Port to insert
+     * @param idx Where to insert the port
+     * @return Port id
      */
-    void addPortFromEntry(GtPropertyStructInstance& entry, PortType type);
+    PortId insertPort(DynamicPortOption option, PortType type, PortData port, int idx = -1);
+
+    /**
+     * @brief Returns the offset for to the first index of a dynamic port.
+     * @param type Port type to get offset from
+     * @return Offset to beginning of the first index of a dynamic port.
+     */
+    int offset(PortType type) const;
 
     /**
      * @brief Can be used to check which port tyoe the container belongs to
@@ -142,6 +213,7 @@ private:
      * @return Property container
      */
     GtPropertyStructContainer& dynamicPorts(PortType type) noexcept(false);
+    GtPropertyStructContainer const& dynamicPorts(PortType type) const noexcept(false);
 
     /**
      * @brief Checks if the QObject ptr matches any property container and

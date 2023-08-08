@@ -22,7 +22,7 @@ GtIgObjectSourceNode::GtIgObjectSourceNode() :
     m_in  = addInPort(gt::ig::typeId<GtIgStringListData>());
     m_out = addOutPort(gt::ig::typeId<GtIgObjectData>());
 
-    registerWidgetFactory([this](GtIntelliGraphNode&) {
+    registerWidgetFactory([this]() {
         auto w = std::make_unique<GtPropertyObjectLinkEditor>();
         w->setObjectLinkProperty(&m_object);
         w->setScope(gtApp->currentProject());

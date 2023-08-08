@@ -63,12 +63,15 @@ public:
     /// "this" and can be casted safely using static_cast.
     using WidgetFactory =
         std::function<std::unique_ptr<QWidget>(GtIntelliGraphNode& thisNode)>;
+    using WidgetFactoryNoArgs =
+        std::function<std::unique_ptr<QWidget>()>;
 
     /// enum for defining whether a port is optional
     enum PortPolicy
     {
         Required,
-        Optional
+        Optional,
+        DefaultPortPolicy = Optional
     };
 
     /// port data struct
@@ -393,6 +396,7 @@ protected:
      * @param factory Widget factory
      */
     void registerWidgetFactory(WidgetFactory factory);
+    void registerWidgetFactory(WidgetFactoryNoArgs factory);
 
     /**
      * @brief Sets a node flag
@@ -407,7 +411,7 @@ protected:
      * @param policy Input port policy
      * @return Port id
      */
-    PortId addInPort(PortData port, PortPolicy policy = PortPolicy::Optional) noexcept(false);
+    PortId addInPort(PortData port, PortPolicy policy = DefaultPortPolicy) noexcept(false);
     /**
      * @brief Appends the output port
      * @param port Port data to append
@@ -423,7 +427,7 @@ protected:
      * @param policy Input port policy
      * @return Port id
      */
-    PortId insertInPort(PortData port, int idx, PortPolicy policy = PortPolicy::Optional) noexcept(false);
+    PortId insertInPort(PortData port, int idx, PortPolicy policy = DefaultPortPolicy) noexcept(false);
     /**
      * @brief Inserts an output port at the given location
      * (-1 will append to back)
@@ -509,7 +513,7 @@ operator<<(gt::log::Stream& s, GtIntelliGraphNode::PortData const& d)
         s.nospace()
             << "PortData[" << d.typeId << "/" << d.id() << "]";
     }
-    return s;
+    return s.doLogSpace();
 }
 
 #endif // GT_INTELLIGRAPHNODE_H
