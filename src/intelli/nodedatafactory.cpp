@@ -35,7 +35,7 @@ NodeDataFactory::registerData(const QMetaObject& meta) noexcept
     if (!registerClass(meta)) return false;
 
     auto obj = std::unique_ptr<GtObject>(newObject(className));
-    auto tmp = gt::unique_qobject_cast<GtIgNodeData>(std::move(obj));
+    auto tmp = gt::unique_qobject_cast<NodeData>(std::move(obj));
     if (!tmp)
     {
         gtError()
@@ -65,13 +65,13 @@ NodeDataFactory::typeName(const QString& typeId) const noexcept
     return m_typeNames.value(typeId);
 }
 
-std::unique_ptr<GtIgNodeData>
+std::unique_ptr<NodeData>
 NodeDataFactory::newData(const QString& typeId) const noexcept
 {
     std::unique_ptr<GtObject> obj{
                                   const_cast<NodeDataFactory*>(this)->newObject(typeId)
     };
 
-    return gt::unique_qobject_cast<GtIgNodeData>(std::move(obj));
+    return gt::unique_qobject_cast<NodeData>(std::move(obj));
 }
 

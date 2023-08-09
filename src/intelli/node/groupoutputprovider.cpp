@@ -11,7 +11,7 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(GroupOutputProvider, "")
+GT_INTELLI_REGISTER_NODE(GroupOutputProvider, "")
 
 GroupOutputProvider::GroupOutputProvider() :
     AbstractGroupProvider("Output Provider")

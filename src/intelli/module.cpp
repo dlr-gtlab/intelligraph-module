@@ -45,7 +45,7 @@ static const int meta_node_id = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber{0, 3, 0};
+    return GtVersionNumber{0, 3, 1};
 }
 
 QString
@@ -75,6 +75,7 @@ GtIntelliGraphModule::metaInformation() const
 }
 
 bool upgrade_to_0_3_0(QDomElement& root, QString const& file);
+bool upgrade_to_0_3_1(QDomElement& root, QString const& file);
 
 QList<gt::VersionUpgradeRoutine>
 GtIntelliGraphModule::upgradeRoutines() const
@@ -84,8 +85,13 @@ GtIntelliGraphModule::upgradeRoutines() const
     gt::VersionUpgradeRoutine to_0_3_0;
     to_0_3_0.target = GtVersionNumber{0, 3, 0};
     to_0_3_0.f = upgrade_to_0_3_0;
-
     routines << to_0_3_0;
+
+    gt::VersionUpgradeRoutine to_0_3_1;
+    to_0_3_1.target = GtVersionNumber{0, 3, 1};
+    to_0_3_1.f = upgrade_to_0_3_1;
+    routines << to_0_3_1;
+
 
     return routines;
 }
@@ -207,11 +213,11 @@ GtIntelliGraphModule::propertyItems()
 }
 
 bool
-rename_class_from_to_new(QDomElement& root,
-                         QString const& from,
-                         QString const& to,
-                         int indent,
-                         std::function<void(QDomElement&, int)> func = {})
+rename_class_from_to(QDomElement& root,
+                     QString const& from,
+                     QString const& to,
+                     int indent,
+                     std::function<void(QDomElement&, int)> func = {})
 {
     auto objects = gt::xml::findObjectElementsByClassName(
         root, from
@@ -247,10 +253,19 @@ replace_property_texts(QDomElement& root,
 
         if (text.data() == from)
         {
-            gtDebug() << "HERE" << text.data() << from << to;
             text.setNodeValue(to);
         }
     }
+
+    return true;
+}
+
+// fix typo in class name :(
+bool upgrade_to_0_3_1(QDomElement& root, QString const& file)
+{
+    if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseInsensitive)) return true;
+
+    rename_class_from_to(root, QStringLiteral("intelli::NubmerDisplayNode"), QStringLiteral("intelli::NumberDisplayNode"), 0);
 
     return true;
 }
@@ -261,28 +276,28 @@ bool upgrade_to_0_3_0(QDomElement& root, QString const& file)
     if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseInsensitive)) return true;
 
     int indent = 0;
-    rename_class_from_to_new(root, QStringLiteral("GtIntelliGraphCategory"), GT_CLASSNAME(GraphCategory), indent, [](QDomElement& root, int indent){
-        rename_class_from_to_new(root, QStringLiteral("GtIntelliGraph"), GT_CLASSNAME(Graph), indent, [](QDomElement& root, int indent){
+    rename_class_from_to(root, QStringLiteral("GtIntelliGraphCategory"), GT_CLASSNAME(GraphCategory), indent, [](QDomElement& root, int indent){
+        rename_class_from_to(root, QStringLiteral("GtIntelliGraph"), GT_CLASSNAME(Graph), indent, [](QDomElement& root, int indent){
 
             // connections
-            rename_class_from_to_new(root, QStringLiteral("GtIntellIGraphConnectionGroup"), GT_CLASSNAME(ConnectionGroup), indent, [](QDomElement& root, int indent){
-                rename_class_from_to_new(root, QStringLiteral("GtIntelliGraphConnection"), GT_CLASSNAME(Connection), indent);
+            rename_class_from_to(root, QStringLiteral("GtIntellIGraphConnectionGroup"), GT_CLASSNAME(ConnectionGroup), indent, [](QDomElement& root, int indent){
+                rename_class_from_to(root, QStringLiteral("GtIntelliGraphConnection"), GT_CLASSNAME(Connection), indent);
             });
 
             // nodes
-            rename_class_from_to_new(root, QStringLiteral("GtIgGroupInputProvider"), QStringLiteral("intelli::GroupInputProvider"), indent);
-            rename_class_from_to_new(root, QStringLiteral("GtIgGroupOutputProvider"), QStringLiteral("intelli::GroupOutputProvider"), indent);
-            rename_class_from_to_new(root, QStringLiteral("GtIgNubmerDisplayNode"), QStringLiteral("intelli::NubmerDisplayNode"), indent);
-            rename_class_from_to_new(root, QStringLiteral("GtIgNumberSourceNode"), QStringLiteral("intelli::NumberSourceNode"), indent);
-            rename_class_from_to_new(root, QStringLiteral("GtIgFindDirectChildNode"), QStringLiteral("intelli::FindDirectChildNode"), indent);
-            rename_class_from_to_new(root, QStringLiteral("GtIgObjectSourceNode"), QStringLiteral("intelli::ObjectSourceNode"), indent);
-            rename_class_from_to_new(root, QStringLiteral("GtIgObjectMementoNode"), QStringLiteral("intelli::ObjectMementoNode"), indent);
-            rename_class_from_to_new(root, QStringLiteral("GtIgStringListInputNode"), QStringLiteral("intelli::StringListInputNode"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgGroupInputProvider"), QStringLiteral("intelli::GroupInputProvider"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgGroupOutputProvider"), QStringLiteral("intelli::GroupOutputProvider"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgNubmerDisplayNode"), QStringLiteral("intelli::NubmerDisplayNode"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgNumberSourceNode"), QStringLiteral("intelli::NumberSourceNode"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgFindDirectChildNode"), QStringLiteral("intelli::FindDirectChildNode"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgObjectSourceNode"), QStringLiteral("intelli::ObjectSourceNode"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgObjectMementoNode"), QStringLiteral("intelli::ObjectMementoNode"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgStringListInputNode"), QStringLiteral("intelli::StringListInputNode"), indent);
 
             // dp
-            rename_class_from_to_new(root, QStringLiteral("GtIgConditionalNode"), QStringLiteral("intelli::ConditionalNode"), indent);
-            rename_class_from_to_new(root, QStringLiteral("GtIgCheckDoubleNode"), QStringLiteral("intelli::CheckDoubleNode"), indent);
-            rename_class_from_to_new(root, QStringLiteral("GtIgSleepyNode"), QStringLiteral("intelli::SleepyNode"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgConditionalNode"), QStringLiteral("intelli::ConditionalNode"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgCheckDoubleNode"), QStringLiteral("intelli::CheckDoubleNode"), indent);
+            rename_class_from_to(root, QStringLiteral("GtIgSleepyNode"), QStringLiteral("intelli::SleepyNode"), indent);
 
             // update dynamic in/out ports type ids
             replace_property_texts(root, QStringLiteral("GtIgDoubleData"), QStringLiteral("intelli::DoubleData"));

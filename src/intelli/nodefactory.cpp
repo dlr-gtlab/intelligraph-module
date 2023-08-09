@@ -63,7 +63,7 @@ std::unique_ptr<Node>
 NodeFactory::newNode(QString const& className) const noexcept(false)
 {
     std::unique_ptr<GtObject> obj{
-                                  const_cast<NodeFactory*>(this)->newObject(className)
+        const_cast<NodeFactory*>(this)->newObject(className)
     };
     
     auto node = gt::unique_qobject_cast<Node>(std::move(obj));
@@ -94,8 +94,8 @@ NodeFactory::makeRegistry() noexcept
                      [&, this](auto const& name){
         auto const& cat = m_categories.value(name);
 
-        registry->registerModel<GtIntelliGraphObjectModel>([=](){
-            return std::make_unique<GtIntelliGraphObjectModel>(name);
+        registry->registerModel<ObjectModel>([=](){
+            return std::make_unique<ObjectModel>(name);
         }, cat);
     });
 

@@ -23,7 +23,7 @@ class ExecutorFactory
 {
 public:
 
-    GT_INTELLI_EXPORT static std::unique_ptr<intelli::Executor> makeExecutor(ExecutorMode type);
+    GT_INTELLI_EXPORT static std::unique_ptr<intelli::Executor> makeExecutor(ExecutionMode type);
 };
 
 } // namespace intelli

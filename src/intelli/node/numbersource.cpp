@@ -19,7 +19,7 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(NumberSourceNode, "Number");
+GT_INTELLI_REGISTER_NODE(NumberSourceNode, "Number");
 
 NumberSourceNode::NumberSourceNode() :
     Node("Number Source"),
@@ -27,7 +27,7 @@ NumberSourceNode::NumberSourceNode() :
 {
     registerProperty(m_value);
 
-    m_out = addOutPort(typeId<GtIgDoubleData>());
+    m_out = addOutPort(typeId<DoubleData>());
 
     connect(&m_value, &GtAbstractProperty::changed,
             this, &Node::updateNode);

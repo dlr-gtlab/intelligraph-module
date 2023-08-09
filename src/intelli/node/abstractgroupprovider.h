@@ -94,12 +94,13 @@ private slots:
         if (!port) return;
 
         auto  idx    = portIndex(INVERSE_TYPE(), id);
-        auto* graphPort   = graph->port(graph->portId(Type, idx));
+        auto graphPortId = graph->portId(Type, idx);
+        auto* graphPort   = graph->port(graphPortId);
         if (!graphPort) return;
 
         graphPort->typeId = port->typeId;
         graphPort->caption = port->caption;
-        emit graph->portChanged(graphPort->id());
+        emit graph->portChanged(graphPortId);
     }
 
     void onPortDeleted(PortType, PortIndex idx)

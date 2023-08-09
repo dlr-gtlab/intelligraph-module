@@ -10,6 +10,7 @@
 #ifndef GT_INTELLI_UTILS_H
 #define GT_INTELLI_UTILS_H
 
+#include <intelli/globals.h>
 #include <intelli/data/double.h>
 
 #include <gt_logstream.h>
@@ -44,6 +45,19 @@ operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& d
     return s << (data ? data->metaObject()->className() : "nullptr");
 }
 
+namespace intelli
+{
+
+inline ConnectionId convert(QtNodes::ConnectionId con)
+{
+    return *reinterpret_cast<ConnectionId*>(&con);
+}
+
+inline QtNodes::ConnectionId convert(ConnectionId con)
+{
+    return *reinterpret_cast<QtNodes::ConnectionId*>(&con);
+}
+
 template <typename Sender, typename SignalSender,
          typename Reciever, typename SignalReciever>
 struct IgnoreSignal
@@ -75,9 +89,6 @@ auto ignoreSignal(Sender sender, SignalSender signalSender,
         sender, signalSender, reciever, signalReciever
     };
 }
-
-namespace intelli
-{
 
 inline unsigned fromInt(GtIntProperty const& p) noexcept
 {

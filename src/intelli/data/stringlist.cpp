@@ -13,7 +13,7 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_DATA(StringListData)
+GT_INTELLI_REGISTER_DATA(StringListData)
 
 StringListData::StringListData(QStringList list) :
     TemplateData("stringlist", std::move(list))

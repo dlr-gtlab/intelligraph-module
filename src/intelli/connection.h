@@ -14,16 +14,17 @@
 #include "gt_object.h"
 #include "gt_intproperty.h"
 
-namespace QtNodes { struct ConnectionId; }
-
 namespace intelli
 {
 
+/**
+ * @brief The Connection class.
+ * Represents a connection between two nodes and their resprective output and
+ * input ports
+ */
 class Connection : public GtObject
 {
     Q_OBJECT
-
-    using ConnectionId = QtNodes::ConnectionId;
 
 public:
 

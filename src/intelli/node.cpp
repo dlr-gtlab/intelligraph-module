@@ -46,14 +46,12 @@ Node::Node(QString const& modelName, GtObject* parent) :
             this, &Node::nodeChanged);
     connect(this, &QObject::objectNameChanged,
             this, &Node::nodeChanged);
-    connect(this, &Node::portChanged,
-            this, &Node::nodeChanged);
 }
 
 Node::~Node() = default;
 
 void
-Node::setExecutor(ExecutorMode executorMode)
+Node::setExecutor(ExecutionMode executorMode)
 {
     auto executor = ExecutorFactory::makeExecutor(executorMode);
 
@@ -82,7 +80,7 @@ Node::id() const
 }
 
 void
-Node::setPos(QPointF pos)
+Node::setPos(Position pos)
 {
     if (this->pos() != pos)
     {
@@ -115,22 +113,16 @@ Node::size() const
     return { pimpl->sizeWidth, pimpl->sizeHeight };
 }
 
-bool
-Node::isValid() const
-{
-    return id() != invalid<NodeId>();
-}
-
-bool
-Node::isValid(const QString& modelName)
-{
-    return isValid() && modelName == this->modelName();
-}
-
 void
 Node::updateObjectName()
 {
     gt::setUniqueName(*this, baseObjectName());
+}
+
+bool
+Node::isValid() const
+{
+    return id() != invalid<NodeId>();
 }
 
 void
@@ -323,6 +315,18 @@ Node::eval(PortId)
     return {};
 }
 
+Node::NodeDataPtr
+Node::inData(PortIndex idx)
+{
+    if (idx >= pimpl->inData.size()) return {};
+
+    gtTrace().verbose().nospace()
+        << "### Getting in data:  '" << objectName()
+        << "' at input idx  '" << idx << "': " << pimpl->inData.at(idx);
+
+    return pimpl->inData.at(idx);
+}
+
 bool
 Node::setInData(PortIndex idx, NodeDataPtr data)
 {
@@ -343,6 +347,21 @@ Node::setInData(PortIndex idx, NodeDataPtr data)
     return true;
 }
 
+Node::NodeDataPtr
+Node::outData(PortIndex idx)
+{
+    if (idx >= pimpl->outData.size()) return {};
+
+    gtTrace().verbose().nospace()
+        << "### Getting out data: '" << objectName()
+        << "' at output idx '" << idx << "': " << pimpl->outData.at(idx);
+
+    // trigger node update if no input data is available
+    if (pimpl->requiresEvaluation) updatePort(idx);
+
+    return pimpl->outData.at(idx);
+}
+
 bool
 Node::setOutData(PortIndex idx, NodeDataPtr data)
 {
@@ -359,21 +378,6 @@ Node::setOutData(PortIndex idx, NodeDataPtr data)
     out ? emit outDataUpdated(idx) : emit outDataInvalidated(idx);
 
     return true;
-}
-
-Node::NodeDataPtr
-Node::outData(PortIndex idx)
-{
-    if (idx >= pimpl->outData.size()) return {};
-
-    gtTrace().verbose().nospace()
-        << "### Getting out data: '" << objectName()
-        << "' at output idx '" << idx << "': " << pimpl->outData.at(idx);
-
-    // trigger node update if no input data is available
-    if (pimpl->requiresEvaluation) updatePort(idx);
-
-    return pimpl->outData.at(idx);
 }
 
 void

@@ -11,7 +11,7 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(GroupInputProvider, "")
+GT_INTELLI_REGISTER_NODE(GroupInputProvider, "")
 
 GroupInputProvider::GroupInputProvider() :
     AbstractGroupProvider("Input Provider")
@@ -34,5 +34,5 @@ GroupInputProvider::eval(PortId outId)
         return {};
     }
 
-    return group->nodeData(group->portId(PortType::In, idx));
+    return group->inData(idx);
 }

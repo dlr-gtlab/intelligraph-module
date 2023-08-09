@@ -10,7 +10,7 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(ObjectMementoNode, "Object");
+GT_INTELLI_REGISTER_NODE(ObjectMementoNode, "Object");
 
 ObjectMementoNode::ObjectMementoNode() :
     Node(tr("Memento Viewer"))

@@ -52,7 +52,7 @@ public:
     using PortIndex = intelli::PortIndex;
     using Position  = intelli::Position;
 
-    using ExecutorMode = intelli::ExecutorMode;
+    using ExecutionMode = intelli::ExecutionMode;
     using NodeDataPtr  = std::shared_ptr<const NodeData>;
 
     /// widget factory function type. Parameter is guranteed to be of type
@@ -119,7 +119,7 @@ public:
      * executer can be evaluated. A node has no executor assigned by default.
      * @param executorMode New executor
      */
-    void setExecutor(ExecutorMode executorMode);
+    void setExecutor(ExecutionMode executorMode);
 
     /**
      * @brief Sets the node id. handle with care, as this may result in
@@ -138,7 +138,7 @@ public:
      * @brief Sets the new node position. Will be saved persistently.
      * @param pos new position
      */
-    void setPos(QPointF pos);
+    void setPos(Position pos);
 
     /**
      * @brief pos
@@ -168,13 +168,6 @@ public:
      * @return is valid
      */
     bool isValid() const;
-
-    /**
-     * @brief Returns whether the node is valid and has the expected model name
-     * @param modelName Model anme
-     * @return is valid
-     */
-    bool isValid(QString const& modelName);
 
     /**
      * @brief Returns the node flags
@@ -261,6 +254,21 @@ public:
     bool setInData(PortIndex idx, NodeDataPtr data);
 
     /**
+     * @brief Returns the input node data specified by the index.
+     * @param idx Input port index
+     * @return Node data. Null if idx is invalid
+     */
+    NodeDataPtr inData(PortIndex idx);
+
+    /**
+     * @brief May be used to override the out data
+     * @param idx Output port index
+     * @param data New data
+     * @return success
+     */
+    bool setOutData(PortIndex idx, NodeDataPtr data);
+
+    /**
      * @brief Returns the output node data specified by the index.
      * @param idx Output port index
      * @return Node data. Null if idx is invalid
@@ -324,19 +332,21 @@ signals:
     void computingFinished();
 
     /**
-     * @brief Emitted if node specific data hast changed (cpation, number of
+     * @brief Emitted if node specific data has changed (cpation, number of
      * ports etc.). May be invoked by the "user" to update the graphical node
-     * in case a port hast changed for example.
+     * representation in case a port has changed for example.
      */
     void nodeChanged();
 
     /**
-     * @brief May be emitted if the port data changes (e.g. port caption)
+     * @brief Emitted if port specific data has changed (e.g. port cpation).
+     * May be invoked by the "user" to update the graphical node representation
+     * @param id id of port that changed
      */
     void portChanged(PortId id);
 
     /**
-     * @brief Will be called internally before deleting a point.
+     * @brief Will be called internally before deleting a port.
      * @param type Port type (input or output)
      * @param idx Affected index
      */
@@ -350,7 +360,7 @@ signals:
     void portDeleted(PortType type, PortIndex idx);
 
     /**
-     * @brief Will be called internally before inserting a point.
+     * @brief Will be called internally before inserting a port.
      * @param type Port type (input or output)
      * @param idx Affected index
      */
@@ -371,8 +381,6 @@ protected:
      * @param parent Parent object
      */
     Node(QString const& modelName, GtObject* parent = nullptr);
-
-    bool setOutData(PortIndex idx, NodeDataPtr data);
 
     /**
      * @brief Main evaluation method to override. Will be called for each output
@@ -408,6 +416,7 @@ protected:
      * @return Port id
      */
     PortId addInPort(PortData port, PortPolicy policy = DefaultPortPolicy) noexcept(false);
+
     /**
      * @brief Appends the output port
      * @param port Port data to append
@@ -424,6 +433,7 @@ protected:
      * @return Port id
      */
     PortId insertInPort(PortData port, int idx, PortPolicy policy = DefaultPortPolicy) noexcept(false);
+
     /**
      * @brief Inserts an output port at the given location
      * (-1 will append to back)

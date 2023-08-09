@@ -14,16 +14,19 @@
 #include "intelli/adapter/modeladapter.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
-#include "intelli/private/utils.h"
+#include "intelli/gui/grapheditor.h"
 
-#include "gt_qtutilities.h"
+#include <gt_qtutilities.h>
+#include <gt_algorithms.h>
+#include <gt_mdiitem.h>
+#include <gt_mdilauncher.h>
 
 #include <QThread>
 #include <QCoreApplication>
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(Graph, "Group")
+GT_INTELLI_REGISTER_NODE(Graph, "Group")
 
 template <typename ObjectList, typename T = gt::trait::value_t<ObjectList>>
 inline T findNode(ObjectList const& nodes,
@@ -39,7 +42,7 @@ inline T findNode(ObjectList const& nodes,
 
 template <typename ObjectList, typename T = gt::trait::value_t<ObjectList>>
 inline T findConnection(ObjectList const& connections,
-                        QtNodes::ConnectionId conId)
+                        intelli::ConnectionId conId)
 {
     auto iter = std::find_if(std::begin(connections), std::end(connections),
                              [&](Connection* connection){
@@ -82,6 +85,13 @@ Graph::Graph() :
     // then the nodes)
     auto* group = new ConnectionGroup(this);
     group->setDefault(true);
+
+    connect(group, &ConnectionGroup::mergeConnections, this, [this](){
+        if (auto* adapter = findModelAdapter())
+        {
+            adapter->mergeConnections(*this);
+        }
+    });
 }
 
 Graph::~Graph()
@@ -247,7 +257,7 @@ Graph::eval(PortId outId)
     // force subnodes to use a sequential execution
     for (auto* node : nodes())
     {
-        node->setExecutor(ExecutorMode::Sequential);
+        node->setExecutor(ExecutionMode::Sequential);
     }
 
     // this will trigger the evaluation
@@ -284,6 +294,12 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
         gtWarning() << tr("Failed to append node '%1' to intelli graph!")
                            .arg(node->objectName());
         return {};
+    }
+
+    // init input output providers of sub graph
+    if (auto* graph = qobject_cast<Graph*>(node.get()))
+    {
+        graph->initGroupProviders();
     }
 
     node->updateObjectName();
@@ -333,12 +349,12 @@ Graph::appendObjects(std::vector<std::unique_ptr<Node>>& nodes,
 
     for (auto& obj : nodes)
     {
-        if (!obj) return {};
+        if (!obj) return nodeIds;
 
         auto oldId = obj->id();
 
         auto* node = appendNode(std::move(obj));
-        if (!node) return {};
+        if (!node) return nodeIds;
 
         auto newId = node->id();
 
@@ -365,7 +381,7 @@ Graph::appendObjects(std::vector<std::unique_ptr<Node>>& nodes,
     for (auto& obj : connections)
     {
         auto* con = appendConnection(std::move(obj));
-        if (!con) return {};
+        if (!con) return nodeIds;
     }
 
     return nodeIds;
@@ -405,7 +421,7 @@ Graph::setNodePosition(Node* node, QPointF pos)
     }
 }
 
-GtIntelliGraphModelAdapter*
+ModelAdapter*
 Graph::makeModelAdapter(ModelPolicy policy)
 {
     if (auto* adapter = findModelAdapter())
@@ -418,7 +434,7 @@ Graph::makeModelAdapter(ModelPolicy policy)
         return adapter;
     }
 
-    return new GtIntelliGraphModelAdapter(*this, policy);
+    return new ModelAdapter(*this, policy);
 }
 
 void
@@ -470,4 +486,121 @@ Graph::initGroupProviders()
 
     appendNode(std::move(output));
     appendNode(std::move(input));
+}
+
+bool
+intelli::evaluate(Graph& graph)
+{
+    if (graph.inputProvider() || graph.outputProvider())
+    {
+        gtError() << QObject::tr("Cannot evaluate a sub graph!");
+        return false;
+    }
+
+    if (graph.findModelAdapter())
+    {
+        gtError() << QObject::tr("Cannot evaluate a graph with an active evaluation model!");
+        return false;
+    }
+
+    auto const allNodes = graph.nodes();
+    auto allConnections = graph.connections();
+
+    std::map<NodeId, std::vector<NodeId>> callGraph;
+    std::map<NodeId, std::vector<Connection*>> connectionGraph;
+
+    std::vector<NodeId> nextNodes;
+    std::vector<Connection*> nodeConnections;
+
+    for (auto const* node : allNodes)
+    {
+        nextNodes.clear();
+        nodeConnections.clear();
+
+        NodeId nodeId = node->id();
+
+        for (auto* connection : allConnections)
+        {
+            if (connection->outNodeId() == nodeId)
+            {
+                nodeConnections.push_back(connection);
+                nextNodes.push_back(connection->inNodeId());
+            }
+        }
+
+        callGraph.insert(std::make_pair(nodeId, nextNodes));
+        connectionGraph.insert(std::make_pair(nodeId, nodeConnections));
+    }
+
+    gtDebug().verbose() << "call graph: " << callGraph;
+
+    std::vector<NodeId> callOrder = gt::topo_sort(callGraph);
+
+    gtDebug().verbose() << "call order: " << callOrder;
+
+    // evaluate each node
+    for (NodeId nodeId : callOrder)
+    {
+        auto* node = graph.findNode(nodeId);
+        assert(node);
+
+        // set executor
+        node->setExecutor(ExecutionMode::Sequential);
+        // evaluate
+        node->updateNode();
+        // clear executor
+        node->setExecutor(ExecutionMode::None);
+
+        // propagate data to next nodes
+        for (auto* connection : connectionGraph.at(nodeId))
+        {
+            auto* next = graph.findNode(connection->inNodeId());
+            if (!next)
+            {
+                gtError()
+                    << QObject::tr("Cannot propagte data from node %1 to node %2!")
+                           .arg(node->id()).arg(connection->inNodeId())
+                    << QObject::tr("(Node was not found)");
+                return false;
+            }
+
+            if (!next->setInData(connection->inPortIdx(), node->outData(connection->outPortIdx())))
+            {
+                gtError()
+                    << QObject::tr("Cannot propagte data from node %1 to node %2!")
+                           .arg(node->id()).arg(connection->inNodeId())
+                    << QObject::tr("(Port index %1 of node %2 out of bounds)")
+                           .arg(connection->inPortIdx()).arg(connection->inNodeId());
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+GtMdiItem*
+intelli::show(Graph& graph)
+{
+    return gtMdiLauncher->open(GT_CLASSNAME(GraphEditor), &graph);
+}
+
+GtMdiItem*
+intelli::show(std::unique_ptr<Graph> graph)
+{
+    if (!graph) return nullptr;
+
+    auto* item = gtMdiLauncher->open(GT_CLASSNAME(GraphEditor), graph.get());
+    if (!item)
+    {
+        gtWarning() << QObject::tr("Failed to open Graph Editor for intelli graph")
+                    << graph->caption();
+        return nullptr;
+    }
+
+    assert(item->parent() == item->widget());
+    assert(item->parent() != nullptr);
+
+    graph.release()->setParent(item);
+    return item;
 }

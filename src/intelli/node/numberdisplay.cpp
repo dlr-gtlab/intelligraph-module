@@ -16,12 +16,12 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(NubmerDisplayNode, "Number");
+GT_INTELLI_REGISTER_NODE(NumberDisplayNode, "Number");
 
-NubmerDisplayNode::NubmerDisplayNode() :
+NumberDisplayNode::NumberDisplayNode() :
     Node("Number Display")
 {
-    PortId in = addInPort(typeId<GtIgDoubleData>());
+    PortId in = addInPort(typeId<DoubleData>());
 
     registerWidgetFactory([=](){
         auto w = std::make_unique<QLineEdit>();
@@ -29,7 +29,7 @@ NubmerDisplayNode::NubmerDisplayNode() :
         w->setFixedWidth(50);
 
         auto const updateText = [=, w_ = w.get()](){
-            auto* data = nodeData<GtIgDoubleData*>(in);
+            auto* data = nodeData<DoubleData*>(in);
             w_->setText(QString::number(data ? data->value() : 0));
         };
         

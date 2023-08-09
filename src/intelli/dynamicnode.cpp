@@ -289,7 +289,7 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty*)
     port->captionVisible = captionVisible;
     port->optional = optional;
 
-    emit portChanged(port->id());
+    emit portChanged(portId);
 }
 
 void

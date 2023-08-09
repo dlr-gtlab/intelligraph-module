@@ -11,12 +11,12 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(ObjectSourceNode, "Object");
+GT_INTELLI_REGISTER_NODE(ObjectSourceNode, "Object");
 
 ObjectSourceNode::ObjectSourceNode() :
     Node(tr("Object Source")),
     m_object("target", tr("Target"), tr("Target Object"),
-             gtApp->currentProject(), gtObjectFactory->knownClasses())
+             gtApp ? gtApp->currentProject() : nullptr, gtObjectFactory->knownClasses())
 {
     registerProperty(m_object);
     

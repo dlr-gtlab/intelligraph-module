@@ -12,8 +12,6 @@
 
 #include "gt_qtutilities.h"
 
-#include <QtNodes/Definitions>
-
 using namespace intelli;
 
 Connection::Connection(GtObject* parent) :
@@ -45,7 +43,7 @@ Connection::Connection(ConnectionId conId, GtObject* parent) :
     fromConnectionId(conId);
 }
 
-Connection::ConnectionId
+intelli::ConnectionId
 Connection::connectionId() const
 {
     return ConnectionId{outNodeId(), outPortIdx(), inNodeId(), inPortIdx()};
@@ -94,7 +92,7 @@ Connection::isValid() const
     constexpr auto invalid = QtNodes::InvalidPortIndex;
 
     std::array<unsigned, 4> const ids{
-                                      inNodeId(), inPortIdx(), outNodeId(), outPortIdx()
+        inNodeId(), inPortIdx(), outNodeId(), outPortIdx()
     };
     return std::all_of(std::begin(ids), std::end(ids), [=](auto id){
         return id != invalid;
