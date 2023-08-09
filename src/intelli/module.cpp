@@ -231,6 +231,30 @@ rename_class_from_to_new(QDomElement& root,
     return true;
 }
 
+bool
+replace_property_texts(QDomElement& root,
+                       QString const& from,
+                       QString const& to)
+{
+    auto objects = gt::xml::propertyElements(root);
+
+    if (objects.empty()) return true;
+
+    for (auto& object : objects)
+    {
+        auto text = object.firstChild().toText();
+        if (text.isNull()) continue;
+
+        if (text.data() == from)
+        {
+            gtDebug() << "HERE" << text.data() << from << to;
+            text.setNodeValue(to);
+        }
+    }
+
+    return true;
+}
+
 // major refactoring of class names and namespaces
 bool upgrade_to_0_3_0(QDomElement& root, QString const& file)
 {
@@ -260,7 +284,11 @@ bool upgrade_to_0_3_0(QDomElement& root, QString const& file)
             rename_class_from_to_new(root, QStringLiteral("GtIgCheckDoubleNode"), QStringLiteral("intelli::CheckDoubleNode"), indent);
             rename_class_from_to_new(root, QStringLiteral("GtIgSleepyNode"), QStringLiteral("intelli::SleepyNode"), indent);
 
-            // not updating dynamic in/out ports due to complexity
+            // update dynamic in/out ports type ids
+            replace_property_texts(root, QStringLiteral("GtIgDoubleData"), QStringLiteral("intelli::DoubleData"));
+            replace_property_texts(root, QStringLiteral("GtIgStringListData"), QStringLiteral("intelli::StringListData"));
+            replace_property_texts(root, QStringLiteral("GtIgObjectData"), QStringLiteral("intelli::ObjectData"));
+            replace_property_texts(root, QStringLiteral("GtIgBoolData"), QStringLiteral("intelli::BoolData"));
         });
     });
 
