@@ -1,11 +1,10 @@
 #include <gtest/gtest.h>
 
-#include "gt_igglobals.h"
-
+#include "intelli/globals.h"
 TEST(StrogTypes, default_constructed_type_is_invalid)
 {
-    using namespace gt::ig;
+    using namespace intelli;
 
     PortId id;
-    EXPECT_EQ(id, gt::ig::invalid<PortId>());
+    EXPECT_EQ(id, invalid<PortId>());
 }

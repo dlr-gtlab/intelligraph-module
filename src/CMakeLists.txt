@@ -4,114 +4,114 @@ set(CMAKE_DEBUG_POSTFIX -d)
 set(INTELLIGRAPH_VERSION 0.1.0)
 
 set(PUBLIC_HEADERS
-    gt_igglobals.h
-    gt_igvolatileptr.h
-    gt_intelligraph_exports.h
-    gt_intelligraphnodefactory.h
-    gt_intelligraphdatafactory.h
-    data/gt_intelligraphdynamicnode.h
-    data/gt_intelligraphnode.h
-    data/node_data/gt_igbooldata.h
-    data/node_data/gt_igdoubledata.h
-    data/node_data/gt_ignodedata.h
-    data/node_data/gt_igobjectdata.h
-    data/node_data/gt_igstringlistdata.h
-    data/properties/gt_igcolorproperty.h
-    data/properties/gt_igobjectlinkproperty.h
-    data/properties/gt_igstringselectionproperty.h
-    exec/gt_intelligraphexecutorfactory.h
-    gui/gt_igicons.h
-    gui/gt_igportuiaction.h
-    gui/ui/gt_intelligraphnodeui.h
+    intelli/dynamicnode.h
+    intelli/exports.h
+    intelli/globals.h
+    intelli/memory.h
+    intelli/node.h
+    intelli/nodedata.h
+    intelli/nodedatafactory.h
+    intelli/nodefactory.h
+    intelli/data/bool.h
+    intelli/data/double.h
+    intelli/data/object.h
+    intelli/data/stringlist.h
+    intelli/exec/executorfactory.h
+    intelli/gui/icons.h
+    intelli/gui/portuiaction.h
+    intelli/gui/nodeui.h
+    intelli/property/color.h
+    intelli/property/objectlink.h
+    intelli/property/stringselection.h
 )
 
- qt5_add_resources (RCC_SOURCES
-     ./resources/icons.qrc
- )
+qt5_add_resources (RCC_SOURCES
+    ./resources/icons.qrc
+)
 
 add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     SOURCES
     ${PUBLIC_HEADERS}
     ${RCC_SOURCES}
-    gt_intelligraphmodule.h
-    gt_intelligraphmodeladapter.h
-    gt_intelligraphjsonadapter.h
-    data/gt_igpackage.h
-    data/gt_intelligraph.h
-    data/gt_intelligraphconnection.h
-    data/gt_intelligraphconnectiongroup.h
-    data/gt_intelligraphcategory.h
-    data/nodes/gt_igabstractgroupprovider.h
-    data/nodes/gt_igconditionalnode.h
-    data/nodes/gt_igdoubletoboolnode.h
-    data/nodes/gt_igfinddirectchildnode.h
-    data/nodes/gt_iggroupinputprovider.h
-    data/nodes/gt_iggroupoutputprovider.h
-    data/nodes/gt_ignumberdisplaynode.h
-    data/nodes/gt_ignumbersourcenode.h
-    data/nodes/gt_igobjectmementonode.h
-    data/nodes/gt_igobjectsourcenode.h
-    data/nodes/gt_igsleepynode.h
-    data/nodes/gt_igstringlistinputnode.h
-    exec/gt_intelligraphexecutor.h
-    exec/gt_intelligraphexecutorfactory.cpp
-    exec/gt_intelligraphparallelexecutor.h
-    exec/gt_intelligraphsequentialexecutor.h
-    gui/gt_igicons.cpp
-    gui/gt_intelligraphscene.h
-    gui/gt_intelligraphview.h
-    gui/items/gt_intelligrapheditor.h
-    gui/models/gt_intelligraphobjectmodel.h
-    gui/property_items/gt_igobjectlinkpropertyitem.h
-    gui/property_items/gt_igstringselectionpropertyitem.h
-    gui/ui/gt_intelligraphconnectionui.h
-    gui/ui/gt_intelligraphpackageui.h
-    private/intelligraphnode_impl.h
-    private/utils.h
+    intelli/package.h
+    intelli/graph.h
+    intelli/connection.h
+    intelli/connectiongroup.h
+    intelli/graphcategory.h
+    intelli/module.h
+    intelli/adapter/modeladapter.h
+    intelli/adapter/jsonadapter.h
+    intelli/adapter/objectmodel.h
+    intelli/exec/executor.h
+    intelli/exec/executorfactory.cpp
+    intelli/exec/parallelexecutor.h
+    intelli/exec/sequentialexecutor.h
+    intelli/node/abstractgroupprovider.h
+    intelli/node/conditional.h
+    intelli/node/doubletobool.h
+    intelli/node/finddirectchild.h
+    intelli/node/groupinputprovider.h
+    intelli/node/groupoutputprovider.h
+    intelli/node/numberdisplay.h
+    intelli/node/numbersource.h
+    intelli/node/objectmemento.h
+    intelli/node/objectsource.h
+    intelli/node/sleepy.h
+    intelli/node/stringlistinput.h
+    intelli/gui/icons.cpp
+    intelli/gui/graphscene.h
+    intelli/gui/graphview.h
+    intelli/gui/grapheditor.h
+    intelli/gui/property_item/objectlink.h
+    intelli/gui/property_item/stringselection.h
+    intelli/gui/connectionui.h
+    intelli/gui/packageui.h
+    intelli/private/node_impl.h
+    intelli/private/utils.h
 
-    gt_intelligraphmodule.cpp
-    gt_intelligraphnodefactory.cpp
-    gt_intelligraphjsonadapter.cpp
-    gt_intelligraphdatafactory.cpp
-    gt_intelligraphmodeladapter.cpp
-    data/gt_igpackage.cpp
-    data/gt_intelligraph.cpp
-    data/gt_intelligraphconnection.cpp
-    data/gt_intelligraphconnectiongroup.cpp
-    data/gt_intelligraphdynamicnode.cpp
-    data/gt_intelligraphnode.cpp
-    data/gt_intelligraphcategory.cpp
-    data/nodes/gt_igconditionalnode.cpp
-    data/nodes/gt_igdoubletoboolnode.cpp
-    data/nodes/gt_igfinddirectchildnode.cpp
-    data/nodes/gt_iggroupinputprovider.cpp
-    data/nodes/gt_iggroupoutputprovider.cpp
-    data/nodes/gt_ignumberdisplaynode.cpp
-    data/nodes/gt_ignumbersourcenode.cpp
-    data/nodes/gt_igobjectmementonode.cpp
-    data/nodes/gt_igobjectsourcenode.cpp
-    data/nodes/gt_igsleepynode.cpp
-    data/nodes/gt_igstringlistinputnode.cpp
-    data/node_data/gt_igbooldata.cpp
-    data/node_data/gt_igdoubledata.cpp
-    data/node_data/gt_ignodedata.cpp
-    data/node_data/gt_igobjectdata.cpp
-    data/node_data/gt_igstringlistdata.cpp
-    data/properties/gt_igcolorproperty.cpp
-    data/properties/gt_igobjectlinkproperty.cpp
-    data/properties/gt_igstringselectionproperty.cpp
-    exec/gt_intelligraphexecutor.cpp
-    exec/gt_intelligraphparallelexecutor.cpp
-    exec/gt_intelligraphsequentialexecutor.cpp
-    gui/gt_intelligraphscene.cpp
-    gui/gt_intelligraphview.cpp
-    gui/items/gt_intelligrapheditor.cpp
-    gui/models/gt_intelligraphobjectmodel.cpp
-    gui/property_items/gt_igobjectlinkpropertyitem.cpp
-    gui/property_items/gt_igstringselectionpropertyitem.cpp
-    gui/ui/gt_intelligraphconnectionui.cpp
-    gui/ui/gt_intelligraphnodeui.cpp
-    gui/ui/gt_intelligraphpackageui.cpp
+    intelli/connection.cpp
+    intelli/connectiongroup.cpp
+    intelli/dynamicnode.cpp
+    intelli/graph.cpp
+    intelli/graphcategory.cpp
+    intelli/module.cpp
+    intelli/node.cpp
+    intelli/nodedata.cpp
+    intelli/nodedatafactory.cpp
+    intelli/nodefactory.cpp
+    intelli/package.cpp
+    intelli/adapter/jsonadapter.cpp
+    intelli/adapter/modeladapter.cpp
+    intelli/adapter/objectmodel.cpp
+    intelli/exec/executor.cpp
+    intelli/exec/parallelexecutor.cpp
+    intelli/exec/sequentialexecutor.cpp
+    intelli/data/bool.cpp
+    intelli/data/double.cpp
+    intelli/data/object.cpp
+    intelli/data/stringlist.cpp
+    intelli/node/conditional.cpp
+    intelli/node/doubletobool.cpp
+    intelli/node/finddirectchild.cpp
+    intelli/node/groupinputprovider.cpp
+    intelli/node/groupoutputprovider.cpp
+    intelli/node/numberdisplay.cpp
+    intelli/node/numbersource.cpp
+    intelli/node/objectmemento.cpp
+    intelli/node/objectsource.cpp
+    intelli/node/sleepy.cpp
+    intelli/node/stringlistinput.cpp
+    intelli/gui/grapheditor.cpp
+    intelli/gui/graphscene.cpp
+    intelli/gui/graphview.cpp
+    intelli/gui/property_item/objectlink.cpp
+    intelli/gui/property_item/stringselection.cpp
+    intelli/gui/connectionui.cpp
+    intelli/gui/nodeui.cpp
+    intelli/gui/packageui.cpp
+    intelli/property/color.cpp
+    intelli/property/objectlink.cpp
+    intelli/property/stringselection.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph
@@ -131,21 +131,9 @@ target_compile_definitions(GTlabIntelliGraph PRIVATE
 
 target_include_directories(GTlabIntelliGraph PUBLIC
 
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/.>
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/data>
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/data/nodes>
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/data/node_data>
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/data/properties>
-     # TODO. what is really public, what is private???
-    PRIVATE
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/exec>
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gui>
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gui/items>
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gui/property_items>
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gui/ui>
-
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
      # we install a flat file hierachy, so we include only this folder
-     PUBLIC $<INSTALL_INTERFACE:include/intelligraph>
+     PUBLIC $<INSTALL_INTERFACE:include/intelligraph/intelli>
 )
 
 install (TARGETS GTlabIntelliGraph
@@ -154,7 +142,11 @@ install (TARGETS GTlabIntelliGraph
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/intelligraph
 )
 
-install (FILES ${PUBLIC_HEADERS} DESTINATION include/intelligraph)
+# copy public headers but keep file hierarchy
+foreach ( file ${PUBLIC_HEADERS} )
+    get_filename_component( dir ${file} DIRECTORY )
+    install( FILES ${file} DESTINATION include/intelligraph/${dir} )
+endforeach()
 
 # cmake configuration export
 set(CMAKE_INSTALL_INCLUDE_DIR "include")
