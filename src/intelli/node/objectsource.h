@@ -25,8 +25,7 @@ private:
     /// selected object
     ObjectLinkProperty m_object;
 
-    /// member to keep track of last object pointer. Used to disconnect if
-    /// object changes
+    /// member to keep track of last object pointer to disconnect changed signals
     QPointer<GtObject> m_lastObject;
 
     PortId m_in, m_out;

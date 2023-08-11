@@ -467,12 +467,6 @@ Graph::forwardOutData(PortIndex idx)
 bool
 intelli::evaluate(Graph& graph)
 {
-//    if (graph.inputProvider() || graph.outputProvider())
-//    {
-//        gtError() << QObject::tr("Cannot evaluate a sub graph!");
-//        return false;
-//    }
-
     if (graph.findModelAdapter())
     {
         gtError() << QObject::tr("Cannot evaluate a graph with an active evaluation model!");

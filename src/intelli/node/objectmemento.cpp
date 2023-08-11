@@ -19,6 +19,8 @@ ObjectMementoNode::ObjectMementoNode() :
     
     PortId inPort = addInPort(typeId<ObjectData>());
 
+    setNodeFlag(DoNotEvaluate);
+
     registerWidgetFactory([=]() {
         auto w = std::make_unique<GtCodeEditor>();
         w->setMinimumSize(300, 300);

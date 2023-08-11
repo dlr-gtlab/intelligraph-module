@@ -23,6 +23,8 @@ NumberDisplayNode::NumberDisplayNode() :
 {
     PortId in = addInPort(typeId<DoubleData>());
 
+    setNodeFlag(DoNotEvaluate);
+
     registerWidgetFactory([=](){
         auto w = std::make_unique<QLineEdit>();
         w->setReadOnly(true);

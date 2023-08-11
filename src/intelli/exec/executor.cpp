@@ -72,8 +72,6 @@ Executor::doEvaluate(Node& node, PortIndex idx)
 
     out = node.eval(p.outPorts.at(idx).id());
 
-    emit node.evaluated(idx);
-
     return out != nullptr;
 }
 
@@ -84,8 +82,6 @@ Executor::doEvaluateAndDiscard(Node& node)
         << "### Evaluating node:  '" << node.objectName() << "'";
 
     node.eval(invalid<PortId>());
-
-    emit node.evaluated();
 }
 
 NodeImpl&

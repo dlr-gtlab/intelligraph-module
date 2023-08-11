@@ -298,7 +298,7 @@ signals:
      * Will be called automatically and should not be triggered by the "user".
      * @param idx Output port index. May be mapped to an output port id.
      */
-    void evaluated(PortIndex idx = PortIndex{0});
+    void evaluated(PortIndex idx = PortIndex{});
 
     /**
      * @brief Emitted if the output data has changed (may be invalid), just
@@ -306,7 +306,7 @@ signals:
      * by the "user". Triggers the evaluation of all connected ports.
      * @param idx Output port index. May be mapped to an output port id.
      */
-    void outDataUpdated(PortIndex idx = PortIndex{0});
+    void outDataUpdated(PortIndex idx = PortIndex{});
 
     /**
      * @brief Emitted if the output data was invalidated, just after evaluating.
@@ -314,14 +314,14 @@ signals:
      * Triggers the invalidation of all connected ports
      * @param idx Output port index. May be mapped to an output port id.
      */
-    void outDataInvalidated(PortIndex idx = PortIndex{0});
+    void outDataInvalidated(PortIndex idx = PortIndex{});
 
     /**
      * @brief Emitted if new input data was recieved, just before evaluating.
      * Data may be invalid. Should not be triggered by the "user".
      * @param idx Input port index. May be mapped to an input port id.
      */
-    void inputDataRecieved(PortIndex idx = PortIndex{0});
+    void inputDataRecieved(PortIndex idx = PortIndex{});
 
     /**
      * @brief Emitted once the node evaluation has started

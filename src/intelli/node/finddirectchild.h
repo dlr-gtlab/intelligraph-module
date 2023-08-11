@@ -30,6 +30,7 @@ protected:
 
 private:
 
+    /// target class name
     GtStringProperty m_childClassName;
 
     PortId m_in, m_out;
