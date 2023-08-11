@@ -84,6 +84,7 @@ TEST(GraphBuilder, group)
     intelli::GraphBuilder builder(graph);
 
     intelli::Node* resultNode = nullptr;
+    intelli::Node* groupResultNode = nullptr;
 
     try
     {
@@ -93,27 +94,30 @@ TEST(GraphBuilder, group)
 
         auto& result = builder.addNode(QStringLiteral("intelli::NumberDisplayNode"));
 
-        auto sub = builder.addSubGraph({intelli::typeId<intelli::DoubleData>(),
-                                        intelli::typeId<intelli::DoubleData>()},
-                                       {intelli::typeId<intelli::DoubleData>()});
+        auto group = builder.addGraph({
+            intelli::typeId<intelli::DoubleData>(),
+            intelli::typeId<intelli::DoubleData>()
+        }, {
+            intelli::typeId<intelli::DoubleData>()
+        });
 
-        intelli::GraphBuilder subBuilder(sub.graph);
+        intelli::GraphBuilder groupBuilder(group.graph);
 
-        auto& add = subBuilder.addNode(QStringLiteral("intelli::test::NumberMathNode"));
+        auto& add = groupBuilder.addNode(QStringLiteral("intelli::test::NumberMathNode"));
 
         // connect values to sub graph
-        builder.connect(value1, intelli::PortIndex{0}, sub.graph, intelli::PortIndex{0});
-        builder.connect(value2, intelli::PortIndex{0}, sub.graph, intelli::PortIndex{1});
+        builder.connect(value1, intelli::PortIndex{0}, group.graph, intelli::PortIndex{0});
+        builder.connect(value2, intelli::PortIndex{0}, group.graph, intelli::PortIndex{1});
 
         // connect inputs to add node
-        subBuilder.connect(sub.input, intelli::PortIndex{0}, add, intelli::PortIndex{0});
-        subBuilder.connect(sub.input, intelli::PortIndex{1}, add, intelli::PortIndex{1});
+        groupBuilder.connect(group.input, intelli::PortIndex{0}, add, intelli::PortIndex{0});
+        groupBuilder.connect(group.input, intelli::PortIndex{1}, add, intelli::PortIndex{1});
 
         // connect results from add node to output
-        subBuilder.connect(add, intelli::PortIndex{0}, sub.output, intelli::PortIndex{0});
+        groupBuilder.connect(add, intelli::PortIndex{0}, group.output, intelli::PortIndex{0});
 
         // forward result of sub graph to display
-        builder.connect(sub.graph, intelli::PortIndex{0}, result, intelli::PortIndex{0});
+        builder.connect(group.graph, intelli::PortIndex{0}, result, intelli::PortIndex{0});
 
         // set values
         intelli::setNodeProperty(value1, QStringLiteral("value"), 16);
@@ -122,6 +126,7 @@ TEST(GraphBuilder, group)
         intelli::setNodeProperty(add, QStringLiteral("operation"), QStringLiteral("Plus"));
 
         resultNode = &result;
+        groupResultNode = &add;
     }
     catch(std::logic_error const& e)
     {
@@ -135,11 +140,14 @@ TEST(GraphBuilder, group)
 
     // access result
     ASSERT_NE(resultNode, nullptr);
+    ASSERT_NE(groupResultNode, nullptr);
 
-    auto resultData = resultNode->inData(intelli::PortIndex{0});
-    ASSERT_NE(resultData, nullptr);
-
-    auto resultValue = qobject_cast<intelli::DoubleData const*>(resultData.get());
+    auto resultValue = qobject_pointer_cast<intelli::DoubleData const>(resultNode->inData(intelli::PortIndex{0}));
     ASSERT_NE(resultValue, nullptr);
     EXPECT_EQ(resultValue->value(), 42);
+
+    // group node should have a value set
+    auto groupResultValue = qobject_pointer_cast<intelli::DoubleData const>(groupResultNode->outData(intelli::PortIndex{0}));
+    ASSERT_NE(groupResultValue, nullptr);
+    EXPECT_EQ(groupResultValue->value(), 42);
 }

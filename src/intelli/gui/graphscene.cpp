@@ -471,7 +471,7 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
     dialog.setWindowTitle(tr("New Node Caption"));
     dialog.setWindowIcon(gt::gui::icon::rename());
     dialog.setLabelText(tr("Enter a new caption for the grouped nodes"));
-    dialog.setInitialTextValue(QStringLiteral("Sub Graph"));
+    dialog.setInitialTextValue(QStringLiteral("Graph"));
     if (!dialog.exec()) return;
 
     QString const& groupNodeName = dialog.textValue();

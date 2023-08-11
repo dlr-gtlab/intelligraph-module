@@ -27,12 +27,12 @@ GraphBuilder::GraphBuilder(Graph& graph) :
     m_graph(&graph)
 { }
 
-GraphBuilder::SubGraphData
-GraphBuilder::addSubGraph(std::vector<PortData> const& inPorts,
+GraphBuilder::GraphData
+GraphBuilder::addGraph(std::vector<PortData> const& inPorts,
                           std::vector<PortData> const& outPorts) noexcept(false)
 {
     auto graph = std::make_unique<Graph>();
-    graph->initGroupProviders();
+    graph->initInputOutputProviders();
 
     auto* input = graph->inputProvider();
     auto* output = graph->outputProvider();

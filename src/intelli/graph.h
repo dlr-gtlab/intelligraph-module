@@ -26,10 +26,9 @@ class ConnectionGroup;
 class ModelAdapter;
 
 /**
- * @brief Evaluates the given graph. This call is blocking. If the graph is a
- * sub graph or is already active it cannot be evaluated and the function
- * returns false. The results can be access by iterating over each node and
- * accessing `outData`.
+ * @brief Evaluates the given graph. This call is blocking. If the graph is
+ * already active it cannot be evaluated and the false is returned. The results
+ * can be access by iterating over each node and accessing `outData`.
  * @param graph Graph to execute
  * @return Whether the graph was evaluated sucessfully
  */
@@ -117,8 +116,8 @@ public:
      * @brief Returns a list of all sub graphes (aka group nodes)
      * @return List of sub graphs
      */
-    QList<Graph*> subGraphs();
-    QList<Graph const*> subGraphs() const;
+    QList<Graph*> graphNodes();
+    QList<Graph const*> graphNodes() const;
     
     /**
      * @brief Returns the input provider of this graph. May be null if sub graph
@@ -224,13 +223,6 @@ public:
      */
     void clearModelAdapter(bool force = true);
 
-protected:
-
-    // keep graph model up date if a node or connection was restored
-    void onObjectDataMerged() override;
-
-    NodeDataPtr eval(PortId outId) override;
-
 signals:
 
     /**
@@ -253,12 +245,22 @@ signals:
      */
     void nodePositionChanged(NodeId nodeId, QPointF pos);
 
+protected:
+
+    // keep graph model up date if a node or connection was restored
+    void onObjectDataMerged() override;
+
 private:
 
     /**
-     * @brief initGroupProviders
+     * @brief initializes the input and output of this graph
      */
-    void initGroupProviders();
+    void initInputOutputProviders();
+
+private slots:
+
+    void forwardInData(PortIndex idx);
+    void forwardOutData(PortIndex idx);
 };
 
 } // namespace intelli

@@ -21,13 +21,15 @@ namespace intelli
 
 enum NodeFlag
 {
-    NoFlag      = 0x0,
-    // Indicates node is resizeable
-    Resizable   = 0x1,
-    // Indicates node caption should be hidden
-    HideCaption = 0x2,
-    // Indicates node is unique (i.e. only one instance should exist)
-    Unique      = 0x4
+    NoFlag        = 0,
+    /// Indicates node is resizeable
+    Resizable     = 1,
+    /// Indicates node caption should be hidden
+    HideCaption   = 2,
+    /// Indicates node is unique (i.e. only one instance should exist)
+    Unique        = 4,
+    /// Indicates that a node's eval method should not be triggered
+    DoNotEvaluate = 8
 };
 
 using NodeFlags  = int;
@@ -258,7 +260,7 @@ public:
      * @param idx Input port index
      * @return Node data. Null if idx is invalid
      */
-    NodeDataPtr inData(PortIndex idx);
+    NodeDataPtr const& inData(PortIndex idx);
 
     /**
      * @brief May be used to override the out data
@@ -273,7 +275,7 @@ public:
      * @param idx Output port index
      * @return Node data. Null if idx is invalid
      */
-    NodeDataPtr outData(PortIndex idx);
+    NodeDataPtr const& outData(PortIndex idx);
 
 public slots:
 

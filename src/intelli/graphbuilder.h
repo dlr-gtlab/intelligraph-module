@@ -46,9 +46,9 @@ public:
     ~GraphBuilder() = default;
 
     /**
-     * @brief The SubGraphData class
+     * Helper struct for accessing graph data
      */
-    struct SubGraphData
+    struct GraphData
     {
         Graph& graph;
         Node& input;
@@ -56,13 +56,13 @@ public:
     };
 
     /**
-     * @brief Adds a sub graph with the desired input and output nodes
+     * @brief Adds a graph with the desired input and output nodes
      * @param inPorts
      * @param outPorts
      * @return
      */
-    SubGraphData addSubGraph(std::vector<PortData> const& inPorts,
-                             std::vector<PortData> const& outPorts) noexcept(false);
+    GraphData addGraph(std::vector<PortData> const& inPorts,
+                       std::vector<PortData> const& outPorts) noexcept(false);
 
     /**
      * @brief Adds the node to the intelli graph beeing built. The node is not

@@ -78,7 +78,7 @@ updateNodeId(Graph const& graph, Node& node, NodeIdPolicy policy)
 }
 
 Graph::Graph() :
-    Node("Sub Graph")
+    Node("Graph")
 {
     // we create the node connections here in this group object. This way
     // merging mementos has the correct order (first the connections are removed
@@ -92,6 +92,10 @@ Graph::Graph() :
             adapter->mergeConnections(*this);
         }
     });
+
+    setNodeFlag(DoNotEvaluate);
+
+    connect(this, &Node::inputDataRecieved, this, &Graph::forwardInData);
 }
 
 Graph::~Graph()
@@ -191,16 +195,16 @@ Graph::findConnection(ConnectionId const& conId) const
 }
 
 QList<Graph*>
-Graph::subGraphs()
+Graph::graphNodes()
 {
     return findDirectChildren<Graph*>();
 }
 
 QList<Graph const*>
-Graph::subGraphs() const
+Graph::graphNodes() const
 {
     return gt::container_const_cast(
-        const_cast<Graph*>(this)->subGraphs()
+        const_cast<Graph*>(this)->graphNodes()
     );
 }
 
@@ -214,56 +218,6 @@ ModelAdapter const*
 Graph::findModelAdapter() const
 {
     return const_cast<Graph*>(this)->findModelAdapter();
-}
-
-inline auto
-makeTemporaryModelAdapter(Graph* this_)
-{
-    auto finally = gt::finally([=](){
-        this_->clearModelAdapter(false);
-    });
-
-    if (!this_->findModelAdapter())
-    {
-        this_->makeModelAdapter(DummyModel);
-        return finally;
-    }
-
-    finally.clear();
-    return finally;
-}
-
-Node::NodeDataPtr
-Graph::eval(PortId outId)
-{
-    auto out = outputProvider();
-    if (!out)
-    {
-        gtError().medium() << tr("Failed to evaluate group node! (Invalid output provider)");
-        return {};
-    };
-
-    auto in = inputProvider();
-    if (!in)
-    {
-        gtError().medium() << tr("Failed to evaluate group node! (Invalid input provider)");
-        return {};
-    }
-
-    // make sure a model exist and i cleaned up if needed
-    auto cleanup = makeTemporaryModelAdapter(this);
-    Q_UNUSED(cleanup);
-
-    // force subnodes to use a sequential execution
-    for (auto* node : nodes())
-    {
-        node->setExecutor(ExecutionMode::Sequential);
-    }
-
-    // this will trigger the evaluation
-    in->updateNode();
-
-    return nodeData(outId);
 }
 
 void
@@ -299,7 +253,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     // init input output providers of sub graph
     if (auto* graph = qobject_cast<Graph*>(node.get()))
     {
-        graph->initGroupProviders();
+        graph->initInputOutputProviders();
     }
 
     node->updateObjectName();
@@ -460,7 +414,7 @@ Graph::clearModelAdapter(bool force)
 
     delete adapter;
 
-    for (auto* graph : subGraphs())
+    for (auto* graph : graphNodes())
     {
         graph->clearModelAdapter(false);
     }
@@ -476,7 +430,7 @@ Graph::onObjectDataMerged()
 }
 
 void
-Graph::initGroupProviders()
+Graph::initInputOutputProviders()
 {
     auto* exstInput = findDirectChild<GroupInputProvider*>();
     auto input = exstInput ? nullptr : std::make_unique<GroupInputProvider>();
@@ -484,18 +438,40 @@ Graph::initGroupProviders()
     auto* exstOutput = findDirectChild<GroupOutputProvider*>();
     auto output = exstOutput ? nullptr : std::make_unique<GroupOutputProvider>();
 
-    appendNode(std::move(output));
-    appendNode(std::move(input));
+    if (!exstOutput) exstOutput = output.get();
+    connect(exstOutput, &Node::inputDataRecieved,
+            this, &Graph::forwardOutData, Qt::UniqueConnection);
+
+    if (input) appendNode(std::move(input));
+    if (output) appendNode(std::move(output));
+}
+
+void
+Graph::forwardInData(PortIndex idx)
+{
+    if (auto* input = inputProvider())
+    {
+        input->setOutData(idx, inData(idx));
+    }
+}
+
+void
+Graph::forwardOutData(PortIndex idx)
+{
+    if (auto* output = outputProvider())
+    {
+        setOutData(idx, output->inData(idx));
+    }
 }
 
 bool
 intelli::evaluate(Graph& graph)
 {
-    if (graph.inputProvider() || graph.outputProvider())
-    {
-        gtError() << QObject::tr("Cannot evaluate a sub graph!");
-        return false;
-    }
+//    if (graph.inputProvider() || graph.outputProvider())
+//    {
+//        gtError() << QObject::tr("Cannot evaluate a sub graph!");
+//        return false;
+//    }
 
     if (graph.findModelAdapter())
     {
@@ -544,12 +520,21 @@ intelli::evaluate(Graph& graph)
         auto* node = graph.findNode(nodeId);
         assert(node);
 
-        // set executor
-        node->setExecutor(ExecutionMode::Sequential);
-        // evaluate
-        node->updateNode();
-        // clear executor
-        node->setExecutor(ExecutionMode::None);
+        bool doEvaluate = !(node->nodeFlags() & DoNotEvaluate);
+        if (doEvaluate)
+        {
+            // set executor
+            node->setExecutor(ExecutionMode::Sequential);
+            // evaluate
+            node->updateNode();
+            // clear executor
+            node->setExecutor(ExecutionMode::None);
+        }
+        // sub graphs require a specialized evaluation
+        else if (auto* group = qobject_cast<Graph*>(node))
+        {
+            intelli::evaluate(*group);
+        }
 
         // propagate data to next nodes
         for (auto* connection : connectionGraph.at(nodeId))

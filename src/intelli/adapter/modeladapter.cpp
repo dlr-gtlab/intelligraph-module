@@ -44,10 +44,10 @@ ModelAdapter::ModelAdapter(Graph& parent,
         m->setNodeData(nodeId, QtNodes::NodeRole::Position, pos);
     });
 
-    // setup all other subgraphs
-    for (auto* graph : ig.subGraphs())
+    // setup all other graph nodes
+    for (auto* graph : ig.graphNodes())
     {
-        graph->initGroupProviders();
+        graph->initInputOutputProviders();
         graph->makeModelAdapter(DummyModel);
     }
 

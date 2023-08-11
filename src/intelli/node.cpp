@@ -315,10 +315,14 @@ Node::eval(PortId)
     return {};
 }
 
-Node::NodeDataPtr
+Node::NodeDataPtr const&
 Node::inData(PortIndex idx)
 {
-    if (idx >= pimpl->inData.size()) return {};
+    if (idx >= pimpl->inData.size())
+    {
+        static NodeDataPtr const dummy;
+        return dummy;
+    }
 
     gtTrace().verbose().nospace()
         << "### Getting in data:  '" << objectName()
@@ -330,7 +334,12 @@ Node::inData(PortIndex idx)
 bool
 Node::setInData(PortIndex idx, NodeDataPtr data)
 {
-    if (idx >= pimpl->inData.size()) return false;
+    if (idx >= pimpl->inData.size())
+    {
+        gtWarning() << tr("Setting in data failed! Port index %1 out of bounds!").arg(idx)
+                    << gt::brackets(caption());
+        return false;
+    }
 
     gtTrace().verbose().nospace()
         << "### Setting in data:  '" << objectName()
@@ -347,10 +356,14 @@ Node::setInData(PortIndex idx, NodeDataPtr data)
     return true;
 }
 
-Node::NodeDataPtr
+Node::NodeDataPtr const&
 Node::outData(PortIndex idx)
 {
-    if (idx >= pimpl->outData.size()) return {};
+    if (idx >= pimpl->outData.size())
+    {
+        static NodeDataPtr const dummy;
+        return dummy;
+    }
 
     gtTrace().verbose().nospace()
         << "### Getting out data: '" << objectName()
@@ -365,7 +378,12 @@ Node::outData(PortIndex idx)
 bool
 Node::setOutData(PortIndex idx, NodeDataPtr data)
 {
-    if (idx >= pimpl->outData.size()) return false;
+    if (idx >= pimpl->outData.size())
+    {
+        gtWarning() << tr("Setting out data failed! Port index %1 out of bounds!").arg(idx)
+                    << gt::brackets(caption());
+        return false;
+    }
 
     gtTrace().verbose().nospace()
         << "### Setting out data:  '" << objectName()
@@ -383,7 +401,7 @@ Node::setOutData(PortIndex idx, NodeDataPtr data)
 void
 Node::updateNode()
 {
-    if (pimpl->executor)
+    if (pimpl->executor && !(nodeFlags() & DoNotEvaluate))
     {
         pimpl->requiresEvaluation = false;
         // if we failed to start the evaluation the node needs to be evaluated
@@ -396,7 +414,7 @@ Node::updateNode()
 void
 Node::updatePort(PortIndex idx)
 {
-    if (pimpl->executor)
+    if (pimpl->executor && !(nodeFlags() & DoNotEvaluate))
     {
         pimpl->requiresEvaluation = false;
         // if we failed to start the evaluation the node needs to be evaluated
