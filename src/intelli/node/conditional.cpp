@@ -18,7 +18,7 @@
 using namespace intelli;
 
 #ifdef GTIG_DEVELOPER_PREVIEW
-GTIG_REGISTER_NODE(ConditionalNode, "Conditional")
+GT_INTELLI_REGISTER_NODE(ConditionalNode, "Conditional")
 #endif
 
 ConditionalNode::ConditionalNode() :

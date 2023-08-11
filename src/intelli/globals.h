@@ -83,6 +83,21 @@ using PortId    = StrongType<unsigned, struct PortId_, std::numeric_limits<unsig
 
 using Position = QPointF;
 
+/**
+ * Connection identificator that stores
+ * out `NodeId`, out `PortIndex`, in `NodeId`, in `PortIndex`
+ */
+struct ConnectionId
+{
+    NodeId outNodeId;
+    PortIndex outPortIndex;
+    NodeId inNodeId;
+    PortIndex inPortIndex;
+};
+
+/**
+ * @brief Denotes the possible port types
+ */
 enum PortType
 {
     In = 0,
@@ -90,6 +105,9 @@ enum PortType
     NoType
 };
 
+/**
+ * @brief Graph model policies
+ */
 enum ModelPolicy
 {
     /// Model is just a dummy and may be closed as soon as its
@@ -100,6 +118,9 @@ enum ModelPolicy
     ActiveModel = 1
 };
 
+/**
+ * @brief Policy for handling node id collisions, when appending a node to a graph
+ */
 enum NodeIdPolicy
 {
     /// Indictaes that the node id may be updated if it already exists
@@ -108,7 +129,10 @@ enum NodeIdPolicy
     KeepNodeId = 1
 };
 
-enum class ExecutorMode
+/**
+ * @brief Defines the execution modes
+ */
+enum class ExecutionMode
 {
     None = 0,
     Sequential,
@@ -182,6 +206,17 @@ constexpr inline bool
 operator/=(intelli::StrongType<T, Tag, InitVal> const& a,
            intelli::StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
 
+inline bool
+operator==(intelli::ConnectionId const& a, intelli::ConnectionId const& b)
+{
+    return a.outNodeId == b.outNodeId && a.outPortIndex == b.outPortIndex &&
+           a.inNodeId  == b.inNodeId  && a.inPortIndex  == b.inPortIndex;
+}
+
+inline bool
+operator!=(intelli::ConnectionId const& a, intelli::ConnectionId const& b) { return !(a == b); }
+
+
 template <typename T, typename Tag, T InitVal>
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s,
@@ -190,6 +225,18 @@ operator<<(gt::log::Stream& s,
     return s << t.value();
 }
 
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, intelli::ConnectionId const& con)
+{
+    {
+        gt::log::StreamStateSaver saver(s);
+        s.nospace()
+            << "NodeConnection["
+            << con.outNodeId << ":" << con.outPortIndex << "/"
+            << con.inNodeId  << ":" << con.inPortIndex  << "]";
+    }
+    return s;
+}
 namespace gt
 {
 

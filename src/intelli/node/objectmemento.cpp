@@ -10,7 +10,7 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(ObjectMementoNode, "Object");
+GT_INTELLI_REGISTER_NODE(ObjectMementoNode, "Object");
 
 ObjectMementoNode::ObjectMementoNode() :
     Node(tr("Memento Viewer"))
@@ -18,6 +18,8 @@ ObjectMementoNode::ObjectMementoNode() :
     setNodeFlag(Resizable);
     
     PortId inPort = addInPort(typeId<ObjectData>());
+
+    setNodeFlag(DoNotEvaluate);
 
     registerWidgetFactory([=]() {
         auto w = std::make_unique<GtCodeEditor>();

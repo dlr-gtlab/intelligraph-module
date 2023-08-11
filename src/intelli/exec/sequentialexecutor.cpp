@@ -31,7 +31,6 @@ SequentialExecutor::evaluateNode(Node& node)
 {
     if (!canEvaluateNode(node)) return false;
 
-
     auto const& outPorts = node.ports(PortType::Out);
     auto const& inPorts  = node.ports(PortType::In);
 
@@ -48,6 +47,7 @@ SequentialExecutor::evaluateNode(Node& node)
     if (outPorts.empty() && !inPorts.empty())
     {
         doEvaluateAndDiscard(node);
+        emit node.evaluated();
         return true;
     }
 
@@ -55,6 +55,8 @@ SequentialExecutor::evaluateNode(Node& node)
     for (PortIndex idx{0}; idx < outPorts.size(); ++idx)
     {
         bool success = doEvaluate(node, idx);
+
+        emit node.evaluated(idx);
 
         success ? emit node.outDataUpdated(idx) :
                   emit node.outDataInvalidated(idx);
@@ -74,6 +76,8 @@ SequentialExecutor::evaluatePort(Node& node, PortIndex idx)
     auto finally = gt::finally([this](){ m_evaluating = false; });
 
     bool success = doEvaluate(node, idx);
+
+    emit node.evaluated(idx);
 
     success ? emit node.outDataUpdated(idx) :
               emit node.outDataInvalidated(idx);

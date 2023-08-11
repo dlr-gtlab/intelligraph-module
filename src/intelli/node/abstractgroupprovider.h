@@ -36,9 +36,13 @@ public:
     AbstractGroupProvider(QString const& modelName) :
         DynamicNode(modelName, Type == PortType::In ? DynamicOutputOnly : DynamicInputOnly)
     {
+        // default init node id
         setId(NodeId{static_cast<int>(Type)});
+
         setFlag(UserDeletable, false);
-        setNodeFlag(NodeFlag::Unique, true);
+
+        setNodeFlag(Unique, true);
+        setNodeFlag(DoNotEvaluate, true);
 
         if (!gtApp || !gtApp->devMode()) setFlag(UserHidden, true);
 
@@ -94,12 +98,13 @@ private slots:
         if (!port) return;
 
         auto  idx    = portIndex(INVERSE_TYPE(), id);
-        auto* graphPort   = graph->port(graph->portId(Type, idx));
+        auto graphPortId = graph->portId(Type, idx);
+        auto* graphPort   = graph->port(graphPortId);
         if (!graphPort) return;
 
         graphPort->typeId = port->typeId;
         graphPort->caption = port->caption;
-        emit graph->portChanged(graphPort->id());
+        emit graph->portChanged(graphPortId);
     }
 
     void onPortDeleted(PortType, PortIndex idx)

@@ -15,15 +15,25 @@
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
 
-/// Helper macro for registering a node class. The node class does should not be
-/// registered additionally as a "data" object of your module
 #define GTIG_REGISTER_DATA(DATA) \
-struct RegisterDataOnce ## DATA { \
+    struct RegisterDataOnce ## DATA { \
+        [[deprecated("Use GT_INTELLI_REGISTER_DATA instead")]] \
         RegisterDataOnce ## DATA() { \
             intelli::NodeDataFactory::instance() \
                 .registerData(GT_METADATA(DATA)); \
-    } \
-}; \
+        } \
+    }; \
+    static RegisterDataOnce ## DATA s_register_data_once_##DATA;
+
+/// Helper macro for registering a node class. The node class does should not be
+/// registered additionally as a "data" object of your module
+#define GT_INTELLI_REGISTER_DATA(DATA) \
+    struct RegisterDataOnce ## DATA { \
+            RegisterDataOnce ## DATA() { \
+                intelli::NodeDataFactory::instance() \
+                    .registerData(GT_METADATA(DATA)); \
+        } \
+    }; \
     static RegisterDataOnce ## DATA s_register_data_once_##DATA;
 
 namespace intelli

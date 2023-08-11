@@ -27,11 +27,5 @@ void
 ConnectionGroup::onObjectDataMerged()
 {
     // the user may have deleted connections only, which must be restored
-    auto* ig = qobject_cast<Graph*>(parent());
-    if (!ig) return;
-
-    if (auto* adapter = ig->findModelAdapter())
-    {
-        adapter->mergeConnections(*ig);
-    }
+    emit mergeConnections();
 }

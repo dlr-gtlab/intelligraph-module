@@ -18,7 +18,7 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(FindDirectChildNode, "Object")
+GT_INTELLI_REGISTER_NODE(FindDirectChildNode, "Object")
 
 FindDirectChildNode::FindDirectChildNode() :
     Node(tr("Find Direct Child")),

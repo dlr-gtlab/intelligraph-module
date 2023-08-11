@@ -11,12 +11,20 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_NODE(ObjectSourceNode, "Object");
+GT_INTELLI_REGISTER_NODE(ObjectSourceNode, "Object");
+
+// helper method to fetch the correct root object for retrieve object link
+auto getObject = [](Node* node) -> GtObject* {
+    if (!gtApp) return node;
+    auto* project = gtApp->currentProject();
+    if (!project) return node;
+    return project;
+};
 
 ObjectSourceNode::ObjectSourceNode() :
     Node(tr("Object Source")),
     m_object("target", tr("Target"), tr("Target Object"),
-             gtApp->currentProject(), gtObjectFactory->knownClasses())
+             getObject(this), gtObjectFactory->knownClasses())
 {
     registerProperty(m_object);
     
@@ -42,6 +50,25 @@ ObjectSourceNode::ObjectSourceNode() :
 
     connect(&m_object, &GtAbstractProperty::changed,
             this, &ObjectSourceNode::updateNode);
+
+    // connect changed signals of linked object
+    connect(this, &Node::evaluated, this, [this](){
+
+        auto* object = m_object.linkedObject();
+
+        if (m_lastObject && m_lastObject != object)
+        {
+            this->disconnect(m_lastObject);
+        }
+
+        if (object)
+        {
+            connect(object, qOverload<GtObject*>(&GtObject::dataChanged),
+                    this, &Node::updateNode, Qt::UniqueConnection);
+            connect(object, qOverload<GtObject*, GtAbstractProperty*>(&GtObject::dataChanged),
+                    this, &Node::updateNode, Qt::UniqueConnection);
+        }
+    });
 }
 
 Node::NodeDataPtr
@@ -50,8 +77,6 @@ ObjectSourceNode::eval(PortId outId)
     if (m_out != outId) return {};
 
     auto* linkedObject = m_object.linkedObject();
-
-    if (linkedObject) linkedObject->disconnect(this);
 
     m_object.revert();
     
@@ -67,11 +92,6 @@ ObjectSourceNode::eval(PortId outId)
     }
 
     m_object.setVal(linkedObject->uuid());
-
-    connect(linkedObject, qOverload<GtObject*>(&GtObject::dataChanged),
-            this, &ObjectSourceNode::updateNode, Qt::UniqueConnection);
-    connect(linkedObject, qOverload<GtObject*, GtAbstractProperty*>(&GtObject::dataChanged),
-            this, &ObjectSourceNode::updateNode, Qt::UniqueConnection);
     
     return std::make_shared<ObjectData>(linkedObject);
 }

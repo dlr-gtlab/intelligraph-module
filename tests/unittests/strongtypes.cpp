@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
 
-#include "intelli/globals.h"
-TEST(StrogTypes, default_constructed_type_is_invalid)
+#include <intelli/globals.h>
+
+TEST(StrongTypes, default_constructed_type_is_invalid)
 {
     using namespace intelli;
 

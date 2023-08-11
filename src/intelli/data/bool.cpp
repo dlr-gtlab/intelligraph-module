@@ -14,7 +14,7 @@
 
 using namespace intelli;
 
-GTIG_REGISTER_DATA(BoolData)
+GT_INTELLI_REGISTER_DATA(BoolData)
 
 BoolData::BoolData(bool val) :
     TemplateData("boolean", val)

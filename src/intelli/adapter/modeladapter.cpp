@@ -44,10 +44,10 @@ ModelAdapter::ModelAdapter(Graph& parent,
         m->setNodeData(nodeId, QtNodes::NodeRole::Position, pos);
     });
 
-    // setup all other subgraphs
-    for (auto* graph : ig.subGraphs())
+    // setup all other graph nodes
+    for (auto* graph : ig.graphNodes())
     {
-        graph->initGroupProviders();
+        graph->initInputOutputProviders();
         graph->makeModelAdapter(DummyModel);
     }
 
@@ -76,7 +76,7 @@ ModelAdapter::~ModelAdapter()
 {
     for (auto* node : intelliGraph().nodes())
     {
-        node->setExecutor(ExecutorMode::None);
+        node->setExecutor(ExecutionMode::None);
     }
 }
 
@@ -124,7 +124,7 @@ ModelAdapter::mergeConnections(Graph& ig)
     {
         if (m_graphModel->nodeExists(con->outNodeId()) &&
             m_graphModel->nodeExists(con->inNodeId()) &&
-            !m_graphModel->connectionExists(con->connectionId()))
+            !m_graphModel->connectionExists(convert(con->connectionId())))
         {
             appendConnectionToModel(con);
         }
@@ -172,7 +172,7 @@ ModelAdapter::mergeGraphModel(Graph& ig)
 
         for (auto* con : qAsConst(nodeConnections))
         {
-            auto conId = con->connectionId();
+            auto conId = convert(con->connectionId());
             if (modelConnections.find(conId) == modelConnections.end())
             {
                 gtDebug().verbose().nospace()
@@ -191,7 +191,7 @@ ModelAdapter::appendNodeFromModel(QtNodes::NodeId nodeId)
 {
     auto& ig = intelliGraph();
 
-    auto* model = m_graphModel->delegateModel<GtIntelliGraphObjectModel>(nodeId);
+    auto* model = m_graphModel->delegateModel<ObjectModel>(nodeId);
     if (!model)
     {
         gtWarning() << tr("Unkown delegate model! (id: %1)").arg(nodeId);
@@ -250,7 +250,7 @@ ModelAdapter::appendConnectionFromModel(QtNodes::ConnectionId conId)
         this, &ModelAdapter::appendConnectionToModel
     );
     
-    if (auto* con = ig.appendConnection(std::make_unique<Connection>(conId)))
+    if (auto* con = ig.appendConnection(std::make_unique<Connection>(convert(conId))))
     {
         setupConnection(*con);
         return true;
@@ -282,7 +282,7 @@ ModelAdapter::appendNodeToModel(Node* node)
                               .arg(node->objectName()).arg(nodeId);
 
     // add delegate model
-    auto model = std::make_unique<GtIntelliGraphObjectModel>(*node);
+    auto model = std::make_unique<ObjectModel>(*node);
 
     if (m_graphModel->addNode(std::move(model), nodeId) == QtNodes::InvalidNodeId)
     {
@@ -313,7 +313,7 @@ ModelAdapter::appendConnectionToModel(Connection* connection)
 {
     if (!connection) return false;
 
-    auto conId = connection->connectionId();
+    auto conId = convert(connection->connectionId());
 
     // connnection may already exist
     if (m_graphModel->connectionExists(conId))
@@ -362,7 +362,7 @@ ModelAdapter::removeOrphans(Graph& ig)
         {
             foreach (auto* con, qAsConst(cons))
             {
-                if (con->connectionId() == conId) cons.removeOne(con);
+                if (convert(con->connectionId()) == conId) cons.removeOne(con);
             }
         }
     }
@@ -388,11 +388,13 @@ ModelAdapter::setupNode(Node& node)
         model->deleteNode(nodeId);
     });
     
-    connect(&node, &Node::nodeChanged, m_graphModel.get(),
-            [model = m_graphModel.get(),
-             nodeId = node.id()](){
+    auto updateGraphics = [model = m_graphModel.get(),
+                           nodeId = node.id()](){
         emit model->nodeUpdated(nodeId);
-    });
+    };
+
+    connect(&node, &Node::nodeChanged, m_graphModel.get(), updateGraphics);
+    connect(&node, &Node::portChanged, m_graphModel.get(), updateGraphics);
 
     auto updateNodeFlags = [model = m_graphModel.get(),
                             nodeId = node.id()](){
@@ -407,11 +409,10 @@ ModelAdapter::setupNode(Node& node)
     // init input output providers
     if (auto group = qobject_cast<Graph*>(&node))
     {
-        group->initGroupProviders();
         group->makeModelAdapter(DummyModel);
     }
 
-    node.setExecutor(ExecutorMode::Default);
+    node.setExecutor(ExecutionMode::Default);
 }
 
 void
@@ -419,7 +420,7 @@ ModelAdapter::setupConnection(Connection& connection)
 {
     connect(&connection, &QObject::destroyed,m_graphModel.get(),
             [model = m_graphModel.get(),
-             conId = connection.connectionId(),
+             conId = convert(connection.connectionId()),
              this](){
         auto ignore = ignoreSignal(
             model, &QtNodes::DataFlowGraphModel::connectionDeleted,
@@ -457,6 +458,6 @@ ModelAdapter::onConnectionDeletedFromModel(QtNodes::ConnectionId conId)
         gtApp->endCommand(cmd);
     });
 
-    ig.deleteConnection(conId);
+    ig.deleteConnection(convert(conId));
 }
 

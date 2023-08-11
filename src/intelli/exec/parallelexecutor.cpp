@@ -167,7 +167,7 @@ ParallelExecutor::evaluateNodeHelper(Node& node)
     {
         auto clone = gt::unique_qobject_cast<Node>(
             memento.toObject(*gtObjectFactory)
-            );
+        );
 
         if (!clone)
         {

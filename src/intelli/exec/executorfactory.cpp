@@ -16,18 +16,18 @@ using namespace intelli;
 
 // pseudo factory
 std::unique_ptr<intelli::Executor>
-ExecutorFactory::makeExecutor(ExecutorMode type)
+ExecutorFactory::makeExecutor(ExecutionMode type)
 {
     using namespace intelli;
 
     switch (type)
     {
-    case ExecutorMode::None:
+    case ExecutionMode::None:
         return {};
-    case ExecutorMode::Sequential:
+    case ExecutionMode::Sequential:
         return std::make_unique<SequentialExecutor>();
-    case ExecutorMode::Default:
-    case ExecutorMode::Parallel:
+    case ExecutionMode::Default:
+    case ExecutionMode::Parallel:
         return std::make_unique<ParallelExecutor>();
     }
 

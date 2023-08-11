@@ -23,6 +23,10 @@ public:
 
     Q_INVOKABLE ConnectionGroup(GtObject* parent = nullptr);
 
+signals:
+
+    void mergeConnections();
+
 protected:
 
     // keep graph model up date if a connection was restored

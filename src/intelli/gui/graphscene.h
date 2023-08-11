@@ -22,8 +22,6 @@ class GraphScene : public QtNodes::DataFlowGraphicsScene
 {
     Q_OBJECT
 
-    using ConnectionId = QtNodes::ConnectionId;
-
 public:
 
     GraphScene(Graph& graph);

@@ -46,7 +46,7 @@ void findConnections(Graph& graph, In const& in, Out& out)
 
     for (auto conId : in)
     {
-        if (auto* con = graph.findConnection(conId))
+        if (auto* con = graph.findConnection(convert(conId)))
         {
             out.push_back(con);
         }
@@ -229,6 +229,11 @@ GraphScene::pasteObjects()
 
     // append objects
     auto newNodeIds = m_data->appendObjects(objects->nodes, objects->connections);
+    if (newNodeIds.size() != objects->nodes.size())
+    {
+        gtWarning() << tr("Pasting selection failed!");
+        return;
+    }
 
     // set selection
     auto nodes = findItems<QtNodes::NodeGraphicsObject*>(*this);
@@ -312,9 +317,9 @@ GraphScene::onWidgetResized(QtNodes::NodeId nodeId, QSize size)
 
 void
 GraphScene::onPortContextMenu(QtNodes::NodeId nodeId,
-                                       QtNodes::PortType type,
-                                       QtNodes::PortIndex idx,
-                                       QPointF pos)
+                              QtNodes::PortType type,
+                              QtNodes::PortIndex idx,
+                              QPointF pos)
 {
     using PortType  = PortType;
     using PortIndex = PortIndex;
@@ -461,64 +466,59 @@ GraphScene::deleteNodes(const std::vector<QtNodes::NodeId>& nodeIds)
 void
 GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
 {
-    using PortIndex      = PortIndex;
-    using NodeId         = NodeId;
-    using QtNodeRole     = QtNodes::NodeRole;
-    using QtNodeDataType = QtNodes::NodeDataType;
-    using QtPortRole     = QtNodes::PortRole;
-    using QtConnectionId = QtNodes::ConnectionId;
-
     // get new node name
     GtInputDialog dialog(GtInputDialog::TextInput);
     dialog.setWindowTitle(tr("New Node Caption"));
     dialog.setWindowIcon(gt::gui::icon::rename());
     dialog.setLabelText(tr("Enter a new caption for the grouped nodes"));
-    dialog.setInitialTextValue(QStringLiteral("Sub Graph"));
+    dialog.setInitialTextValue(QStringLiteral("Graph"));
     if (!dialog.exec()) return;
 
     QString const& groupNodeName = dialog.textValue();
 
     // find input/output connections and connections to move
-    std::vector<QtConnectionId> connectionsInternal, connectionsIn, connectionsOut;
+    std::vector<ConnectionId> connectionsInternal, connectionsIn, connectionsOut;
 
     for (QtNodes::NodeId nodeId : selectedNodeIds)
     {
         if (!m_model->nodeExists(nodeId)) continue;
 
         // check connections
-        for (QtConnectionId conId : m_model->allConnectionIds(nodeId))
+        for (QtNodes::ConnectionId conId : m_model->allConnectionIds(nodeId))
         {
             if(std::find(selectedNodeIds.begin(), selectedNodeIds.end(),
                           conId.inNodeId) == selectedNodeIds.end())
             {
-                connectionsOut.push_back(conId);
+                connectionsOut.push_back(convert(conId));
                 continue;
             }
 
             if(std::find(selectedNodeIds.begin(), selectedNodeIds.end(),
                           conId.outNodeId) == selectedNodeIds.end())
             {
-                connectionsIn.push_back(conId);
+                connectionsIn.push_back(convert(conId));
                 continue;
             }
 
-            connectionsInternal.push_back(conId);
+            connectionsInternal.push_back(convert(conId));
         }
     }
 
     // find datatype for input provider
     std::vector<QString> dtypeIn;
-    for (QtConnectionId c : connectionsIn)
+    for (ConnectionId c : connectionsIn)
     {
         QtNodes::NodeId nodeId = c.inNodeId;
         QtNodes::PortIndex port = c.inPortIndex;
 
-        auto dtype = m_model->portData(nodeId, QtNodes::PortType::In, port, QtPortRole::DataType)
-                         .value<QtNodeDataType>();
+        auto dtype = m_model->portData(nodeId,
+                                       QtNodes::PortType::In, port,
+                                       QtNodes::PortRole::DataType)
+                         .value<QtNodes::NodeDataType>();
         
         if (!NodeDataFactory::instance().knownClass(dtype.id))
         {
-            auto const& name = m_model->nodeData(nodeId, QtNodeRole::Caption);
+            auto const& name = m_model->nodeData(nodeId, QtNodes::NodeRole::Caption);
             gtError() << tr("Failed to create group node! "
                             "(Unkown node datatype '%1', id: %2, port: %3)")
                              .arg(dtype.id, name.toString()).arg(port);
@@ -529,17 +529,19 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
 
     // find datatypes for output provider
     std::vector<QString> dtypeOut;
-    for (QtConnectionId c : connectionsOut)
+    for (ConnectionId c : connectionsOut)
     {
         QtNodes::NodeId nodeId = c.outNodeId;
         QtNodes::PortIndex port = c.outPortIndex;
 
-        auto dtype = m_model->portData(nodeId, QtNodes::PortType::Out, port, QtPortRole::DataType)
-                         .value<QtNodeDataType>();
+        auto dtype = m_model->portData(nodeId,
+                                       QtNodes::PortType::Out, port,
+                                       QtNodes::PortRole::DataType)
+                         .value<QtNodes::NodeDataType>();
         
         if (!NodeDataFactory::instance().knownClass(dtype.id))
         {
-            auto const& name = m_model->nodeData(nodeId, QtNodeRole::Caption);
+            auto const& name = m_model->nodeData(nodeId, QtNodes::NodeRole::Caption);
             gtError() << tr("Failed to create group node! "
                             "(Unkown node datatype '%1', id: %2, port: %3)")
                              .arg(dtype.id, name.toString()).arg(port);
@@ -555,7 +557,7 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
 
     // create group node
     auto* groupNode = static_cast<Graph*>(m_data->appendNode(std::make_unique<Graph>()));
-    if (!groupNode || !groupNode->findModelAdapter())
+    if (!groupNode)
     {
         gtError() << tr("Failed to create group node! (Invalid group node)");
         return;
@@ -564,7 +566,6 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
     groupNode->setCaption(groupNodeName);
 
     // setup input/output provider
-    groupNode->initGroupProviders();
     auto* inputProvider = groupNode->inputProvider();
     auto* outputProvider = groupNode->outputProvider();
 
@@ -667,25 +668,25 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
 
     // sort in and out going connections to avoid crossing connections
     auto const sortByNodePosition = [this](QtNodes::NodeId const& a, QtNodes::NodeId const& b){
-        return m_model->nodeData(a, QtNodeRole::Position).toPointF().y() >
-               m_model->nodeData(b, QtNodeRole::Position).toPointF().y();
+        return m_model->nodeData(a, QtNodes::NodeRole::Position).toPointF().y() >
+               m_model->nodeData(b, QtNodes::NodeRole::Position).toPointF().y();
     };
 
     std::sort(connectionsIn.begin(), connectionsIn.end(),
-              [=](QtConnectionId const& a, QtConnectionId const& b){
+              [=](ConnectionId const& a, ConnectionId const& b){
         return sortByNodePosition(a.inNodeId, b.inNodeId);
     });
     std::sort(connectionsIn.begin(), connectionsIn.end(),
-              [=](QtConnectionId const& a, QtConnectionId const& b){
+              [=](ConnectionId const& a, ConnectionId const& b){
         return sortByNodePosition(a.outNodeId, b.outNodeId);
     });
 
     // move input connections
     PortIndex index{0};
-    for (QtConnectionId conId : connectionsIn)
+    for (ConnectionId conId : connectionsIn)
     {
         // create connection in parent graph
-        QtConnectionId newCon = conId;
+        ConnectionId newCon = conId;
         newCon.inNodeId = groupNode->id();
         newCon.inPortIndex = index;
         m_data->appendConnection(std::make_unique<Connection>(newCon));

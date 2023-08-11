@@ -15,13 +15,13 @@
 namespace intelli
 {
 
-class NubmerDisplayNode : public Node
+class NumberDisplayNode : public Node
 {
     Q_OBJECT
 
 public:
 
-    Q_INVOKABLE NubmerDisplayNode();
+    Q_INVOKABLE NumberDisplayNode();
 };
 
 } // namespace intelli

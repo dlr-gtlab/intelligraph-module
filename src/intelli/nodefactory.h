@@ -14,10 +14,20 @@
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
 
+#define GTIG_REGISTER_NODE(CLASS, CAT) \
+    struct RegisterNodeOnce ## CLASS { \
+        [[deprecated("Use GT_INTELLI_REGISTER_NODE instead")]] \
+        RegisterNodeOnce ## CLASS() { \
+            intelli::NodeFactory::instance() \
+                .registerNode(GT_METADATA(CLASS), CAT); \
+        } \
+    }; \
+    static RegisterNodeOnce ## CLASS s_register_node_once_##CLASS;
+
 /// Helper macro for registering a node class. The node class does should not be
 /// listed as a "data" object of your module. Use an empty string to "hide"
 /// the node in the viewer.
-#define GTIG_REGISTER_NODE(CLASS, CAT) \
+#define GT_INTELLI_REGISTER_NODE(CLASS, CAT) \
     struct RegisterNodeOnce ## CLASS { \
         RegisterNodeOnce ## CLASS() { \
             intelli::NodeFactory::instance() \
