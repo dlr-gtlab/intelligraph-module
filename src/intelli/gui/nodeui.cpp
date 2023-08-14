@@ -57,18 +57,15 @@ NodeUI::NodeUI(Option option)
 
     addSingleAction(tr("Execute once"), executeOnce)
         .setIcon(gt::gui::icon::processRun())
-        .setVisibilityMethod(LOGICAL_AND(LOGICAL_AND(toNode, LOGICAL_NOT(toGraph)),
-                                         isEvaluationEnabled));
+        .setVisibilityMethod(LOGICAL_AND(toNode, isEvaluationEnabled));
 
     addSingleAction(tr("Set inactive"), toggleActive)
         .setIcon(gt::gui::icon::sleep())
-        .setVisibilityMethod(LOGICAL_AND(LOGICAL_AND(toNode, LOGICAL_NOT(toGraph)),
-                                         LOGICAL_AND(isEvaluationEnabled, isActive)));
+        .setVisibilityMethod(LOGICAL_AND(toNode, LOGICAL_AND(isEvaluationEnabled, isActive)));
 
     addSingleAction(tr("set active"), toggleActive)
         .setIcon(gt::gui::icon::sleepOff())
-        .setVisibilityMethod(LOGICAL_AND(LOGICAL_AND(toNode, LOGICAL_NOT(toGraph)),
-                                         LOGICAL_AND(isEvaluationEnabled, LOGICAL_NOT(isActive))));
+        .setVisibilityMethod(LOGICAL_AND(toNode, LOGICAL_AND(isEvaluationEnabled, LOGICAL_NOT(isActive))));
 
     addSeparator();
 
