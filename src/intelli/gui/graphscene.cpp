@@ -269,6 +269,21 @@ GraphScene::pasteObjects()
 }
 
 void
+GraphScene::keyPressEvent(QKeyEvent* event)
+{
+    QVector<Node*> nodes;
+    findNodes(*m_data, selectedNodes(), nodes);
+
+    if (nodes.size() != 1) return;
+
+    Node* node = nodes.front();
+    assert(event);
+    assert(node);
+
+    gt::gui::handleObjectKeyEvent(*event, *nodes.front());
+}
+
+void
 GraphScene::onNodePositionChanged(QtNodes::NodeId nodeId)
 {
     auto* node = m_data->findNode(NodeId::fromValue(nodeId));

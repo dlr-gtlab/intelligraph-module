@@ -55,16 +55,21 @@ NodeUI::NodeUI(Option option)
         return !(static_cast<Node*>(obj)->nodeFlags() & DoNotEvaluate);
     };
 
+    static auto const& categroy =  QStringLiteral("GtProcessDock");
+
     addSingleAction(tr("Execute once"), executeOnce)
         .setIcon(gt::gui::icon::processRun())
+        .setShortCut(gtApp->getShortCutSequence(QStringLiteral("runProcess"), categroy))
         .setVisibilityMethod(LOGICAL_AND(toNode, isEvaluationEnabled));
 
-    addSingleAction(tr("Set inactive"), toggleActive)
+    addSingleAction(tr("Set inactive"), setActive<false>)
         .setIcon(gt::gui::icon::sleep())
+        .setShortCut(gtApp->getShortCutSequence(QStringLiteral("skipProcess"), categroy))
         .setVisibilityMethod(LOGICAL_AND(toNode, LOGICAL_AND(isEvaluationEnabled, isActive)));
 
-    addSingleAction(tr("set active"), toggleActive)
+    addSingleAction(tr("set active"), setActive<true>)
         .setIcon(gt::gui::icon::sleepOff())
+        .setShortCut(gtApp->getShortCutSequence(QStringLiteral("unskipProcess"), categroy))
         .setVisibilityMethod(LOGICAL_AND(toNode, LOGICAL_AND(isEvaluationEnabled, LOGICAL_NOT(isActive))));
 
     addSeparator();
@@ -288,14 +293,15 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
 }
 
 void
-NodeUI::toggleActive(GtObject* obj)
+NodeUI::setActive(GtObject* obj, bool state)
 {
     auto* node = toNode(obj);
     if (!node) return;
 
-    node->setActive(!node->isActive());
+    auto wasActive = node->isActive();
+    node->setActive(state);
 
-    if (node->isActive()) node->updateNode();
+    if (!wasActive && node->isActive()) node->updateNode();
 }
 
 void

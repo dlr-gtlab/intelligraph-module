@@ -162,7 +162,13 @@ private:
      */
     static void deleteDynamicPort(Node* obj, PortType type, PortIndex idx);
 
-    static void toggleActive(GtObject* obj);
+    template <bool State>
+    static void setActive(GtObject* obj)
+    {
+        setActive(obj, State);
+    }
+
+    static void setActive(GtObject* obj, bool state);
 
     static void executeOnce(GtObject* obj);
 };
