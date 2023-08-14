@@ -25,6 +25,7 @@ class ObjectModel final : public QtNodes::NodeDelegateModel
 
 public:
 
+    using QtNodeEvalState    = QtNodes::NodeEvalState;
     using QtNodeFlag         = QtNodes::NodeFlag;
     using QtNodeFlags        = QtNodes::NodeFlags;
     using QtPortType         = QtNodes::PortType;
@@ -47,6 +48,8 @@ public:
     Node const* node() const { return m_node; }
 
     QtNodeFlags flags() const override;
+
+    QtNodeEvalState evalState() const override;
 
     bool captionVisible() const override;
 

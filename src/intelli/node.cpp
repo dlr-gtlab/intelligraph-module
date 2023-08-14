@@ -25,12 +25,15 @@ Node::Node(QString const& modelName, GtObject* parent) :
     setFlag(UserDeletable, true);
     setFlag(UserRenamable, false);
 
-    static const QString cat = QStringLiteral("Node");
-    registerProperty(pimpl->id, cat);
-    registerProperty(pimpl->posX, cat);
-    registerProperty(pimpl->posY, cat);
-    registerProperty(pimpl->sizeWidth, cat);
-    registerProperty(pimpl->sizeHeight, cat);
+    static const QString catData = QStringLiteral("Node-Data");
+    registerProperty(pimpl->id, catData);
+    registerProperty(pimpl->posX, catData);
+    registerProperty(pimpl->posY, catData);
+    registerProperty(pimpl->sizeWidth, catData);
+    registerProperty(pimpl->sizeHeight, catData);
+
+    static const QString catEval = QStringLiteral("Node-Evaluation");
+    registerProperty(pimpl->isActive, catEval);
 
     pimpl->id.setReadOnly(true);
     pimpl->posX.setReadOnly(true);
@@ -65,6 +68,19 @@ Node::setExecutor(ExecutionMode executorMode)
     }
     emit computingFinished();
     pimpl->executor = std::move(executor);
+}
+
+void
+Node::setActive(bool active)
+{
+    pimpl->isActive = active;
+    emit nodeStateChanged();
+}
+
+bool
+Node::isActive() const
+{
+    return pimpl->isActive;
 }
 
 void
@@ -401,7 +417,7 @@ Node::setOutData(PortIndex idx, NodeDataPtr data)
 void
 Node::updateNode()
 {
-    if (pimpl->executor && !(nodeFlags() & DoNotEvaluate))
+    if (pimpl->executor && !(nodeFlags() & DoNotEvaluate) && pimpl->isActive)
     {
         pimpl->requiresEvaluation = false;
         // if we failed to start the evaluation the node needs to be evaluated
@@ -414,7 +430,7 @@ Node::updateNode()
 void
 Node::updatePort(PortIndex idx)
 {
-    if (pimpl->executor && !(nodeFlags() & DoNotEvaluate))
+    if (pimpl->executor && !(nodeFlags() & DoNotEvaluate) && pimpl->isActive)
     {
         pimpl->requiresEvaluation = false;
         // if we failed to start the evaluation the node needs to be evaluated

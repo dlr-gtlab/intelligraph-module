@@ -112,10 +112,19 @@ ObjectModel::flags() const
         flags |= QtNodeFlag::Deletable;
     }
 
-    m_evaluating ? flags |=  QtNodeFlag::Evaluating :
-                   flags &= ~QtNodeFlag::Evaluating;
-
     return flags;
+}
+
+ObjectModel::QtNodeEvalState
+ObjectModel::evalState() const
+{
+    if (m_node)
+    {
+        if (m_evaluating) return QtNodes::NodeEvalState::Evaluating;
+        if (!m_node->isActive()) return QtNodes::NodeEvalState::Paused;
+    }
+
+    return QtNodes::NodeDelegateModel::evalState();
 }
 
 bool
