@@ -124,6 +124,18 @@ public:
     void setExecutor(ExecutionMode executorMode);
 
     /**
+     * @brief Setter for the automatic node evaluation flag
+     * @param active Whether to enable automatic node evaluation
+     */
+    void setActive(bool active = true);
+
+    /**
+     * @brief Returns true if automatic node evaluation is active
+     * @return is active
+     */
+    bool isActive() const;
+
+    /**
      * @brief Sets the node id. handle with care, as this may result in
      * undesired behaviour. Will be saved persistently.
      * @param id New id
@@ -332,6 +344,11 @@ signals:
      * @brief Emitted once the node evaluation has finished
      */
     void computingFinished();
+
+    /**
+     * @brief stateChanged
+     */
+    void nodeStateChanged();
 
     /**
      * @brief Emitted if node specific data has changed (cpation, number of

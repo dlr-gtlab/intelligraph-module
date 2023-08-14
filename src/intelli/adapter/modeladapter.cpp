@@ -396,15 +396,17 @@ ModelAdapter::setupNode(Node& node)
     connect(&node, &Node::nodeChanged, m_graphModel.get(), updateGraphics);
     connect(&node, &Node::portChanged, m_graphModel.get(), updateGraphics);
 
-    auto updateNodeFlags = [model = m_graphModel.get(),
+    auto updateNodeState = [model = m_graphModel.get(),
                             nodeId = node.id()](){
-        emit model->nodeFlagsUpdated(nodeId);
+        emit model->nodeEvalStateUpdated(nodeId);
     };
-    
+
+    connect(&node, &Node::nodeStateChanged,
+            m_graphModel.get(), updateNodeState);
     connect(&node, &Node::computingStarted,
-            m_graphModel.get(), updateNodeFlags);
+            m_graphModel.get(), updateNodeState);
     connect(&node, &Node::computingFinished,
-            m_graphModel.get(), updateNodeFlags);
+            m_graphModel.get(), updateNodeState);
 
     // init input output providers
     if (auto group = qobject_cast<Graph*>(&node))

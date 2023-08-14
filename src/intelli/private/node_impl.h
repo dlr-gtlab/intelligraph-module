@@ -15,6 +15,7 @@
 
 #include <gt_intproperty.h>
 #include <gt_doubleproperty.h>
+#include <gt_boolproperty.h>
 #include <gt_exceptions.h>
 
 namespace intelli
@@ -37,29 +38,40 @@ struct NodeImpl
     NodeImpl(QString const& name) : modelName(name) {}
 
     /// node id
-    GtIntProperty id{"id",
-                     QObject::tr("Node Id"),
-                     QObject::tr("Node Id")};
+    GtIntProperty id{
+        "id", QObject::tr("Node Id"), QObject::tr("Node Id")
+    };
 
     /// x position of node
-    GtDoubleProperty posX{"posX",
-                          QObject::tr("x-Pos"),
-                          QObject::tr("x-Position")};
+    GtDoubleProperty posX{
+        "posX", QObject::tr("x-Pos"), QObject::tr("x-Position")
+    };
     /// y position of node
-    GtDoubleProperty posY{"posY",
-                          QObject::tr("y-Pos"),
-                          QObject::tr("y-Position")};
+    GtDoubleProperty posY{
+        "posY", QObject::tr("y-Pos"), QObject::tr("y-Position")
+    };
 
     /// width of node widget
-    GtIntProperty sizeWidth{"sizeWidth",
-                            QObject::tr("Size width"),
-                            QObject::tr("Size width"),
-                            GtUnit::None, -1};
+    GtIntProperty sizeWidth{
+        "sizeWidth",
+        QObject::tr("Size width"),
+        QObject::tr("Size width"),
+        GtUnit::None, -1
+    };
     /// height of node widget
-    GtIntProperty sizeHeight{"sizeHeight",
-                             QObject::tr("Size height"),
-                             QObject::tr("Size height"),
-                             GtUnit::None, -1};
+    GtIntProperty sizeHeight{
+         "sizeHeight",
+         QObject::tr("Size height"),
+         QObject::tr("Size height"),
+         GtUnit::None, -1
+    };
+    /// whether node is active
+    GtBoolProperty isActive{
+         "isActive",
+         QObject::tr("Is Node active"),
+         QObject::tr("Is automatic Node evaluation active"),
+         true
+    };
 
     /// caption string
     QString modelName;

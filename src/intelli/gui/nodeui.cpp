@@ -35,13 +35,42 @@ using namespace intelli;
 
 NodeUI::NodeUI(Option option)
 {
+    setObjectName(QStringLiteral("IntelliGraphNodeUI"));
+
     static auto const LOGICAL_AND = [](auto fA, auto fB){
         return [a = std::move(fA), b = std::move(fB)](GtObject* obj){
             return a(obj) && b(obj);
         };
     };
+    static auto const LOGICAL_NOT = [](auto fA){
+        return [a = std::move(fA)](GtObject* obj){
+            return !a(obj);
+        };
+    };
 
-    setObjectName(QStringLiteral("IntelliGraphNodeUI"));
+    auto const isActive = [](GtObject* obj){
+        return static_cast<Node*>(obj)->isActive();
+    };
+    auto const isEvaluationEnabled = [](GtObject* obj){
+        return !(static_cast<Node*>(obj)->nodeFlags() & DoNotEvaluate);
+    };
+
+    addSingleAction(tr("Execute once"), executeOnce)
+        .setIcon(gt::gui::icon::processRun())
+        .setVisibilityMethod(LOGICAL_AND(LOGICAL_AND(toNode, LOGICAL_NOT(toGraph)),
+                                         isEvaluationEnabled));
+
+    addSingleAction(tr("Set inactive"), toggleActive)
+        .setIcon(gt::gui::icon::sleep())
+        .setVisibilityMethod(LOGICAL_AND(LOGICAL_AND(toNode, LOGICAL_NOT(toGraph)),
+                                         LOGICAL_AND(isEvaluationEnabled, isActive)));
+
+    addSingleAction(tr("set active"), toggleActive)
+        .setIcon(gt::gui::icon::sleepOff())
+        .setVisibilityMethod(LOGICAL_AND(LOGICAL_AND(toNode, LOGICAL_NOT(toGraph)),
+                                         LOGICAL_AND(isEvaluationEnabled, LOGICAL_NOT(isActive))));
+
+    addSeparator();
 
     addSingleAction(tr("Rename Node"), renameNode)
         .setIcon(gt::gui::icon::rename())
@@ -259,4 +288,30 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
     if (!node) return;
 
     node->removePort(node->portId(type, idx));
+}
+
+void
+NodeUI::toggleActive(GtObject* obj)
+{
+    auto* node = toNode(obj);
+    if (!node) return;
+
+    node->setActive(!node->isActive());
+
+    if (node->isActive()) node->updateNode();
+}
+
+void
+NodeUI::executeOnce(GtObject* obj)
+{
+    auto* node = toNode(obj);
+    if (!node) return;
+
+    auto cleanup = gt::finally([node, old = node->isActive()](){
+        node->setActive(old);
+    });
+    Q_UNUSED(cleanup);
+
+    node->setActive();
+    node->updateNode();
 }

@@ -161,6 +161,10 @@ private:
      * @param idx
      */
     static void deleteDynamicPort(Node* obj, PortType type, PortIndex idx);
+
+    static void toggleActive(GtObject* obj);
+
+    static void executeOnce(GtObject* obj);
 };
 
 } // namespace intelli
