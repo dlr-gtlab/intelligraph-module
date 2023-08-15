@@ -59,25 +59,40 @@ public:
      * @brief Adds a graph with the desired input and output nodes
      * @param inPorts
      * @param outPorts
+     * @param pos Optional: position in graph
      * @return
      */
     GraphData addGraph(std::vector<PortData> const& inPorts,
-                       std::vector<PortData> const& outPorts) noexcept(false);
+                       std::vector<PortData> const& outPorts,
+                       Position pos = {}) noexcept(false);
 
     /**
      * @brief Adds the node to the intelli graph beeing built. The node is not
      * connected by default. If the node cannot be appended (e.g. becuase the
      * node is not registered, an exception is thrown)
      * @param className Class name to create node from
+     * @param pos Optional: position in graph
      * @return Pointer to node (never null)
      */
     Node& addNode(QString const& className, Position pos = {}) noexcept(false);
+
+    /**
+     * @brief Overloads. Deduces class name by template type.
+     * @param pos Optional: position in graph
+     * @return Pointer to node (never null)
+     */
+    template <typename T>
+    Node& addNode(Position pos = {}) noexcept(false)
+    {
+        return addNode(QString{T::staticMetaObject::className()}, pos);
+    }
 
     /**
      * @brief Overload. Adds the node to the intelli graph beeing built. The
      * node is not connected by default. If the node cannot be appended (e.g.
      * because it is null, an exception is thrown)
      * @param node Node to append
+     * @param pos Optional: position in graph
      * @return Pointer to node (never null)
      */
     template <typename Derived,
