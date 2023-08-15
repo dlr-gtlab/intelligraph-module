@@ -51,8 +51,8 @@ public:
     struct GraphData
     {
         Graph& graph;
-        Node& input;
-        Node& output;
+        Node& inNode;
+        Node& outNode;
     };
 
     /**

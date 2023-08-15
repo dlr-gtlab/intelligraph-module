@@ -118,10 +118,16 @@ ObjectModel::flags() const
 ObjectModel::QtNodeEvalState
 ObjectModel::evalState() const
 {
-    if (m_node)
+    if (!m_node) return QtNodes::NodeDelegateModel::evalState();
+
+    if (m_evaluating)
     {
-        if (m_evaluating) return QtNodes::NodeEvalState::Evaluating;
-        if (!m_node->isActive()) return QtNodes::NodeEvalState::Paused;
+        return QtNodes::NodeEvalState::Evaluating;
+    }
+
+    if (!m_node->isActive())
+    {
+        return QtNodes::NodeEvalState::Paused;
     }
 
     return QtNodes::NodeDelegateModel::evalState();

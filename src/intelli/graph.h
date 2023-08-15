@@ -250,6 +250,8 @@ protected:
     // keep graph model up date if a node or connection was restored
     void onObjectDataMerged() override;
 
+    bool triggerEvaluation(PortIndex idx = PortIndex{}) override;
+
 private:
 
     /**
@@ -259,7 +261,6 @@ private:
 
 private slots:
 
-    void forwardInData(PortIndex idx);
     void forwardOutData(PortIndex idx);
 };
 

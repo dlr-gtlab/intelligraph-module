@@ -31,41 +31,50 @@
 #include <QFileInfo>
 #include <QFile>
 
+
+using BoolObjectMethod = std::function<bool (GtObject*)>;
+
+template <typename Functor>
+inline BoolObjectMethod NOT(Functor fA)
+{
+    return [a = std::move(fA)](GtObject* obj){
+        return !a(obj);
+    };
+}
+template <typename Functor>
+inline BoolObjectMethod operator+(BoolObjectMethod fA, Functor fOther)
+{
+    return [a = std::move(fA), b = std::move(fOther)](GtObject* obj){
+        return a(obj) && b(obj);
+    };
+}
+
 using namespace intelli;
 
 NodeUI::NodeUI(Option option)
 {
     setObjectName(QStringLiteral("IntelliGraphNodeUI"));
 
-    static auto const LOGICAL_AND = [](auto fA, auto fB){
-        return [a = std::move(fA), b = std::move(fB)](GtObject* obj){
-            return a(obj) && b(obj);
-        };
-    };
-    static auto const LOGICAL_NOT = [](auto fA){
-        return [a = std::move(fA)](GtObject* obj){
-            return !a(obj);
-        };
-    };
-
     auto const isActive = [](GtObject* obj){
         return static_cast<Node*>(obj)->isActive();
     };
-    auto const isEvaluationEnabled = [](GtObject* obj){
-        return !(static_cast<Node*>(obj)->nodeFlags() & DoNotEvaluate);
-    };
 
-    addSingleAction(tr("Execute once"), executeOnce)
+    static auto const& categroy =  QStringLiteral("GtProcessDock");
+
+    addSingleAction(tr("Execute once"), executeNode)
         .setIcon(gt::gui::icon::processRun())
-        .setVisibilityMethod(LOGICAL_AND(toNode, isEvaluationEnabled));
+        .setShortCut(gtApp->getShortCutSequence(QStringLiteral("runProcess"), categroy))
+        .setVisibilityMethod(toNode);
 
-    addSingleAction(tr("Set inactive"), toggleActive)
+    addSingleAction(tr("Set inactive"), setActive<false>)
         .setIcon(gt::gui::icon::sleep())
-        .setVisibilityMethod(LOGICAL_AND(toNode, LOGICAL_AND(isEvaluationEnabled, isActive)));
+        .setShortCut(gtApp->getShortCutSequence(QStringLiteral("skipProcess"), categroy))
+        .setVisibilityMethod(toNode + isActive);
 
-    addSingleAction(tr("set active"), toggleActive)
+    addSingleAction(tr("set active"), setActive<true>)
         .setIcon(gt::gui::icon::sleepOff())
-        .setVisibilityMethod(LOGICAL_AND(toNode, LOGICAL_AND(isEvaluationEnabled, LOGICAL_NOT(isActive))));
+        .setShortCut(gtApp->getShortCutSequence(QStringLiteral("unskipProcess"), categroy))
+        .setVisibilityMethod(toNode + NOT(isActive));
 
     addSeparator();
 
@@ -98,11 +107,11 @@ NodeUI::NodeUI(Option option)
 
     addSingleAction(tr("Add In Port"), addInPort)
         .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(LOGICAL_AND(toDynamicNode, hasInputPorts));
+        .setVisibilityMethod(toDynamicNode + hasInputPorts);
 
     addSingleAction(tr("Add Out Port"), addOutPort)
         .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(LOGICAL_AND(toDynamicNode, hasOutputPorts));
+        .setVisibilityMethod(toDynamicNode + hasOutputPorts);
 
     /** PORT ACTIONS **/
 
@@ -156,6 +165,12 @@ NodeUI::toNode(GtObject* obj)
     return qobject_cast<Node*>(obj);
 }
 
+DynamicNode*
+NodeUI::toDynamicNode(GtObject* obj)
+{
+    return qobject_cast<DynamicNode*>(obj);;
+}
+
 bool
 NodeUI::isDynamicPort(GtObject* obj, PortType type, PortIndex idx)
 {
@@ -170,12 +185,6 @@ bool
 NodeUI::isDynamicNode(GtObject* obj, PortType, PortIndex)
 {
     return toDynamicNode(obj);
-}
-
-DynamicNode*
-NodeUI::toDynamicNode(GtObject* obj)
-{
-    return qobject_cast<DynamicNode*>(obj);;
 }
 
 bool
@@ -208,6 +217,50 @@ NodeUI::renameNode(GtObject* obj)
             node->setCaption(text);
         }
     }
+}
+
+void
+NodeUI::executeNode(GtObject* obj)
+{
+    auto* node = toNode(obj);
+    if (!node) return;
+
+    auto cleanup = gt::finally([node, old = node->isActive()](){
+        node->setActive(old);
+    });
+    Q_UNUSED(cleanup);
+
+    node->setActive();
+    node->updateNode();
+}
+
+void
+NodeUI::addInPort(GtObject* obj)
+{
+    auto* node = toDynamicNode(obj);
+    if (!node) return;
+
+    auto id = node->addInPort(typeId<DoubleData>());
+    gtInfo().verbose() << tr("Added dynamic in port with id") << id;
+}
+
+void
+NodeUI::addOutPort(GtObject* obj)
+{
+    auto* node = toDynamicNode(obj);
+    if (!node) return;
+
+    auto id = node->addOutPort(typeId<DoubleData>());
+    gtInfo().verbose() << tr("Added dynamic out port with id") << id;
+}
+
+void
+NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
+{
+    auto* node = toDynamicNode(obj);
+    if (!node) return;
+
+    node->removePort(node->portId(type, idx));
 }
 
 void
@@ -259,56 +312,14 @@ NodeUI::loadNodeGraph(GtObject* obj)
 }
 
 void
-NodeUI::addInPort(GtObject* obj)
-{
-    auto* node = toDynamicNode(obj);
-    if (!node) return;
-
-    auto id = node->addInPort(typeId<DoubleData>());
-    gtInfo().verbose() << tr("Added dynamic in port with id") << id;
-}
-
-void
-NodeUI::addOutPort(GtObject* obj)
-{
-    auto* node = toDynamicNode(obj);
-    if (!node) return;
-
-    auto id = node->addOutPort(typeId<DoubleData>());
-    gtInfo().verbose() << tr("Added dynamic out port with id") << id;
-}
-
-void
-NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
-{
-    auto* node = toDynamicNode(obj);
-    if (!node) return;
-
-    node->removePort(node->portId(type, idx));
-}
-
-void
-NodeUI::toggleActive(GtObject* obj)
+NodeUI::setActive(GtObject* obj, bool state)
 {
     auto* node = toNode(obj);
     if (!node) return;
 
-    node->setActive(!node->isActive());
+    auto wasActive = node->isActive();
 
-    if (node->isActive()) node->updateNode();
-}
+    node->setActive(state);
 
-void
-NodeUI::executeOnce(GtObject* obj)
-{
-    auto* node = toNode(obj);
-    if (!node) return;
-
-    auto cleanup = gt::finally([node, old = node->isActive()](){
-        node->setActive(old);
-    });
-    Q_UNUSED(cleanup);
-
-    node->setActive();
-    node->updateNode();
+    if (!wasActive && node->isActive()) node->updateNode();
 }

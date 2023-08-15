@@ -36,6 +36,10 @@ public slots:
 
     void pasteObjects();
 
+protected:
+
+    void keyPressEvent(QKeyEvent* event) override;
+
 private:
 
     QPointer<Graph> m_data = nullptr;

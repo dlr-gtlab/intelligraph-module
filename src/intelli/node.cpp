@@ -49,6 +49,9 @@ Node::Node(QString const& modelName, GtObject* parent) :
             this, &Node::nodeChanged);
     connect(this, &QObject::objectNameChanged,
             this, &Node::nodeChanged);
+
+    connect(&pimpl->isActive, &GtAbstractProperty::changed,
+            this, &Node::nodeStateChanged);
 }
 
 Node::~Node() = default;
@@ -331,6 +334,22 @@ Node::eval(PortId)
     return {};
 }
 
+bool
+Node::triggerEvaluation(PortIndex idx)
+{
+    if (!pimpl->executor || !isActive())
+    {
+        return false;
+    }
+
+    // if we failed to start the evaluation the node needs to be evaluated
+    // at a later point
+    bool startedEval = idx != invalid<PortIndex>() ?
+                           pimpl->executor->evaluatePort(*this, idx) :
+                           pimpl->executor->evaluateNode(*this);
+    return startedEval;
+}
+
 Node::NodeDataPtr const&
 Node::inData(PortIndex idx)
 {
@@ -417,27 +436,15 @@ Node::setOutData(PortIndex idx, NodeDataPtr data)
 void
 Node::updateNode()
 {
-    if (pimpl->executor && !(nodeFlags() & DoNotEvaluate) && pimpl->isActive)
-    {
-        pimpl->requiresEvaluation = false;
-        // if we failed to start the evaluation the node needs to be evaluated
-        // at a later point
-        bool successfullyStarted = pimpl->executor->evaluateNode(*this);
-        pimpl->requiresEvaluation = !successfullyStarted;
-    }
+    pimpl->requiresEvaluation = false;
+    pimpl->requiresEvaluation = !triggerEvaluation();
 }
 
 void
 Node::updatePort(PortIndex idx)
 {
-    if (pimpl->executor && !(nodeFlags() & DoNotEvaluate) && pimpl->isActive)
-    {
-        pimpl->requiresEvaluation = false;
-        // if we failed to start the evaluation the node needs to be evaluated
-        // at a later point
-        bool successfullyStarted = pimpl->executor->evaluatePort(*this, idx);
-        pimpl->requiresEvaluation = !successfullyStarted;
-    }
+    pimpl->requiresEvaluation = false;
+    pimpl->requiresEvaluation = !triggerEvaluation(idx);
 }
 
 void

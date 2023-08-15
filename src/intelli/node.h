@@ -27,9 +27,7 @@ enum NodeFlag
     /// Indicates node caption should be hidden
     HideCaption   = 2,
     /// Indicates node is unique (i.e. only one instance should exist)
-    Unique        = 4,
-    /// Indicates that a node's eval method should not be triggered
-    DoNotEvaluate = 8
+    Unique        = 4
 };
 
 using NodeFlags  = int;
@@ -411,6 +409,17 @@ protected:
      * @return Node data on the output port
      */
     virtual NodeDataPtr eval(PortId outId);
+
+    /**
+     * @brief Triggers the evaluation of the node. It is not intended to
+     * actually do the evaluation (use `eval` instead), but to handle/manage the
+     * execution of the node. Should only be overriden in rare cases.
+     * @param idx Port index to evaluate. If port index is invalid, the whole
+     * node (i.e. all ports) should be evaluated
+     * @return Returns true if the evaluation was triggered sucessfully.
+     * (node may evaluated non-blocking)
+     */
+    virtual bool triggerEvaluation(PortIndex idx = PortIndex{});
 
     /**
      * @brief Should be called within the constructor. Used to register

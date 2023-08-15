@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nodes can be unique effectively existing only once within an intelli graph. Unique nodes will be highlighted - #18
 - Nodes will now remember and resotre their size - #11
 - Nodes will now have the same context menu as in the explorer. Additional actions for grouping oder deleting selected nodes have been added. In addition ports can have their own context menus - #19
+- Node UI actions may be triggered using the registered shortcuts inside the graph view - #24
 - `intelli::DynamicNode` that allows the user to add/remove ports at runtime and store added ports persistently - #21
+- Nodes can be toggled between automatic and manual evaluation - #27
 
 ### Changed
 - Lots of internal refactoring, better stability and ease of use - #8

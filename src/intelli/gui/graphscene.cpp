@@ -36,6 +36,7 @@
 #include <QGraphicsItem>
 #include <QClipboard>
 #include <QApplication>
+#include <QKeyEvent>
 
 using namespace intelli;
 
@@ -266,6 +267,23 @@ GraphScene::pasteObjects()
     clearSelection();
     for (auto* item : qAsConst(nodes)) item->setSelected(true);
     for (auto* item : qAsConst(connections)) item->setSelected(true);
+}
+
+void
+GraphScene::keyPressEvent(QKeyEvent* event)
+{
+    QVector<Node*> nodes;
+    findNodes(*m_data, selectedNodes(), nodes);
+
+    if (nodes.size() != 1) return DataFlowGraphicsScene::keyPressEvent(event);
+
+    Node* node = nodes.front();
+    assert(event);
+    assert(node);
+
+    gt::gui::handleObjectKeyEvent(*event, *nodes.front());
+
+    if (!event->isAccepted()) DataFlowGraphicsScene::keyPressEvent(event);
 }
 
 void

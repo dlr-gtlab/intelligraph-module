@@ -19,7 +19,7 @@ ObjectMementoNode::ObjectMementoNode() :
     
     PortId inPort = addInPort(typeId<ObjectData>());
 
-    setNodeFlag(DoNotEvaluate);
+//    setNodeFlag(DoNotEvaluate);
 
     registerWidgetFactory([=]() {
         auto w = std::make_unique<GtCodeEditor>();
@@ -38,7 +38,7 @@ ObjectMementoNode::ObjectMementoNode() :
             }
         };
         
-        connect(this, &Node::inputDataRecieved, w.get(), update);
+        connect(this, &Node::evaluated, w.get(), update);
         update();
 
         return w;

@@ -63,12 +63,12 @@ public:
     static Node* toNode(GtObject* obj);
 
     /**
-     * @brief Returns the list of all port actions registered
-     * @return
+     * @brief Casts the object to an intelligraph object. Can be used for
+     * validation
+     * @param obj Object to check
+     * @return intelligraph object (may be null)
      */
-    QList<PortUIAction> const& portActions() const { return m_portActions; }
-
-    /** DYNAMIC NODES **/
+    static Graph* toGraph(GtObject* obj);
 
     /**
      * @brief Casts the object to a dynamic node object. Can be used for
@@ -79,66 +79,16 @@ public:
     static DynamicNode* toDynamicNode(GtObject* obj);
 
     /**
-     * @brief Similar to `toDynamicNode`. Can be used for validation of a port
-     * action
-     * @param obj Object to cast
-     * @return node object (may be null)
-     */
-    static bool isDynamicPort(GtObject* obj, PortType type, PortIndex idx);
-    static bool isDynamicNode(GtObject* obj, PortType, PortIndex);
-
-protected:
-
-    /**
-     * @brief Adds a port action and returns a reference to the added action,
-     * which can be used to customize the action. Reference may become invalid
-     * if another port action is added.
-     * @param actionText Text of action
-     * @param actionMethod Method to execute
-     * @return Reference to port action
-     */
-    PortUIAction& addPortAction(QString const& actionText,
-                                    PortActionFunction actionMethod);
-
-private:
-
-    /// List of custom port actions
-    QList<PortUIAction> m_portActions;
-
-    /**
-     * @brief Casts the object to an intelligraph object. Can be used for
-     * validation
-     * @param obj Object to check
-     * @return intelligraph object ((may be null))
-     */
-    static Graph* toGraph(GtObject* obj);
-
-    /**
      * @brief Prompts the user to rename the node
      * @param obj Object to rename
      */
     static void renameNode(GtObject* obj);
 
     /**
-     * @brief Clears the intelli graph (i.e. removes all nodes and connections)
-     * @param obj Intelli graph to clear
-     */
-    static void clearNodeGraph(GtObject* obj);
-
-    /**
-     * @brief Checks if node can be renamed (i.e. node should be valid but not unique)
-     * @param obj Object to check
-     * @return is object renamable
-     */
-    static bool canRenameNodeObject(GtObject* obj);
-
-    /**
-     * @brief loadNodeGraph
+     * @brief Triggers the execution of a node
      * @param obj
      */
-    static void loadNodeGraph(GtObject* obj);
-
-    /** DYNAMIC NODES **/
+    static void executeNode(GtObject* obj);
 
     /**
      * @brief Adds an input port to a dynamic node
@@ -162,9 +112,72 @@ private:
      */
     static void deleteDynamicPort(Node* obj, PortType type, PortIndex idx);
 
-    static void toggleActive(GtObject* obj);
+    /**
+     * @brief Similar to `toDynamicNode`. Can be used for validation of a port
+     * action
+     * @param obj Object to cast
+     * @return node object (may be null)
+     */
+    static bool isDynamicPort(GtObject* obj, PortType type, PortIndex idx);
+    static bool isDynamicNode(GtObject* obj, PortType, PortIndex);
 
-    static void executeOnce(GtObject* obj);
+    /**
+     * @brief Returns the list of all port actions registered
+     * @return
+     */
+    QList<PortUIAction> const& portActions() const { return m_portActions; }
+
+protected:
+
+    /**
+     * @brief Adds a port action and returns a reference to the added action,
+     * which can be used to customize the action. Reference may become invalid
+     * if another port action is added.
+     * @param actionText Text of action
+     * @param actionMethod Method to execute
+     * @return Reference to port action
+     */
+    PortUIAction& addPortAction(QString const& actionText,
+                                    PortActionFunction actionMethod);
+
+private:
+
+    /// List of custom port actions
+    QList<PortUIAction> m_portActions;
+
+    /**
+     * @brief Clears the intelli graph (i.e. removes all nodes and connections)
+     * @param obj Intelli graph to clear
+     */
+    static void clearNodeGraph(GtObject* obj);
+
+    /**
+     * @brief Checks if node can be renamed (i.e. node should be valid but not unique)
+     * @param obj Object to check
+     * @return is object renamable
+     */
+    static bool canRenameNodeObject(GtObject* obj);
+
+    /**
+     * @brief loadNodeGraph
+     * @param obj
+     */
+    static void loadNodeGraph(GtObject* obj);
+
+
+    /**
+     * @brief helper method for setting the active flag of a node
+     * @param obj
+     */
+    template <bool State>
+    static void setActive(GtObject* obj) { setActive(obj, State); }
+
+    /**
+     * @brief sets the active flag of a node
+     * @param obj Node to set the flag of
+     * @param state New active state
+     */
+    static void setActive(GtObject* obj, bool state);
 };
 
 } // namespace intelli
