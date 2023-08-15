@@ -92,10 +92,6 @@ Graph::Graph() :
             adapter->mergeConnections(*this);
         }
     });
-
-    setNodeFlag(DoNotEvaluate);
-
-    connect(this, &Node::inputDataRecieved, this, &Graph::forwardInData);
 }
 
 Graph::~Graph()
@@ -429,6 +425,30 @@ Graph::onObjectDataMerged()
     }
 }
 
+bool
+Graph::triggerEvaluation(PortIndex idx)
+{
+    if (!isActive()) return false;
+
+    if (auto* input = inputProvider())
+    {
+        if (idx != invalid<PortIndex>())
+        {
+            input->setOutData(idx, inData(idx));
+            return true;
+        }
+
+        auto size = ports(PortType::In).size();
+        for (idx = PortIndex{0}; idx < size; ++idx)
+        {
+            input->setOutData(idx, inData(idx));
+        }
+        return true;
+    }
+
+    return false;
+}
+
 void
 Graph::initInputOutputProviders()
 {
@@ -444,15 +464,6 @@ Graph::initInputOutputProviders()
 
     if (input) appendNode(std::move(input));
     if (output) appendNode(std::move(output));
-}
-
-void
-Graph::forwardInData(PortIndex idx)
-{
-    if (auto* input = inputProvider())
-    {
-        input->setOutData(idx, inData(idx));
-    }
 }
 
 void
@@ -514,21 +525,12 @@ intelli::evaluate(Graph& graph)
         auto* node = graph.findNode(nodeId);
         assert(node);
 
-        bool doEvaluate = !(node->nodeFlags() & DoNotEvaluate);
-        if (doEvaluate)
-        {
-            // set executor
-            node->setExecutor(ExecutionMode::Sequential);
-            // evaluate
-            node->updateNode();
-            // clear executor
-            node->setExecutor(ExecutionMode::None);
-        }
-        // sub graphs require a specialized evaluation
-        else if (auto* group = qobject_cast<Graph*>(node))
-        {
-            intelli::evaluate(*group);
-        }
+        // set executor
+        node->setExecutor(ExecutionMode::Sequential);
+        // evaluate
+        node->updateNode();
+        // clear executor
+        node->setExecutor(ExecutionMode::None);
 
         // propagate data to next nodes
         for (auto* connection : connectionGraph.at(nodeId))

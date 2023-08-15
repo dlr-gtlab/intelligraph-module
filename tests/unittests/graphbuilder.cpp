@@ -110,11 +110,11 @@ TEST(GraphBuilder, group)
         builder.connect(value2, intelli::PortIndex{0}, group.graph, intelli::PortIndex{1});
 
         // connect inputs to add node
-        groupBuilder.connect(group.input, intelli::PortIndex{0}, add, intelli::PortIndex{0});
-        groupBuilder.connect(group.input, intelli::PortIndex{1}, add, intelli::PortIndex{1});
+        groupBuilder.connect(group.inNode, intelli::PortIndex{0}, add, intelli::PortIndex{0});
+        groupBuilder.connect(group.inNode, intelli::PortIndex{1}, add, intelli::PortIndex{1});
 
         // connect results from add node to output
-        groupBuilder.connect(add, intelli::PortIndex{0}, group.output, intelli::PortIndex{0});
+        groupBuilder.connect(add, intelli::PortIndex{0}, group.outNode, intelli::PortIndex{0});
 
         // forward result of sub graph to display
         builder.connect(group.graph, intelli::PortIndex{0}, result, intelli::PortIndex{0});

@@ -42,7 +42,6 @@ public:
         setFlag(UserDeletable, false);
 
         setNodeFlag(Unique, true);
-        setNodeFlag(DoNotEvaluate, true);
 
         if (!gtApp || !gtApp->devMode()) setFlag(UserHidden, true);
 
