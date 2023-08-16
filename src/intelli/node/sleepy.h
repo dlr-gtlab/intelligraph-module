@@ -25,6 +25,10 @@ public:
 
     Q_INVOKABLE SleepyNode();
 
+signals:
+
+    void timePassed(int progress);
+
 protected:
 
     NodeDataPtr eval(PortId outId) override;

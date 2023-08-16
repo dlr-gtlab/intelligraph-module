@@ -36,6 +36,13 @@ class Executor;
 class NodeData;
 struct NodeImpl;
 
+/**
+ * @brief Creates a base widget that has a simple layout attached. Can be used
+ * for widgets, that have trouble resizing correctly.
+ * @return Widget pointer (never null)
+ */
+GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeBaseWidget();
+
 class GT_INTELLI_EXPORT Node : public GtObject
 {
     Q_OBJECT
