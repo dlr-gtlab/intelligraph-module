@@ -216,11 +216,9 @@ operator==(intelli::ConnectionId const& a, intelli::ConnectionId const& b)
 inline bool
 operator!=(intelli::ConnectionId const& a, intelli::ConnectionId const& b) { return !(a == b); }
 
-
 template <typename T, typename Tag, T InitVal>
 inline gt::log::Stream&
-operator<<(gt::log::Stream& s,
-           intelli::StrongType<T, Tag, InitVal> const& t)
+operator<<(gt::log::Stream& s, intelli::StrongType<T, Tag, InitVal> const& t)
 {
     return s << t.value();
 }
@@ -235,8 +233,27 @@ operator<<(gt::log::Stream& s, intelli::ConnectionId const& con)
             << con.outNodeId << ":" << con.outPortIndex << "/"
             << con.inNodeId  << ":" << con.inPortIndex  << "]";
     }
-    return s;
+    return s.doLogSpace();
 }
+
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, intelli::PortType type)
+{
+    switch (type)
+    {
+    case intelli::PortType::In: return s << "PortType::In";
+    case intelli::PortType::Out: return s << "PortType::Out";
+    case intelli::PortType::NoType: return s << "PortType::NoType";
+    }
+
+    {
+        gt::log::StreamStateSaver saver(s);
+        s.nospace()
+            << "PortType::INVALID(" << type << ')';
+    }
+    return s.doLogSpace();
+}
+
 namespace gt
 {
 

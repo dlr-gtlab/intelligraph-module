@@ -81,6 +81,10 @@ public slots:
 
     void outputConnectionDeleted(QtConnectionId const &) override;
 
+    void inputConnectionCreated(QtConnectionId const &) override;
+
+    void inputConnectionDeleted(QtConnectionId const &) override;
+
 signals:
 
     void nodeInitialized();
