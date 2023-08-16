@@ -18,7 +18,9 @@
 
 using namespace intelli;
 
-GT_INTELLI_REGISTER_NODE(FindDirectChildNode, "Object")
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(FindDirectChildNode, "Object")
+}();
 
 FindDirectChildNode::FindDirectChildNode() :
     Node(tr("Find Direct Child")),

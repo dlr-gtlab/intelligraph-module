@@ -68,8 +68,14 @@ NodeDataFactory::typeName(const QString& typeId) const noexcept
 std::unique_ptr<NodeData>
 NodeDataFactory::newData(const QString& typeId) const noexcept
 {
+    return makeData(typeId);
+}
+
+std::unique_ptr<NodeData>
+NodeDataFactory::makeData(const QString& typeId) const noexcept
+{
     std::unique_ptr<GtObject> obj{
-                                  const_cast<NodeDataFactory*>(this)->newObject(typeId)
+        const_cast<NodeDataFactory*>(this)->newObject(typeId)
     };
 
     return gt::unique_qobject_cast<NodeData>(std::move(obj));

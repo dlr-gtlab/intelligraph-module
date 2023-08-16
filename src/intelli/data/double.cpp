@@ -13,7 +13,9 @@
 
 using namespace intelli;
 
-GT_INTELLI_REGISTER_DATA(DoubleData)
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_DATA(DoubleData)
+}();
 
 DoubleData::DoubleData(double val) :
     TemplateData("double", val)

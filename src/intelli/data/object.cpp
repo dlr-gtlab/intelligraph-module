@@ -12,7 +12,10 @@
 #include "intelli/nodedatafactory.h"
 
 using namespace intelli;
-GT_INTELLI_REGISTER_DATA(ObjectData)
+
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_DATA(ObjectData)
+}();
 
 ObjectData::ObjectData(GtObject const* obj) :
     NodeData("object"),

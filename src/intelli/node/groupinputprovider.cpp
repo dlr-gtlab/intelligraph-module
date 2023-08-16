@@ -11,7 +11,9 @@
 
 using namespace intelli;
 
-GT_INTELLI_REGISTER_NODE(GroupInputProvider, "")
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(GroupInputProvider, "")
+}();
 
 GroupInputProvider::GroupInputProvider() :
     AbstractGroupProvider("Input Provider")
@@ -22,17 +24,5 @@ GroupInputProvider::GroupInputProvider() :
 Node::NodeDataPtr
 GroupInputProvider::eval(PortId outId)
 {
-    PortIndex idx = portIndex(PortType::Out, outId);
-
-    if (idx == invalid<PortIndex>()) return {};
-    
-    auto* group = findParent<Graph*>();
-    if (!group)
-    {
-        gtWarning().medium()
-            << tr("Group input evaluation failed! (Cannot access parent group node)");
-        return {};
-    }
-
-    return group->inData(idx);
+    return outData(portIndex(PortType::Out, outId));
 }

@@ -281,6 +281,8 @@ GraphScene::keyPressEvent(QKeyEvent* event)
     assert(event);
     assert(node);
 
+    event->setAccepted(false);
+
     gt::gui::handleObjectKeyEvent(*event, *nodes.front());
 
     if (!event->isAccepted()) DataFlowGraphicsScene::keyPressEvent(event);
@@ -344,6 +346,8 @@ GraphScene::onPortContextMenu(QtNodes::NodeId nodeId,
 
     auto* node = m_data->findNode(NodeId::fromValue(nodeId));
     if (!node) return;
+
+    clearSelection();
 
     // create menu
     QMenu menu;
@@ -418,6 +422,12 @@ GraphScene::onPortContextMenu(QtNodes::NodeId nodeId,
 void
 GraphScene::onNodeContextMenu(QtNodes::NodeId nodeId, QPointF pos)
 {
+    auto nodeItem = nodeGraphicsObject(nodeId);
+    if (!nodeItem) return;
+
+    if (!nodeItem->isSelected()) clearSelection();
+    nodeItem->setSelected(true);
+
     // retrieve selected nodes
     auto selectedNodeIds = selectedNodes();
 
@@ -521,6 +531,25 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
             connectionsInternal.push_back(convert(conId));
         }
     }
+
+    // sort in and out going connections to avoid crossing connections
+    auto const sortByNodePosition = [this](NodeId a, NodeId b){
+        return m_model->nodeData(a, QtNodes::NodeRole::Position).toPointF().y() >
+               m_model->nodeData(b, QtNodes::NodeRole::Position).toPointF().y();
+    };
+
+    auto const sortByPortIndex = [](PortIndex a, PortIndex b){
+        return a < b;
+    };
+
+    std::sort(connectionsIn.begin(), connectionsIn.end(),
+              [=](ConnectionId const& a, ConnectionId const& b){
+                  return sortByPortIndex(a.inPortIndex, b.inPortIndex);
+              });
+    std::sort(connectionsOut.begin(), connectionsOut.end(),
+              [=](ConnectionId const& a, ConnectionId const& b){
+                  return sortByPortIndex(a.outPortIndex, b.outPortIndex);
+              });
 
     // find datatype for input provider
     std::vector<QString> dtypeIn;
@@ -683,21 +712,6 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
     // remove old nodes and connections. Connections must be deleted before
     // appending new connections
     qDeleteAll(selectedNodes);
-
-    // sort in and out going connections to avoid crossing connections
-    auto const sortByNodePosition = [this](QtNodes::NodeId const& a, QtNodes::NodeId const& b){
-        return m_model->nodeData(a, QtNodes::NodeRole::Position).toPointF().y() >
-               m_model->nodeData(b, QtNodes::NodeRole::Position).toPointF().y();
-    };
-
-    std::sort(connectionsIn.begin(), connectionsIn.end(),
-              [=](ConnectionId const& a, ConnectionId const& b){
-        return sortByNodePosition(a.inNodeId, b.inNodeId);
-    });
-    std::sort(connectionsIn.begin(), connectionsIn.end(),
-              [=](ConnectionId const& a, ConnectionId const& b){
-        return sortByNodePosition(a.outNodeId, b.outNodeId);
-    });
 
     // move input connections
     PortIndex index{0};

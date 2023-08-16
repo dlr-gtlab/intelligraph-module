@@ -14,7 +14,9 @@
 
 using namespace intelli;
 
-GT_INTELLI_REGISTER_DATA(BoolData)
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_DATA(BoolData)
+}();
 
 BoolData::BoolData(bool val) :
     TemplateData("boolean", val)

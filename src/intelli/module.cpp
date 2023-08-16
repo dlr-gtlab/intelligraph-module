@@ -45,7 +45,7 @@ static const int meta_node_id = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber{0, 3, 1};
+    return GtVersionNumber{0, 4, 0};
 }
 
 QString

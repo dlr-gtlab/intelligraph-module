@@ -144,3 +144,43 @@ TEST(StrongTypes, decrement)
     EXPECT_EQ(id--, 3);
     EXPECT_EQ(id, 2);
 }
+
+#include "nodes/numbermathnode.h"
+
+TEST(StrongTypes, bla)
+{
+    intelli::test::NumberMathNode node1, node2;
+
+    auto* copiedObject = &node1;
+    auto* originalObject = &node2;
+
+    QObject::connect(originalObject, &intelli::Node::nodeChanged,
+                     [](){
+                gtDebug() << "HELLO WORLD";
+            });
+
+    emit copiedObject->inputDataRecieved(intelli::PortIndex{42});
+
+    const QMetaObject* sourceMetaObject = copiedObject->metaObject();
+
+    // Iterate through the slots and signals of the sourceObject's meta object
+    for (int i = 0; i < sourceMetaObject->methodCount(); ++i) {
+        QMetaMethod sourceMethod = sourceMetaObject->method(i);
+
+        // Check if the method is a signal (outgoing connection)
+        if (sourceMethod.methodType() == QMetaMethod::Signal) {
+            // Get the signal's signature
+            QByteArray signalSignature = sourceMethod.methodSignature();
+
+            // Find the corresponding signal in the targetObject's meta object
+            int signalIndex = originalObject->metaObject()->indexOfSignal(signalSignature);
+            if (signalIndex != -1) {
+                gtDebug() << signalIndex << "connecting" << signalSignature << sourceMethod.enclosingMetaObject()->className();
+                // Connect the signal from sourceObject to the corresponding signal in targetObject
+                QObject::connect(copiedObject, sourceMethod, originalObject, originalObject->metaObject()->method(signalIndex));
+            }
+        }
+    }
+
+    emit copiedObject->nodeChanged();
+}

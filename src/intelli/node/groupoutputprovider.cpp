@@ -11,7 +11,9 @@
 
 using namespace intelli;
 
-GT_INTELLI_REGISTER_NODE(GroupOutputProvider, "")
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(GroupOutputProvider, "")
+}();
 
 GroupOutputProvider::GroupOutputProvider() :
     AbstractGroupProvider("Output Provider")
@@ -22,24 +24,5 @@ GroupOutputProvider::GroupOutputProvider() :
 Node::NodeDataPtr
 GroupOutputProvider::eval(PortId outId)
 {
-    auto* group = findParent<Graph*>();
-    if (!group)
-    {
-        gtWarning().medium()
-            << tr("Group output evaluation failed! (Cannot access parent group node)");
-        return {};
-    }
-
-    for (auto const& p : this->ports(PortType::In))
-    {
-        PortIndex idx = portIndex(PortType::In, p.id());
-        if (!group->setOutData(idx, nodeData(p.id())))
-        {
-            gtWarning().medium()
-                << tr("Failed to forward output data to group node for idx '%1'")
-                   .arg(idx);
-        }
-    }
-
     return {};
 }

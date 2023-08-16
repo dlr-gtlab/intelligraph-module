@@ -420,7 +420,7 @@ ModelAdapter::setupNode(Node& node)
 void
 ModelAdapter::setupConnection(Connection& connection)
 {
-    connect(&connection, &QObject::destroyed,m_graphModel.get(),
+    connect(&connection, &QObject::destroyed, m_graphModel.get(),
             [model = m_graphModel.get(),
              conId = convert(connection.connectionId()),
              this](){

@@ -12,12 +12,14 @@
 #include "intelli/nodefactory.h"
 #include "intelli/data/double.h"
 
+#include <QComboBox>
+
 using namespace intelli;
 using namespace intelli::test;
 
-#include <QComboBox>
-
-GT_INTELLI_REGISTER_NODE(NumberMathNode, "Test");
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(NumberMathNode, "Test")
+}();
 
 NumberMathNode::NumberMathNode() :
     Node("Math Node"),

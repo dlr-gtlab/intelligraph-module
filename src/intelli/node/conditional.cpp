@@ -18,7 +18,9 @@
 using namespace intelli;
 
 #ifdef GTIG_DEVELOPER_PREVIEW
-GT_INTELLI_REGISTER_NODE(ConditionalNode, "Conditional")
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(ConditionalNode, "Conditional")
+}();
 #endif
 
 ConditionalNode::ConditionalNode() :
@@ -37,10 +39,10 @@ ConditionalNode::ConditionalNode() :
 
     m_outIf = addOutPort(PortData{
         m_dataType.selectedValue(), QStringLiteral("if-branch")
-    }/*, DoNotEvaluate*/);
+    });
     m_outElse = addOutPort(PortData{
         m_dataType.selectedValue(), QStringLiteral("else-branch")
-    }/*, DoNotEvaluate*/);
+    });
 
     registerWidgetFactory([this](){
         auto w = std::make_unique<ComboBox>();

@@ -16,7 +16,9 @@
 using namespace intelli;
 
 #ifdef GTIG_DEVELOPER_PREVIEW
-GT_INTELLI_REGISTER_NODE(CheckDoubleNode, "Conditional")
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(CheckDoubleNode, "Conditional")
+}();
 #endif
 
 CheckDoubleNode::CheckDoubleNode() :

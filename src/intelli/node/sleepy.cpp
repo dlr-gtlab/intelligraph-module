@@ -18,9 +18,9 @@
 
 using namespace intelli;
 
-#ifdef GTIG_DEVELOPER_PREVIEW
-GT_INTELLI_REGISTER_NODE(SleepyNode, "Number");
-#endif
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(SleepyNode, "Number")
+}();
 
 SleepyNode::SleepyNode() :
     Node("Sleeping Node"),
@@ -28,8 +28,8 @@ SleepyNode::SleepyNode() :
 {
     registerProperty(m_timer);
 
-    m_in  = addInPort(typeId<GtIgDoubleData>(), Required);
-    m_out = addOutPort(typeId<GtIgDoubleData>());
+    m_in  = addInPort(typeId<DoubleData>(), Required);
+    m_out = addOutPort(typeId<DoubleData>());
 }
 
 Node::NodeDataPtr
@@ -47,6 +47,3 @@ SleepyNode::eval(PortId outId)
 
     return data;
 }
-
-
-

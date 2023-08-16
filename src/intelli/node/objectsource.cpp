@@ -11,7 +11,9 @@
 
 using namespace intelli;
 
-GT_INTELLI_REGISTER_NODE(ObjectSourceNode, "Object");
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(ObjectSourceNode, "Object")
+}();
 
 // helper method to fetch the correct root object for retrieve object link
 auto getObject = [](Node* node) -> GtObject* {

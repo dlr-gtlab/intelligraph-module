@@ -16,7 +16,9 @@
 
 using namespace intelli;
 
-GT_INTELLI_REGISTER_NODE(NumberDisplayNode, "Number");
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(NumberDisplayNode, "Number")
+}();
 
 NumberDisplayNode::NumberDisplayNode() :
     Node("Number Display")

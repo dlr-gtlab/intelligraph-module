@@ -19,7 +19,9 @@
 
 using namespace intelli;
 
-GT_INTELLI_REGISTER_NODE(NumberSourceNode, "Number");
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(NumberSourceNode, "Number")
+}();
 
 NumberSourceNode::NumberSourceNode() :
     Node("Number Source"),

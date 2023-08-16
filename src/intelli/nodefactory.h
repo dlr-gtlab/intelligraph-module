@@ -28,13 +28,7 @@
 /// listed as a "data" object of your module. Use an empty string to "hide"
 /// the node in the viewer.
 #define GT_INTELLI_REGISTER_NODE(CLASS, CAT) \
-    struct RegisterNodeOnce ## CLASS { \
-        RegisterNodeOnce ## CLASS() { \
-            intelli::NodeFactory::instance() \
-                .registerNode(GT_METADATA(CLASS), CAT); \
-        } \
-    }; \
-    static RegisterNodeOnce ## CLASS s_register_node_once_##CLASS;
+    intelli::NodeFactory::registerNode<CLASS>(CAT);
 
 namespace QtNodes { class NodeDelegateModelRegistry; }
 
@@ -47,8 +41,6 @@ class GT_INTELLI_EXPORT NodeFactory : public GtAbstractObjectFactory
     using NodeDelegateModelRegistry = QtNodes::NodeDelegateModelRegistry;
 
 public:
-
-    NodeFactory();
 
     /**
      * @brief instance
@@ -68,9 +60,23 @@ public:
      * @return Success
      */
     bool registerNode(QMetaObject const& meta, QString const& category) noexcept;
-    
-    std::unique_ptr<Node> newNode(QString const& className
-                                                ) const noexcept(false);
+
+    template <typename T>
+    static bool registerNode(QString const& category)
+    {
+        return instance().registerNode(T::staticMetaObject, category);
+    }
+
+    [[deprecated("use `makeNode` instead!")]]
+    std::unique_ptr<Node> newNode(QString const& className) const noexcept(false);
+
+    /**
+     * @brief Instantiates a new node of type className. May throw a
+     * `logic_error` if the function fails.
+     * @param className Class to instantiate
+     * @return Object pointer (never null)
+     */
+    std::unique_ptr<Node> makeNode(QString const& className) const noexcept(false);
 
     std::unique_ptr<NodeDelegateModelRegistry> makeRegistry() noexcept;
 
@@ -84,6 +90,8 @@ private:
     using NodeCategory = QString;
 
     QHash<ClassName, NodeCategory> m_categories;
+
+    NodeFactory();
 };
 
 } // namespace intelli

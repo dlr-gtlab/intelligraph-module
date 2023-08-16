@@ -16,7 +16,9 @@
 
 using namespace intelli;
 
-GT_INTELLI_REGISTER_NODE(StringListInputNode, "Input")
+static auto init_once = [](){
+    return GT_INTELLI_REGISTER_NODE(StringListInputNode, "Input")
+}();
 
 StringListInputNode::StringListInputNode() :
     Node(tr("Stringlist Input")),

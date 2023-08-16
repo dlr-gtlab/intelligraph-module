@@ -27,14 +27,8 @@
 
 /// Helper macro for registering a node class. The node class does should not be
 /// registered additionally as a "data" object of your module
-#define GT_INTELLI_REGISTER_DATA(DATA) \
-    struct RegisterDataOnce ## DATA { \
-            RegisterDataOnce ## DATA() { \
-                intelli::NodeDataFactory::instance() \
-                    .registerData(GT_METADATA(DATA)); \
-        } \
-    }; \
-    static RegisterDataOnce ## DATA s_register_data_once_##DATA;
+#define GT_INTELLI_REGISTER_DATA(CLASS) \
+    intelli::NodeDataFactory::registerData<CLASS>();
 
 namespace intelli
 {
@@ -45,8 +39,6 @@ class GT_INTELLI_EXPORT NodeDataFactory : public GtAbstractObjectFactory
 
 public:
 
-    NodeDataFactory();
-
     /**
      * @brief instance
      * @return
@@ -55,11 +47,25 @@ public:
 
     bool registerData(QMetaObject const& meta) noexcept;
 
+    template <typename T>
+    static bool registerData()
+    {
+        return instance().registerData(T::staticMetaObject);
+    }
+
     QStringList registeredTypeIds() const { return knownClasses(); };
 
     QString typeName(QString const& typeId) const noexcept;
 
+    [[deprecated("use `makeData` instead!")]]
     std::unique_ptr<NodeData> newData(QString const& typeId) const noexcept;
+
+    /**
+     * @brief Instantiates a new node of type className.
+     * @param className Class to instantiate
+     * @return Object pointer (may be null)
+     */
+    std::unique_ptr<NodeData> makeData(QString const& typeId) const noexcept;
 
 private:
 
@@ -71,6 +77,8 @@ private:
     using TypeName = QString;
 
     QHash<TypeId, TypeName> m_typeNames;
+
+    NodeDataFactory();
 };
 
 } // namespace intelli
