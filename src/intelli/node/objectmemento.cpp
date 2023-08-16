@@ -6,7 +6,9 @@
 #include "gt_xmlhighlighter.h"
 #include "gt_codeeditor.h"
 
-#include "intelli/data/object.h"
+#include <intelli/data/object.h>
+
+#include <QLayout>
 
 using namespace intelli;
 
@@ -18,29 +20,32 @@ ObjectMementoNode::ObjectMementoNode() :
     Node(tr("Memento Viewer"))
 {
     setNodeFlag(Resizable);
-    
+
     PortId inPort = addInPort(typeId<ObjectData>());
 
-    registerWidgetFactory([=]() {
-        auto w = std::make_unique<GtCodeEditor>();
+    registerWidgetFactory([this, inPort]() {
+        auto base = makeBaseWidget();
+        auto* w = new GtCodeEditor();
+        base->layout()->addWidget(w);
+
         w->setMinimumSize(300, 300);
         w->setReadOnly(true);
         new GtXmlHighlighter(w->document());
 
-        auto const update = [=, w_ = w.get()](){
-            w_->clear();
+        auto const update = [this, inPort, w](){
+            w->clear();
             if (auto* data = nodeData<ObjectData*>(inPort))
             {
                 if (auto* obj = data->object())
                 {
-                    w_->setPlainText(obj->toMemento().toByteArray());
+                    w->setPlainText(obj->toMemento().toByteArray());
                 }
             }
         };
         
-        connect(this, &Node::evaluated, w.get(), update);
+        connect(this, &Node::evaluated, w, update);
         update();
 
-        return w;
+        return base;
     });
 }

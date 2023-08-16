@@ -37,7 +37,7 @@ Executor::canEvaluateNode(Node& node, PortIndex outIdx)
         {
             gtWarning().verbose()
                 << tr("Node is not ready for evaluation!")
-                << gt::brackets(node.objectPath());
+                << gt::brackets(node.objectName());
 
             // emit invalidated signals
             if (outIdx != invalid<PortIndex>())

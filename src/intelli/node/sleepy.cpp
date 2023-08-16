@@ -12,8 +12,11 @@
 #include "intelli/data/double.h"
 #include "intelli/nodefactory.h"
 
-#include "intelli/private/utils.h"
+#include <gt_icons.h>
+#include <gt_eventloop.h>
 
+#include <QTimer>
+#include <QLabel>
 #include <QThread>
 
 using namespace intelli;
@@ -30,6 +33,29 @@ SleepyNode::SleepyNode() :
 
     m_in  = addInPort(typeId<DoubleData>(), Required);
     m_out = addOutPort(typeId<DoubleData>());
+
+    registerWidgetFactory([this](){
+        auto w = std::make_unique<QLabel>();
+
+        auto reset = [w_ = w.get(), this](){
+            if (nodeData<DoubleData>(m_in))
+                w_->setPixmap(gt::gui::icon::check().pixmap(20, 20));
+            else
+                w_->setPixmap(gt::gui::icon::cross().pixmap(20, 20));
+        };
+
+        auto update = [w_ = w.get()](int progress){
+            w_->setPixmap(progress != 100 ?
+                gt::gui::icon::processRunningIcon(progress).pixmap(20, 20) :
+                gt::gui::icon::check().pixmap(20, 20));
+        };
+        connect(this, &SleepyNode::timePassed, w.get(), update);
+        connect(this, &Node::inputDataRecieved, w.get(), reset);
+
+        reset();
+
+        return w;
+    });
 }
 
 Node::NodeDataPtr
@@ -39,11 +65,21 @@ SleepyNode::eval(PortId outId)
 
     auto data = nodeData(m_in);
 
-    gtDebug() << "# SLEEPING START" << m_timer.get() << "s" << data;
+    constexpr int intervalMs = 500;
 
-    QThread::sleep(m_timer.getVal("s"));
+    auto updates = m_timer * 1000 / intervalMs;
 
-    gtDebug() << "# SLEEPING END";
+    emit timePassed(0);
+
+    for (int i = 1; i < updates; ++i)
+    {
+        GtEventLoop eventloop(intervalMs);
+        eventloop.exec();
+        gtDebug() << "Sending update" << i << "of" << updates;
+        emit timePassed((int)((i / (double)updates) * 100));
+    }
+
+    emit timePassed(100);
 
     return data;
 }

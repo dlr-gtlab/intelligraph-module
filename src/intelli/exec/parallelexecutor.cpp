@@ -148,6 +148,120 @@ ParallelExecutor::evaluatePort(Node& node, PortIndex idx)
     return evaluateNodeHelper(node);
 }
 
+// we want to skip signals that are speicifc to Node, GtObject and QObject,
+// therefore we will calculate the offset to the "custom" signals once
+static int const s_signal_offset = [](){
+    auto* sourceMetaObject = &Node::staticMetaObject;
+
+    int offset = 0;
+
+    // Iterate through the slots and signals of the sourceObject's meta object
+    for (int i = 0; i < sourceMetaObject->methodCount(); ++i)
+    {
+        QMetaMethod const& sourceMethod = sourceMetaObject->method(i);
+
+        // Check if the method is a signal
+        if (sourceMethod.methodType() != QMetaMethod::Signal) continue;
+
+        offset = i;
+    }
+    return offset;
+}();
+
+using SignalSignature = QByteArray;
+
+inline QVector<SignalSignature>
+findSignalsToConnect(QObject& object)
+{
+    const QMetaObject* sourceMetaObject = object.metaObject();
+
+    struct SignalData { QByteArray name, params; };
+
+    QVector<SignalData> sourceSignals;
+
+    // Iterate through the slots and signals of the sourceObject's meta object
+    for (int i = s_signal_offset; i < sourceMetaObject->methodCount(); ++i)
+    {
+        QMetaMethod const& sourceMethod = sourceMetaObject->method(i);
+
+        // Check if the method is a signal
+        if (sourceMethod.methodType() != QMetaMethod::Signal) continue;
+
+        sourceSignals.push_back({
+            sourceMethod.name(),
+            sourceMethod.parameterTypes().join(',')
+        });
+    }
+
+    QVector<SignalSignature> signalsToConnect;
+    signalsToConnect.reserve(sourceSignals.size());
+
+    // signals may contain duplicates (i.e. in case of default arguments)
+    int _2ndlast = sourceSignals.size() - 1;
+    int i = 0;
+    for (; i < _2ndlast; ++i)
+    {
+        auto& first = sourceSignals.at(i);
+        auto& next  = sourceSignals.at(i + 1);
+
+        if (first.name == next.name && next.params.isEmpty()) i++;
+
+        signalsToConnect << first.name + '(' + first.params + ')';
+    }
+
+    // we may have to connect the last element as well
+    if (i == _2ndlast)
+    {
+        auto& signal = sourceSignals.at(i);
+        signalsToConnect << signal.name + '(' + signal.params + ')';
+    }
+
+    return signalsToConnect;
+}
+
+inline bool
+connectSignals(QVector<SignalSignature> const& signalsToConnect,
+               QPointer<Node> sourceObject,
+               QMetaObject const* sourceMetaObject,
+               QPointer<Node> targetObject,
+               QMetaObject const* targetMetaObject,
+               QPointer<Executor> executor)
+{
+    // connect signals cloned object with original object
+    for (SignalSignature const& signal : qAsConst(signalsToConnect))
+    {
+        int signalIndex = sourceMetaObject->indexOfSignal(signal);
+        if (signalIndex == -1)
+        {
+            gtWarning()
+                << QObject::tr("Failed to forward signal from clone to source node!")
+                << gt::brackets(signal);
+            return {};
+        }
+        assert(signalIndex == targetMetaObject->indexOfSignal(signal));
+
+        gtInfo().verbose()
+            << QObject::tr("Connecting custom Node signal '%1'").arg(signal.constData());
+
+        if (!QObject::connect(sourceObject, sourceMetaObject->method(signalIndex),
+                              targetObject, targetMetaObject->method(signalIndex),
+                              Qt::QueuedConnection))
+        {
+            gtWarning()
+                << QObject::tr("Failed to connect signal of clone with source node!")
+                << gt::brackets(signal);
+            return {};
+        }
+    }
+
+    // destroy connections if the executor is destroyed
+    auto success = QObject::connect(executor, &QObject::destroyed,
+                     sourceObject, [targetObject, sourceObject](){
+        if (sourceObject && targetObject) sourceObject->disconnect(targetObject);
+    });
+    return success;
+}
+
 bool
 ParallelExecutor::evaluateNodeHelper(Node& node)
 {
@@ -163,7 +277,10 @@ ParallelExecutor::evaluateNodeHelper(Node& node)
                 inData = p.inData,
                 outData = p.outData,
                 memento = node.toMemento(),
-                this]() -> std::vector<NodeDataPtr>
+                signalsToConnect = findSignalsToConnect(node),
+                targetMetaObject = node.metaObject(),
+                targetObject = QPointer<Node>(&node),
+                executor = this]() -> std::vector<NodeDataPtr>
     {
         auto clone = gt::unique_qobject_cast<Node>(
             memento.toObject(*gtObjectFactory)
@@ -174,6 +291,17 @@ ParallelExecutor::evaluateNodeHelper(Node& node)
             gtError() << tr("Failed to clone node '%1'")
                              .arg(memento.ident());
             return {};
+        }
+
+        if (!signalsToConnect.empty())
+        {
+            if (!connectSignals(signalsToConnect,
+                                clone.get(), clone->metaObject(),
+                                targetObject, targetMetaObject,
+                                executor))
+            {
+                return {};
+            }
         }
 
         auto const& outPorts = clone->ports(PortType::Out);
@@ -187,21 +315,21 @@ ParallelExecutor::evaluateNodeHelper(Node& node)
         // evalutae single port
         if (targetPort != invalid<PortIndex>())
         {
-            this->doEvaluate(*clone, targetPort);
+            doEvaluate(*clone, targetPort);
             return p.outData;
         }
 
         // trigger eval if no outport exists
         if (outPorts.empty() && !inPorts.empty())
         {
-            this->doEvaluateAndDiscard(*clone);
+            doEvaluateAndDiscard(*clone);
             return p.outData;
         }
 
         // iterate over all output ports
         for (PortIndex idx{0}; idx < outPorts.size(); ++idx)
         {
-            this->doEvaluate(*clone, idx);
+            doEvaluate(*clone, idx);
         }
 
         return p.outData;

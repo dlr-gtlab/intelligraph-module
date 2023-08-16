@@ -11,8 +11,10 @@
 
 #include "intelli/data/stringlist.h"
 
-#include "gt_structproperty.h"
-#include "gt_stringproperty.h"
+#include <gt_structproperty.h>
+#include <gt_stringproperty.h>
+
+#include <QLayout>
 
 using namespace intelli;
 
@@ -38,16 +40,17 @@ StringListInputNode::StringListInputNode() :
     addOutPort(typeId<StringListData>());
 
     registerWidgetFactory([this]() {
-        auto w = std::make_unique<QTextEdit>();
+        auto base = makeBaseWidget();
+        auto w = new QTextEdit;
+        base->layout()->addWidget(w);
         w->setReadOnly(true);
         w->setToolTip(tr("Use the properties dock to add entries."));
         
-        connect(this, &Node::outDataUpdated,
-                w.get(), [this, w_ = w.get()](){
-            w_->setPlainText(values().join("\n"));
+        connect(this, &Node::outDataUpdated, w, [this, w](){
+            w->setPlainText(values().join("\n"));
         });
 
-        return w;
+        return base;
     });
 
     connect(&m_values, &GtPropertyStructContainer::entryAdded,

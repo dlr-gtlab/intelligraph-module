@@ -15,8 +15,18 @@
 #include "gt_qtutilities.h"
 
 #include <QRegExpValidator>
+#include <QVBoxLayout>
 
 using namespace intelli;
+
+std::unique_ptr<QWidget>
+intelli::makeBaseWidget()
+{
+    auto base = std::make_unique<QWidget>();
+    auto* layout = new QVBoxLayout(base.get());
+    Q_UNUSED(layout);
+    return base;
+}
 
 Node::Node(QString const& modelName, GtObject* parent) :
     GtObject(parent),
