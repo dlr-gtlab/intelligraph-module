@@ -270,7 +270,33 @@ ObjectModel::load(const QJsonObject& json)
 }
 
 void
-ObjectModel::outputConnectionCreated(const QtConnectionId&) { }
+ObjectModel::outputConnectionCreated(const QtConnectionId& id)
+{
+    if (!m_node) return;
+
+    emit m_node->portConnected(PortType::Out, PortIndex::fromValue(id.outPortIndex));
+}
 
 void
-ObjectModel::outputConnectionDeleted(const QtConnectionId&) { }
+ObjectModel::outputConnectionDeleted(const QtConnectionId& id)
+{
+    if (!m_node) return;
+
+    emit m_node->portDisconnected(PortType::Out, PortIndex::fromValue(id.outPortIndex));
+}
+
+void
+ObjectModel::inputConnectionCreated(const QtConnectionId& id)
+{
+    if (!m_node) return;
+
+    emit m_node->portConnected(PortType::In, PortIndex::fromValue(id.inPortIndex));
+}
+
+void
+ObjectModel::inputConnectionDeleted(const QtConnectionId& id)
+{
+    if (!m_node) return;
+
+    emit m_node->portDisconnected(PortType::In, PortIndex::fromValue(id.inPortIndex));
+}

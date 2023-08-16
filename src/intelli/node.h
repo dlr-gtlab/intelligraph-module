@@ -397,6 +397,20 @@ signals:
      */
     void portInserted(PortType type, PortIndex idx);
 
+    /**
+     * @brief Will be emitted once a port was connected
+     * @param type Port type (i.e. Input or Output port)
+     * @param idx Port index that was connected
+     */
+    void portConnected(PortType type, PortIndex idx);
+
+    /**
+     * @brief Will be emitted once a port was disconnected
+     * @param type Port type (i.e. Input or Output port)
+     * @param idx Port index that was disconnected
+     */
+    void portDisconnected(PortType type, PortIndex idx);
+
 protected:
 
     /**
