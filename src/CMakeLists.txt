@@ -36,17 +36,17 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     ${PUBLIC_HEADERS}
     ${RCC_SOURCES}
     intelli/package.h
-    intelli/graph.h
     intelli/connection.h
     intelli/connectiongroup.h
     intelli/graphcategory.h
+    intelli/graphexecmodel.h
     intelli/module.h
-    intelli/adapter/modeladapter.h
-    intelli/adapter/jsonadapter.h
-    intelli/adapter/objectmodel.h
+    #intelli/adapter/modeladapter.h
+    #intelli/adapter/jsonadapter.h
+    #intelli/adapter/objectmodel.h
     intelli/exec/executor.h
     intelli/exec/executorfactory.cpp
-    intelli/exec/parallelexecutor.h
+    #intelli/exec/parallelexecutor.h
     intelli/exec/sequentialexecutor.h
     intelli/node/abstractgroupprovider.h
     intelli/node/conditional.h
@@ -62,9 +62,9 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/sleepy.h
     intelli/node/stringlistinput.h
     intelli/gui/icons.cpp
-    intelli/gui/graphscene.h
-    intelli/gui/graphview.h
-    intelli/gui/grapheditor.h
+    #intelli/gui/graphscene.h
+    #intelli/gui/graphview.h
+    #intelli/gui/grapheditor.h
     intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
     intelli/gui/connectionui.h
@@ -79,17 +79,18 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/graph.cpp
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp
+    intelli/graphexecmodel.cpp
     intelli/module.cpp
     intelli/node.cpp
     intelli/nodedata.cpp
     intelli/nodedatafactory.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp
-    intelli/adapter/jsonadapter.cpp
-    intelli/adapter/modeladapter.cpp
-    intelli/adapter/objectmodel.cpp
+    #intelli/adapter/jsonadapter.cpp
+    #intelli/adapter/modeladapter.cpp
+    #intelli/adapter/objectmodel.cpp
     intelli/exec/executor.cpp
-    intelli/exec/parallelexecutor.cpp
+    #intelli/exec/parallelexecutor.cpp
     intelli/exec/sequentialexecutor.cpp
     intelli/data/bool.cpp
     intelli/data/double.cpp
@@ -107,9 +108,9 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/objectsource.cpp
     intelli/node/sleepy.cpp
     intelli/node/stringlistinput.cpp
-    intelli/gui/grapheditor.cpp
-    intelli/gui/graphscene.cpp
-    intelli/gui/graphview.cpp
+    #intelli/gui/grapheditor.cpp
+    #intelli/gui/graphscene.cpp
+    #intelli/gui/graphview.cpp
     intelli/gui/property_item/objectlink.cpp
     intelli/gui/property_item/stringselection.cpp
     intelli/gui/connectionui.cpp

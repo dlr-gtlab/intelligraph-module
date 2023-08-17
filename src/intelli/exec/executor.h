@@ -12,6 +12,7 @@
 
 #include "intelli/globals.h"
 
+#include <QPointer>
 
 namespace intelli
 {
@@ -19,6 +20,7 @@ namespace intelli
 struct NodeImpl;
 class Node;
 class NodeData;
+class GraphExecutionModel;
 
 class Executor : public QObject
 {
@@ -26,25 +28,24 @@ class Executor : public QObject
 
 public:
 
+    using NodeDataPtr  = std::shared_ptr<const NodeData>;
+
     using PortIndex = intelli::PortIndex;
 
     Executor();
-    
-    virtual bool evaluateNode(Node& node) = 0;
-    
-    virtual bool evaluatePort(Node& node, PortIndex idx) = 0;
+
+    virtual bool evaluateNode(Node& node, PortIndex idx) = 0;
 
     virtual bool isReady() const;
 
 protected:
     
-    virtual bool canEvaluateNode(Node& node, PortIndex outIdx = PortIndex{});
-    
-    static bool doEvaluate(Node& node, PortIndex idx);
-    
-    static void doEvaluateAndDiscard(Node& node);
+    static NodeDataPtr doEvaluate(Node& node, PortIndex idx);
+    static NodeDataPtr doEvaluate(Node& node);
     
     static NodeImpl& accessImpl(Node& node);
+
+    static GraphExecutionModel* accessExecModel(Node& node);
 };
 
 } // namespace intelli

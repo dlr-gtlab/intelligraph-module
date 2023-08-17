@@ -9,6 +9,7 @@
 #ifndef GT_INTELLI_CONNECTION_H
 #define GT_INTELLI_CONNECTION_H
 
+#include "intelli/exports.h"
 #include "intelli/globals.h"
 
 #include "gt_object.h"
@@ -22,7 +23,7 @@ namespace intelli
  * Represents a connection between two nodes and their resprective output and
  * input ports
  */
-class Connection : public GtObject
+class GT_INTELLI_TEST_EXPORT Connection : public GtObject
 {
     Q_OBJECT
 

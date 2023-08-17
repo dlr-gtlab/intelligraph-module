@@ -22,6 +22,8 @@ class GraphScene : public QtNodes::DataFlowGraphicsScene
 {
     Q_OBJECT
 
+    using base_class = QtNodes::DataFlowGraphicsScene;
+
 public:
 
     GraphScene(Graph& graph);
@@ -44,7 +46,7 @@ private:
 
     QPointer<Graph> m_data = nullptr;
 
-    QPointer<QtNodes::DataFlowGraphModel> m_model = nullptr;
+    QPointer<QtNodes::AbstractGraphModel> m_model = nullptr;
 
     void deleteNodes(std::vector<QtNodes::NodeId> const& nodeIds);
 

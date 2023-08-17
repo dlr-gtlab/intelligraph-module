@@ -33,7 +33,7 @@ class GraphEditor : public GtMdiItem
 
     struct Cleanup
     {
-        void operator()() { if (data) data->clearModelAdapter(); }
+        void operator()() { }
         QPointer<Graph> data;
     };
 

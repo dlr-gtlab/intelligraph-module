@@ -9,14 +9,12 @@
 #include "intelli/nodefactory.h"
 
 #include "intelli/node.h"
-#include "intelli/adapter/objectmodel.h"
+//#include "intelli/adapter/objectmodel.h"
 
 #include "gt_objectfactory.h"
 #include "gt_utilities.h"
 #include "gt_qtutilities.h"
 #include "gt_algorithms.h"
-
-#include <QtNodes/NodeDelegateModelRegistry>
 
 using namespace intelli;
 
@@ -37,7 +35,7 @@ NodeFactory::nodeCategory(const QString& className) const noexcept
 
 bool
 NodeFactory::registerNode(QMetaObject const& meta,
-                                        QString const& category) noexcept
+                          QString const& category) noexcept
 {
     QString className = meta.className();
 
@@ -89,21 +87,4 @@ NodeFactory::makeNode(QString const& className) const noexcept(false)
     }
 
     return node;
-}
-
-std::unique_ptr<NodeFactory::NodeDelegateModelRegistry>
-NodeFactory::makeRegistry() noexcept
-{
-    auto registry = std::make_unique<QtNodes::NodeDelegateModelRegistry>();
-
-    gt::for_each_key(m_knownClasses.begin(), m_knownClasses.end(),
-                     [&, this](auto const& name){
-        auto const& cat = m_categories.value(name);
-
-        registry->registerModel<ObjectModel>([=](){
-            return std::make_unique<ObjectModel>(name);
-        }, cat);
-    });
-
-    return registry;
 }

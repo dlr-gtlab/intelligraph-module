@@ -29,11 +29,11 @@
 
 using namespace intelli;
 
-
-void intelli::initModule()
+void
+intelli::initModule()
 {
     static auto _ = [](){
-        gtTrace() << "Initializing...";
+        gtTrace() << "Initializing nodes...";
 
         GT_INTELLI_REGISTER_DATA(StringListData);
         GT_INTELLI_REGISTER_DATA(BoolData);

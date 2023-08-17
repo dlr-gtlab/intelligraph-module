@@ -30,15 +30,12 @@
 #define GT_INTELLI_REGISTER_NODE(CLASS, CAT) \
     intelli::NodeFactory::registerNode<CLASS>(CAT);
 
-namespace QtNodes { class NodeDelegateModelRegistry; }
-
 namespace intelli
 {
 
 class Node;
 class GT_INTELLI_EXPORT NodeFactory : public GtAbstractObjectFactory
 {
-    using NodeDelegateModelRegistry = QtNodes::NodeDelegateModelRegistry;
 
 public:
 
@@ -77,8 +74,6 @@ public:
      * @return Object pointer (never null)
      */
     std::unique_ptr<Node> makeNode(QString const& className) const noexcept(false);
-
-    std::unique_ptr<NodeDelegateModelRegistry> makeRegistry() noexcept;
 
 private:
 

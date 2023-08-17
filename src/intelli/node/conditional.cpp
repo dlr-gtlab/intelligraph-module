@@ -74,22 +74,22 @@ ConditionalNode::ConditionalNode() :
         updatePort(m_inData);
         updatePort(m_outIf);
         updatePort(m_outElse);
-        updateNode();
+        triggerNodeEvaluation();
     };
 
     connect(&m_dataType, &GtAbstractProperty::changed, this, updatePorts);
     
-    connect(this, &Node::inputDataRecieved, this, [=](PortIndex idx){
-        if (auto* condition = nodeData<BoolData*>(m_inCondition))
-        {
-            auto* ifPort = port(m_outIf);
-            auto* elsePort = port(m_outElse);
-            if (!ifPort || !elsePort) return;
+//    connect(this, &Node::inputDataRecieved, this, [=](PortIndex idx){
+//        if (auto* condition = nodeData<BoolData*>(m_inCondition))
+//        {
+//            auto* ifPort = port(m_outIf);
+//            auto* elsePort = port(m_outElse);
+//            if (!ifPort || !elsePort) return;
 
-//            ifPort->evaluate = condition->value();
-//            elsePort->evaluate = !condition->value();
-        }
-    }, Qt::DirectConnection);
+////            ifPort->evaluate = condition->value();
+////            elsePort->evaluate = !condition->value();
+//        }
+//    }, Qt::DirectConnection);
 
     updatePorts();
 }

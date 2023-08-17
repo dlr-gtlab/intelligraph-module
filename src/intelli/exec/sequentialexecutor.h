@@ -20,18 +20,11 @@ class SequentialExecutor : public Executor
     Q_OBJECT
 
 public:
-    
-    bool evaluateNode(Node& node) override;
-    
-    bool evaluatePort(Node& node, PortIndex idx) override;
 
-protected:
+    SequentialExecutor();
     
-    bool canEvaluateNode(Node& node, PortIndex outIdx = PortIndex{}) override;
+    bool evaluateNode(Node& node, PortIndex idx = PortIndex{}) override;
 
-private:
-
-    bool m_evaluating = false;
 };
 
 } // namespace intelli

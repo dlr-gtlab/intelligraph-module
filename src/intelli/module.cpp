@@ -14,6 +14,7 @@
 
 #include "intelli/package.h"
 #include "intelli/nodefactory.h"
+#include "intelli/graph.h"
 #include "intelli/graphcategory.h"
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
@@ -22,7 +23,7 @@
 #include "intelli/gui/connectionui.h"
 #include "intelli/gui/packageui.h"
 #include "intelli/gui/nodeui.h"
-#include "intelli/gui/grapheditor.h"
+//#include "intelli/gui/grapheditor.h"
 #include "intelli/gui/property_item/objectlink.h"
 #include "intelli/gui/property_item/stringselection.h"
 #include "intelli/core.h"
@@ -160,7 +161,7 @@ GtIntelliGraphModule::mdiItems()
 {
     QList<QMetaObject> list;
     
-    list << GT_METADATA(GraphEditor);
+//    list << GT_METADATA(GraphEditor);
 
     return list;
 }

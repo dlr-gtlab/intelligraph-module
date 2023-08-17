@@ -34,6 +34,8 @@ class ModelAdapter;
  */
 GT_INTELLI_EXPORT
 bool evaluate(Graph& graph);
+GT_INTELLI_EXPORT
+bool evaluate(Graph& graph, GraphExecutionModel& model);
 
 /**
  * @brief Opens the graph in a graph editor. The graph object should be kept
@@ -54,6 +56,81 @@ GT_INTELLI_EXPORT
 GtMdiItem* show(std::unique_ptr<Graph> graph);
 
 /**
+ * @brief Returns the cyclic nodes of the given graph. If the returned list is
+ * empty the graph is acyclic. if not the returned sequence does contain a cycle
+ * however not all nodes may be part of this cylce.
+ * @param graph Graph to check for cycles
+ * @return Returns true if graph is acyclic otherwise returns false
+ */
+GT_INTELLI_EXPORT
+QVector<NodeId> cyclicNodes(Graph& graph);
+
+/**
+ * @brief Returns whether a graph is acyclic (i.e. does not contain loops/cylces)
+ * @param graph Graph to check for cycles
+ * @return Returns true if graph is acyclic otherwise returns false
+ */
+inline bool isAcyclic(Graph& graph) { return cyclicNodes(graph).empty(); }
+
+/// directed acyclic graph
+namespace dag
+{
+
+struct ConnectionDetail
+{
+    /// target node
+    NodeId node;
+    /// target port
+    PortIndex port;
+    /// source port
+    PortIndex sourcePort;
+
+    /**
+     * @brief Creates an outgoing connection id.
+     * @param sourceNode Source (outgoing) node
+     * @return Connection id
+     */
+    ConnectionId toConnection(NodeId sourceNode) const
+    {
+        return { sourceNode, sourcePort, node, port };
+    }
+
+    /**
+     * @brief Constructs an object from an outgoing connection
+     * @param conId Source connection
+     * @return Connection detail
+     */
+    static ConnectionDetail fromConnection(ConnectionId conId)
+    {
+        return { conId.inNodeId, conId.inPortIndex, conId.outPortIndex };
+    }
+};
+
+struct Entry
+{
+    /// pointer to node
+    QPointer<Node> node;
+    /// adjacency lists
+    QVarLengthArray<ConnectionDetail, 12> ancestors = {}, descendants = {};
+};
+
+inline bool operator==(ConnectionDetail const& a, ConnectionDetail const& b)
+{
+    return a.node == b.node && a.port == b.port && a.sourcePort == b.sourcePort;
+}
+
+inline bool operator!=(ConnectionDetail const& a, ConnectionDetail const& b) { return !(a == b); }
+
+using DirectedAcyclicGraph = QHash<NodeId, dag::Entry>;
+
+/// prints the graph as a mermaid flow chart useful for debugging
+GT_INTELLI_EXPORT void debugGraph(DirectedAcyclicGraph const& graph);
+
+} // namespace dag
+
+using dag::DirectedAcyclicGraph;
+
+/**
  * @brief The Graph class.
  * Represents an entire intelli graph and manages all its nodes and connections.
  * Can be appended itself to another graph. Prefer to use appendNode and
@@ -66,7 +143,6 @@ class GT_INTELLI_EXPORT Graph : public Node
     template <PortType>
     friend class AbstractGroupProvider;
 
-    friend class ModelAdapter;
     friend class GraphBuilder;
 
 public:
@@ -87,30 +163,36 @@ public:
      */
     QList<Connection*> connections();
     QList<Connection const*> connections() const;
-
-    /**
-     * @brief Returns the group object in which all connections are stored
-     * (should never be null)
-     * @return Object group
-     */
-    ConnectionGroup& connectionGroup();
-    ConnectionGroup const& connectionGroup() const;
     
     /**
-     * @brief Attempts to finde node specified by the given nodeId
+     * @brief Attempts to finde the node specified by the given nodeId
      * @param nodeId node id
      * @return node matched by nodeId (null if node was not found)
      */
     Node* findNode(NodeId nodeId);
     Node const* findNode(NodeId nodeId) const;
 
+    dag::Entry* findNodeEntry(NodeId nodeId);
+    dag::Entry const* findNodeEntry(NodeId nodeId) const;
+
     /**
      * @brief Attempts to finde a connection specified by the given connectionId
      * @param conId connection id
      * @return connection matched by conId (null if connection was not found)
      */
-    Connection* findConnection(ConnectionId const& conId);
-    Connection const* findConnection(ConnectionId const& conId) const;
+    Connection* findConnection(ConnectionId conId);
+    Connection const* findConnection(ConnectionId conId) const;
+
+    /**
+     * @brief Fins all connections associated with the node specified by node id.
+     * The connections can be narrowed down to ingoing and outgoing connection
+     * @param nodeId node id
+     * @param type Connection types
+     * @return Connections
+     */
+    QVector<ConnectionId> findConnections(NodeId nodeId, PortType type = NoType) const;
+
+    QVector<ConnectionId> findConnections(NodeId nodeId, PortType type, PortIndex idx) const;
     
     /**
      * @brief Returns a list of all sub graphes (aka group nodes)
@@ -191,37 +273,10 @@ public:
      */
     bool deleteConnection(ConnectionId connectionId);
 
-    /**
-     * @brief Updates the position of the node associated with nodeId. Prefer
-     * this over setting the position directly, as the changes may not be
-     * forwarded to the graph model.
-     * @param nodeId Node to update
-     * @param pos New position
-     */
-    void setNodePosition(Node* node, QPointF pos);
+    [[deprecated]]
+    void setNodePosition(Node* node, Position pos) {}
 
-    /**
-     * @brief Returns the graph model adapter (may be null)
-     * @return Graph model
-     */
-    ModelAdapter* findModelAdapter();
-    ModelAdapter const* findModelAdapter() const;
-
-    /**
-     * @brief Creates a graph model adapter if it does not exists already.
-     * It is uesd to evaluate nodes
-     * @param policy Inidctaes whether the instance should be considered an
-     * active or a dummy model
-     * @return Graph model adapter
-     */
-    ModelAdapter* makeModelAdapter(ModelPolicy policy = ActiveModel);
-
-    /**
-     * @brief Clears the graph model adapter thus stopping the evaluation of all
-     * nodes. Should be called once the graph model is no longer used.
-     * @param force Force to close the model regardless of its model policy
-     */
-    void clearModelAdapter(bool force = true);
+    DirectedAcyclicGraph const& dag() const { return m_nodes; }
 
 signals:
 
@@ -230,12 +285,16 @@ signals:
      * @param Pointer to connection object
      */
     void connectionAppended(Connection* connection);
+
+    void connectionDeleted(ConnectionId connectionId);
     
     /**
      * @brief Emitted once a node was appended
      * @param Pointer to node object
      */
     void nodeAppended(Node* node);
+
+    void nodeDeleted(NodeId nodeId);
 
     /**
      * @brief Emitted once the position of a node was altered. Is only triggered
@@ -246,13 +305,25 @@ signals:
     void nodePositionChanged(NodeId nodeId, QPointF pos);
 
 protected:
+    
+    bool triggerPortEvaluation(PortIndex idx = PortIndex{}) override;
 
-    // keep graph model up date if a node or connection was restored
     void onObjectDataMerged() override;
 
-    bool triggerEvaluation(PortIndex idx = PortIndex{}) override;
-
 private:
+
+    DirectedAcyclicGraph m_nodes;
+
+    /**
+     * @brief Returns the group object in which all connections are stored
+     * (should never be null)
+     * @return Object group
+     */
+    ConnectionGroup& connectionGroup();
+    ConnectionGroup const& connectionGroup() const;
+
+    void restoreNode(Node* node);
+    void restoreConnection(Connection* connection);
 
     /**
      * @brief initializes the input and output of this graph

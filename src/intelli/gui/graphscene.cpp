@@ -121,23 +121,23 @@ findItems(GraphScene& scene)
 }
 
 GraphScene::GraphScene(Graph& graph) :
-    QtNodes::DataFlowGraphicsScene(*graph.makeModelAdapter()->graphModel()),
+    base_class(*graph.makeModelAdapter()->graphModel()),
     m_data(&graph),
-    m_model(static_cast<QtNodes::DataFlowGraphModel*>(&graphModel()))
+    m_model(&graphModel())
 {
     setParent(m_model);
 
-    connect(this, &QtNodes::DataFlowGraphicsScene::nodeMoved,
+    connect(this, &base_class::nodeMoved,
             this, &GraphScene::onNodePositionChanged);
-    connect(this, &QtNodes::DataFlowGraphicsScene::nodeSelected,
+    connect(this, &base_class::nodeSelected,
             this, &GraphScene::onNodeSelected);
-    connect(this, &QtNodes::DataFlowGraphicsScene::nodeDoubleClicked,
+    connect(this, &base_class::nodeDoubleClicked,
             this, &GraphScene::onNodeDoubleClicked);
-    connect(this, &QtNodes::DataFlowGraphicsScene::nodeContextMenu,
+    connect(this, &base_class::nodeContextMenu,
             this, &GraphScene::onNodeContextMenu);
-    connect(this, &QtNodes::DataFlowGraphicsScene::portContextMenu,
+    connect(this, &base_class::portContextMenu,
             this, &GraphScene::onPortContextMenu);
-    connect(this, &QtNodes::DataFlowGraphicsScene::widgetResized,
+    connect(this, &base_class::widgetResized,
             this, &GraphScene::onWidgetResized);
 
 //    connect(m_model, &QtNodes::DataFlowGraphModel::nodePositionUpdated,
@@ -275,7 +275,7 @@ GraphScene::keyPressEvent(QKeyEvent* event)
     QVector<Node*> nodes;
     findNodes(*m_data, selectedNodes(), nodes);
 
-    if (nodes.size() != 1) return DataFlowGraphicsScene::keyPressEvent(event);
+    if (nodes.size() != 1) return base_class::keyPressEvent(event);
 
     Node* node = nodes.front();
     assert(event);
@@ -285,7 +285,7 @@ GraphScene::keyPressEvent(QKeyEvent* event)
 
     gt::gui::handleObjectKeyEvent(*event, *nodes.front());
 
-    if (!event->isAccepted()) DataFlowGraphicsScene::keyPressEvent(event);
+    if (!event->isAccepted()) base_class::keyPressEvent(event);
 }
 
 void
@@ -533,11 +533,6 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
     }
 
     // sort in and out going connections to avoid crossing connections
-    auto const sortByNodePosition = [this](NodeId a, NodeId b){
-        return m_model->nodeData(a, QtNodes::NodeRole::Position).toPointF().y() >
-               m_model->nodeData(b, QtNodes::NodeRole::Position).toPointF().y();
-    };
-
     auto const sortByPortIndex = [](PortIndex a, PortIndex b){
         return a < b;
     };

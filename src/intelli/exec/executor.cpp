@@ -9,6 +9,7 @@
 
 #include "intelli/exec/executor.h"
 
+#include "intelli/graphexecmodel.h"
 #include "intelli/node.h"
 #include "intelli/private/node_impl.h"
 
@@ -22,42 +23,7 @@ Executor::isReady() const
     return true;
 }
 
-bool
-Executor::canEvaluateNode(Node& node, PortIndex outIdx)
-{
-    auto* p = node.pimpl.get();
-
-    PortIndex inIdx{0};
-    for (auto const& data : p->inData)
-    {
-        auto const& port = p->inPorts.at(inIdx++);
-
-        // check if data is required and valid
-        if (!port.optional && !data)
-        {
-            gtWarning().verbose()
-                << tr("Node is not ready for evaluation!")
-                << gt::brackets(node.objectName());
-
-            // emit invalidated signals
-            if (outIdx != invalid<PortIndex>())
-            {
-                emit node.outDataInvalidated(outIdx);
-                return false;
-            }
-
-            for (PortIndex outIdx{0}; outIdx < p->outPorts.size(); ++outIdx)
-            {
-                emit node.outDataInvalidated(outIdx++);
-            }
-            return false;
-        };
-    }
-
-    return true;
-}
-
-bool
+Executor::NodeDataPtr
 Executor::doEvaluate(Node& node, PortIndex idx)
 {
     auto& p = *node.pimpl;
@@ -66,26 +32,26 @@ Executor::doEvaluate(Node& node, PortIndex idx)
         << "### Evaluating node:  '" << node.objectName()
         << "' at output idx '" << idx << "'";
 
-    assert(idx < p.outData.size());
-
-    auto& out = p.outData.at(idx);
-
-    out = node.eval(p.outPorts.at(idx).id());
-
-    return out != nullptr;
+    return node.eval(p.outPorts.at(idx).id());
 }
 
-void
-Executor::doEvaluateAndDiscard(Node& node)
+Executor::NodeDataPtr
+Executor::doEvaluate(Node& node)
 {
     gtDebug().verbose().nospace()
         << "### Evaluating node:  '" << node.objectName() << "'";
 
-    node.eval(invalid<PortId>());
+    return node.eval(invalid<PortId>());
 }
 
 NodeImpl&
 Executor::accessImpl(Node& node)
 {
     return *node.pimpl;
+}
+
+GraphExecutionModel*
+Executor::accessExecModel(Node& node)
+{
+    return node.executionModel();
 }

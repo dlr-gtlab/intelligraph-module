@@ -77,10 +77,6 @@ struct NodeImpl
     QString modelName;
     /// ports
     std::vector<PortData> inPorts, outPorts{};
-    /// data
-    std::vector<NodeDataPtr> inData, outData{};
-    /// node executor
-    std::unique_ptr<Executor> executor;
     /// owning pointer to widget, may be deleted earlier
     volatile_ptr<QWidget> widget{};
     /// factory for creating the widget
@@ -94,17 +90,6 @@ struct NodeImpl
 
     bool canEvaluate() const
     {
-        assert(inData.size() == inPorts.size());
-
-        PortIndex idx{0};
-        for (auto const& data : inData)
-        {
-            auto const& p = inPorts.at(idx++);
-
-            // check if data is required and valid
-            if (!p.optional && !data) return false;
-        }
-
         return true;
     }
 
@@ -130,37 +115,14 @@ struct NodeImpl
         return const_cast<NodeImpl*>(this)->ports(type);
     }
 
-    std::vector<NodeDataPtr>& nodeData(PortType type) noexcept(false)
-    {
-        switch (type)
-        {
-        case PortType::In:
-            return inData;
-        case PortType::Out:
-            return outData;
-        case PortType::NoType:
-            break;
-        }
-
-        throw GTlabException{
-            __FUNCTION__, QStringLiteral("Invalid port type specified!")
-        };
-    }
-
-    std::vector<NodeDataPtr> const& nodeData(PortType type) const noexcept(false)
-    {
-        return const_cast<NodeImpl*>(this)->nodeData(type);
-    }
-
     struct FindData
     {
         PortType type{PortType::NoType};
         PortIndex idx{};
         std::vector<PortData>* ports{};
-        std::vector<NodeDataPtr>* data{};
 
         operator bool() const {
-            return ports && data && type != PortType::NoType && idx != invalid<PortIndex>();
+            return ports && type != PortType::NoType && idx != invalid<PortIndex>();
         }
     };
 
@@ -174,9 +136,7 @@ struct NodeImpl
             if (iter != ports.end())
             {
                 auto idx = std::distance(ports.begin(), iter);
-                auto& data = nodeData(type);
-                assert(ports.size() == data.size());
-                return {type, PortIndex::fromValue(idx), &ports, &data};
+                return {type, PortIndex::fromValue(idx), &ports};
             }
         }
         return {};

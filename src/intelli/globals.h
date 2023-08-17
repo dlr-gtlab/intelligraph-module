@@ -35,7 +35,7 @@ public:
     ~StrongType() = default;
 
     template<typename U>
-    static StrongType fromValue(U value) { return StrongType{static_cast<T>(value)}; }
+    constexpr static StrongType fromValue(U value) { return StrongType{static_cast<T>(value)}; }
 
     // Overload comparison operators as needed
     constexpr inline bool
@@ -67,7 +67,7 @@ public:
     constexpr inline StrongType
     operator--(int) noexcept { StrongType tmp(*this); operator--(); return tmp; }
 
-    operator T() const { return value(); }
+    constexpr operator T() const { return value(); }
 
     // Access the underlying value
     constexpr inline T
@@ -93,6 +93,11 @@ struct ConnectionId
     PortIndex outPortIndex;
     NodeId inNodeId;
     PortIndex inPortIndex;
+    
+    constexpr ConnectionId reversed() const noexcept
+    {
+        return { inNodeId, inPortIndex, outNodeId, outPortIndex };
+    }
 };
 
 /**
@@ -149,6 +154,14 @@ struct InvalidValue
     constexpr static T get() { return std::numeric_limits<T>::max(); }
 };
 
+template <>
+struct InvalidValue<ConnectionId>
+{
+    constexpr static ConnectionId get() {
+        return ConnectionId{ NodeId{}, PortIndex{}, NodeId{}, PortIndex{} };
+    }
+};
+
 template <typename T, typename Tag, T InitVal>
 struct InvalidValue<StrongType<T, Tag, InitVal>>
 {
@@ -164,6 +177,36 @@ constexpr inline T invalid() noexcept
 {
     return detail::InvalidValue<T>::get();
 }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator+=(StrongType<T, Tag, InitVal> const& a,
+           StrongType<T, Tag, InitVal> const& b) noexcept { return a += b; }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator-=(StrongType<T, Tag, InitVal> const& a,
+           StrongType<T, Tag, InitVal> const& b) noexcept { return a -= b; }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator*=(StrongType<T, Tag, InitVal> const& a,
+           StrongType<T, Tag, InitVal> const& b) noexcept{ return a *= b; }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator/=(StrongType<T, Tag, InitVal> const& a,
+           StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
+
+inline bool
+operator==(ConnectionId const& a, ConnectionId const& b)
+{
+    return a.outNodeId == b.outNodeId && a.outPortIndex == b.outPortIndex &&
+           a.inNodeId  == b.inNodeId  && a.inPortIndex  == b.inPortIndex;
+}
+
+inline bool
+operator!=(ConnectionId const& a, ConnectionId const& b) { return !(a == b); }
 
 } // namespace intelli
 
@@ -184,37 +227,8 @@ inline QRegExp forClassNames()
 
 } // namespace re
 
-} // namespace gt
-
-template <typename T, typename Tag, T InitVal>
-constexpr inline bool
-operator+=(intelli::StrongType<T, Tag, InitVal> const& a,
-           intelli::StrongType<T, Tag, InitVal> const& b) noexcept { return a += b; }
-
-template <typename T, typename Tag, T InitVal>
-constexpr inline bool
-operator-=(intelli::StrongType<T, Tag, InitVal> const& a,
-           intelli::StrongType<T, Tag, InitVal> const& b) noexcept { return a -= b; }
-
-template <typename T, typename Tag, T InitVal>
-constexpr inline bool
-operator*=(intelli::StrongType<T, Tag, InitVal> const& a,
-           intelli::StrongType<T, Tag, InitVal> const& b) noexcept{ return a *= b; }
-
-template <typename T, typename Tag, T InitVal>
-constexpr inline bool
-operator/=(intelli::StrongType<T, Tag, InitVal> const& a,
-           intelli::StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
-
-inline bool
-operator==(intelli::ConnectionId const& a, intelli::ConnectionId const& b)
+namespace log
 {
-    return a.outNodeId == b.outNodeId && a.outPortIndex == b.outPortIndex &&
-           a.inNodeId  == b.inNodeId  && a.inPortIndex  == b.inPortIndex;
-}
-
-inline bool
-operator!=(intelli::ConnectionId const& a, intelli::ConnectionId const& b) { return !(a == b); }
 
 template <typename T, typename Tag, T InitVal>
 inline gt::log::Stream&
@@ -253,6 +267,10 @@ operator<<(gt::log::Stream& s, intelli::PortType type)
     }
     return s.doLogSpace();
 }
+
+} // namespace log
+
+} // namespace gt
 
 namespace gt
 {

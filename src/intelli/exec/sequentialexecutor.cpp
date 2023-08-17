@@ -9,44 +9,66 @@
 
 #include "intelli/exec/sequentialexecutor.h"
 #include "intelli/node.h"
+#include "intelli/graphexecmodel.h"
 
 #include "gt_utilities.h"
 
 using namespace intelli;
 
-bool
-SequentialExecutor::canEvaluateNode(Node& node, PortIndex outIdx)
+SequentialExecutor::SequentialExecutor() = default;
+
+template <typename Lambda>
+bool evaluateHelper(Node& node,
+                    GraphExecutionModel* model,
+                    Lambda const& function)
 {
-    if (m_evaluating)
-    {
-        gtWarning() << tr("Cannot evaluate node '%1'! (Node is already running)")
-                           .arg(node.objectName());
-        return false;
-    }
-    return Executor::canEvaluateNode(node, outIdx);
+
+    return function(*model, node);
 }
 
 bool
-SequentialExecutor::evaluateNode(Node& node)
+SequentialExecutor::evaluateNode(Node& node, PortIndex idx)
 {
-    if (!canEvaluateNode(node)) return false;
+    auto* model = accessExecModel(node);
+    if (!model)
+    {
+        gtError() << QObject::tr("Graph execution model for node '%1' not found! "
+                                 "Aborting evaluation").arg(node.objectName());
+        return false;
+    }
 
-    auto const& outPorts = node.ports(PortType::Out);
-    auto const& inPorts  = node.ports(PortType::In);
+    auto const evaluatePort = [&node, model](PortIndex idx){
+        auto data = doEvaluate(node, idx);
 
-    emit node.computingStarted();
-    m_evaluating = true;
+        model->setNodeData(node.id(), PortType::Out, idx, std::move(data));
 
-    auto finally = gt::finally([this, &node](){
-        m_evaluating = false;
+        emit node.evaluated(idx);
+    };
+
+    // cleanup routine
+    auto finally = gt::finally([&node](){
         emit node.computingFinished();
     });
-    Q_UNUSED(finally);
+
+    if (idx != invalid<PortIndex>())
+    {
+        if (idx >= node.ports(PortType::Out).size()) return false;
+
+        emit node.computingStarted();
+
+        evaluatePort(idx);
+
+        return true;
+    }
+
+    emit node.computingStarted();
+
+    auto const& outPorts = node.ports(PortType::Out);
 
     // trigger eval if no outport exists
-    if (outPorts.empty() && !inPorts.empty())
+    if (outPorts.empty())
     {
-        doEvaluateAndDiscard(node);
+        doEvaluate(node);
         emit node.evaluated();
         return true;
     }
@@ -54,33 +76,8 @@ SequentialExecutor::evaluateNode(Node& node)
     // iterate over all output ports
     for (PortIndex idx{0}; idx < outPorts.size(); ++idx)
     {
-        bool success = doEvaluate(node, idx);
-
-        emit node.evaluated(idx);
-
-        success ? emit node.outDataUpdated(idx) :
-                  emit node.outDataInvalidated(idx);
+        evaluatePort(idx);
     }
-
-    return true;
-}
-
-bool
-SequentialExecutor::evaluatePort(Node& node, PortIndex idx)
-{
-    if (idx >= node.ports(PortType::Out).size()) return false;
-
-    if (!canEvaluateNode(node, idx)) return false;
-
-    m_evaluating = true;
-    auto finally = gt::finally([this](){ m_evaluating = false; });
-
-    bool success = doEvaluate(node, idx);
-
-    emit node.evaluated(idx);
-
-    success ? emit node.outDataUpdated(idx) :
-              emit node.outDataInvalidated(idx);
 
     return true;
 }

@@ -11,9 +11,9 @@
 
 #include "intelli/data/double.h"
 #include "intelli/dynamicnode.h"
-#include "intelli/adapter/jsonadapter.h"
+//#include "intelli/adapter/jsonadapter.h"
 #include "intelli/graph.h"
-#include "intelli/gui/grapheditor.h"
+//#include "intelli/gui/grapheditor.h"
 #include "intelli/node.h"
 #include "intelli/gui/icons.h"
 
@@ -137,10 +137,10 @@ NodeUI::openWith(GtObject* obj)
 {
     QStringList list;
 
-    if (toGraph(obj))
-    {
-        list << GT_CLASSNAME(GraphEditor);
-    }
+//    if (toGraph(obj))
+//    {
+//        list << GT_CLASSNAME(GraphEditor);
+//    }
 
     return list;
 }
@@ -231,7 +231,7 @@ NodeUI::executeNode(GtObject* obj)
     Q_UNUSED(cleanup);
 
     node->setActive();
-    node->updateNode();
+    node->triggerNodeEvaluation();
 }
 
 void
@@ -279,36 +279,36 @@ NodeUI::clearNodeGraph(GtObject* obj)
 void
 NodeUI::loadNodeGraph(GtObject* obj)
 {
-    auto graph = toGraph(obj);
+//    auto graph = toGraph(obj);
 
-    if (!graph) return;
+//    if (!graph) return;
 
-    QString filePath = GtFileDialog::getOpenFileName(nullptr, tr("Open Intelli Flow"));
+//    QString filePath = GtFileDialog::getOpenFileName(nullptr, tr("Open Intelli Flow"));
 
-    if (filePath.isEmpty() || !QFileInfo::exists(filePath)) return;
+//    if (filePath.isEmpty() || !QFileInfo::exists(filePath)) return;
 
-    QFile file(filePath);
-    if (!file.open(QFile::ReadOnly))
-    {
-        gtError() << tr("Failed to open intelli graph from file! (%1)")
-                     .arg(filePath);
-        return;
-    }
+//    QFile file(filePath);
+//    if (!file.open(QFile::ReadOnly))
+//    {
+//        gtError() << tr("Failed to open intelli graph from file! (%1)")
+//                     .arg(filePath);
+//        return;
+//    }
 
-    auto scene = QJsonDocument::fromJson(file.readAll()).object();
-    auto restored = intelli::fromJson(scene);
-    if (!restored)
-    {
-        gtError() << tr("Failed to restore intelli graph!");
-        return;
-    }
+//    auto scene = QJsonDocument::fromJson(file.readAll()).object();
+//    auto restored = intelli::fromJson(scene);
+//    if (!restored)
+//    {
+//        gtError() << tr("Failed to restore intelli graph!");
+//        return;
+//    }
 
-    auto cmd = gtApp->startCommand(graph, QStringLiteral("Loading IntelliGraph (%1)")
-                                          .arg(graph->objectName()));
-    auto finally = gt::finally([&](){ gtApp->endCommand(cmd); });
+//    auto cmd = gtApp->startCommand(graph, QStringLiteral("Loading IntelliGraph (%1)")
+//                                          .arg(graph->objectName()));
+//    auto finally = gt::finally([&](){ gtApp->endCommand(cmd); });
 
-    graph->clear();
-    graph->appendObjects(restored->nodes, restored->connections);
+//    graph->clear();
+//    graph->appendObjects(restored->nodes, restored->connections);
 }
 
 void
@@ -321,5 +321,5 @@ NodeUI::setActive(GtObject* obj, bool state)
 
     node->setActive(state);
 
-    if (!wasActive && node->isActive()) node->updateNode();
+    if (!wasActive && node->isActive()) node->triggerNodeEvaluation();
 }

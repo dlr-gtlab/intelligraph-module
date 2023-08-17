@@ -51,7 +51,7 @@ FindDirectChildNode::FindDirectChildNode() :
     });
 
     connect(&m_childClassName, &GtAbstractProperty::changed,
-            this, &FindDirectChildNode::updateNode);
+            this, &Node::triggerNodeEvaluation);
 }
 
 Node::NodeDataPtr

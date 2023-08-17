@@ -42,7 +42,7 @@ StringListInputNode::StringListInputNode() :
         w->setReadOnly(true);
         w->setToolTip(tr("Use the properties dock to add entries."));
         
-        connect(this, &Node::outDataUpdated, w, [this, w](){
+        connect(this, &Node::evaluated, w, [this, w](){
             w->setPlainText(values().join("\n"));
         });
 
@@ -50,11 +50,11 @@ StringListInputNode::StringListInputNode() :
     });
 
     connect(&m_values, &GtPropertyStructContainer::entryAdded,
-            this, &Node::updateNode);
+            this, &Node::triggerNodeEvaluation);
     connect(&m_values, &GtPropertyStructContainer::entryRemoved,
-            this, &Node::updateNode);
+            this, &Node::triggerNodeEvaluation);
     connect(&m_values, &GtPropertyStructContainer::entryChanged,
-            this, &Node::updateNode);
+            this, &Node::triggerNodeEvaluation);
 }
 
 Node::NodeDataPtr

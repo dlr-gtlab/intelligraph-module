@@ -89,7 +89,7 @@ Connection::outPortIdx() const
 bool
 Connection::isValid() const
 {
-    constexpr auto invalid = QtNodes::InvalidPortIndex;
+    constexpr auto invalid = intelli::invalid<PortId>().value();
 
     std::array<unsigned, 4> const ids{
         inNodeId(), inPortIdx(), outNodeId(), outPortIdx()

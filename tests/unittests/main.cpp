@@ -7,6 +7,12 @@
 
 #include "gtest/gtest.h"
 
+#include "intelli/graph.h"
+#include "intelli/connectiongroup.h"
+#include "intelli/connection.h"
+
+#include <gt_objectfactory.h>
+
 #include <gt_logging.h>
 
 #include <intelli/core.h>
@@ -16,6 +22,12 @@ auto init_log_once = [](){
     logger.addDestination("console", gt::log::makeDebugOutputDestination());
     logger.setLoggingLevel(gt::log::TraceLevel);
     logger.setVerbosity(gt::log::Everything);
+    return 0;
+}();
+
+auto init_factory_once = [](){
+    gtObjectFactory->registerClass(intelli::Graph::staticMetaObject);
+    gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
     return 0;
 }();
 

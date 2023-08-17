@@ -21,19 +21,20 @@ namespace intelli
 
 enum NodeFlag
 {
-    NoFlag        = 0,
+    NoFlag      = 0,
     /// Indicates node is resizeable
-    Resizable     = 1,
+    Resizable   = 1,
     /// Indicates node caption should be hidden
-    HideCaption   = 2,
+    HideCaption = 2,
     /// Indicates node is unique (i.e. only one instance should exist)
-    Unique        = 4
+    Unique      = 4
 };
 
 using NodeFlags  = int;
 
 class Executor;
 class NodeData;
+class GraphExecutionModel;
 struct NodeImpl;
 
 /**
@@ -48,6 +49,7 @@ class GT_INTELLI_EXPORT Node : public GtObject
     Q_OBJECT
     
     friend class Executor;
+    friend class GraphExecutionModel;
 
 public:
 
@@ -119,15 +121,6 @@ public:
     
     ~Node();
 
-    /* node specifc methods */
-
-    /**
-     * @brief Sets the node executor or disables it. Only a node with a valid
-     * executer can be evaluated. A node has no executor assigned by default.
-     * @param executorMode New executor
-     */
-    void setExecutor(ExecutionMode executorMode);
-
     /**
      * @brief Setter for the automatic node evaluation flag
      * @param active Whether to enable automatic node evaluation
@@ -197,8 +190,9 @@ public:
     /**
      * @brief Setter for the caption. Will be saved persistently
      * @param caption New caption
+     * @return Returns a reference to this node for method chaining
      */
-    void setCaption(QString const& caption);
+    Node& setCaption(QString const& caption);
 
     /**
      * @brief Caption of the node
@@ -264,60 +258,25 @@ public:
      */
     QWidget* embeddedWidget();
 
-    /**
-     * @brief Sets the node data at the input port specified by the index.
-     * Triggers the evaluation of all output ports
-     * @param idx Input port index
-     * @param data Node data.
-     */
-    bool setInData(PortIndex idx, NodeDataPtr data);
-
-    /**
-     * @brief Returns the input node data specified by the index.
-     * @param idx Input port index
-     * @return Node data. Null if idx is invalid
-     */
-    NodeDataPtr const& inData(PortIndex idx);
-
-    /**
-     * @brief May be used to override the out data
-     * @param idx Output port index
-     * @param data New data
-     * @return success
-     */
-    bool setOutData(PortIndex idx, NodeDataPtr data);
-
-    /**
-     * @brief Returns the output node data specified by the index.
-     * @param idx Output port index
-     * @return Node data. Null if idx is invalid
-     */
-    NodeDataPtr const& outData(PortIndex idx);
-
 public slots:
 
     /**
-     * @brief This will schedule the evaluation of all output ports.
-     */
-    void updateNode();
-
-    /**
-     * @brief This will schedule the evaluation of the output port specified by
-     * idx.
-     * @param idx Output port index. May be calculated using an output port id.
-     */
-    void updatePort(PortIndex idx);
-
-    /**
-     * @brief Triggers the evaluation of the node. It is not intended to
+     * @brief Triggers the evaluation of the node (port). It is not intended to
      * actually do the evaluation (use `eval` instead), but to handle/manage the
      * execution of the node. Should only be overriden in rare cases.
      * @param idx Port index to evaluate. If port index is invalid, the whole
      * node (i.e. all ports) should be evaluated
      * @return Returns true if the evaluation was triggered sucessfully.
-     * (node may evaluated non-blocking)
+     * (node may be evaluated non-blocking)
      */
-    virtual bool triggerEvaluation(PortIndex idx = PortIndex{});
+    virtual bool triggerPortEvaluation(PortIndex idx = PortIndex{});
+
+    /**
+     * @brief Helper method, to trigger the evaluation of the whole node.
+     * @return Returns true if the evaluation was triggered sucessfully.
+     * (node may be evaluated non-blocking)
+     */
+    bool triggerNodeEvaluation() { return triggerPortEvaluation(); }
 
 signals:
 
@@ -327,22 +286,6 @@ signals:
      * @param idx Output port index. May be mapped to an output port id.
      */
     void evaluated(PortIndex idx = PortIndex{});
-
-    /**
-     * @brief Emitted if the output data has changed (may be invalid), just
-     * after evaluating. Will be called automatically and should not be triggered
-     * by the "user". Triggers the evaluation of all connected ports.
-     * @param idx Output port index. May be mapped to an output port id.
-     */
-    void outDataUpdated(PortIndex idx = PortIndex{});
-
-    /**
-     * @brief Emitted if the output data was invalidated, just after evaluating.
-     * Will be called automatically and should not be triggered by the "user".
-     * Triggers the invalidation of all connected ports
-     * @param idx Output port index. May be mapped to an output port id.
-     */
-    void outDataInvalidated(PortIndex idx = PortIndex{});
 
     /**
      * @brief Emitted if new input data was recieved, just before evaluating.
@@ -424,6 +367,9 @@ signals:
 
 protected:
 
+    /// prefer Graph::appendNode
+    using GtObject::setParent;
+
     /**
      * @brief constructor. Must initialize the model name.
      * @param modelName Model name. May not be altered later
@@ -441,6 +387,9 @@ protected:
      * @return Node data on the output port
      */
     virtual NodeDataPtr eval(PortId outId);
+
+    GraphExecutionModel* executionModel();
+    GraphExecutionModel const* executionModel() const;
 
     /**
      * @brief Should be called within the constructor. Used to register
@@ -508,26 +457,6 @@ protected:
      * @return Success
      */
     bool removePort(PortId id);
-
-    /**
-     * @brief Returns the specified port data
-     * @param id Port id (output or input)
-     * @return Port data (may be null)
-     */
-    [[deprecated("Use nodeData instead")]]
-    NodeDataPtr const& portData(PortId id) const { return nodeData(id); }
-
-    /**
-     * @brief Overload that casts the port data to the desired type.
-     * @param id Port id (output or input)
-     * @return Port data
-     */
-    template <typename T, typename U = std::remove_pointer_t<T>>
-    [[deprecated("Use nodeData<T*> instead")]]
-    U const* portData(PortId id) const
-    {
-        return qobject_cast<U const*>(nodeData(id).get());
-    }
 
     /**
      * @brief Returns the node data of the specified port

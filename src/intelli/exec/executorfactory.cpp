@@ -9,8 +9,9 @@
 
 #include "intelli/exec/executorfactory.h"
 
-#include "intelli/exec/sequentialexecutor.h"
-#include "intelli/exec/parallelexecutor.h"
+#include "intelli/exec/executor.h"
+//#include "intelli/exec/sequentialexecutor.h"
+//#include "intelli/exec/parallelexecutor.h"
 
 using namespace intelli;
 
@@ -25,10 +26,11 @@ ExecutorFactory::makeExecutor(ExecutionMode type)
     case ExecutionMode::None:
         return {};
     case ExecutionMode::Sequential:
-        return std::make_unique<SequentialExecutor>();
+//        return std::make_unique<SequentialExecutor>();
     case ExecutionMode::Default:
     case ExecutionMode::Parallel:
-        return std::make_unique<ParallelExecutor>();
+//        return std::make_unique<ParallelExecutor>();
+        break;
     }
 
     gtError() << QObject::tr("Invalid Executor Type '%1'!").arg(static_cast<int>(type));

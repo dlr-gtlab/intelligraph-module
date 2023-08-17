@@ -7,6 +7,7 @@
  */
 
 #include "intelli/node/groupinputprovider.h"
+#include "intelli/graphexecmodel.h"
 
 using namespace intelli;
 
@@ -19,5 +20,8 @@ GroupInputProvider::GroupInputProvider() :
 Node::NodeDataPtr
 GroupInputProvider::eval(PortId outId)
 {
-    return outData(portIndex(PortType::Out, outId));
+    auto* model = executionModel();
+    if (!model) return {};
+
+    return model->nodeData(id(), PortType::Out, portIndex(PortType::Out, outId));
 }
