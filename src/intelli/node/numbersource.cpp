@@ -46,6 +46,7 @@ NumberSourceNode::NumberSourceNode() :
         };
         connect(w.get(), &GtLineEdit::focusOut, this, updateProp);
         connect(w.get(), &GtLineEdit::clearFocusOut, this, updateProp);
+        connect(w.get(), &GtLineEdit::returnPressed, this, updateProp);
 
         // react to external changes
         auto const updateText = [this, w_ = w.get()](){

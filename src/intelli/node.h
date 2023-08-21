@@ -308,6 +308,17 @@ public slots:
      */
     void updatePort(PortIndex idx);
 
+    /**
+     * @brief Triggers the evaluation of the node. It is not intended to
+     * actually do the evaluation (use `eval` instead), but to handle/manage the
+     * execution of the node. Should only be overriden in rare cases.
+     * @param idx Port index to evaluate. If port index is invalid, the whole
+     * node (i.e. all ports) should be evaluated
+     * @return Returns true if the evaluation was triggered sucessfully.
+     * (node may evaluated non-blocking)
+     */
+    virtual bool triggerEvaluation(PortIndex idx = PortIndex{});
+
 signals:
 
     /**
@@ -430,17 +441,6 @@ protected:
      * @return Node data on the output port
      */
     virtual NodeDataPtr eval(PortId outId);
-
-    /**
-     * @brief Triggers the evaluation of the node. It is not intended to
-     * actually do the evaluation (use `eval` instead), but to handle/manage the
-     * execution of the node. Should only be overriden in rare cases.
-     * @param idx Port index to evaluate. If port index is invalid, the whole
-     * node (i.e. all ports) should be evaluated
-     * @return Returns true if the evaluation was triggered sucessfully.
-     * (node may evaluated non-blocking)
-     */
-    virtual bool triggerEvaluation(PortIndex idx = PortIndex{});
 
     /**
      * @brief Should be called within the constructor. Used to register
