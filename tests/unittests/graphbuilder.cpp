@@ -25,9 +25,9 @@ TEST(GraphBuilder, numbers)
         auto& value1   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"));
         auto& value2   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"));
 
-        auto& square   = builder.addNode(QStringLiteral("intelli::test::NumberMathNode"));
-        auto& multiply = builder.addNode(QStringLiteral("intelli::test::NumberMathNode"));
-        auto& add      = builder.addNode(QStringLiteral("intelli::test::NumberMathNode"));
+        auto& square   = builder.addNode(QStringLiteral("intelli::NumberMathNode"));
+        auto& multiply = builder.addNode(QStringLiteral("intelli::NumberMathNode"));
+        auto& add      = builder.addNode(QStringLiteral("intelli::NumberMathNode"));
 
         auto& result = builder.addNode(QStringLiteral("intelli::NumberDisplayNode"));
 
@@ -103,7 +103,7 @@ TEST(GraphBuilder, group)
 
         intelli::GraphBuilder groupBuilder(group.graph);
 
-        auto& add = groupBuilder.addNode(QStringLiteral("intelli::test::NumberMathNode"));
+        auto& add = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode"));
 
         // connect values to sub graph
         builder.connect(value1, intelli::PortIndex{0}, group.graph, intelli::PortIndex{0});

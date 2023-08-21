@@ -1,13 +1,12 @@
 /* GTlab - Gas Turbine laboratory
  * copyright 2009-2023 by DLR
  *
- *  Created on: 10.8.2023
+ *  Created on: 21.8.2023
  *  Author: Marius Bröcker (AT-TWK)
  *  E-Mail: marius.broecker@dlr.de
  */
 
-
-#include "numbermathnode.h"
+#include "intelli/node/numbermath.h"
 
 #include "intelli/nodefactory.h"
 #include "intelli/data/double.h"
@@ -15,10 +14,9 @@
 #include <QComboBox>
 
 using namespace intelli;
-using namespace intelli::test;
 
 static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(NumberMathNode, "Test")
+    return GT_INTELLI_REGISTER_NODE(NumberMathNode, "Number")
 }();
 
 NumberMathNode::NumberMathNode() :
@@ -28,24 +26,18 @@ NumberMathNode::NumberMathNode() :
     registerProperty(m_operation);
 
     // in ports
-    m_inA = addInPort({
-        typeId<intelli::DoubleData>(),
-        QStringLiteral("input A")
-    }, Optional);
-    m_inB = addInPort({
-        typeId<intelli::DoubleData>(),
-        QStringLiteral("input B")
-    }, Optional);
+    m_inA = addInPort(typeId<DoubleData>());
+    m_inB = addInPort(typeId<DoubleData>());
 
     // out ports
     m_out = addOutPort(PortData{
-        intelli::typeId<intelli::DoubleData>(),
+        intelli::typeId<DoubleData>(),
         QStringLiteral("result") // custom port caption
     });
 
-    registerWidgetFactory([=](intelli::Node&){
+    registerWidgetFactory([=](){
         auto w = std::make_unique<QComboBox>();
-        w->addItems(QStringList{"+", "-", "*", "/"});
+        w->addItems(QStringList{"+", "-", "*", "/", "pow"});
 
         auto const update = [this, w_ = w.get()](){
             w_->setCurrentText(toString(m_operation));
@@ -55,14 +47,19 @@ NumberMathNode::NumberMathNode() :
 
         connect(w.get(), &QComboBox::currentTextChanged,
                 this, [this, w_ = w.get()](){
-                    auto tmp = toMathOperation(w_->currentText());
-                    if (tmp != m_operation) m_operation = tmp;
-                });
+            auto tmp = toMathOperation(w_->currentText());
+            if (tmp == m_operation) return;
+
+            m_operation = tmp;
+            updatePortCaptions();
+        });
 
         update();
 
         return w;
     });
+
+    updatePortCaptions();
 
     connect(&m_operation, &GtAbstractProperty::changed, this, &Node::updateNode);
 }
@@ -87,18 +84,20 @@ NumberMathNode::eval(PortId outId)
     case MathOperation::Divide:
         if (b == 0.0)
         {
-            gtWarning() << tr("Cannot divide by 0!");
+            gtWarning().nospace()
+                << __FUNCTION__ << ": " << tr("Cannot divide by 0!");
             return {};
         }
-        return std::make_shared<intelli::DoubleData>(a / b);
+        return std::make_shared<DoubleData>(a / b);
     case MathOperation::Multiply:
-        return std::make_shared<intelli::DoubleData>(a * b);
+        return std::make_shared<DoubleData>(a * b);
+    case MathOperation::Power:
+        return std::make_shared<DoubleData>(std::pow(a, b));
     case MathOperation::Plus:
-    default:
         break;
     }
 
-    return std::make_shared<intelli::DoubleData>(a + b);
+    return std::make_shared<DoubleData>(a + b);
 }
 
 QString
@@ -112,10 +111,12 @@ NumberMathNode::toString(MathOperation op) const
         return QStringLiteral("/");
     case MathOperation::Multiply:
         return QStringLiteral("*");
+    case MathOperation::Power:
+        return QStringLiteral("pow");
     case MathOperation::Plus:
-    default:
-        return QStringLiteral("+");
+        break;
     }
+    return QStringLiteral("+");
 }
 
 NumberMathNode::MathOperation
@@ -124,7 +125,40 @@ NumberMathNode::toMathOperation(QString const& op) const
     if (op == QStringLiteral("-")) return MathOperation::Minus;
     if (op == QStringLiteral("*")) return MathOperation::Multiply;
     if (op == QStringLiteral("/")) return MathOperation::Divide;
+    if (op == QStringLiteral("pow")) return MathOperation::Power;
     return MathOperation::Plus;
 }
 
+void
+NumberMathNode::updatePortCaptions()
+{
+    auto* inA = port(m_inA);
+    auto* inB = port(m_inB);
+    assert(inA); assert(inB);
 
+    switch (m_operation)
+    {
+    case MathOperation::Minus:
+        inA->caption = QStringLiteral("minuend");
+        inB->caption = QStringLiteral("subtrahend");
+        break;
+    case MathOperation::Divide:
+        inA->caption = QStringLiteral("dividend");
+        inB->caption = QStringLiteral("divisor");
+        break;
+    case MathOperation::Multiply:
+        inA->caption = QStringLiteral("multiplier");
+        inB->caption = QStringLiteral("multiplicand");
+        break;
+    case MathOperation::Power:
+        inA->caption = QStringLiteral("base");
+        inB->caption = QStringLiteral("exponent");
+        break;
+    case MathOperation::Plus:
+        inA->caption = QStringLiteral("summand A");
+        inB->caption = QStringLiteral("summand B");
+        break;
+    }
+
+    emit nodeChanged();
+}

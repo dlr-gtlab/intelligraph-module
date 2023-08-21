@@ -19,7 +19,6 @@ add_executable(IntelliGraphUnitTests
     main.cpp
     strongtypes.cpp
     graphbuilder.cpp
-    nodes/numbermathnode.h nodes/numbermathnode.cpp
 )
 
 target_link_libraries(IntelliGraphUnitTests PRIVATE GTlabIntelliGraph gtest)

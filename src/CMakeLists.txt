@@ -54,6 +54,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/groupinputprovider.h
     intelli/node/groupoutputprovider.h
     intelli/node/numberdisplay.h
+    intelli/node/numbermath.h
     intelli/node/numbersource.h
     intelli/node/objectmemento.h
     intelli/node/objectsource.h
@@ -98,6 +99,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/groupinputprovider.cpp
     intelli/node/groupoutputprovider.cpp
     intelli/node/numberdisplay.cpp
+    intelli/node/numbermath.cpp
     intelli/node/numbersource.cpp
     intelli/node/objectmemento.cpp
     intelli/node/objectsource.cpp

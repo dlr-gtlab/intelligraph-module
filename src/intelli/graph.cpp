@@ -527,12 +527,19 @@ intelli::evaluate(Graph& graph)
         auto* node = graph.findNode(nodeId);
         assert(node);
 
-        // set executor
-        node->setExecutor(ExecutionMode::Sequential);
-        // evaluate
-        node->updateNode();
-        // clear executor
-        node->setExecutor(ExecutionMode::None);
+        if (auto* group = qobject_cast<Graph*>(node))
+        {
+            intelli::evaluate(*group);
+        }
+        else
+        {
+            // set executor
+            node->setExecutor(ExecutionMode::Sequential);
+            // evaluate
+            node->updateNode();
+            // clear executor
+            node->setExecutor(ExecutionMode::None);
+        }
 
         // propagate data to next nodes
         for (auto* connection : connectionGraph.at(nodeId))

@@ -1,7 +1,7 @@
 /* GTlab - Gas Turbine laboratory
  * copyright 2009-2023 by DLR
  *
- *  Created on: 10.8.2023
+ *  Created on: 21.8.2023
  *  Author: Marius Bröcker (AT-TWK)
  *  E-Mail: marius.broecker@dlr.de
  */
@@ -16,8 +16,6 @@
 
 namespace intelli
 {
-namespace test
-{
 
 class NumberMathNode : public Node
 {
@@ -30,7 +28,8 @@ public:
         Plus,
         Minus,
         Multiply,
-        Divide
+        Divide,
+        Power
     };
     Q_ENUM(MathOperation)
 
@@ -49,9 +48,9 @@ private:
     QString toString(MathOperation op) const;
 
     MathOperation toMathOperation(QString const& op) const;
-};
 
-} // namespace test
+    void updatePortCaptions();
+};
 
 } // namespace intelli
 
