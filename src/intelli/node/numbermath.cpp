@@ -12,6 +12,7 @@
 #include "intelli/data/double.h"
 
 #include <QComboBox>
+#include <QLayout>
 
 using namespace intelli;
 
@@ -36,18 +37,20 @@ NumberMathNode::NumberMathNode() :
     });
 
     registerWidgetFactory([=](){
-        auto w = std::make_unique<QComboBox>();
+        auto base = makeWidget();
+        auto w = new QComboBox();
+        base->layout()->addWidget(w);
         w->addItems(QStringList{"+", "-", "*", "/", "pow"});
 
-        auto const update = [this, w_ = w.get()](){
-            w_->setCurrentText(toString(m_operation));
+        auto const update = [this, w](){
+            w->setCurrentText(toString(m_operation));
         };
 
-        connect(&m_operation, &GtAbstractProperty::changed, w.get(), update);
+        connect(&m_operation, &GtAbstractProperty::changed, w, update);
 
-        connect(w.get(), &QComboBox::currentTextChanged,
-                this, [this, w_ = w.get()](){
-            auto tmp = toMathOperation(w_->currentText());
+        connect(w, &QComboBox::currentTextChanged,
+                this, [this, w](){
+            auto tmp = toMathOperation(w->currentText());
             if (tmp == m_operation) return;
 
             m_operation = tmp;
@@ -56,7 +59,7 @@ NumberMathNode::NumberMathNode() :
 
         update();
 
-        return w;
+        return base;
     });
 
     updatePortCaptions();
