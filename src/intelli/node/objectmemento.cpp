@@ -24,7 +24,7 @@ ObjectMementoNode::ObjectMementoNode() :
     PortId inPort = addInPort(typeId<ObjectData>());
 
     registerWidgetFactory([this, inPort]() {
-        auto base = makeBaseWidget();
+        auto base = makeWidget();
         auto* w = new GtCodeEditor();
         base->layout()->addWidget(w);
 

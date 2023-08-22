@@ -40,7 +40,7 @@ StringListInputNode::StringListInputNode() :
     addOutPort(typeId<StringListData>());
 
     registerWidgetFactory([this]() {
-        auto base = makeBaseWidget();
+        auto base = makeWidget();
         auto w = new QTextEdit;
         base->layout()->addWidget(w);
         w->setReadOnly(true);

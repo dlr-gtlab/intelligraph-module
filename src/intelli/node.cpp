@@ -20,11 +20,11 @@
 using namespace intelli;
 
 std::unique_ptr<QWidget>
-intelli::makeBaseWidget()
+intelli::makeWidget()
 {
     auto base = std::make_unique<QWidget>();
     auto* layout = new QVBoxLayout(base.get());
-    Q_UNUSED(layout);
+    layout->setContentsMargins(0, 0, 0, 0);
     return base;
 }
 

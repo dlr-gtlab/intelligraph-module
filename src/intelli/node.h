@@ -41,7 +41,7 @@ struct NodeImpl;
  * for widgets, that have trouble resizing correctly.
  * @return Widget pointer (never null)
  */
-GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeBaseWidget();
+GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeWidget();
 
 class GT_INTELLI_EXPORT Node : public GtObject
 {
