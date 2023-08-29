@@ -81,6 +81,19 @@ Node::setExecutor(ExecutionMode executorMode)
     }
     emit computingFinished();
     pimpl->executor = std::move(executor);
+
+    // cleanup node if executor was deleted
+    if (pimpl->executor) return;
+
+    for (auto* data : {&pimpl->inData, &pimpl->outData})
+    {
+        for (auto& d : *data)
+        {
+            d.reset();
+        }
+    }
+
+    pimpl->requiresEvaluation = true;
 }
 
 void
