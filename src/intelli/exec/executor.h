@@ -34,7 +34,7 @@ public:
 
     Executor();
 
-    virtual bool evaluateNode(Node& node, PortIndex idx) = 0;
+    virtual bool evaluateNode(Node& node, GraphExecutionModel& model, PortIndex idx = PortIndex{}) = 0;
 
     virtual bool isReady() const;
 
@@ -42,8 +42,6 @@ protected:
     
     static NodeDataPtr doEvaluate(Node& node, PortIndex idx);
     static NodeDataPtr doEvaluate(Node& node);
-    
-    static NodeImpl& accessImpl(Node& node);
 
     static GraphExecutionModel* accessExecModel(Node& node);
 };

@@ -26,18 +26,6 @@ class ConnectionGroup;
 class ModelAdapter;
 
 /**
- * @brief Evaluates the given graph. This call is blocking. If the graph is
- * already active it cannot be evaluated and the false is returned. The results
- * can be access by iterating over each node and accessing `outData`.
- * @param graph Graph to execute
- * @return Whether the graph was evaluated sucessfully
- */
-GT_INTELLI_EXPORT
-bool evaluate(Graph& graph);
-GT_INTELLI_EXPORT
-bool evaluate(Graph& graph, GraphExecutionModel& model);
-
-/**
  * @brief Opens the graph in a graph editor. The graph object should be kept
  * alive to keep the editor open
  * @param graph Graph to open
@@ -194,6 +182,7 @@ public:
 
     QVector<ConnectionId> findConnections(NodeId nodeId, PortType type, PortIndex idx) const;
     
+    QVector<NodeId> findTargetNodes(NodeId nodeId, PortType type, PortIndex idx = invalid<PortIndex>()) const;
     /**
      * @brief Returns a list of all sub graphes (aka group nodes)
      * @return List of sub graphs
@@ -306,7 +295,7 @@ signals:
 
 protected:
     
-    bool triggerPortEvaluation(PortIndex idx = PortIndex{}) override;
+    bool handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx) override;
 
     void onObjectDataMerged() override;
 
@@ -332,7 +321,7 @@ private:
 
 private slots:
 
-    void forwardOutData(PortIndex idx);
+    void onOutputProivderEvaluated(NodeId nodeId);
 };
 
 } // namespace intelli

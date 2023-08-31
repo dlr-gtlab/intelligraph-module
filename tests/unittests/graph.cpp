@@ -13,11 +13,11 @@
 #include <gt_objectfactory.h>
 
 using namespace intelli;
-TEST(Graph, basic_graph)
+TEST(Graph, directed_acyclic_graph_model)
 {
     Graph graph;
-
-    ASSERT_TRUE(test::buildTestGraph(graph));
+    
+    ASSERT_TRUE(test::buildBasicGraph(graph));
 
     EXPECT_EQ(graph.connections().size(), 5);
     EXPECT_EQ(graph.nodes().size(), 5);
@@ -92,8 +92,8 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
 
     Graph graph;
     graph.setFactory(gtObjectFactory);
-
-    ASSERT_TRUE(test::buildTestGraph(graph));
+    
+    ASSERT_TRUE(test::buildBasicGraph(graph));
 
     EXPECT_EQ(graph.connections().size(), 5);
     EXPECT_EQ(graph.nodes().size(), 5);
@@ -198,8 +198,8 @@ TEST(Graph, restore_connections_only_on_memento_diff)
 
     Graph graph;
     graph.setFactory(gtObjectFactory);
-
-    ASSERT_TRUE(test::buildTestGraph(graph));
+    
+    ASSERT_TRUE(test::buildBasicGraph(graph));
 
     EXPECT_EQ(graph.connections().size(), 5);
     EXPECT_EQ(graph.nodes().size(), 5);

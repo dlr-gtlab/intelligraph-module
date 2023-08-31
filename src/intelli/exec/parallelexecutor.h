@@ -29,16 +29,14 @@ public:
 
     ParallelExecutor();
     ~ParallelExecutor();
-    
-    bool evaluateNode(Node& node) override;
-    
-    bool evaluatePort(Node& node, PortIndex idx) override;
+
+    bool evaluateNode(Node& node, GraphExecutionModel& model, PortIndex idx = PortIndex{}) override;
 
     bool isReady() const override;
 
 protected:
     
-    bool canEvaluateNode(Node& node, PortIndex outIdx = PortIndex{}) override;
+    bool canEvaluateNode(Node& node, PortIndex outIdx = PortIndex{});
 
 private:
     
@@ -49,8 +47,6 @@ private:
     PortIndex m_port;
 
     bool m_collected = true;
-    
-    bool evaluateNodeHelper(Node& node);
 
 private slots:
 

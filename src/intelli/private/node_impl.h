@@ -86,13 +86,6 @@ struct NodeImpl
     /// iterator for the next port id
     PortId nextPortId{0};
 
-    bool requiresEvaluation{true};
-
-    bool canEvaluate() const
-    {
-        return true;
-    }
-
     std::vector<PortData>& ports(PortType type) noexcept(false)
     {
         switch (type)

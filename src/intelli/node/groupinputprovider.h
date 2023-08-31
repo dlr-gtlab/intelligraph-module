@@ -25,6 +25,9 @@ public:
 protected:
 
     NodeDataPtr eval(PortId outId) override;
+
+    bool handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx) override;
+
 };
 
 } // namespace intelli

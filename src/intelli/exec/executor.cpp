@@ -44,12 +44,6 @@ Executor::doEvaluate(Node& node)
     return node.eval(invalid<PortId>());
 }
 
-NodeImpl&
-Executor::accessImpl(Node& node)
-{
-    return *node.pimpl;
-}
-
 GraphExecutionModel*
 Executor::accessExecModel(Node& node)
 {

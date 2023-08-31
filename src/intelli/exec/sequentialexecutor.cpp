@@ -27,22 +27,16 @@ bool evaluateHelper(Node& node,
 }
 
 bool
-SequentialExecutor::evaluateNode(Node& node, PortIndex idx)
+SequentialExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortIndex idx)
 {
-    auto* model = accessExecModel(node);
-    if (!model)
-    {
-        gtError() << QObject::tr("Graph execution model for node '%1' not found! "
-                                 "Aborting evaluation").arg(node.objectName());
-        return false;
-    }
-
-    auto const evaluatePort = [&node, model](PortIndex idx){
+    auto const evaluatePort = [&node, &model](PortIndex idx){
         auto data = doEvaluate(node, idx);
 
-        model->setNodeData(node.id(), PortType::Out, idx, std::move(data));
+        bool success = model.setNodeData(node.id(), PortType::Out, idx, std::move(data));
 
         emit node.evaluated(idx);
+
+        return success;
     };
 
     // cleanup routine
@@ -56,9 +50,7 @@ SequentialExecutor::evaluateNode(Node& node, PortIndex idx)
 
         emit node.computingStarted();
 
-        evaluatePort(idx);
-
-        return true;
+        return evaluatePort(idx);
     }
 
     emit node.computingStarted();
@@ -69,15 +61,19 @@ SequentialExecutor::evaluateNode(Node& node, PortIndex idx)
     if (outPorts.empty())
     {
         doEvaluate(node);
+
         emit node.evaluated();
+
         return true;
     }
+
+    bool success = true;
 
     // iterate over all output ports
     for (PortIndex idx{0}; idx < outPorts.size(); ++idx)
     {
-        evaluatePort(idx);
+        success &= evaluatePort(idx);
     }
 
-    return true;
+    return success;
 }

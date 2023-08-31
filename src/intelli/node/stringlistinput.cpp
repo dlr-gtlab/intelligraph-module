@@ -22,7 +22,6 @@ StringListInputNode::StringListInputNode() :
     Node(tr("Stringlist Input")),
     m_values("values", "Values")
 {
-
     GtPropertyStructDefinition stringEntryDef{QStringLiteral("StringStruct")};
     stringEntryDef.defineMember(QStringLiteral("value"),
                                 gt::makeStringProperty());

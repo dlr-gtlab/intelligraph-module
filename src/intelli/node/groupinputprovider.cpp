@@ -9,6 +9,8 @@
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/graphexecmodel.h"
 
+#include "intelli/exec/sequentialexecutor.h"
+
 using namespace intelli;
 
 GroupInputProvider::GroupInputProvider() :
@@ -20,8 +22,13 @@ GroupInputProvider::GroupInputProvider() :
 Node::NodeDataPtr
 GroupInputProvider::eval(PortId outId)
 {
-    auto* model = executionModel();
-    if (!model) return {};
+    return nodeData(outId);
+}
 
-    return model->nodeData(id(), PortType::Out, portIndex(PortType::Out, outId));
+bool
+GroupInputProvider::handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx)
+{
+    SequentialExecutor executor;
+
+    return executor.evaluateNode(*this, model, idx);
 }

@@ -23,7 +23,7 @@ public:
 
     SequentialExecutor();
     
-    bool evaluateNode(Node& node, PortIndex idx = PortIndex{}) override;
+    bool evaluateNode(Node& node, GraphExecutionModel& model, PortIndex idx = PortIndex{}) override;
 
 };
 

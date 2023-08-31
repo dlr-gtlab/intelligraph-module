@@ -12,6 +12,7 @@
 #include "intelli/private/node_impl.h"
 #include "intelli/private/utils.h"
 #include "intelli/exec/sequentialexecutor.h"
+#include "intelli/exec/parallelexecutor.h"
 
 #include "gt_qtutilities.h"
 
@@ -64,6 +65,10 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
     connect(&pimpl->isActive, &GtAbstractProperty::changed,
             this, &Node::nodeStateChanged);
+
+    connect(this, &Node::triggerNodeEvaluation, this, [this](){
+        emit triggerPortEvaluation(invalid<PortIndex>());
+    });
 }
 
 Node::~Node() = default;
@@ -347,15 +352,18 @@ Node::executionModel() const
 }
 
 bool
-Node::triggerPortEvaluation(PortIndex idx)
+Node::handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx)
 {
-    if (!executionModel()) return false;
+    if (findChild<ParallelExecutor*>())
+    {
+        gtError() << tr("Node already has a executor!");
+        return false;
+    }
 
-    SequentialExecutor executor;
+    auto executor = new ParallelExecutor;
+    executor->setParent(this);
 
-    // if we failed to start the evaluation the node needs to be evaluated
-    // at a later point
-    bool startedEval = executor.evaluateNode(*this, idx);
+    bool startedEval = executor->evaluateNode(*this, model, idx);
 
     return startedEval;
 }

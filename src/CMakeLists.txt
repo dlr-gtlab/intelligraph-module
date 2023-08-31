@@ -46,7 +46,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     #intelli/adapter/objectmodel.h
     intelli/exec/executor.h
     intelli/exec/executorfactory.cpp
-    #intelli/exec/parallelexecutor.h
+    intelli/exec/parallelexecutor.h
     intelli/exec/sequentialexecutor.h
     intelli/node/abstractgroupprovider.h
     intelli/node/conditional.h
@@ -90,7 +90,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     #intelli/adapter/modeladapter.cpp
     #intelli/adapter/objectmodel.cpp
     intelli/exec/executor.cpp
-    #intelli/exec/parallelexecutor.cpp
+    intelli/exec/parallelexecutor.cpp
     intelli/exec/sequentialexecutor.cpp
     intelli/data/bool.cpp
     intelli/data/double.cpp

@@ -21,8 +21,6 @@ TEST(GraphBuilder, basic_graph)
 
     GraphBuilder builder(graph);
 
-    Node* resultNode = nullptr;
-
     try
     {
 
@@ -58,7 +56,6 @@ TEST(GraphBuilder, basic_graph)
         setNodeProperty(multiply, QStringLiteral("operation"), QStringLiteral("Multiply"));
         setNodeProperty(add,      QStringLiteral("operation"), QStringLiteral("Plus"));
 
-        resultNode = &result;
     }
     catch(std::logic_error const& e)
     {
@@ -67,18 +64,7 @@ TEST(GraphBuilder, basic_graph)
         return;
     }
 
-    auto success = evaluate(graph);
-    EXPECT_TRUE(success);
-
-//    // access result
-//    ASSERT_NE(resultNode, nullptr);
-
-//    auto resultData = resultNode->inData(PortIndex{0});
-//    ASSERT_NE(resultData, nullptr);
-
-//    auto resultValue = qobject_cast<DoubleData const*>(resultData.get());
-//    ASSERT_NE(resultValue, nullptr);
-//    EXPECT_EQ(resultValue->value(), 42);
+    dag::debugGraph(graph.dag());
 }
 
 TEST(GraphBuilder, graph_with_groups)
@@ -86,9 +72,6 @@ TEST(GraphBuilder, graph_with_groups)
     Graph graph;
 
     GraphBuilder builder(graph);
-
-    Node* resultNode = nullptr;
-    Node* groupResultNode = nullptr;
 
     try
     {
@@ -129,8 +112,6 @@ TEST(GraphBuilder, graph_with_groups)
 
         setNodeProperty(add, QStringLiteral("operation"), QStringLiteral("Plus"));
 
-        resultNode = &result;
-        groupResultNode = &add;
     }
     catch(std::logic_error const& e)
     {
@@ -139,19 +120,5 @@ TEST(GraphBuilder, graph_with_groups)
         return;
     }
 
-    auto success = evaluate(graph);
-    EXPECT_TRUE(success);
-
-//    // access result
-//    ASSERT_NE(resultNode, nullptr);
-//    ASSERT_NE(groupResultNode, nullptr);
-
-//    auto resultValue = qobject_pointer_cast<DoubleData const>(resultNode->inData(PortIndex{0}));
-//    ASSERT_NE(resultValue, nullptr);
-//    EXPECT_EQ(resultValue->value(), 42);
-
-//    // group node should have a value set
-//    auto groupResultValue = qobject_pointer_cast<DoubleData const>(groupResultNode->outData(PortIndex{0}));
-//    ASSERT_NE(groupResultValue, nullptr);
-//    EXPECT_EQ(groupResultValue->value(), 42);
+    dag::debugGraph(graph.dag());
 }

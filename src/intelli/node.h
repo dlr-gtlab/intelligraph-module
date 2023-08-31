@@ -258,27 +258,21 @@ public:
      */
     QWidget* embeddedWidget();
 
-public slots:
+signals:
 
     /**
-     * @brief Triggers the evaluation of the node (port). It is not intended to
-     * actually do the evaluation (use `eval` instead), but to handle/manage the
-     * execution of the node. Should only be overriden in rare cases.
+     * @brief Triggers the evaluation of the output port speicified. It is not
+     * guranteed to be evaluated, as the underling graph execution model must
+     * be active
      * @param idx Port index to evaluate. If port index is invalid, the whole
      * node (i.e. all ports) should be evaluated
-     * @return Returns true if the evaluation was triggered sucessfully.
-     * (node may be evaluated non-blocking)
      */
-    virtual bool triggerPortEvaluation(PortIndex idx = PortIndex{});
+    void triggerPortEvaluation(PortIndex idx);
 
     /**
-     * @brief Helper method, to trigger the evaluation of the whole node.
-     * @return Returns true if the evaluation was triggered sucessfully.
-     * (node may be evaluated non-blocking)
+     * @brief Helper signal to trigger the evaluation of the whole node.
      */
-    bool triggerNodeEvaluation() { return triggerPortEvaluation(); }
-
-signals:
+    void triggerNodeEvaluation();
 
     /**
      * @brief Emitted if the node has evaluated and the output data has changed.
@@ -390,6 +384,17 @@ protected:
 
     GraphExecutionModel* executionModel();
     GraphExecutionModel const* executionModel() const;
+
+    /**
+     * @brief Handles the evaluation of the node (port). It is not intended to
+     * actually do the evaluation (use `eval` instead), but to handle/manage the
+     * execution of the node. Should only be overriden in rare cases.
+     * @param idx Port index to evaluate. If port index is invalid, the whole
+     * node (i.e. all ports) should be evaluated
+     * @return Returns true if the evaluation was triggered sucessfully.
+     * (node may be evaluated non-blocking)
+     */
+    virtual bool handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx);
 
     /**
      * @brief Should be called within the constructor. Used to register

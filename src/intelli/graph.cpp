@@ -250,6 +250,21 @@ Graph::findConnections(NodeId nodeId, PortType type, PortIndex idx) const
     return connections;
 }
 
+QVector<NodeId>
+Graph::findTargetNodes(NodeId nodeId, PortType type, PortIndex idx) const
+{
+    auto const& connections = idx == invalid<PortIndex>() ?
+        findConnections(nodeId, type) :
+        findConnections(nodeId, type, idx);
+
+    QVector<NodeId> nodes;
+    for (ConnectionId conId : connections)
+    {
+        if (!nodes.contains(conId.inNodeId)) nodes.push_back(conId.inNodeId);
+    }
+    return nodes;
+}
+
 QList<Graph*>
 Graph::graphNodes()
 {
@@ -520,27 +535,48 @@ Graph::deleteConnection(ConnectionId connectionId)
 }
 
 bool
-Graph::triggerPortEvaluation(PortIndex idx)
+Graph::handleNodeEvaluation(GraphExecutionModel& model, PortIndex outIdx)
 {
-    if (!isActive()) return false;
+    auto* input = inputProvider();
+    if (!input) return false;
 
-//    if (auto* input = inputProvider())
-//    {
-//        if (idx != invalid<PortIndex>())
-//        {
-//            input->setOutData(idx, inData(idx));
-//            return true;
-//        }
+    auto* submodel = findDirectChild<GraphExecutionModel*>();
+    if (submodel == &model || model.parent() == this)
+    {
+        gtError() << tr("Unexpected graph execution model!");
+        return false;
+    }
 
-//        auto size = ports(PortType::In).size();
-//        for (idx = PortIndex{0}; idx < size; ++idx)
-//        {
-//            input->setOutData(idx, inData(idx));
-//        }
-//        return true;
-//    }
+    if (!submodel) submodel = new GraphExecutionModel(*this);
+    submodel->setParent(this);
 
-    return false;
+    auto size = ports(PortType::In).size();
+
+    gtDebug().verbose().nospace()
+        << "### Evaluating node:  '" << objectName()
+        << "' at output idx '" << outIdx << "'";
+
+    for (PortIndex idx(0); idx < size; ++idx)
+    {
+        auto* port = model.findPortDataEntry(id(), PortType::In, idx);
+        assert(port);
+        submodel->setNodeData(input->id(), PortType::Out, idx, port->data);
+    }
+
+    connect(submodel, &GraphExecutionModel::nodeEvaluated,
+            this, &Graph::onOutputProivderEvaluated, Qt::UniqueConnection);
+
+    emit computingStarted();
+
+    auto finally = gt::finally([this](){
+        emit computingFinished();
+    });
+
+    if (!submodel->autoEvaluate()) return false;
+
+    finally.clear();
+
+    return true;
 }
 
 void
@@ -592,125 +628,35 @@ Graph::restoreConnection(Connection* connection)
 void
 Graph::initInputOutputProviders()
 {
-    auto* exstInput = findDirectChild<GroupInputProvider*>();
+    auto* exstInput = inputProvider();
     auto input = exstInput ? nullptr : std::make_unique<GroupInputProvider>();
     
-    auto* exstOutput = findDirectChild<GroupOutputProvider*>();
+    auto* exstOutput = outputProvider();
     auto output = exstOutput ? nullptr : std::make_unique<GroupOutputProvider>();
-
-    if (!exstOutput) exstOutput = output.get();
-
-    connect(exstOutput, &Node::inputDataRecieved,
-            this, &Graph::forwardOutData,
-            Qt::UniqueConnection);
 
     if (input) appendNode(std::move(input));
     if (output) appendNode(std::move(output));
 }
 
 void
-Graph::forwardOutData(PortIndex idx)
+Graph::onOutputProivderEvaluated(NodeId nodeId)
 {
-//    if (auto* output = outputProvider())
-//    {
-//        setOutData(idx, output->inData(idx));
-//    }
-}
+    auto* output = outputProvider();
+    if (!output) return;
 
-bool
-intelli::evaluate(Graph& graph)
-{
-    auto model = std::make_unique<GraphExecutionModel>(graph);
+    if (output->id() != nodeId) return;
 
-    return model.release()->autoEvaluate();
-}
+    auto finally = gt::finally([this](){
+        emit computingFinished();
+    });
 
-bool
-intelli::evaluate(Graph& graph, GraphExecutionModel& model)
-{
-    return model.autoEvaluate();
+    auto* submodel = findDirectChild<GraphExecutionModel*>();
+    if (!submodel) return;
 
-//    auto const allNodes = graph.nodes();
-//    auto allConnections = graph.connections();
+    auto* model = executionModel();
+    if (!model) return;
 
-//    std::map<NodeId, std::vector<NodeId>> callGraph;
-//    std::map<NodeId, std::vector<Connection*>> connectionGraph;
-
-//    std::vector<NodeId> nextNodes;
-//    std::vector<Connection*> nodeConnections;
-
-//    for (auto const* node : allNodes)
-//    {
-//        nextNodes.clear();
-//        nodeConnections.clear();
-
-//        NodeId nodeId = node->id();
-
-//        for (auto* connection : allConnections)
-//        {
-//            if (connection->outNodeId() == nodeId)
-//            {
-//                nodeConnections.push_back(connection);
-//                nextNodes.push_back(connection->inNodeId());
-//            }
-//        }
-
-//        callGraph.insert(std::make_pair(nodeId, nextNodes));
-//        connectionGraph.insert(std::make_pair(nodeId, nodeConnections));
-//    }
-
-//    gtDebug().verbose() << "call graph: " << callGraph;
-
-//    std::vector<NodeId> callOrder = gt::topo_sort(callGraph);
-
-//    gtDebug().verbose() << "call order: " << callOrder;
-
-//    // evaluate each node
-//    for (NodeId nodeId : callOrder)
-//    {
-//        auto* node = graph.findNode(nodeId);
-//        assert(node);
-
-//        if (auto* group = qobject_cast<Graph*>(node))
-//        {
-//            intelli::evaluate(*group);
-//        }
-//        else
-//        {
-//            // set executor
-//            node->setExecutor(ExecutionMode::Sequential);
-//            // evaluate
-//            node->updateNode();
-//            // clear executor
-//            node->setExecutor(ExecutionMode::None);
-//        }
-
-//        // propagate data to next nodes
-//        for (auto* connection : connectionGraph.at(nodeId))
-//        {
-//            auto* next = graph.findNode(connection->inNodeId());
-//            if (!next)
-//            {
-//                gtError()
-//                    << QObject::tr("Cannot propagte data from node %1 to node %2!")
-//                           .arg(node->id()).arg(connection->inNodeId())
-//                    << QObject::tr("(Node was not found)");
-//                return false;
-//            }
-
-//            if (!next->setInData(connection->inPortIdx(), node->outData(connection->outPortIdx())))
-//            {
-//                gtError()
-//                    << QObject::tr("Cannot propagte data from node %1 to node %2!")
-//                           .arg(node->id()).arg(connection->inNodeId())
-//                    << QObject::tr("(Port index %1 of node %2 out of bounds)")
-//                           .arg(connection->inPortIdx()).arg(connection->inNodeId());
-//                return false;
-//            }
-//        }
-//    }
-
-//    return true;
+    model->setNodeData(id(), PortType::Out, submodel->nodeData(output->id(), PortType::In));
 }
 
 GtMdiItem*

@@ -17,31 +17,103 @@
 
 using namespace intelli;
 
-
-TEST(GraphExecutionModel, basic_graph)
+TEST(GraphExecutionModel, auto_evaluate)
 {
     Graph graph;
 
-    ASSERT_TRUE(test::buildTestGraph(graph));
+    ASSERT_TRUE(test::buildBasicGraph(graph));
 
     EXPECT_TRUE(isAcyclic(graph));
 
     dag::debugGraph(graph.dag());
 
+    // auto evaluate
+
     GraphExecutionModel model(graph);
 
-    auto success = model.autoEvaluate();
-    EXPECT_TRUE(success);
+    EXPECT_FALSE(model.evaluated());
 
-    auto D_data = qobject_pointer_cast<DoubleData const>(model.nodeData(D_id, PortType::Out, PortIndex(0)));
+    EXPECT_TRUE(model.autoEvaluate());
+    EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
+
+    auto D_data = qobject_pointer_cast<DoubleData const>(model.nodeData(D_id, PortType::Out, PortIndex(0)).data);
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 42);
 
-    auto E_data = qobject_pointer_cast<DoubleData const>(model.nodeData(E_id, PortType::In, PortIndex(0)));
+    auto E_data = qobject_pointer_cast<DoubleData const>(model.nodeData(E_id, PortType::In, PortIndex(0)).data);
     ASSERT_TRUE(E_data);
     EXPECT_EQ(E_data->value(), 8);
+
+    EXPECT_TRUE(model.evaluated());
+
+    // disable auto evaluation
+
+    gtDebug() << "";
+
+    EXPECT_TRUE(model.autoEvaluate(false));
+
+    model.setNodeData(A_id, PortType::Out, PortIndex(0), std::make_shared<DoubleData>(12));
+
+    EXPECT_FALSE(model.evaluated());
+
+    // old values are still set
+    D_data = qobject_pointer_cast<DoubleData const>(model.nodeData(D_id, PortType::Out, PortIndex(0)).data);
+    ASSERT_TRUE(D_data);
+    EXPECT_EQ(D_data->value(), 42);
+
+    // not auto evaluating
+    EXPECT_FALSE(model.wait(std::chrono::seconds(1)));
+
+    // reenable auto evaluation
+
+    gtDebug() << "";
+
+    EXPECT_TRUE(model.autoEvaluate());
+    EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
+
+    // new values is set
+    D_data = qobject_pointer_cast<DoubleData const>(model.nodeData(D_id, PortType::Out, PortIndex(0)).data);
+    ASSERT_TRUE(D_data);
+    EXPECT_EQ(D_data->value(), 28);
+
+    EXPECT_TRUE(model.evaluated());
 }
 
+TEST(GraphExecutionModel, graph_with_groups)
+{
+    Graph graph;
+
+    ASSERT_TRUE(test::buildGroupGraph(graph));
+
+    EXPECT_TRUE(isAcyclic(graph));
+
+    dag::debugGraph(graph.dag());
+
+    auto subGraphs = graph.graphNodes();
+    ASSERT_EQ(subGraphs.size(), 1);
+
+    Graph* subGraph = subGraphs.at(0);
+    ASSERT_TRUE(subGraph);
+
+    dag::debugGraph(subGraph->dag());
+
+    // auto evaluate
+
+    GraphExecutionModel model(graph);
+    GraphExecutionModel* submodel = graph.findDirectChild<GraphExecutionModel*>();
+    ASSERT_TRUE(submodel);
+
+    EXPECT_TRUE(model.autoEvaluate());
+    EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
+
+    auto C_data = qobject_pointer_cast<DoubleData const>(model.nodeData(C_id, PortType::Out, PortIndex(0)).data);
+    ASSERT_TRUE(C_data);
+    EXPECT_EQ(C_data->value(), 34);
+
+    auto D_data = qobject_pointer_cast<DoubleData const>(model.nodeData(E_id, PortType::In, PortIndex(0)).data);
+    ASSERT_TRUE(D_data);
+    EXPECT_EQ(D_data->value(), 8);
+}
 
 TEST(GraphExecutionModel, basic_graph_with_cycle)
 {
@@ -85,6 +157,8 @@ TEST(GraphExecutionModel, basic_graph_with_cycle)
 
     EXPECT_FALSE(isAcyclic(graph));
 
-    auto success = evaluate(graph);
-    EXPECT_FALSE(success);
+    GraphExecutionModel model(graph);
+
+    EXPECT_FALSE(model.autoEvaluate());
+    EXPECT_FALSE(model.wait(std::chrono::seconds(1)));
 }

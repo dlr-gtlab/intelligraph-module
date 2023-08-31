@@ -9,7 +9,9 @@
 
 #include "intelli/exec/parallelexecutor.h"
 
+#include "intelli/graph.h"
 #include "intelli/node.h"
+#include "intelli/graphexecmodel.h"
 #include "intelli/private/node_impl.h"
 
 #include "gt_qtutilities.h"
@@ -20,133 +22,6 @@
 #include <QtConcurrent>
 
 using namespace intelli;
-
-ParallelExecutor::ParallelExecutor()
-{
-    using Watcher= decltype(m_watcher);
-
-    connect(&m_watcher, &Watcher::finished,
-            this, &ParallelExecutor::onFinished);
-    connect(&m_watcher, &Watcher::canceled,
-            this, &ParallelExecutor::onCanceled);
-    connect(&m_watcher, &Watcher::resultReadyAt,
-            this, &ParallelExecutor::onResultReady);
-}
-
-bool
-ParallelExecutor::canEvaluateNode(Node& node, PortIndex outIdx)
-{
-    if (!m_watcher.isFinished() || !m_collected)
-    {
-        gtWarning() << tr("Cannot evaluate node '%1'! (Node is already running)")
-                           .arg(node.objectName());
-        return false;
-    }
-    return Executor::canEvaluateNode(node, outIdx);
-
-}
-
-ParallelExecutor::~ParallelExecutor()
-{
-    if (!ParallelExecutor::isReady())
-    {
-        gtWarning().verbose() << __func__ << "is not ready for deletion!";
-    }
-}
-
-void
-ParallelExecutor::onFinished()
-{
-    if (!m_node)
-    {
-        gtError() << QObject::tr("Cannot finish transfer of node data! "
-                                 "(Invalid node)");
-        return;
-    }
-
-//    m_node.clear();
-    m_collected = true;
-    emit m_node->computingFinished();
-
-    auto& pimpl = accessImpl(*m_node);
-    if (pimpl.requiresEvaluation)
-    {
-        m_node->updateNode();
-    }
-}
-
-void
-ParallelExecutor::onCanceled()
-{
-    gtWarning().verbose() << __func__ << m_node;
-}
-
-void
-ParallelExecutor::onResultReady(int idx)
-{
-    if (!m_node)
-    {
-        gtError() << tr("Cannot transfer node data! (Invalid node)");
-        return;
-    }
-
-    auto finally = [this](){
-        m_collected = true;
-        emit m_node->computingFinished();
-    };
-    Q_UNUSED(finally);
-
-    std::vector<NodeDataPtr> outData = m_watcher.resultAt(idx);
-
-    auto& p = accessImpl(*m_node);
-
-    if (p.outData.size() != outData.size())
-    {
-        gtError() << tr("Cannot transfer node data! "
-                        "(Data size does not match: expected %1, got %2)")
-                         .arg(outData.size()).arg(p.outData.size());
-        return;
-    }
-
-    p.outData = std::move(outData);
-
-    if (p.outData.empty())
-    {
-        return emit m_node->evaluated();
-    }
-
-    auto const emitOutDataUpdated = [&p, this](PortIndex idx){
-        auto& out = p.outData.at(idx);
-
-        emit m_node->evaluated(idx);
-
-        out ? emit m_node->outDataUpdated(idx) :
-              emit m_node->outDataInvalidated(idx);
-    };
-
-    if (m_port != invalid<PortIndex>())
-    {
-        return emitOutDataUpdated(m_port);
-    }
-    for (PortIndex outIdx{0}; outIdx < p.outPorts.size(); ++outIdx)
-    {
-        emitOutDataUpdated(outIdx);
-    }
-}
-
-bool
-ParallelExecutor::evaluateNode(Node& node)
-{
-    m_port = invalid<PortIndex>();
-    return evaluateNodeHelper(node);
-}
-
-bool
-ParallelExecutor::evaluatePort(Node& node, PortIndex idx)
-{
-    m_port = idx;
-    return evaluateNodeHelper(node);
-}
 
 // we want to skip signals that are speicifc to Node, GtObject and QObject,
 // therefore we will calculate the offset to the "custom" signals once
@@ -165,7 +40,7 @@ static int const s_signal_offset = [](){
 
         offset = i;
     }
-    return offset;
+    return offset + 1;
 }();
 
 using SignalSignature = QByteArray;
@@ -256,26 +131,132 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
 
     // destroy connections if the executor is destroyed
     auto success = QObject::connect(executor, &QObject::destroyed,
-                     sourceObject, [targetObject, sourceObject](){
-        if (sourceObject && targetObject) sourceObject->disconnect(targetObject);
-    });
+                                    sourceObject, [targetObject, sourceObject](){
+                                        if (sourceObject && targetObject) sourceObject->disconnect(targetObject);
+                                    });
     return success;
 }
 
-bool
-ParallelExecutor::evaluateNodeHelper(Node& node)
+ParallelExecutor::ParallelExecutor()
 {
+    using Watcher= decltype(m_watcher);
+
+    connect(&m_watcher, &Watcher::finished,
+            this, &ParallelExecutor::onFinished);
+    connect(&m_watcher, &Watcher::canceled,
+            this, &ParallelExecutor::onCanceled);
+    connect(&m_watcher, &Watcher::resultReadyAt,
+            this, &ParallelExecutor::onResultReady);
+}
+
+bool
+ParallelExecutor::canEvaluateNode(Node& node, PortIndex outIdx)
+{
+    if (!m_watcher.isFinished() || !m_collected)
+    {
+        gtWarning() << tr("Cannot evaluate node '%1'! (Node is already running)")
+                           .arg(node.objectName());
+        return false;
+    }
+    return true;
+}
+
+ParallelExecutor::~ParallelExecutor()
+{
+    if (!ParallelExecutor::isReady())
+    {
+        gtWarning().verbose() << __func__ << "is not ready for deletion!";
+    }
+}
+
+void
+ParallelExecutor::onFinished()
+{
+    if (!m_node)
+    {
+        gtError() << QObject::tr("Cannot finish transfer of node data! "
+                                 "(Invalid node)");
+        return;
+    }
+
+//    m_node.clear();
+    m_collected = true;
+    emit m_node->computingFinished();
+
+    deleteLater();
+}
+
+void
+ParallelExecutor::onCanceled()
+{
+    gtWarning().verbose() << __func__ << m_node;
+}
+
+void
+ParallelExecutor::onResultReady(int result)
+{
+    if (!m_node)
+    {
+        gtError() << tr("Cannot transfer node data! (Invalid node)");
+        return;
+    }
+
+    auto finally = [this](){
+        m_collected = true;
+        emit m_node->computingFinished();
+    };
+    Q_UNUSED(finally);
+
+    std::vector<NodeDataPtr> outData = m_watcher.resultAt(result);
+
+    auto* model = accessExecModel(*m_node);
+    if (!model)
+    {
+        gtError() << tr("Failed to transfer node data!")
+                  << tr("(Execution model not found)");
+        return;
+    }
+
+    bool success = model->setNodeData(m_node->id(), PortType::Out, outData);
+    if (!success)
+    {
+        gtError() << tr("Failed to transfer node data!");
+        return;
+    }
+
+    if (outData.empty())
+    {
+        return emit m_node->evaluated();
+    }
+
+    auto const emitOutDataUpdated = [this](PortIndex idx){
+        emit m_node->evaluated(idx);
+    };
+
+    if (m_port != invalid<PortIndex>())
+    {
+        return emitOutDataUpdated(m_port);
+    }
+    for (PortIndex idx{0}; idx < outData.size(); ++idx)
+    {
+        emitOutDataUpdated(idx);
+    }
+}
+
+bool
+ParallelExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortIndex idx)
+{
+    m_port = idx;
+
     if (!canEvaluateNode(node)) return false;
 
     m_node = &node;
     m_collected = false;
     emit m_node->computingStarted();
 
-    auto& p = accessImpl(node);
-
     auto run = [targetPort = m_port,
-                inData = p.inData,
-                outData = p.outData,
+                inData = model.nodeData(node.id(), PortType::In),
+                outData = model.nodeData(node.id(), PortType::Out),
                 memento = node.toMemento(),
                 signalsToConnect = findSignalsToConnect(node),
                 targetMetaObject = node.metaObject(),
@@ -286,7 +267,8 @@ ParallelExecutor::evaluateNodeHelper(Node& node)
             memento.toObject(*gtObjectFactory)
         );
 
-        if (!clone)
+        auto* node = clone.get();
+        if (!node)
         {
             gtError() << tr("Failed to clone node '%1'")
                              .arg(memento.ident());
@@ -296,7 +278,7 @@ ParallelExecutor::evaluateNodeHelper(Node& node)
         if (!signalsToConnect.empty())
         {
             if (!connectSignals(signalsToConnect,
-                                clone.get(), clone->metaObject(),
+                                node, node->metaObject(),
                                 targetObject, targetMetaObject,
                                 executor))
             {
@@ -304,35 +286,45 @@ ParallelExecutor::evaluateNodeHelper(Node& node)
             }
         }
 
-        auto const& outPorts = clone->ports(PortType::Out);
-        auto const& inPorts  = clone->ports(PortType::In);
+        Graph graph;
+        if (!graph.appendNode(std::move(clone))) return {};
+
+        GraphExecutionModel model(graph);
+
+        auto const& outPorts = node->ports(PortType::Out);
+        auto const& inPorts  = node->ports(PortType::In);
+
+        assert(outPorts.size() == outData.size());
+        assert(inPorts.size()  == inData.size());
 
         // restore states
-        auto& p = accessImpl(*clone);
-        p.inData = std::move(inData);
-        p.outData = std::move(outData);
+        bool success = true;
+        success &= model.setNodeData(node->id(), PortType::In, inData);
+        success &= model.setNodeData(node->id(), PortType::Out, outData);
 
-        // evalutae single port
+        if (!success) return {};
+
+        // evaluate single port
         if (targetPort != invalid<PortIndex>())
         {
-            doEvaluate(*clone, targetPort);
-            return p.outData;
+            model.setNodeData(node->id(), PortType::Out, targetPort, doEvaluate(*node, targetPort));
+            return model.nodeData(node->id(), PortType::Out);
         }
 
         // trigger eval if no outport exists
         if (outPorts.empty() && !inPorts.empty())
         {
-            doEvaluateAndDiscard(*clone);
-            return p.outData;
+            doEvaluate(*node);
+            return {};
         }
 
         // iterate over all output ports
         for (PortIndex idx{0}; idx < outPorts.size(); ++idx)
         {
-            doEvaluate(*clone, idx);
+            model.setNodeData(node->id(), PortType::Out, idx, doEvaluate(*node, idx));
         }
 
-        return p.outData;
+        return model.nodeData(node->id(), PortType::Out);
     };
 
     auto* pool = QThreadPool::globalInstance();

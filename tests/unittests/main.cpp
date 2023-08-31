@@ -7,15 +7,14 @@
 
 #include "gtest/gtest.h"
 
-#include "intelli/graph.h"
-#include "intelli/connectiongroup.h"
 #include "intelli/connection.h"
+#include <intelli/core.h>
 
 #include <gt_objectfactory.h>
 
 #include <gt_logging.h>
 
-#include <intelli/core.h>
+#include <QCoreApplication>
 
 auto init_log_once = [](){
     auto& logger = gt::log::Logger::instance();
@@ -26,7 +25,6 @@ auto init_log_once = [](){
 }();
 
 auto init_factory_once = [](){
-    gtObjectFactory->registerClass(intelli::Graph::staticMetaObject);
     gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
     return 0;
 }();
@@ -34,7 +32,13 @@ auto init_factory_once = [](){
 int
 main(int argc, char** argv)
 {
+    QCoreApplication a(argc, argv);
+
     ::testing::InitGoogleTest(&argc, argv);
+
     intelli::initModule();
-    return RUN_ALL_TESTS();
+
+    bool success = RUN_ALL_TESTS();
+
+    return success && a.exec();
 }
