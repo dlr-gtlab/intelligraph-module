@@ -69,9 +69,9 @@ struct ConnectionDetail
     /// target node
     NodeId node;
     /// target port
-    PortIndex port;
+    PortId port;
     /// source port
-    PortIndex sourcePort;
+    PortId sourcePort;
 
     /**
      * @brief Creates an outgoing connection id.
@@ -90,7 +90,7 @@ struct ConnectionDetail
      */
     static ConnectionDetail fromConnection(ConnectionId conId)
     {
-        return { conId.inNodeId, conId.inPortIndex, conId.outPortIndex };
+        return { conId.inNodeId, conId.inPort, conId.outPort };
     }
 };
 
@@ -99,7 +99,7 @@ struct Entry
     /// pointer to node
     QPointer<Node> node;
     /// adjacency lists
-    QVarLengthArray<ConnectionDetail, 12> ancestors = {}, descendants = {};
+    QVector<ConnectionDetail> ancestors = {}, descendants = {};
 };
 
 inline bool operator==(ConnectionDetail const& a, ConnectionDetail const& b)
@@ -178,11 +178,12 @@ public:
      * @param type Connection types
      * @return Connections
      */
-    QVector<ConnectionId> findConnections(NodeId nodeId, PortType type = NoType) const;
+    QVector<ConnectionId> findConnections(NodeId nodeId, PortType type = PortType::NoType) const;
 
-    QVector<ConnectionId> findConnections(NodeId nodeId, PortType type, PortIndex idx) const;
+    QVector<ConnectionId> findConnections(NodeId nodeId, PortType type, PortId portId) const;
     
-    QVector<NodeId> findTargetNodes(NodeId nodeId, PortType type, PortIndex idx = invalid<PortIndex>()) const;
+    QVector<NodeId> findTargetNodes(NodeId nodeId, PortType type, PortId portId = invalid<PortId>()) const;
+
     /**
      * @brief Returns a list of all sub graphes (aka group nodes)
      * @return List of sub graphs
@@ -211,6 +212,9 @@ public:
      */
     void clear();
 
+    ConnectionId connectionId(NodeId outNodeId, PortIndex outPortIdx,
+                              NodeId inNodeId, PortIndex inPortIdx) const;
+
     /**
      * @brief Appends the node to the intelli graph. Use this function instead
      * of appending the child directly. Node may change its id if its
@@ -219,7 +223,7 @@ public:
      * @param policy Whether to generate a new id if necessary
      * @return success
      */
-    Node* appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy = UpdateNodeId);
+    Node* appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
      * @brief Appends the connection to intelli graph. Use this function instead
@@ -295,7 +299,7 @@ signals:
 
 protected:
     
-    bool handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx) override;
+    bool handleNodeEvaluation(GraphExecutionModel& model, PortId portId) override;
 
     void onObjectDataMerged() override;
 

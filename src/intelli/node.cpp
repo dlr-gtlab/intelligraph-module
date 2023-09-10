@@ -67,7 +67,7 @@ Node::Node(QString const& modelName, GtObject* parent) :
             this, &Node::nodeStateChanged);
 
     connect(this, &Node::triggerNodeEvaluation, this, [this](){
-        emit triggerPortEvaluation(invalid<PortIndex>());
+        emit triggerPortEvaluation(invalid<PortId>());
     });
 }
 
@@ -352,7 +352,7 @@ Node::executionModel() const
 }
 
 bool
-Node::handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx)
+Node::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
 {
     if (findChild<ParallelExecutor*>())
     {
@@ -363,7 +363,7 @@ Node::handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx)
     auto executor = new ParallelExecutor;
     executor->setParent(this);
 
-    bool startedEval = executor->evaluateNode(*this, model, idx);
+    bool startedEval = executor->evaluateNode(*this, model, portId);
 
     return startedEval;
 }

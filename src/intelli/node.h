@@ -62,7 +62,7 @@ public:
     using Position  = intelli::Position;
 
     using ExecutionMode = intelli::ExecutionMode;
-    using NodeDataPtr  = std::shared_ptr<const NodeData>;
+    using NodeDataPtr   = intelli::NodeDataPtr;
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
@@ -264,10 +264,10 @@ signals:
      * @brief Triggers the evaluation of the output port speicified. It is not
      * guranteed to be evaluated, as the underling graph execution model must
      * be active
-     * @param idx Port index to evaluate. If port index is invalid, the whole
+     * @param portId Port id to evaluate. If port id is invalid, the whole
      * node (i.e. all ports) should be evaluated
      */
-    void triggerPortEvaluation(PortIndex idx);
+    void triggerPortEvaluation(PortId portId);
 
     /**
      * @brief Helper signal to trigger the evaluation of the whole node.
@@ -277,16 +277,16 @@ signals:
     /**
      * @brief Emitted if the node has evaluated and the output data has changed.
      * Will be called automatically and should not be triggered by the "user".
-     * @param idx Output port index. May be mapped to an output port id.
+     * @param portId Output port that was evaluated
      */
-    void evaluated(PortIndex idx = PortIndex{});
+    void evaluated(PortId portId = invalid<PortId>());
 
     /**
      * @brief Emitted if new input data was recieved, just before evaluating.
      * Data may be invalid. Should not be triggered by the "user".
-     * @param idx Input port index. May be mapped to an input port id.
+     * @param portId Input port that recieved data
      */
-    void inputDataRecieved(PortIndex idx = PortIndex{});
+    void inputDataRecieved(PortId portId = invalid<PortId>());
 
     /**
      * @brief Emitted once the node evaluation has started
@@ -389,12 +389,12 @@ protected:
      * @brief Handles the evaluation of the node (port). It is not intended to
      * actually do the evaluation (use `eval` instead), but to handle/manage the
      * execution of the node. Should only be overriden in rare cases.
-     * @param idx Port index to evaluate. If port index is invalid, the whole
+     * @param portId Port id to evaluate. If port id is invalid, the whole
      * node (i.e. all ports) should be evaluated
      * @return Returns true if the evaluation was triggered sucessfully.
      * (node may be evaluated non-blocking)
      */
-    virtual bool handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx);
+    virtual bool handleNodeEvaluation(GraphExecutionModel& model, PortId portId);
 
     /**
      * @brief Should be called within the constructor. Used to register

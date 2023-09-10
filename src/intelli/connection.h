@@ -40,14 +40,14 @@ public:
     NodeId inNodeId() const;
     void setInNodeId(NodeId nodeId) { m_inNodeId = nodeId; }
     
-    PortIndex inPortIdx() const;
-    void setInPortIdx(PortIndex port) { m_inPortIdx = port; }
+    PortId inPort() const;
+    void setInPort(PortId port) { m_inPort = port; }
 
     NodeId outNodeId() const;
     void setOutNodeId(NodeId nodeId) { m_outNodeId = nodeId; }
     
-    PortIndex outPortIdx() const;
-    void setOutPortIdx(PortIndex port) { m_outPortIdx = port; }
+    PortId outPort() const;
+    void setOutPort(PortId port) { m_outPort = port; }
 
     bool isValid() const;
 
@@ -57,12 +57,12 @@ private:
 
     /// node id IN (should be unsigned)
     GtIntProperty m_inNodeId;
-    /// port idx IN (should be unsigned)
-    GtIntProperty m_inPortIdx;
+    /// port IN (should be unsigned)
+    GtIntProperty m_inPort;
     /// node id IN (should be unsigned)
     GtIntProperty m_outNodeId;
-    /// port idx IN (should be unsigned)
-    GtIntProperty m_outPortIdx;
+    /// port IN (should be unsigned)
+    GtIntProperty m_outPort;
 };
 
 } // namespace intelli;

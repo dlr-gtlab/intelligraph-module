@@ -34,13 +34,13 @@ public:
 
     Executor();
 
-    virtual bool evaluateNode(Node& node, GraphExecutionModel& model, PortIndex idx = PortIndex{}) = 0;
+    virtual bool evaluateNode(Node& node, GraphExecutionModel& model, PortId portId = invalid<PortId>()) = 0;
 
     virtual bool isReady() const;
 
 protected:
     
-    static NodeDataPtr doEvaluate(Node& node, PortIndex idx);
+    static NodeDataPtr doEvaluate(Node& node, PortId portId);
     static NodeDataPtr doEvaluate(Node& node);
 
     static GraphExecutionModel* accessExecModel(Node& node);

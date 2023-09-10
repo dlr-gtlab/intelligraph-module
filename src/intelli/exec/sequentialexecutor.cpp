@@ -27,14 +27,14 @@ bool evaluateHelper(Node& node,
 }
 
 bool
-SequentialExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortIndex idx)
+SequentialExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId portId)
 {
-    auto const evaluatePort = [&node, &model](PortIndex idx){
-        auto data = doEvaluate(node, idx);
+    auto const evaluatePort = [&node, &model](PortId port){
+        auto data = doEvaluate(node, port);
 
-        bool success = model.setNodeData(node.id(), PortType::Out, idx, std::move(data));
+        bool success = model.setNodeData(node.id(), port, std::move(data));
 
-        emit node.evaluated(idx);
+        emit node.evaluated(port);
 
         return success;
     };
@@ -44,13 +44,13 @@ SequentialExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortInd
         emit node.computingFinished();
     });
 
-    if (idx != invalid<PortIndex>())
+    if (portId != invalid<PortId>())
     {
-        if (idx >= node.ports(PortType::Out).size()) return false;
+        if (portId >= node.ports(PortType::Out).size()) return false;
 
         emit node.computingStarted();
 
-        return evaluatePort(idx);
+        return evaluatePort(portId);
     }
 
     emit node.computingStarted();
@@ -70,9 +70,9 @@ SequentialExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortInd
     bool success = true;
 
     // iterate over all output ports
-    for (PortIndex idx{0}; idx < outPorts.size(); ++idx)
+    for (auto& port : outPorts)
     {
-        success &= evaluatePort(idx);
+        success &= evaluatePort(port.id());
     }
 
     return success;

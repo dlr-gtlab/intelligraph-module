@@ -2,7 +2,7 @@
 
 #include <intelli/globals.h>
 
-TEST(StrongTypes, init_value)
+TEST(StrongTypes, initial_value)
 {
     using namespace intelli;
 
@@ -39,8 +39,8 @@ TEST(StrongTypes, compare_different_types)
     PortIndex idx{42};
     NodeId nodeId{12};
 
-    EXPECT_EQ(id, idx);
-    EXPECT_NE(id, nodeId);
+    EXPECT_EQ(id, idx.value());
+    EXPECT_NE(id, nodeId.value());
 }
 
 TEST(StrongTypes, compare_equal)

@@ -103,7 +103,7 @@ GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos)
     return *ptr;
 }
 
-void
+ConnectionId
 GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) noexcept(false)
 {
     auto const buildError = [&](){
@@ -157,9 +157,11 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
 
     auto connection = std::make_unique<Connection>();
     connection->setOutNodeId(from.id());
-    connection->setOutPortIdx(outIdx);
+    connection->setOutPort(from.portId(PortType::Out, outIdx));
     connection->setInNodeId(to.id());
-    connection->setInPortIdx(inIdx);
+    connection->setInPort(to.portId(PortType::In, inIdx));
+
+    auto conId = connection->connectionId();
 
     if (!m_graph->appendConnection(std::move(connection)))
     {
@@ -169,6 +171,8 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
             gt::brackets(m_graph->caption().toStdString())
         };
     }
+
+    return conId;
 }
 
 void

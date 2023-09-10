@@ -150,7 +150,7 @@ ParallelExecutor::ParallelExecutor()
 }
 
 bool
-ParallelExecutor::canEvaluateNode(Node& node, PortIndex outIdx)
+ParallelExecutor::canEvaluateNode(Node& node)
 {
     if (!m_watcher.isFinished() || !m_collected)
     {
@@ -207,7 +207,7 @@ ParallelExecutor::onResultReady(int result)
     };
     Q_UNUSED(finally);
 
-    std::vector<NodeDataPtr> outData = m_watcher.resultAt(result);
+    auto outData = m_watcher.resultAt(result);
 
     auto* model = accessExecModel(*m_node);
     if (!model)
@@ -229,24 +229,24 @@ ParallelExecutor::onResultReady(int result)
         return emit m_node->evaluated();
     }
 
-    auto const emitOutDataUpdated = [this](PortIndex idx){
-        emit m_node->evaluated(idx);
+    auto const emitOutDataUpdated = [this](PortId port){
+        emit m_node->evaluated(port);
     };
 
-    if (m_port != invalid<PortIndex>())
+    if (m_port != invalid<PortId>())
     {
         return emitOutDataUpdated(m_port);
     }
-    for (PortIndex idx{0}; idx < outData.size(); ++idx)
+    for (auto& data : outData)
     {
-        emitOutDataUpdated(idx);
+        emitOutDataUpdated(m_node->portId(PortType::Out, data.first));
     }
 }
 
 bool
-ParallelExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortIndex idx)
+ParallelExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId portId)
 {
-    m_port = idx;
+    m_port = portId;
 
     if (!canEvaluateNode(node)) return false;
 
@@ -255,14 +255,15 @@ ParallelExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortIndex
     emit m_node->computingStarted();
 
     auto run = [targetPort = m_port,
-                inData = model.nodeData(node.id(), PortType::In),
+                inData  = model.nodeData(node.id(), PortType::In),
                 outData = model.nodeData(node.id(), PortType::Out),
                 memento = node.toMemento(),
                 signalsToConnect = findSignalsToConnect(node),
                 targetMetaObject = node.metaObject(),
                 targetObject = QPointer<Node>(&node),
-                executor = this]() -> std::vector<NodeDataPtr>
+                executor = this]() -> IndexedNodeData
     {
+        try{
         auto clone = gt::unique_qobject_cast<Node>(
             memento.toObject(*gtObjectFactory)
         );
@@ -299,15 +300,15 @@ ParallelExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortIndex
 
         // restore states
         bool success = true;
-        success &= model.setNodeData(node->id(), PortType::In, inData);
+        success &= model.setNodeData(node->id(), PortType::In,  inData);
         success &= model.setNodeData(node->id(), PortType::Out, outData);
 
         if (!success) return {};
 
         // evaluate single port
-        if (targetPort != invalid<PortIndex>())
+        if (targetPort != invalid<PortId>())
         {
-            model.setNodeData(node->id(), PortType::Out, targetPort, doEvaluate(*node, targetPort));
+            model.setNodeData(node->id(), targetPort, doEvaluate(*node, targetPort));
             return model.nodeData(node->id(), PortType::Out);
         }
 
@@ -319,17 +320,46 @@ ParallelExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortIndex
         }
 
         // iterate over all output ports
-        for (PortIndex idx{0}; idx < outPorts.size(); ++idx)
+        for (auto& port : outPorts)
         {
-            model.setNodeData(node->id(), PortType::Out, idx, doEvaluate(*node, idx));
+            model.setNodeData(node->id(), port.id(), doEvaluate(*node, port.id()));
         }
 
         return model.nodeData(node->id(), PortType::Out);
+        }
+        catch(...)
+        {
+        gtError() << "HERE: something went wrong";
+        std::exception_ptr ex_ptr = std::current_exception();
+
+        // Now you can rethrow or inspect the exception
+        try {
+            if (ex_ptr) {
+                std::rethrow_exception(ex_ptr); // Rethrow the exception
+            }
+        }
+        catch (const std::bad_alloc& ex) {
+            gtError() << "Caught std::bad_alloc: " << ex.what() << std::endl;
+        }
+        catch (const std::runtime_error& ex) {
+            gtError() << "Caught std::runtime_error: " << ex.what() << std::endl;
+        }
+        catch (const std::exception& ex) {
+            gtError() << "Caught std::exception: " << ex.what() << std::endl;
+        }
+        catch (...) {
+            gtError() << "Caught an unknown exception" << std::endl;
+        }
+        assert(false);
+        return {};
+        }
     };
 
     auto* pool = QThreadPool::globalInstance();
     auto future = QtConcurrent::run(pool, std::move(run));
     m_watcher.setFuture(future);
+
+    future.waitForFinished();
 
     return true;
 }

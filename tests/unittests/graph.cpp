@@ -8,12 +8,14 @@
 
 #include "test_helper.h"
 
+#include "node/test_dynamic.h"
+
 #include <gt_objectmemento.h>
 #include <gt_objectmementodiff.h>
 #include <gt_objectfactory.h>
 
 using namespace intelli;
-TEST(Graph, directed_acyclic_graph_model)
+TEST(Graph, remove_connections_on_node_deletion)
 {
     Graph graph;
     
@@ -85,6 +87,100 @@ TEST(Graph, directed_acyclic_graph_model)
     ASSERT_FALSE(graph.deleteNode(A_id));
 }
 
+// when removing a port connections should be removed
+TEST(Graph, remove_connections_on_port_deletion)
+{
+    using namespace intelli;
+
+    Graph graph;
+
+    GraphBuilder builder(graph);
+
+    TestDynamicNode* dynamicNode = nullptr;
+
+    ConnectionId conId1 = invalid<ConnectionId>();
+    ConnectionId conId2 = invalid<ConnectionId>();
+    ConnectionId conId3 = invalid<ConnectionId>();
+
+    try
+    {
+        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
+        auto& B = builder.addNode<TestDynamicNode>();
+        B.setCaption(QStringLiteral("B"));
+        dynamicNode = &B;
+
+        setNodeProperty(A, QStringLiteral("value"), 42);
+
+        ASSERT_EQ(B.addInPort(typeId<DoubleData>()), PortId(0));
+        ASSERT_EQ(B.addInPort(typeId<DoubleData>()), PortId(1));
+        ASSERT_EQ(B.addInPort(typeId<DoubleData>()), PortId(2));
+
+        ASSERT_TRUE(A.port(PortId(0))); // A should have only one output port
+
+        ASSERT_EQ(A.id(), A_id);
+        ASSERT_EQ(B.id(), B_id);
+
+        conId1 = builder.connect(A, PortIndex(0), B, PortIndex(0));
+        conId2 = builder.connect(A, PortIndex(0), B, PortIndex(1));
+        conId3 = builder.connect(A, PortIndex(0), B, PortIndex(2));
+    }
+    catch (std::logic_error const& e)
+    {
+        gtError() << e.what();
+        ASSERT_NO_THROW(throw e);
+    }
+
+    ASSERT_TRUE(dynamicNode);
+    ASSERT_TRUE(dynamicNode->ports(PortType::In).size() == 3);
+
+    EXPECT_EQ(graph.nodes().size(), 2);
+    EXPECT_EQ(graph.connections().size(), 3);
+
+    dag::debugGraph(graph.dag());
+
+    // delete 1. connection
+    EXPECT_TRUE(graph.deleteConnection(conId1));
+
+    EXPECT_FALSE(graph.findConnection(conId1));
+    EXPECT_TRUE(graph.findConnection(conId2));
+    EXPECT_TRUE(graph.findConnection(conId3));
+
+    dag::debugGraph(graph.dag());
+
+    // no connections removed when deleting unconnected port no. 1
+    ASSERT_TRUE(dynamicNode->removePort(PortId(0)));
+    ASSERT_TRUE(dynamicNode->ports(PortType::In).size() == 2);
+
+    EXPECT_FALSE(graph.findConnection(conId1));
+    EXPECT_TRUE(graph.findConnection(conId2));
+    EXPECT_TRUE(graph.findConnection(conId3));
+
+    dag::debugGraph(graph.dag());
+
+    // connections are removed when deleting port no. 2
+    ASSERT_TRUE(dynamicNode->removePort(PortId(1)));
+    ASSERT_TRUE(dynamicNode->ports(PortType::In).size() == 1);
+
+    EXPECT_FALSE(graph.findConnection(conId1));
+    EXPECT_FALSE(graph.findConnection(conId2));
+    EXPECT_TRUE(graph.findConnection(conId3));
+
+    dag::debugGraph(graph.dag());
+
+    // connections are removed when deleting port no. 2
+    ASSERT_TRUE(dynamicNode->removePort(PortId(2)));
+    ASSERT_TRUE(dynamicNode->ports(PortType::In).size() == 0);
+
+    EXPECT_FALSE(graph.findConnection(conId1));
+    EXPECT_FALSE(graph.findConnection(conId2));
+    EXPECT_FALSE(graph.findConnection(conId3));
+
+    EXPECT_EQ(graph.nodes().size(), 2);
+    EXPECT_EQ(graph.connections().size(), 0);
+
+    dag::debugGraph(graph.dag());
+}
+
 // when reverting a diff the DAG must be updated accordingly
 TEST(Graph, restore_nodes_and_connections_on_memento_diff)
 {
@@ -116,13 +212,13 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
         QVector<ConnectionId> const& consIn = graph.findConnections(C_id, PortType::In); // C
         ASSERT_EQ(consIn.size(), 2);
 
-        EXPECT_TRUE(consIn.contains(ConnectionId{A_id, PortIndex(0), C_id, PortIndex(0)}));
-        EXPECT_TRUE(consIn.contains(ConnectionId{B_id, PortIndex(0), C_id, PortIndex(1)}));
+        EXPECT_TRUE(consIn.contains(graph.connectionId(A_id, PortIndex(0), C_id, PortIndex(0))));
+        EXPECT_TRUE(consIn.contains(graph.connectionId(B_id, PortIndex(0), C_id, PortIndex(1))));
 
         QVector<ConnectionId> const& consOut = graph.findConnections(C_id, PortType::Out); // C
         ASSERT_EQ(consOut.size(), 1);
 
-        EXPECT_TRUE(consOut.contains(ConnectionId{C_id, PortIndex(0), D_id, PortIndex(0)}));
+        EXPECT_TRUE(consOut.contains(graph.connectionId(C_id, PortIndex(0), D_id, PortIndex(0))));
 
         EXPECT_EQ(graph.findConnections(C_id), consIn + consOut);
     };
@@ -224,7 +320,7 @@ TEST(Graph, restore_connections_only_on_memento_diff)
 
     // delete node c
 
-    ConnectionId connectionToDelete{ C_id, PortIndex(0), D_id, PortIndex(0) };
+    ConnectionId connectionToDelete = graph.connectionId(C_id, PortIndex(0), D_id, PortIndex(0));
     ASSERT_TRUE(graph.deleteConnection(connectionToDelete));
 
     EXPECT_EQ(graph.connections().size(), 4);

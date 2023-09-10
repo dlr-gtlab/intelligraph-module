@@ -17,6 +17,8 @@
 namespace intelli
 {
 
+class NodeData;
+
 // Base class for typesafe type aliases
 template <typename T, typename Tag, T InitValue = 0>
 class StrongType
@@ -40,9 +42,16 @@ public:
     // Overload comparison operators as needed
     constexpr inline bool
     operator==(StrongType const& other) const noexcept { return m_value == other.m_value; }
-
     constexpr inline bool
     operator!=(StrongType const& other) const noexcept { return !(*this == other); }
+
+    // do not allow comparissions between different strong types
+    template<typename U, typename UTag, U u>
+    constexpr inline bool
+    operator==(StrongType<U, UTag, u> const& other) const noexcept = delete;
+    template<typename U, typename UTag, U u>
+    constexpr inline bool
+    operator!=(StrongType<U, UTag, u> const& other) const noexcept = delete;
 
     constexpr inline StrongType&
     operator+=(StrongType const& o) noexcept { m_value += o.m_value; return *this; }
@@ -83,37 +92,50 @@ using PortId    = StrongType<unsigned, struct PortId_, std::numeric_limits<unsig
 
 using Position = QPointF;
 
+using NodeDataPtr  = std::shared_ptr<const NodeData>;
+
+using IndexedNodeData = std::vector<std::pair<PortIndex, NodeDataPtr>>;
+
 /**
  * Connection identificator that stores
  * out `NodeId`, out `PortIndex`, in `NodeId`, in `PortIndex`
  */
 struct ConnectionId
 {
+    constexpr ConnectionId(NodeId _outNode, PortId _outPort,
+                           NodeId _inNode, PortId _inPort) :
+        outNodeId(_outNode), outPort(_outPort),
+        inNodeId(_inNode), inPort(_inPort)
+    {}
+
     NodeId outNodeId;
-    PortIndex outPortIndex;
+    PortId outPort;
     NodeId inNodeId;
-    PortIndex inPortIndex;
+    PortId inPort;
     
     constexpr ConnectionId reversed() const noexcept
     {
-        return { inNodeId, inPortIndex, outNodeId, outPortIndex };
+        return { inNodeId, inPort, outNodeId, outPort };
     }
 };
 
 /**
  * @brief Denotes the possible port types
  */
-enum PortType
+enum class PortType
 {
+    /// Input port
     In = 0,
+    /// Output port
     Out,
+    /// Undefined port type (most uses are invalid!)
     NoType
 };
 
 /**
  * @brief Graph model policies
  */
-enum ModelPolicy
+enum [[deprecated]] ModelPolicy
 {
     /// Model is just a dummy and may be closed as soon as its
     /// parent model is closed
@@ -126,18 +148,19 @@ enum ModelPolicy
 /**
  * @brief Policy for handling node id collisions, when appending a node to a graph
  */
-enum NodeIdPolicy
+enum class NodeIdPolicy
 {
     /// Indictaes that the node id may be updated if it already exists
-    UpdateNodeId = 0,
+    Update = 0,
     /// Indicates that the node id should not be updated.
-    KeepNodeId = 1
+    Keep = 1
 };
 
 /**
  * @brief Defines the execution modes
  */
-enum class ExecutionMode
+
+enum class [[deprecated]] ExecutionMode
 {
     None = 0,
     Sequential,
@@ -158,7 +181,7 @@ template <>
 struct InvalidValue<ConnectionId>
 {
     constexpr static ConnectionId get() {
-        return ConnectionId{ NodeId{}, PortIndex{}, NodeId{}, PortIndex{} };
+        return ConnectionId{ NodeId{}, PortId{}, NodeId{}, PortId{} };
     }
 };
 
@@ -201,8 +224,8 @@ operator/=(StrongType<T, Tag, InitVal> const& a,
 inline bool
 operator==(ConnectionId const& a, ConnectionId const& b)
 {
-    return a.outNodeId == b.outNodeId && a.outPortIndex == b.outPortIndex &&
-           a.inNodeId  == b.inNodeId  && a.inPortIndex  == b.inPortIndex;
+    return a.outNodeId == b.outNodeId && a.outPort == b.outPort &&
+           a.inNodeId  == b.inNodeId  && a.inPort  == b.inPort;
 }
 
 inline bool
@@ -244,8 +267,8 @@ operator<<(gt::log::Stream& s, intelli::ConnectionId const& con)
         gt::log::StreamStateSaver saver(s);
         s.nospace()
             << "NodeConnection["
-            << con.outNodeId << ":" << con.outPortIndex << "/"
-            << con.inNodeId  << ":" << con.inPortIndex  << "]";
+            << con.outNodeId << ":" << con.outPort << "/"
+            << con.inNodeId  << ":" << con.inPort  << "]";
     }
     return s.doLogSpace();
 }

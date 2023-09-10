@@ -97,6 +97,14 @@ inline unsigned fromInt(GtIntProperty const& p) noexcept
                std::numeric_limits<unsigned>::max();
 }
 
+template <typename T>
+inline QString toString(T const& t)
+{
+    gt::log::Stream s;
+    s << t;
+    return QString::fromStdString(s.str());
+}
+
 } // namespace intelli
 
 #endif // GT_INTELLI_UTILS_H

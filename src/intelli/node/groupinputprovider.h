@@ -26,7 +26,7 @@ protected:
 
     NodeDataPtr eval(PortId outId) override;
 
-    bool handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx) override;
+    bool handleNodeEvaluation(GraphExecutionModel& model, PortId portId) override;
 
 };
 

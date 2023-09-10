@@ -11,7 +11,6 @@
 
 #include "intelli/graphexecmodel.h"
 #include "intelli/node.h"
-#include "intelli/private/node_impl.h"
 
 using namespace intelli;
 
@@ -24,15 +23,13 @@ Executor::isReady() const
 }
 
 Executor::NodeDataPtr
-Executor::doEvaluate(Node& node, PortIndex idx)
+Executor::doEvaluate(Node& node, PortId portId)
 {
-    auto& p = *node.pimpl;
-
     gtDebug().verbose().nospace()
         << "### Evaluating node:  '" << node.objectName()
-        << "' at output idx '" << idx << "'";
+        << "' at output port '" << portId << "'";
 
-    return node.eval(p.outPorts.at(idx).id());
+    return node.eval(portId);
 }
 
 Executor::NodeDataPtr

@@ -7,6 +7,9 @@
 
 #include "gtest/gtest.h"
 
+#include "node/test_dynamic.h"
+
+#include "intelli/graph.h"
 #include "intelli/connection.h"
 #include <intelli/core.h>
 
@@ -23,15 +26,16 @@ auto init_log_once = [](){
     logger.setVerbosity(gt::log::Everything);
     return 0;
 }();
-
-auto init_factory_once = [](){
-    gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
-    return 0;
-}();
-
 int
 main(int argc, char** argv)
 {
+    [](){
+        TestDynamicNode::registerOnce();
+
+        gtObjectFactory->registerClass(intelli::Graph::staticMetaObject);
+        gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
+    }();
+
     QCoreApplication a(argc, argv);
 
     ::testing::InitGoogleTest(&argc, argv);
@@ -40,5 +44,5 @@ main(int argc, char** argv)
 
     bool success = RUN_ALL_TESTS();
 
-    return success && a.exec();
+    return success;
 }

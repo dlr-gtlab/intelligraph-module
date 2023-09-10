@@ -187,7 +187,7 @@ DynamicNode::onPortDeleted(PortType type, PortIndex idx)
     if (portId == invalid<PortId>())
     {
         gtWarning() << tr("Removing dynamic port failed! (Port '%1' not found, type: %2)")
-                           .arg(portId).arg(type);
+                           .arg(portId).arg(toString(type));
         return;
     }
 
@@ -216,6 +216,10 @@ DynamicNode::onPortDeleted(PortType type, PortIndex idx)
 void
 DynamicNode::onPortEntryAdded(int idx)
 {
+    auto const makeError = [](){
+        return tr("Adding dynamic port entry failed!");
+    };
+
     auto* dynamicPorts = toDynamicPorts(sender());
     auto* entry = propertyAt(dynamicPorts, idx);
     if (!entry) return;
@@ -230,8 +234,8 @@ DynamicNode::onPortEntryAdded(int idx)
     // check if port id already exists (entry probably added in constructor)
     if (ok && port(portId))
     {
-        gtWarning() << tr("Adding dynamic port entry failed! (Port '%1' "
-                          "was already added)").arg(portId);
+        gtWarning() << makeError()
+                    << tr("(Port '%1' was already added)").arg(portId);
         return;
     }
 
@@ -243,8 +247,8 @@ DynamicNode::onPortEntryAdded(int idx)
 
     if (auto* p = port(portId))
     {
-        gtWarning().nospace() << tr("Adding dynamic port entry failed! "
-                                    "(Port already exists: ") << *p << ")";
+        gtWarning() << makeError()
+                    << tr("(Port already exists: %1)").arg(toString(*p));
         return;
     }
 

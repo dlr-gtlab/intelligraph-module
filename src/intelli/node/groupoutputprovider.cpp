@@ -25,9 +25,9 @@ GroupOutputProvider::eval(PortId outId)
 }
 
 bool
-GroupOutputProvider::handleNodeEvaluation(GraphExecutionModel& model, PortIndex idx)
+GroupOutputProvider::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
 {
     SequentialExecutor executor;
 
-    return executor.evaluateNode(*this, model, idx);
+    return executor.evaluateNode(*this, model, portId);
 }

@@ -116,7 +116,7 @@ private slots:
 };
 
 // disbale template class for none type
-template <> class AbstractGroupProvider<NoType>;
+template <> class AbstractGroupProvider<PortType::NoType>;
 
 } // namespace intelli
 

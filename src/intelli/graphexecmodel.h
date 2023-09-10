@@ -23,25 +23,23 @@ namespace intelli
 class Connection;
 class Graph;
 
+enum class PortDataState
+{
+    Outdated = 0,
+    Valid,
+};
+
 class GT_INTELLI_EXPORT GraphExecutionModel : public QObject
 {
     Q_OBJECT
 
 public:
 
-    using NodeDataPtr = std::shared_ptr<const NodeData>;
-
     enum class NodeEvalState
     {
         Evaluated = 0,
         Evaluating,
         ManualEvaluation
-    };
-
-    enum class PortDataState
-    {
-        Outdated = 0,
-        Valid,
     };
 
     enum Option
@@ -52,17 +50,17 @@ public:
 
     struct PortDataEntry
     {
-        PortIndex portIdx;
+        PortId id;
         PortDataState state = PortDataState::Outdated;
-        NodeDataPtr data = {};
+        NodeDataPtr   data  = nullptr;
 
-        bool isValid() const { return state == PortDataState::Valid; }
+        bool isValid() const noexcept { return state == PortDataState::Valid; }
     };
 
     struct Entry
     {
         NodeEvalState state = NodeEvalState::Evaluated;
-        QVarLengthArray<PortDataEntry, 8> portsIn = {}, portsOut = {};
+        QVector<PortDataEntry> portsIn = {}, portsOut = {};
 
         bool isDataValid(PortType type = PortType::NoType) const
         {
@@ -84,9 +82,10 @@ public:
             assert((size_t)portsOut.size() == nodePorts.size());
 
             return isDataValid(PortType::In) &&
-                   std::all_of(portsOut.begin(), portsOut.end(), [&](PortDataEntry const& port){
-               auto const& nodePort = nodePorts.at(port.portIdx);
-               return nodePort.optional || port.data;
+                   std::all_of(portsOut.begin(), portsOut.end(),
+                               [&](PortDataEntry const& port){
+               auto* p = node.port(port.id);
+               return (p && p->optional) || port.data;
            });
         }
     };
@@ -128,17 +127,16 @@ public:
     bool autoEvaluate(bool enable = true);
 
     bool invalidateOutPorts(NodeId nodeId);
-    bool invalidateInPort(NodeId nodeId, PortIndex idx);
+    bool invalidatePort(NodeId nodeId, PortId portId);
 
-    std::vector<NodeDataPtr> nodeData(NodeId nodeId, PortType type) const;
+    IndexedNodeData nodeData(NodeId nodeId, PortType type) const;
 
-    NodeModelData nodeData(NodeId nodeId, PortType type, PortIndex idx) const;
+    NodeModelData nodeData(NodeId nodeId, PortId portId) const;
+    NodeModelData nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;
 
-    PortDataEntry* findPortDataEntry(NodeId nodeId, PortType type, PortIndex port);
-    PortDataEntry const* findPortDataEntry(NodeId nodeId, PortType type, PortIndex port) const;
-
+    bool setNodeData(NodeId nodeId, PortId portId, NodeModelData data, int option = Option::NoOption);
     bool setNodeData(NodeId nodeId, PortType type, PortIndex idx, NodeModelData data, int option = Option::NoOption);
-    bool setNodeData(NodeId nodeId, PortType type, std::vector<NodeDataPtr> const& data, int option = Option::NoOption);
+    bool setNodeData(NodeId nodeId, PortType type, IndexedNodeData const& data, int option = Option::NoOption);
 
 signals:
 
@@ -147,6 +145,8 @@ signals:
     void graphEvaluated();
 
 private:
+
+    struct Impl; // helper struct to "hide" implementation details
 
     QHash<NodeId, Entry> m_data;
 

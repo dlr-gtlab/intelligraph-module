@@ -30,21 +30,21 @@ public:
     ParallelExecutor();
     ~ParallelExecutor();
 
-    bool evaluateNode(Node& node, GraphExecutionModel& model, PortIndex idx = PortIndex{}) override;
+    bool evaluateNode(Node& node, GraphExecutionModel& model, PortId portId = invalid<PortId>()) override;
 
     bool isReady() const override;
 
 protected:
     
-    bool canEvaluateNode(Node& node, PortIndex outIdx = PortIndex{});
+    bool canEvaluateNode(Node& node);
 
 private:
     
     QPointer<Node> m_node;
 
-    QFutureWatcher<std::vector<NodeDataPtr>> m_watcher;
+    QFutureWatcher<IndexedNodeData> m_watcher;
 
-    PortIndex m_port;
+    PortId m_port;
 
     bool m_collected = true;
 
