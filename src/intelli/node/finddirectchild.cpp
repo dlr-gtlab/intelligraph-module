@@ -8,7 +8,6 @@
 
 
 #include "intelli/node/finddirectchild.h"
-#include "intelli/nodefactory.h"
 
 #include "intelli/data/object.h"
 
@@ -17,10 +16,6 @@
 #include <QRegExpValidator>
 
 using namespace intelli;
-
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(FindDirectChildNode, "Object")
-}();
 
 FindDirectChildNode::FindDirectChildNode() :
     Node(tr("Find Direct Child")),

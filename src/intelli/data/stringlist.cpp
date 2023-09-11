@@ -13,9 +13,6 @@
 
 using namespace intelli;
 
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_DATA(StringListData)
-}();
 
 StringListData::StringListData(QStringList list) :
     TemplateData("stringlist", std::move(list))

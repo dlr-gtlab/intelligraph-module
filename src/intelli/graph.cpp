@@ -10,7 +10,6 @@
 
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
-#include "intelli/nodefactory.h"
 #include "intelli/adapter/modeladapter.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
@@ -25,10 +24,6 @@
 #include <QCoreApplication>
 
 using namespace intelli;
-
-auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(Graph, "Group")
-}();
 
 template <typename ObjectList, typename T = gt::trait::value_t<ObjectList>>
 inline T findNode(ObjectList const& nodes,

@@ -7,13 +7,8 @@
  */
 
 #include "intelli/node/groupinputprovider.h"
-#include "intelli/nodefactory.h"
 
 using namespace intelli;
-
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(GroupInputProvider, "")
-}();
 
 GroupInputProvider::GroupInputProvider() :
     AbstractGroupProvider("Input Provider")

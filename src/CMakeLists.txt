@@ -3,6 +3,7 @@ set(CMAKE_DEBUG_POSTFIX -d)
 set(INTELLIGRAPH_VERSION 0.4.0)
 
 set(PUBLIC_HEADERS
+    intelli/core.h
     intelli/dynamicnode.h
     intelli/exports.h
     intelli/globals.h
@@ -73,6 +74,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
 
     intelli/connection.cpp
     intelli/connectiongroup.cpp
+    intelli/core.cpp
     intelli/dynamicnode.cpp
     intelli/graph.cpp
     intelli/graphbuilder.cpp

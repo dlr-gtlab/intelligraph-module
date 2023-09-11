@@ -1,5 +1,4 @@
 #include "intelli/node/objectsource.h"
-#include "intelli/nodefactory.h"
 
 #include "gt_objectfactory.h"
 #include "gt_application.h"
@@ -10,10 +9,6 @@
 #include "gt_propertyobjectlinkeditor.h"
 
 using namespace intelli;
-
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(ObjectSourceNode, "Object")
-}();
 
 // helper method to fetch the correct root object for retrieve object link
 auto getObject = [](Node* node) -> GtObject* {

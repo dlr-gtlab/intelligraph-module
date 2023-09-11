@@ -9,6 +9,8 @@
 
 #include <gt_logging.h>
 
+#include <intelli/core.h>
+
 auto init_log_once = [](){
     auto& logger = gt::log::Logger::instance();
     logger.addDestination("console", gt::log::makeDebugOutputDestination());
@@ -21,5 +23,6 @@ int
 main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
+    intelli::initModule();
     return RUN_ALL_TESTS();
 }

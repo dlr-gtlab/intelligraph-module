@@ -25,6 +25,7 @@
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/property_item/objectlink.h"
 #include "intelli/gui/property_item/stringselection.h"
+#include "intelli/core.h"
 
 #include "gt_xmlutilities.h"
 
@@ -76,6 +77,7 @@ void
 GtIntelliGraphModule::init()
 {
     // nothing to do here
+    intelli::initModule();
 }
 
 GtIntelliGraphModule::MetaInformation
@@ -174,6 +176,9 @@ GtIntelliGraphModule::dockWidgets()
 QMap<const char*, QMetaObject>
 GtIntelliGraphModule::uiItems()
 {
+    // the nodes already need to be known
+    intelli::initModule();
+
     static QVector<QByteArray> buffer;
 
     QMap<const char*, QMetaObject> map;
