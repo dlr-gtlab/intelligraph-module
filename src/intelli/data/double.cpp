@@ -9,13 +9,7 @@
 
 #include "intelli/data/double.h"
 
-#include "intelli/nodedatafactory.h"
-
 using namespace intelli;
-
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_DATA(DoubleData)
-}();
 
 DoubleData::DoubleData(double val) :
     TemplateData("double", val)

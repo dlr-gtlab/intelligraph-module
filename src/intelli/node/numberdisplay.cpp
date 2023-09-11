@@ -9,16 +9,12 @@
 
 #include "intelli/node/numberdisplay.h"
 
-#include "intelli/nodefactory.h"
 #include "intelli/data/double.h"
 
 #include <QLineEdit>
 
 using namespace intelli;
 
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(NumberDisplayNode, "Number")
-}();
 
 NumberDisplayNode::NumberDisplayNode() :
     Node("Number Display")

@@ -12,16 +12,10 @@
 #include "intelli/data/bool.h"
 #include "intelli/data/double.h"
 #include "intelli/nodedatafactory.h"
-#include "intelli/nodefactory.h"
 #include "intelli/gui/property_item/stringselection.h"
 
 using namespace intelli;
 
-#ifdef GTIG_DEVELOPER_PREVIEW
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(ConditionalNode, "Conditional")
-}();
-#endif
 
 ConditionalNode::ConditionalNode() :
     Node("Conditional Node"),

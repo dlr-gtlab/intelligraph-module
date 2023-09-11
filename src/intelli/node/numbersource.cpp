@@ -9,7 +9,6 @@
 
 #include "intelli/node/numbersource.h"
 
-#include "intelli/nodefactory.h"
 #include "intelli/data/double.h"
 
 #include "gt_regexp.h"
@@ -19,9 +18,6 @@
 
 using namespace intelli;
 
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(NumberSourceNode, "Number")
-}();
 
 NumberSourceNode::NumberSourceNode() :
     Node("Number Source"),

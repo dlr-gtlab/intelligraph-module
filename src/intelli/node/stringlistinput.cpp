@@ -7,7 +7,6 @@
  */
 
 #include "intelli/node/stringlistinput.h"
-#include "intelli/nodefactory.h"
 
 #include "intelli/data/stringlist.h"
 
@@ -18,9 +17,6 @@
 
 using namespace intelli;
 
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(StringListInputNode, "Input")
-}();
 
 StringListInputNode::StringListInputNode() :
     Node(tr("Stringlist Input")),

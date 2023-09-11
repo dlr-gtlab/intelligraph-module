@@ -1,5 +1,4 @@
 #include "intelli/node/objectmemento.h"
-#include "intelli/nodefactory.h"
 
 #include "gt_object.h"
 #include "gt_objectmemento.h"
@@ -11,10 +10,6 @@
 #include <QLayout>
 
 using namespace intelli;
-
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(ObjectMementoNode, "Object")
-}();
 
 ObjectMementoNode::ObjectMementoNode() :
     Node(tr("Memento Viewer"))

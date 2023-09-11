@@ -16,10 +16,6 @@
 
 using namespace intelli;
 
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(NumberMathNode, "Number")
-}();
-
 NumberMathNode::NumberMathNode() :
     Node("Math Node"),
     m_operation("operation", tr("Math Operation"), tr("Math Operation"), MathOperation::Plus)

@@ -10,7 +10,6 @@
 #include "intelli/node/sleepy.h"
 
 #include "intelli/data/double.h"
-#include "intelli/nodefactory.h"
 
 #include <gt_icons.h>
 #include <gt_eventloop.h>
@@ -21,9 +20,6 @@
 
 using namespace intelli;
 
-static auto init_once = [](){
-    return GT_INTELLI_REGISTER_NODE(SleepyNode, "Number")
-}();
 
 SleepyNode::SleepyNode() :
     Node("Sleeping Node"),
