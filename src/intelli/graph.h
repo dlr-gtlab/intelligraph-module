@@ -160,9 +160,6 @@ public:
     Node* findNode(NodeId nodeId);
     Node const* findNode(NodeId nodeId) const;
 
-    dag::Entry* findNodeEntry(NodeId nodeId);
-    dag::Entry const* findNodeEntry(NodeId nodeId) const;
-
     /**
      * @brief Attempts to finde a connection specified by the given connectionId
      * @param conId connection id
@@ -180,9 +177,12 @@ public:
      */
     QVector<ConnectionId> findConnections(NodeId nodeId, PortType type = PortType::NoType) const;
 
-    QVector<ConnectionId> findConnections(NodeId nodeId, PortType type, PortId portId) const;
-    
-    QVector<NodeId> findTargetNodes(NodeId nodeId, PortType type, PortId portId = invalid<PortId>()) const;
+    QVector<ConnectionId> findConnections(NodeId nodeId, PortId portId) const;
+
+    QVector<NodeId> findConnectedNodes(NodeId nodeId, PortType type) const;
+    QVector<NodeId> findConnectedNodes(NodeId nodeId, PortId portId) const;
+
+    static QVector<NodeId> uniqueConnections(QVector<ConnectionId> const& connections);
 
     /**
      * @brief Returns a list of all sub graphes (aka group nodes)
@@ -317,6 +317,9 @@ private:
 
     void restoreNode(Node* node);
     void restoreConnection(Connection* connection);
+
+    dag::Entry* findNodeEntry(NodeId nodeId);
+    dag::Entry const* findNodeEntry(NodeId nodeId) const;
 
     /**
      * @brief initializes the input and output of this graph

@@ -53,16 +53,14 @@ class GT_INTELLI_EXPORT Node : public GtObject
 
 public:
 
-    using NodeId    = intelli::NodeId;
-    using NodeFlag  = intelli::NodeFlag;
-    using NodeFlags = intelli::NodeFlags;
-    using PortType  = intelli::PortType;
-    using PortId    = intelli::PortId;
-    using PortIndex = intelli::PortIndex;
-    using Position  = intelli::Position;
-
-    using ExecutionMode = intelli::ExecutionMode;
-    using NodeDataPtr   = intelli::NodeDataPtr;
+    using NodeId      = intelli::NodeId;
+    using NodeFlag    = intelli::NodeFlag;
+    using NodeFlags   = intelli::NodeFlags;
+    using PortType    = intelli::PortType;
+    using PortId      = intelli::PortId;
+    using PortIndex   = intelli::PortIndex;
+    using Position    = intelli::Position;
+    using NodeDataPtr = intelli::NodeDataPtr;
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.

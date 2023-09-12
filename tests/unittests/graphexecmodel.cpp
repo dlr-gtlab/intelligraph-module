@@ -17,6 +17,75 @@
 
 using namespace intelli;
 
+TEST(GraphExecutionModel, test)
+{
+    Graph graph;
+
+    GraphBuilder builder(graph);
+
+    try
+    {
+        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
+        auto& B = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("B"));
+        auto& C = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("C"));
+
+        builder.connect(A, PortIndex(0), B, PortIndex(0));
+        builder.connect(B, PortIndex(0), C, PortIndex(0));
+        builder.connect(B, PortIndex(0), C, PortIndex(1));
+
+        setNodeProperty(A, QStringLiteral("value"), 42);
+    }
+    catch (std::logic_error const& e)
+    {
+        gtError() << e.what();
+        ASSERT_NO_THROW(throw e);
+    }
+
+    GraphExecutionModel model(graph);
+
+    dag::debugGraph(graph.dag());
+
+    EXPECT_TRUE(model.evaluateNode(C_id));
+    EXPECT_TRUE(model.waitForNode(std::chrono::seconds{1}));
+
+    auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
+    ASSERT_TRUE(C_data);
+    EXPECT_EQ(C_data->value(), 84);
+
+//    EXPECT_TRUE(model.evaluateNode(C_id));
+}
+
+TEST(GraphExecutionModel, dependencie)
+{
+    Graph graph;
+
+    GraphBuilder builder(graph);
+
+    try
+    {
+        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
+        auto& B = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("B"));
+
+        builder.connect(A, PortIndex(0), B, PortIndex(0));
+
+        setNodeProperty(A, QStringLiteral("value"), 42);
+    }
+    catch (std::logic_error const& e)
+    {
+        gtError() << e.what();
+        ASSERT_NO_THROW(throw e);
+    }
+
+    GraphExecutionModel model(graph);
+
+    EXPECT_TRUE(model.autoEvaluate());
+    EXPECT_TRUE(model.wait(std::chrono::seconds{1}));
+
+    auto B_data = model.nodeData(E_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
+    ASSERT_TRUE(B_data);
+    EXPECT_EQ(B_data->value(), 42);
+}
+
 TEST(GraphExecutionModel, auto_evaluate_basic_graph)
 {
     Graph graph;
@@ -35,13 +104,12 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
 
     EXPECT_TRUE(model.autoEvaluate());
     EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
-    return;
 
-    auto D_data = qobject_pointer_cast<DoubleData const>(model.nodeData(D_id, PortType::Out, PortIndex(0)).data);
+    auto D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 42);
 
-    auto E_data = qobject_pointer_cast<DoubleData const>(model.nodeData(E_id, PortType::In, PortIndex(0)).data);
+    auto E_data = model.nodeData(E_id, PortType::In, PortIndex(0)).cast<DoubleData>();
     ASSERT_TRUE(E_data);
     EXPECT_EQ(E_data->value(), 8);
 
@@ -58,7 +126,7 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
     EXPECT_FALSE(model.evaluated());
 
     // old values are still set
-    D_data = qobject_pointer_cast<DoubleData const>(model.nodeData(D_id, PortType::Out, PortIndex(0)).data);
+    D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 42);
 
@@ -73,7 +141,7 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
     EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
 
     // new values is set
-    D_data = qobject_pointer_cast<DoubleData const>(model.nodeData(D_id, PortType::Out, PortIndex(0)).data);
+    D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 28);
 
@@ -107,11 +175,11 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
     EXPECT_TRUE(model.autoEvaluate());
     EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
 
-    auto C_data = qobject_pointer_cast<DoubleData const>(model.nodeData(C_id, PortType::Out, PortIndex(0)).data);
+    auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
     ASSERT_TRUE(C_data);
     EXPECT_EQ(C_data->value(), 34);
 
-    auto D_data = qobject_pointer_cast<DoubleData const>(model.nodeData(E_id, PortType::In, PortIndex(0)).data);
+    auto D_data = model.nodeData(E_id, PortType::In, PortIndex(0)).cast<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 8);
 }

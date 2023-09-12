@@ -29,9 +29,17 @@ enum class PortDataState
     Valid,
 };
 
+enum class ExecutionMode
+{
+    None = 0,
+    Auto,
+    Target
+};
+
 class GT_INTELLI_EXPORT GraphExecutionModel : public QObject
 {
     Q_OBJECT
+
 
 public:
 
@@ -39,7 +47,6 @@ public:
     {
         Evaluated = 0,
         Evaluating,
-        ManualEvaluation
     };
 
     enum Option
@@ -62,32 +69,11 @@ public:
         NodeEvalState state = NodeEvalState::Evaluated;
         QVector<PortDataEntry> portsIn = {}, portsOut = {};
 
-        bool isDataValid(PortType type = PortType::NoType) const
-        {
-            bool valid = true;
-            if (type != PortType::Out)
-            {
-                valid &= std::all_of(portsIn.begin(), portsIn.end(), [](PortDataEntry const& p){ return p.isValid(); });
-            }
-            if (type != PortType::In)
-            {
-                valid &= std::all_of(portsOut.begin(), portsOut.end(), [](PortDataEntry const& p){ return p.isValid(); });
-            }
-            return valid;
-        }
+        GT_INTELLI_EXPORT bool isEvaluated() const;
 
-        bool canEvaluate(Node& node) const
-        {
-            auto const& nodePorts = node.ports(PortType::Out);
-            assert((size_t)portsOut.size() == nodePorts.size());
+        GT_INTELLI_EXPORT bool areInputsValid(Graph& graph, NodeId nodeId) const;
 
-            return isDataValid(PortType::In) &&
-                   std::all_of(portsOut.begin(), portsOut.end(),
-                               [&](PortDataEntry const& port){
-               auto* p = node.port(port.id);
-               return (p && p->optional) || port.data;
-           });
-        }
+        GT_INTELLI_EXPORT bool canEvaluate(Graph& graph, Node& node) const;
     };
 
     struct NodeModelData
@@ -107,8 +93,11 @@ public:
         PortDataState state;
 
         operator NodeDataPtr&() & { return data; }
-        operator NodeDataPtr const&() const& { return data; }
         operator NodeDataPtr&&() && { return std::move(data); }
+        operator NodeDataPtr const&() const& { return data; }
+
+        template <typename T>
+        inline auto cast() const { return qobject_pointer_cast<T const>(data);}
     };
 
     GraphExecutionModel(Graph& graph);
@@ -122,9 +111,12 @@ public:
 
     bool evaluated();
 
-    bool wait(std::chrono::milliseconds timeout = std::chrono::milliseconds::zero());
+    bool wait(std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
+    bool waitForNode(std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
 
     bool autoEvaluate(bool enable = true);
+
+    bool evaluateNode(NodeId nodeId);
 
     bool invalidateOutPorts(NodeId nodeId);
     bool invalidatePort(NodeId nodeId, PortId portId);
@@ -144,17 +136,27 @@ signals:
 
     void graphEvaluated();
 
+    void internalError();
+
+    void graphStalled();
+
 private:
 
     struct Impl; // helper struct to "hide" implementation details
 
     QHash<NodeId, Entry> m_data;
 
+    NodeId m_targetNodeId = invalid<NodeId>();
+
     bool m_autoEvaluate = false;
 
     void invalidatePort(NodeId nodeId, PortDataEntry& port);
 
-    void triggerNodeExecution(NodeId nodeId);
+    bool triggerNodeExecution(NodeId nodeId);
+
+    bool triggerNode(NodeId nodeId, PortId portId = invalid<PortId>());
+
+    void dependentNodeTriggered(NodeId nodeId = invalid<NodeId>());
 
 private slots:
 

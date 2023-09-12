@@ -19,6 +19,8 @@
 
 #include <QCoreApplication>
 
+#include <QtConcurrent>
+
 auto init_log_once = [](){
     auto& logger = gt::log::Logger::instance();
     logger.addDestination("console", gt::log::makeDebugOutputDestination());

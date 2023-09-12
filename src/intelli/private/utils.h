@@ -101,7 +101,7 @@ template <typename T>
 inline QString toString(T const& t)
 {
     gt::log::Stream s;
-    s << t;
+    s.nospace() << t;
     return QString::fromStdString(s.str());
 }
 

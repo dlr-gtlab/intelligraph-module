@@ -31,6 +31,7 @@ add_executable(IntelliGraphUnitTests
 target_link_libraries(IntelliGraphUnitTests PRIVATE
     gtest
     GTlabIntelliGraph
+    Qt5::Concurrent
     QtNodes::QtNodes
 )
 target_compile_definitions(IntelliGraphUnitTests PRIVATE

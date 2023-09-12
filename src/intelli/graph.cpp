@@ -220,31 +220,25 @@ Graph::findConnections(NodeId nodeId, PortType type) const
 }
 
 QVector<ConnectionId>
-Graph::findConnections(NodeId nodeId, PortType type, PortId portId) const
+Graph::findConnections(NodeId nodeId, PortId portId) const
 {
     auto* entry = findNodeEntry(nodeId);
     if (!entry) return {};
 
     QVector<ConnectionId> connections;
 
-    if (type == PortType::In)
+    for (auto& con : entry->ancestors)
     {
-        for (auto& con : entry->ancestors)
+        if (con.sourcePort == portId)
         {
-            if (con.sourcePort == portId)
-            {
-                connections.append(con.toConnection(nodeId).reversed());
-            }
+            connections.append(con.toConnection(nodeId).reversed());
         }
     }
-    else if (type == PortType::Out) // OUT
+    for (auto& con : entry->descendants)
     {
-        for (auto& con : entry->descendants)
+        if (con.sourcePort == portId)
         {
-            if (con.sourcePort == portId)
-            {
-                connections.append(con.toConnection(nodeId));
-            }
+            connections.append(con.toConnection(nodeId));
         }
     }
 
@@ -252,18 +246,28 @@ Graph::findConnections(NodeId nodeId, PortType type, PortId portId) const
 }
 
 QVector<NodeId>
-Graph::findTargetNodes(NodeId nodeId, PortType type, PortId portId) const
+Graph::uniqueConnections(QVector<ConnectionId> const& connections)
 {
-    auto const& connections = portId == invalid<PortId>() ?
-        findConnections(nodeId, type) :
-        findConnections(nodeId, type, portId);
-
     QVector<NodeId> nodes;
     for (ConnectionId conId : connections)
     {
         if (!nodes.contains(conId.inNodeId)) nodes.push_back(conId.inNodeId);
     }
     return nodes;
+}
+
+QVector<NodeId>
+Graph::findConnectedNodes(NodeId nodeId, PortType type) const
+{
+    auto const& connections = findConnections(nodeId, type);
+    return uniqueConnections(connections);
+}
+
+QVector<NodeId>
+Graph::findConnectedNodes(NodeId nodeId, PortId portId) const
+{
+    auto const& connections = findConnections(nodeId, portId);
+    return uniqueConnections(connections);
 }
 
 QList<Graph*>
@@ -283,6 +287,7 @@ Graph::graphNodes() const
 void
 Graph::clear()
 {
+    // connections should be removed automatically
     qDeleteAll(nodes());
 }
 
@@ -353,8 +358,8 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 
     NodeId nodeId = node->id();
 
-    gtInfo().medium() << tr("Appending node to map: %1 (id: %2)")
-                             .arg(node->objectName()).arg(nodeId);
+//    gtInfo().verbose() << tr("Appending node to map: %1 (id: %2)")
+//                              .arg(node->objectName()).arg(nodeId);
 
     m_nodes.insert(nodeId, dag::Entry{ node.get() });
 
@@ -368,7 +373,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
             return;
         }
 
-        auto const& connections = findConnections(node->id(), type, port);
+        auto const& connections = findConnections(node->id(), port);
         for (auto conId : connections)
         {
             deleteConnection(conId);
@@ -376,7 +381,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     });
 
     connect(node.get(), &QObject::destroyed, this, [this, nodeId](){
-        gtInfo() << tr("Deleting node %1 from map").arg(nodeId);
+        gtInfo().verbose() << tr("Deleting node %1 from map").arg(nodeId);
 
         auto node = m_nodes.find(nodeId);
         if (node == m_nodes.end())
@@ -458,7 +463,7 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
         return {};
     }
 
-    gtInfo() << tr("Appending connection %1 to map").arg(toString(conId));
+//    gtInfo().verbose() << tr("Appending connection %1 to map").arg(toString(conId));
 
     auto ancestorConnection   = dag::ConnectionDetail::fromConnection(conId.reversed());
     auto descendantConnection = dag::ConnectionDetail::fromConnection(conId);
@@ -496,7 +501,7 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
             return;
         }
 
-        gtInfo() << tr("Deleting connection %1 from map").arg(toString(conId));
+        gtInfo().verbose() << tr("Deleting connection %1 from map").arg(toString(conId));
 
         targetNode->ancestors.remove(inIdx);
         sourceNode->descendants.remove(outIdx);

@@ -156,18 +156,6 @@ enum class NodeIdPolicy
     Keep = 1
 };
 
-/**
- * @brief Defines the execution modes
- */
-
-enum class [[deprecated]] ExecutionMode
-{
-    None = 0,
-    Sequential,
-    Parallel,
-    Default = 255
-};
-
 namespace detail
 {
 
