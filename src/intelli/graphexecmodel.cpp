@@ -21,15 +21,13 @@
 
 using namespace intelli;
 
-auto const port_valid = [](GraphExecutionModel::PortDataEntry const& p){
-    return p.isValid();
-};
-
 bool
 GraphExecutionModel::Entry::isEvaluated() const
 {
     return state == NodeEvalState::Evaluated &&
-           std::all_of(portsOut.begin(), portsOut.end(), port_valid);
+           std::all_of(portsOut.begin(), portsOut.end(), [](auto const& p){
+       return p.isValid();
+   });
 }
 
 bool
@@ -45,11 +43,11 @@ GraphExecutionModel::Entry::areInputsValid(Graph& graph, NodeId nodeId) const
 bool
 GraphExecutionModel::Entry::canEvaluate(Graph& graph, Node& node) const
 {
-    auto const& nodePorts = node.ports(PortType::Out);
-    assert((size_t)portsOut.size() == nodePorts.size());
+    auto const& nodePorts = node.ports(PortType::In);
+    assert((size_t)portsIn.size() == nodePorts.size());
 
     return areInputsValid(graph, node.id()) &&
-           std::all_of(portsOut.begin(), portsOut.end(),
+           std::all_of(portsIn.begin(), portsIn.end(),
                        [&](PortDataEntry const& port){
                            auto* p = node.port(port.id);
                            return (p && p->optional) || port.data;
@@ -134,6 +132,12 @@ findPortDataEntry(GraphExecutionModel const& model, NodeId nodeId, PortId portId
 
 GraphExecutionModel::GraphExecutionModel(Graph& graph)
 {
+    if (graph.executionModel())
+    {
+        gtError() << tr("Graph '%1' already has an execution model!")
+                         .arg(graph.objectName());
+    }
+
     setParent(&graph);
 
     reset();
@@ -567,35 +571,6 @@ GraphExecutionModel::invalidatePort(NodeId nodeId, PortId portId)
     return true;
 }
 
-IndexedNodeData
-GraphExecutionModel::nodeData(NodeId nodeId, PortType type) const
-{
-    auto entry = m_data.find(nodeId);
-    if (entry == m_data.end())
-    {
-        gtError() << graph().objectName() + ':'
-                  << tr("Failed to access port data! (Invalid node %1)").arg(nodeId);
-        return {};
-    }
-
-    auto* node = graph().findNode(nodeId);
-    if (!node)
-    {
-        gtError() << graph().objectName() + ':'
-                  << tr("Failed to access port data! (Null node %1)").arg(nodeId);
-        return {};
-    }
-
-    IndexedNodeData data;
-
-    auto& ports = Impl::ports(*entry, type);
-    for (auto& port : ports)
-    {
-        data.push_back({node->portIndex(type, port.id), port.data});
-    }
-    return data;
-}
-
 GraphExecutionModel::NodeModelData
 GraphExecutionModel::nodeData(NodeId nodeId, PortId portId) const
 {
@@ -625,6 +600,35 @@ GraphExecutionModel::nodeData(NodeId nodeId, PortType type, PortIndex idx) const
     }
 
     return nodeData(nodeId, node->portId(type, idx));
+}
+
+NodeDataPtrList
+GraphExecutionModel::nodeData(NodeId nodeId, PortType type) const
+{
+    auto entry = m_data.find(nodeId);
+    if (entry == m_data.end())
+    {
+        gtError() << graph().objectName() + ':'
+                  << tr("Failed to access port data! (Invalid node %1)").arg(nodeId);
+        return {};
+    }
+
+    auto* node = graph().findNode(nodeId);
+    if (!node)
+    {
+        gtError() << graph().objectName() + ':'
+                  << tr("Failed to access port data! (Null node %1)").arg(nodeId);
+        return {};
+    }
+
+    NodeDataPtrList data;
+
+    auto& ports = Impl::ports(*entry, type);
+    for (auto& port : ports)
+    {
+        data.push_back({node->portIndex(type, port.id), port.data});
+    }
+    return data;
 }
 
 bool
@@ -714,7 +718,7 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortType type, PortIndex idx, No
 bool
 GraphExecutionModel::setNodeData(NodeId nodeId,
                                  PortType type,
-                                 IndexedNodeData const& data,
+                                 NodeDataPtrList const& data,
                                  int option)
 {
     PortIndex idx(0);

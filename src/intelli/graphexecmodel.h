@@ -29,13 +29,6 @@ enum class PortDataState
     Valid,
 };
 
-enum class ExecutionMode
-{
-    None = 0,
-    Auto,
-    Target
-};
-
 class GT_INTELLI_EXPORT GraphExecutionModel : public QObject
 {
     Q_OBJECT
@@ -118,17 +111,13 @@ public:
 
     bool evaluateNode(NodeId nodeId);
 
-    bool invalidateOutPorts(NodeId nodeId);
-    bool invalidatePort(NodeId nodeId, PortId portId);
-
-    IndexedNodeData nodeData(NodeId nodeId, PortType type) const;
-
     NodeModelData nodeData(NodeId nodeId, PortId portId) const;
     NodeModelData nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;
+    NodeDataPtrList nodeData(NodeId nodeId, PortType type) const;
 
     bool setNodeData(NodeId nodeId, PortId portId, NodeModelData data, int option = Option::NoOption);
     bool setNodeData(NodeId nodeId, PortType type, PortIndex idx, NodeModelData data, int option = Option::NoOption);
-    bool setNodeData(NodeId nodeId, PortType type, IndexedNodeData const& data, int option = Option::NoOption);
+    bool setNodeData(NodeId nodeId, PortType type, NodeDataPtrList const& data, int option = Option::NoOption);
 
 signals:
 
@@ -150,6 +139,8 @@ private:
 
     bool m_autoEvaluate = false;
 
+    bool invalidateOutPorts(NodeId nodeId);
+    bool invalidatePort(NodeId nodeId, PortId portId);
     void invalidatePort(NodeId nodeId, PortDataEntry& port);
 
     bool triggerNodeExecution(NodeId nodeId);

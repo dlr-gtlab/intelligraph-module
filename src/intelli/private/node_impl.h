@@ -12,6 +12,7 @@
 #include <intelli/memory.h>
 #include <intelli/node.h>
 #include <intelli/exec/executor.h>
+#include <intelli/property/uint.h>
 
 #include <gt_intproperty.h>
 #include <gt_doubleproperty.h>
@@ -38,8 +39,8 @@ struct NodeImpl
     NodeImpl(QString const& name) : modelName(name) {}
 
     /// node id
-    GtIntProperty id{
-        "id", QObject::tr("Node Id"), QObject::tr("Node Id")
+    UIntProperty id{
+        "id", QObject::tr("Node Id"), QObject::tr("Node Id"), invalid<NodeId>()
     };
 
     /// x position of node

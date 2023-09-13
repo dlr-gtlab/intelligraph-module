@@ -261,7 +261,7 @@ ParallelExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
                 signalsToConnect = findSignalsToConnect(node),
                 targetMetaObject = node.metaObject(),
                 targetObject = QPointer<Node>(&node),
-                executor = this]() -> IndexedNodeData
+                executor = this]() -> NodeDataPtrList
     {
         try{
         auto clone = gt::unique_qobject_cast<Node>(

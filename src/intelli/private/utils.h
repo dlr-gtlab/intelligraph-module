@@ -48,15 +48,15 @@ operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& d
 namespace intelli
 {
 
-inline ConnectionId convert(QtNodes::ConnectionId con)
-{
-    return *reinterpret_cast<ConnectionId*>(&con);
-}
+//inline ConnectionId convert(QtNodes::ConnectionId con)
+//{
+//    return *reinterpret_cast<ConnectionId*>(&con);
+//}
 
-inline QtNodes::ConnectionId convert(ConnectionId con)
-{
-    return *reinterpret_cast<QtNodes::ConnectionId*>(&con);
-}
+//inline QtNodes::ConnectionId convert(ConnectionId con)
+//{
+//    return *reinterpret_cast<QtNodes::ConnectionId*>(&con);
+//}
 
 template <typename Sender, typename SignalSender,
          typename Reciever, typename SignalReciever>
@@ -88,13 +88,6 @@ auto ignoreSignal(Sender sender, SignalSender signalSender,
     return IgnoreSignal<Sender, SignalSender, Reciever, SignalReciever>{
         sender, signalSender, reciever, signalReciever
     };
-}
-
-inline unsigned fromInt(GtIntProperty const& p) noexcept
-{
-    return p.get() >= 0 ? static_cast<unsigned>(p) :
-
-               std::numeric_limits<unsigned>::max();
 }
 
 template <typename T>

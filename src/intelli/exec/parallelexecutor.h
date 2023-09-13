@@ -41,8 +41,8 @@ protected:
 private:
     
     QPointer<Node> m_node;
-
-    QFutureWatcher<IndexedNodeData> m_watcher;
+    
+    QFutureWatcher<NodeDataPtrList> m_watcher;
 
     PortId m_port;
 

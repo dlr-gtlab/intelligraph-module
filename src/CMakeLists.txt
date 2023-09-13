@@ -25,6 +25,7 @@ set(PUBLIC_HEADERS
     intelli/property/color.h
     intelli/property/objectlink.h
     intelli/property/stringselection.h
+    intelli/property/uint.h
 )
 
 qt5_add_resources (RCC_SOURCES
@@ -119,6 +120,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/color.cpp
     intelli/property/objectlink.cpp
     intelli/property/stringselection.cpp
+    intelli/property/uint.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

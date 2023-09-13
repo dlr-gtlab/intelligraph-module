@@ -34,7 +34,6 @@ main(int argc, char** argv)
     [](){
         TestDynamicNode::registerOnce();
 
-        gtObjectFactory->registerClass(intelli::Graph::staticMetaObject);
         gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
     }();
 

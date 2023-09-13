@@ -65,7 +65,7 @@ static const int ns_meta_port_type = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber{0, 4, 0};
+    return GtVersionNumber{0, 5, 0};
 }
 
 QString
@@ -97,6 +97,7 @@ GtIntelliGraphModule::metaInformation() const
 
 bool upgrade_to_0_3_0(QDomElement& root, QString const& file);
 bool upgrade_to_0_3_1(QDomElement& root, QString const& file);
+bool upgrade_to_0_5_0(QDomElement& root, QString const& file);
 
 QList<gt::VersionUpgradeRoutine>
 GtIntelliGraphModule::upgradeRoutines() const
@@ -113,6 +114,10 @@ GtIntelliGraphModule::upgradeRoutines() const
     to_0_3_1.f = upgrade_to_0_3_1;
     routines << to_0_3_1;
 
+    gt::VersionUpgradeRoutine to_0_5_0;
+    to_0_5_0.target = GtVersionNumber{0, 5, 0};
+    to_0_5_0.f = upgrade_to_0_5_0;
+    routines << to_0_5_0;
 
     return routines;
 }
@@ -240,12 +245,11 @@ bool
 rename_class_from_to(QDomElement& root,
                      QString const& from,
                      QString const& to,
-                     int indent,
+                     int indent = 0,
                      std::function<void(QDomElement&, int)> func = {})
 {
-    auto objects = gt::xml::findObjectElementsByClassName(
-        root, from
-        );
+    auto objects = gt::xml::findObjectElementsByClassName(root, from);
+
     if (objects.empty()) return true;
 
     gtInfo() << QStringLiteral(" ").repeated(indent)
@@ -284,14 +288,40 @@ replace_property_texts(QDomElement& root,
     return true;
 }
 
+bool
+remove_objects(QDomElement& root,
+               QString const& className,
+               int indent = 0)
+{
+    auto objects = gt::xml::findObjectElementsByClassName(root, className);
+
+    if (objects.empty()) return true;
+
+    gtInfo() << QStringLiteral(" ").repeated(indent)
+             << QObject::tr("Removing %3 objects of type '%1'").arg(className).arg(objects.size());
+
+    for (auto& object : objects)
+    {
+        object.parentNode().removeChild(object);
+    }
+
+    return true;
+}
+
+// connections no longer store indicies but port ids -> remove connections
+bool upgrade_to_0_5_0(QDomElement& root, QString const& file)
+{
+    if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseInsensitive)) return true;
+
+    return remove_objects(root, GT_CLASSNAME(Connection));
+}
+
 // fix typo in class name :(
 bool upgrade_to_0_3_1(QDomElement& root, QString const& file)
 {
     if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseInsensitive)) return true;
 
-    rename_class_from_to(root, QStringLiteral("intelli::NubmerDisplayNode"), QStringLiteral("intelli::NumberDisplayNode"), 0);
-
-    return true;
+    return rename_class_from_to(root, QStringLiteral("intelli::NubmerDisplayNode"), QStringLiteral("intelli::NumberDisplayNode"));
 }
 
 // major refactoring of class names and namespaces

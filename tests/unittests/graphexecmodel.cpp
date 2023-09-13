@@ -33,6 +33,9 @@ TEST(GraphExecutionModel, test)
         builder.connect(B, PortIndex(0), C, PortIndex(0));
         builder.connect(B, PortIndex(0), C, PortIndex(1));
 
+//        // set in port 2 of node B to required thus graph cannot be evaluated
+//        B.port(B.portId(PortType::In, PortIndex(1)))->optional = false;
+
         setNodeProperty(A, QStringLiteral("value"), 42);
     }
     catch (std::logic_error const& e)
@@ -41,9 +44,9 @@ TEST(GraphExecutionModel, test)
         ASSERT_NO_THROW(throw e);
     }
 
-    GraphExecutionModel model(graph);
-
     dag::debugGraph(graph.dag());
+
+    GraphExecutionModel model(graph);
 
     EXPECT_TRUE(model.evaluateNode(C_id));
     EXPECT_TRUE(model.waitForNode(std::chrono::seconds{1}));
@@ -81,7 +84,7 @@ TEST(GraphExecutionModel, dependencie)
     EXPECT_TRUE(model.autoEvaluate());
     EXPECT_TRUE(model.wait(std::chrono::seconds{1}));
 
-    auto B_data = model.nodeData(E_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
+    auto B_data = model.nodeData(B_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
     ASSERT_TRUE(B_data);
     EXPECT_EQ(B_data->value(), 42);
 }

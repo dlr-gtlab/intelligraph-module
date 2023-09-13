@@ -95,7 +95,7 @@ Node::setId(NodeId id)
 NodeId
 Node::id() const
 {
-    return NodeId{fromInt(pimpl->id)};
+    return NodeId{pimpl->id};
 }
 
 void

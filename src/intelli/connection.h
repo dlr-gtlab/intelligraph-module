@@ -9,11 +9,12 @@
 #ifndef GT_INTELLI_CONNECTION_H
 #define GT_INTELLI_CONNECTION_H
 
-#include "intelli/exports.h"
-#include "intelli/globals.h"
+#include <intelli/exports.h>
+#include <intelli/globals.h>
+#include <intelli/property/uint.h>
 
-#include "gt_object.h"
-#include "gt_intproperty.h"
+#include <gt_object.h>
+#include <gt_intproperty.h>
 
 namespace intelli
 {
@@ -37,16 +38,16 @@ public:
 
     bool fromConnectionId(ConnectionId connection);
 
-    NodeId inNodeId() const;
+    NodeId inNodeId() const { return NodeId{m_inNodeId}; }
     void setInNodeId(NodeId nodeId) { m_inNodeId = nodeId; }
     
-    PortId inPort() const;
+    PortId inPort() const { return PortId{m_inPort}; }
     void setInPort(PortId port) { m_inPort = port; }
 
-    NodeId outNodeId() const;
+    NodeId outNodeId() const { return NodeId{m_outNodeId}; }
     void setOutNodeId(NodeId nodeId) { m_outNodeId = nodeId; }
     
-    PortId outPort() const;
+    PortId outPort() const { return PortId{m_outPort}; }
     void setOutPort(PortId port) { m_outPort = port; }
 
     bool isValid() const;
@@ -56,13 +57,13 @@ public:
 private:
 
     /// node id IN (should be unsigned)
-    GtIntProperty m_inNodeId;
+    UIntProperty m_inNodeId;
     /// port IN (should be unsigned)
-    GtIntProperty m_inPort;
+    UIntProperty m_inPort;
     /// node id IN (should be unsigned)
-    GtIntProperty m_outNodeId;
+    UIntProperty m_outNodeId;
     /// port IN (should be unsigned)
-    GtIntProperty m_outPort;
+    UIntProperty m_outPort;
 };
 
 } // namespace intelli;

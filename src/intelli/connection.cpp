@@ -62,38 +62,12 @@ Connection::fromConnectionId(ConnectionId connection)
     return isValid();
 }
 
-NodeId
-Connection::inNodeId() const
-{
-    return NodeId{fromInt(m_inNodeId)};
-}
-
-PortId
-Connection::inPort() const
-{
-    return PortId{fromInt(m_inPort)};
-}
-
-NodeId
-Connection::outNodeId() const
-{
-    return NodeId{fromInt(m_outNodeId)};
-}
-
-PortId
-Connection::outPort() const
-{
-    return PortId{fromInt(m_outPort)};
-}
-
 bool
 Connection::isValid() const
 {
     constexpr auto invalid = intelli::invalid<PortId>().value();
 
-    std::array<unsigned, 4> const ids{
-                                      inNodeId(), inPort(), outNodeId(), outPort()
-    };
+    std::array<unsigned, 4> const ids{inNodeId(), inPort(), outNodeId(), outPort()};
     return std::all_of(std::begin(ids), std::end(ids), [=](auto id){
         return id != invalid;
     });

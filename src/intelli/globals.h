@@ -94,7 +94,7 @@ using Position = QPointF;
 
 using NodeDataPtr  = std::shared_ptr<const NodeData>;
 
-using IndexedNodeData = std::vector<std::pair<PortIndex, NodeDataPtr>>;
+using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
 
 /**
  * Connection identificator that stores
