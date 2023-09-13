@@ -263,17 +263,15 @@ Node::removePort(PortId id)
     return true;
 }
 
-Node::NodeDataPtr const&
+Node::NodeDataPtr
 Node::nodeData(PortId id) const
 {
-    static const NodeDataPtr dummy{};
-
     auto find = pimpl->find(id);
     if (!find)
     {
         gtWarning() << tr("PortId '%1' not found!").arg(id)
                     << gt::brackets(objectName());
-        return dummy;
+        return {};
     }
 
     auto* model = executionModel();
@@ -281,7 +279,7 @@ Node::nodeData(PortId id) const
     {
         gtWarning() << tr("Evaluation model not found!")
                     << gt::brackets(objectName());
-        return dummy;
+        return {};
     }
 
     return model->nodeData(this->id(), find.type, find.idx);

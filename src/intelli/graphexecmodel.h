@@ -86,7 +86,7 @@ public:
         PortDataState state;
 
         operator NodeDataPtr&() & { return data; }
-        operator NodeDataPtr&&() && { return std::move(data); }
+        operator NodeDataPtr() && { return std::move(data); }
         operator NodeDataPtr const&() const& { return data; }
 
         template <typename T>

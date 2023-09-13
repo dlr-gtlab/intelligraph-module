@@ -466,7 +466,7 @@ protected:
      * @param id Port id (output or input)
      * @return Port data (may be null)
      */
-    NodeDataPtr const& nodeData(PortId id) const;
+    NodeDataPtr nodeData(PortId id) const;
 
     /**
      * @brief Overload that casts the node data of the specified port to the

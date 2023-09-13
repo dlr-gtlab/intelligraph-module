@@ -60,7 +60,8 @@ NumberMathNode::NumberMathNode() :
 
     updatePortCaptions();
 
-    connect(&m_operation, &GtAbstractProperty::changed, this, &Node::triggerNodeEvaluation);
+    connect(&m_operation, &GtAbstractProperty::changed,
+            this, &Node::triggerNodeEvaluation);
 }
 
 intelli::Node::NodeDataPtr

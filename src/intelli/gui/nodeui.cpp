@@ -231,7 +231,7 @@ NodeUI::executeNode(GtObject* obj)
     Q_UNUSED(cleanup);
 
     node->setActive();
-    node->triggerNodeEvaluation();
+    emit node->triggerNodeEvaluation();
 }
 
 void
@@ -321,5 +321,8 @@ NodeUI::setActive(GtObject* obj, bool state)
 
     node->setActive(state);
 
-    if (!wasActive && node->isActive()) node->triggerNodeEvaluation();
+    if (!wasActive && node->isActive())
+    {
+        emit node->triggerNodeEvaluation();
+    }
 }

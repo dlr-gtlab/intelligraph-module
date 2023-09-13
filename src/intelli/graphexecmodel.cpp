@@ -762,6 +762,14 @@ GraphExecutionModel::appendNode(Node* node)
     }
 
     m_data.insert(node->id(), std::move(entry));
+
+    connect(node, &Node::triggerPortEvaluation,
+            this, [this, nodeId = node->id()](PortId id){
+        if (m_autoEvaluate)
+        {
+            triggerNodeExecution(nodeId);
+        }
+    });
 }
 
 void

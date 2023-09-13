@@ -50,7 +50,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/exec/parallelexecutor.h
     intelli/exec/sequentialexecutor.h
     intelli/node/abstractgroupprovider.h
-    intelli/node/conditional.h
     intelli/node/doubletobool.h
     intelli/node/finddirectchild.h
     intelli/node/groupinputprovider.h
@@ -96,7 +95,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/double.cpp
     intelli/data/object.cpp
     intelli/data/stringlist.cpp
-    intelli/node/conditional.cpp
     intelli/node/doubletobool.cpp
     intelli/node/finddirectchild.cpp
     intelli/node/groupinputprovider.cpp
