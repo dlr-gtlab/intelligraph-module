@@ -11,32 +11,28 @@
 #define GT_INTELLI_EXECUTOR_H
 
 #include "intelli/globals.h"
+#include "intelli/exports.h"
 
 #include <QPointer>
 
 namespace intelli
 {
 
-struct NodeImpl;
 class Node;
-class NodeData;
 class GraphExecutionModel;
 
-class Executor : public QObject
+GT_INTELLI_EXPORT bool blockingEvaluation(Node& node,
+                                          GraphExecutionModel& model,
+                                          PortId portId = invalid<PortId>());
+
+GT_INTELLI_EXPORT bool detachedEvaluation(Node& node,
+                                          GraphExecutionModel& model,
+                                          PortId portId = invalid<PortId>());
+
+
+class NodeExecutor : public QObject
 {
     Q_OBJECT
-
-public:
-
-    using NodeDataPtr  = std::shared_ptr<const NodeData>;
-
-    using PortIndex = intelli::PortIndex;
-
-    Executor();
-
-    virtual bool evaluateNode(Node& node, GraphExecutionModel& model, PortId portId = invalid<PortId>()) = 0;
-
-    virtual bool isReady() const;
 
 protected:
     
@@ -44,6 +40,8 @@ protected:
     static NodeDataPtr doEvaluate(Node& node);
 
     static GraphExecutionModel* accessExecModel(Node& node);
+
+    NodeExecutor() = default;
 };
 
 } // namespace intelli

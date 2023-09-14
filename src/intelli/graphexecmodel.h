@@ -29,18 +29,18 @@ enum class PortDataState
     Valid,
 };
 
+enum class NodeEvalState
+{
+    Evaluated = 0,
+    Evaluating,
+};
+
 class GT_INTELLI_EXPORT GraphExecutionModel : public QObject
 {
     Q_OBJECT
 
 
 public:
-
-    enum class NodeEvalState
-    {
-        Evaluated = 0,
-        Evaluating,
-    };
 
     enum Option
     {
@@ -108,8 +108,11 @@ public:
     bool waitForNode(std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
 
     bool autoEvaluate(bool enable = true);
+    bool isAutoEvaluating() const;
 
     bool evaluateNode(NodeId nodeId);
+
+    NodeEvalState currentState(NodeId nodeId) const;
 
     NodeModelData nodeData(NodeId nodeId, PortId portId) const;
     NodeModelData nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;

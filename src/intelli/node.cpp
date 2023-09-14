@@ -8,13 +8,12 @@
 
 #include "intelli/node.h"
 
+#include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
+#include "intelli/nodeexecutor.h"
 #include "intelli/private/node_impl.h"
-#include "intelli/private/utils.h"
-#include "intelli/exec/sequentialexecutor.h"
-#include "intelli/exec/parallelexecutor.h"
 
-#include "gt_qtutilities.h"
+#include <gt_qtutilities.h>
 
 
 #include <QRegExpValidator>
@@ -339,8 +338,8 @@ Node::eval(PortId)
 GraphExecutionModel*
 Node::executionModel()
 {
-    auto*  parent = parentObject();
-    return parent ? parent->findDirectChild<GraphExecutionModel*>() : nullptr;
+    auto*  parent = qobject_cast<Graph*>(this->parent());
+    return parent ? parent->mainExecutionModel() : nullptr;
 }
 
 GraphExecutionModel const*
@@ -352,18 +351,7 @@ Node::executionModel() const
 bool
 Node::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
 {
-    if (findChild<ParallelExecutor*>())
-    {
-        gtError() << tr("Node already has a executor!");
-        return false;
-    }
-
-    auto executor = new ParallelExecutor;
-    executor->setParent(this);
-
-    bool startedEval = executor->evaluateNode(*this, model, portId);
-
-    return startedEval;
+    return detachedEvaluation(*this, model, portId);
 }
 
 void

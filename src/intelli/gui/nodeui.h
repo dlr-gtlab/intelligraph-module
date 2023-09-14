@@ -159,13 +159,6 @@ private:
     static bool canRenameNodeObject(GtObject* obj);
 
     /**
-     * @brief loadNodeGraph
-     * @param obj
-     */
-    static void loadNodeGraph(GtObject* obj);
-
-
-    /**
      * @brief helper method for setting the active flag of a node
      * @param obj
      */

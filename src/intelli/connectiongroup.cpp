@@ -8,10 +8,9 @@
 
 #include "intelli/connectiongroup.h"
 
-#include "intelli/graph.h"
-#include "intelli/adapter/modeladapter.h"
-
 #include "gt_coreapplication.h"
+
+#include "gt_logging.h"
 
 using namespace intelli;
 

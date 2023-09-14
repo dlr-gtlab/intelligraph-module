@@ -73,8 +73,8 @@ TEST(Graph, remove_connections_on_node_deletion)
     dag::debugGraph(graph.dag());
 
     // delete all
-
-    graph.clear();
+    
+    graph.clearGraph();
 
     EXPECT_EQ(graph.connections().size(), 0);
     EXPECT_EQ(graph.nodes().size(), 0);

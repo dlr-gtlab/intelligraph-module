@@ -50,8 +50,6 @@ public:
     PortId outPort() const { return PortId{m_outPort}; }
     void setOutPort(PortId port) { m_outPort = port; }
 
-    bool isValid() const;
-
     void updateObjectName();
 
 private:

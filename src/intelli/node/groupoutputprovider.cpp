@@ -8,7 +8,7 @@
 
 #include "intelli/node/groupoutputprovider.h"
 
-#include "intelli/exec/sequentialexecutor.h"
+#include "intelli/nodeexecutor.h"
 
 using namespace intelli;
 
@@ -27,7 +27,5 @@ GroupOutputProvider::eval(PortId outId)
 bool
 GroupOutputProvider::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
 {
-    SequentialExecutor executor;
-
-    return executor.evaluateNode(*this, model, portId);
+    return blockingEvaluation(*this, model, portId);
 }

@@ -59,26 +59,16 @@ Connection::fromConnectionId(ConnectionId connection)
 
     updateObjectName();
 
-    return isValid();
-}
-
-bool
-Connection::isValid() const
-{
-    constexpr auto invalid = intelli::invalid<PortId>().value();
-
-    std::array<unsigned, 4> const ids{inNodeId(), inPort(), outNodeId(), outPort()};
-    return std::all_of(std::begin(ids), std::end(ids), [=](auto id){
-        return id != invalid;
-    });
+    return connectionId().isValid();
 }
 
 void
 Connection::updateObjectName()
 {
     return gt::setUniqueName(
-        *this, !isValid() ? QStringLiteral("NodeConnection[N/A]") :
-                            QStringLiteral("NodeConnection[%1:%2/%3:%4]")
-                              .arg(m_outNodeId).arg(m_outPort)
-                              .arg(m_inNodeId).arg(m_inPort));
+        *this, !connectionId().isValid() ?
+                   QStringLiteral("NodeConnection[N/A]") :
+                   QStringLiteral("NodeConnection[%1:%2/%3:%4]")
+                       .arg(m_outNodeId).arg(m_outPort)
+                       .arg(m_inNodeId).arg(m_inPort));
 }

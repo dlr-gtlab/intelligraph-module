@@ -33,7 +33,7 @@ TEST(GraphExecutionModel, test)
         builder.connect(B, PortIndex(0), C, PortIndex(0));
         builder.connect(B, PortIndex(0), C, PortIndex(1));
 
-//        // set in port 2 of node B to required thus graph cannot be evaluated
+        // set in port 2 of node B to required thus graph cannot be evaluated
 //        B.port(B.portId(PortType::In, PortIndex(1)))->optional = false;
 
         setNodeProperty(A, QStringLiteral("value"), 42);
@@ -55,7 +55,7 @@ TEST(GraphExecutionModel, test)
     ASSERT_TRUE(C_data);
     EXPECT_EQ(C_data->value(), 84);
 
-//    EXPECT_TRUE(model.evaluateNode(C_id));
+    EXPECT_TRUE(model.evaluateNode(C_id));
 }
 
 TEST(GraphExecutionModel, dependencie)
@@ -172,8 +172,8 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
     // auto evaluate
 
     GraphExecutionModel model(graph);
-    GraphExecutionModel* submodel = graph.findDirectChild<GraphExecutionModel*>();
-    ASSERT_TRUE(submodel);
+    GraphExecutionModel* submodel = graph.mainExecutionModel();
+    ASSERT_EQ(submodel, &model);
 
     EXPECT_TRUE(model.autoEvaluate());
     EXPECT_TRUE(model.wait(std::chrono::seconds(1)));

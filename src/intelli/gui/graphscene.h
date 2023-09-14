@@ -18,15 +18,20 @@
 namespace intelli
 {
 
-class GraphScene : public QtNodes::DataFlowGraphicsScene
+class GraphAdapterModel;
+
+class GraphScene : public QtNodes::BasicGraphicsScene
 {
     Q_OBJECT
-
-    using base_class = QtNodes::DataFlowGraphicsScene;
 
 public:
 
     GraphScene(Graph& graph);
+    ~GraphScene();
+
+    bool autoEvaluate(bool enable = true);
+
+    bool isAutoEvaluating();
 
 public slots:
 
@@ -44,17 +49,19 @@ protected:
 
 private:
 
+    struct Impl;
+
     QPointer<Graph> m_data = nullptr;
 
-    QPointer<QtNodes::AbstractGraphModel> m_model = nullptr;
+//    QPointer<QtNodes::AbstractGraphModel> m_model = nullptr;
 
     void deleteNodes(std::vector<QtNodes::NodeId> const& nodeIds);
 
     void makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds);
 
-private slots:
+    GraphAdapterModel& adapterModel();
 
-    void onNodePositionChanged(QtNodes::NodeId nodeId);
+private slots:
 
     void onNodeSelected(QtNodes::NodeId nodeId);
 

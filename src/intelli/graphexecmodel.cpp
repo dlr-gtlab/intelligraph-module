@@ -54,6 +54,8 @@ GraphExecutionModel::Entry::canEvaluate(Graph& graph, Node& node) const
                        });
 }
 
+//////////////////////////////////////////////////////
+
 struct GraphExecutionModel::Impl
 {
 
@@ -132,7 +134,7 @@ findPortDataEntry(GraphExecutionModel const& model, NodeId nodeId, PortId portId
 
 GraphExecutionModel::GraphExecutionModel(Graph& graph)
 {
-    if (graph.executionModel())
+    if (graph.mainExecutionModel())
     {
         gtError() << tr("Graph '%1' already has an execution model!")
                          .arg(graph.objectName());
@@ -487,6 +489,12 @@ GraphExecutionModel::autoEvaluate(bool enable)
 }
 
 bool
+GraphExecutionModel::isAutoEvaluating() const
+{
+    return m_autoEvaluate;
+}
+
+bool
 GraphExecutionModel::evaluateNode(NodeId nodeId)
 {
     if (nodeId == invalid<NodeId>()) return false;
@@ -522,10 +530,21 @@ GraphExecutionModel::evaluateNode(NodeId nodeId)
         return false;
     }
 
-    /////////////////////////
-
     dependentNodeTriggered();
     return true;
+}
+
+NodeEvalState
+GraphExecutionModel::currentState(NodeId nodeId) const
+{
+    auto entry = m_data.find(nodeId);
+    if (entry == std::end(m_data))
+    {
+        gtWarning() << tr("Failed to access current state of node %1! (node not found)").arg(nodeId);
+        return NodeEvalState::Evaluated;
+    }
+
+    return entry->state;
 }
 
 void
@@ -538,7 +557,7 @@ GraphExecutionModel::invalidatePort(NodeId nodeId, PortDataEntry& port)
     auto const& connections = graph().findConnections(nodeId, PortType::Out);
 
     gtDebug() << graph().objectName() + ':'
-              << "INVALIDATING Node" << nodeId << "port index" << port.id
+              << "INVALIDATING Node" << nodeId << "port id" << port.id
               << std::vector<ConnectionId>(connections.begin(), connections.end());
 
     for (auto& con : connections)
@@ -741,7 +760,6 @@ void
 GraphExecutionModel::appendNode(Node* node)
 {
     assert(node);
-    gtDebug().verbose() << __FUNCTION__ << node->objectName() << node->id();
 
     Entry entry{};
 
@@ -764,18 +782,18 @@ GraphExecutionModel::appendNode(Node* node)
     m_data.insert(node->id(), std::move(entry));
 
     connect(node, &Node::triggerPortEvaluation,
-            this, [this, nodeId = node->id()](PortId id){
-        if (m_autoEvaluate)
-        {
-            triggerNodeExecution(nodeId);
-        }
+            this, [this, nodeId = node->id()](PortId portId){
+
+        // TODO: invalidate only port
+        invalidateOutPorts(nodeId);
+
+        if (m_autoEvaluate) triggerNodeExecution(nodeId);
     });
 }
 
 void
 GraphExecutionModel::onNodeDeleted(NodeId nodeId)
 {
-    gtDebug().verbose() << __FUNCTION__ << nodeId;
     m_data.remove(nodeId);
 }
 
@@ -784,7 +802,6 @@ GraphExecutionModel::onConnectedionAppended(Connection* con)
 {
     assert(con);
     ConnectionId conId = con->connectionId();
-    gtDebug().verbose() << __FUNCTION__ << conId;
 
     auto entry = m_data.find(conId.outNodeId);
     if (entry == m_data.end())
@@ -808,7 +825,6 @@ GraphExecutionModel::onConnectedionAppended(Connection* con)
 void
 GraphExecutionModel::onConnectionDeleted(ConnectionId conId)
 {
-    gtDebug().verbose() << __FUNCTION__ << conId;
     invalidatePort(conId.inNodeId, conId.inPort);
 }
 

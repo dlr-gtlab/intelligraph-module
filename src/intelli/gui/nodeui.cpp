@@ -9,21 +9,19 @@
 
 #include "intelli/gui/nodeui.h"
 
-#include "intelli/data/double.h"
 #include "intelli/dynamicnode.h"
-//#include "intelli/adapter/jsonadapter.h"
-#include "intelli/graph.h"
-//#include "intelli/gui/grapheditor.h"
 #include "intelli/node.h"
+#include "intelli/graph.h"
+#include "intelli/graphexecmodel.h"
+#include "intelli/data/double.h"
+#include "intelli/gui/grapheditor.h"
 #include "intelli/gui/icons.h"
 
-#include "gt_logging.h"
+#include <gt_logging.h>
 
-#include "gt_command.h"
-#include "gt_utilities.h"
-#include "gt_inputdialog.h"
-#include "gt_application.h"
-#include "gt_filedialog.h"
+#include <gt_command.h>
+#include <gt_inputdialog.h>
+#include <gt_application.h>
 
 #include <QJsonObject>
 #include <QJsonDocument>
@@ -88,10 +86,6 @@ NodeUI::NodeUI(Option option)
         .setIcon(gt::gui::icon::clear())
         .setVisibilityMethod(toGraph);
 
-    addSingleAction(tr("Load Intelli Graph..."), loadNodeGraph)
-        .setIcon(gt::gui::icon::import())
-        .setVisibilityMethod(toGraph);
-
     if ((option & NoDefaultPortActions)) return;
 
     auto const hasOutputPorts = [](GtObject* obj){
@@ -137,10 +131,10 @@ NodeUI::openWith(GtObject* obj)
 {
     QStringList list;
 
-//    if (toGraph(obj))
-//    {
-//        list << GT_CLASSNAME(GraphEditor);
-//    }
+    if (toGraph(obj))
+    {
+        list << GT_CLASSNAME(GraphEditor);
+    }
 
     return list;
 }
@@ -225,13 +219,20 @@ NodeUI::executeNode(GtObject* obj)
     auto* node = toNode(obj);
     if (!node) return;
 
+    auto* graph = toGraph(node->parentObject());
+    if (!graph) return;
+
     auto cleanup = gt::finally([node, old = node->isActive()](){
         node->setActive(old);
     });
     Q_UNUSED(cleanup);
 
+    auto* model = graph->makeMainExecutionModel();
+
     node->setActive();
-    emit node->triggerNodeEvaluation();
+//    emit node->triggerNodeEvaluation();
+
+    model->evaluateNode(node->id());
 }
 
 void
@@ -272,43 +273,8 @@ NodeUI::clearNodeGraph(GtObject* obj)
     auto cmd = gtApp->startCommand(graph, QStringLiteral("Clear '%1'")
                                               .arg(graph->objectName()));
     auto finally = gt::finally([&](){ gtApp->endCommand(cmd); });
-
-    graph->clear();
-}
-
-void
-NodeUI::loadNodeGraph(GtObject* obj)
-{
-//    auto graph = toGraph(obj);
-
-//    if (!graph) return;
-
-//    QString filePath = GtFileDialog::getOpenFileName(nullptr, tr("Open Intelli Flow"));
-
-//    if (filePath.isEmpty() || !QFileInfo::exists(filePath)) return;
-
-//    QFile file(filePath);
-//    if (!file.open(QFile::ReadOnly))
-//    {
-//        gtError() << tr("Failed to open intelli graph from file! (%1)")
-//                     .arg(filePath);
-//        return;
-//    }
-
-//    auto scene = QJsonDocument::fromJson(file.readAll()).object();
-//    auto restored = intelli::fromJson(scene);
-//    if (!restored)
-//    {
-//        gtError() << tr("Failed to restore intelli graph!");
-//        return;
-//    }
-
-//    auto cmd = gtApp->startCommand(graph, QStringLiteral("Loading IntelliGraph (%1)")
-//                                          .arg(graph->objectName()));
-//    auto finally = gt::finally([&](){ gtApp->endCommand(cmd); });
-
-//    graph->clear();
-//    graph->appendObjects(restored->nodes, restored->connections);
+    
+    graph->clearGraph();
 }
 
 void

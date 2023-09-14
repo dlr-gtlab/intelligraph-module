@@ -12,6 +12,7 @@
  
 #include "intelli/module.h"
 
+#include "intelli/core.h"
 #include "intelli/package.h"
 #include "intelli/nodefactory.h"
 #include "intelli/graph.h"
@@ -23,13 +24,15 @@
 #include "intelli/gui/connectionui.h"
 #include "intelli/gui/packageui.h"
 #include "intelli/gui/nodeui.h"
-//#include "intelli/gui/grapheditor.h"
+#include "intelli/gui/grapheditor.h"
 #include "intelli/gui/property_item/objectlink.h"
 #include "intelli/gui/property_item/stringselection.h"
-#include "intelli/core.h"
+#include "intelli/gui/style.h"
 
 #include "gt_xmlutilities.h"
+#include "gt_coreapplication.h"
 
+#include <QThread>
 #include <QDomDocument>
 
 using namespace intelli;
@@ -77,8 +80,11 @@ GtIntelliGraphModule::description() const
 void
 GtIntelliGraphModule::init()
 {
-    // nothing to do here
     intelli::initModule();
+
+    if (gtApp->batchMode()) return;
+
+    applyTheme(Theme::System);
 }
 
 GtIntelliGraphModule::MetaInformation
@@ -166,7 +172,7 @@ GtIntelliGraphModule::mdiItems()
 {
     QList<QMetaObject> list;
     
-//    list << GT_METADATA(GraphEditor);
+    list << GT_METADATA(GraphEditor);
 
     return list;
 }

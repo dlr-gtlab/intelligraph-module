@@ -20,7 +20,6 @@
 #include "intelli/node/finddirectchild.h"
 
 #ifdef GTIG_DEVELOPER_PREVIEW
-#include "intelli/node/conditional.h"
 #include "intelli/node/doubletobool.h"
 #endif
 
@@ -55,7 +54,6 @@ intelli::initModule()
         GT_INTELLI_REGISTER_NODE(StringListInputNode, "Input");
 
     #ifdef GTIG_DEVELOPER_PREVIEW
-        GT_INTELLI_REGISTER_NODE(ConditionalNode, "Conditional");
         GT_INTELLI_REGISTER_NODE(CheckDoubleNode, "Conditional");
     #endif
         return true;

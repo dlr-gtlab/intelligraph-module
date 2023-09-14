@@ -8,8 +8,6 @@
 #include "gtest/gtest.h"
 
 #include "node/test_dynamic.h"
-
-#include "intelli/graph.h"
 #include "intelli/connection.h"
 #include <intelli/core.h>
 
@@ -18,8 +16,6 @@
 #include <gt_logging.h>
 
 #include <QCoreApplication>
-
-#include <QtConcurrent>
 
 auto init_log_once = [](){
     auto& logger = gt::log::Logger::instance();

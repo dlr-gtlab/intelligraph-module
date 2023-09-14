@@ -11,7 +11,6 @@
 
 #include <intelli/memory.h>
 #include <intelli/node.h>
-#include <intelli/exec/executor.h>
 #include <intelli/property/uint.h>
 
 #include <gt_intproperty.h>

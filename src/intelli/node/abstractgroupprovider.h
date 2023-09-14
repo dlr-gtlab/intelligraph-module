@@ -36,9 +36,6 @@ public:
     AbstractGroupProvider(QString const& modelName) :
         DynamicNode(modelName, Type == PortType::In ? DynamicOutputOnly : DynamicInputOnly)
     {
-        // default init node id
-        setId(NodeId{static_cast<int>(Type)});
-
         setFlag(UserDeletable, false);
 
         setNodeFlag(Unique, true);

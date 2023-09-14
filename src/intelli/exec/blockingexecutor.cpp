@@ -7,15 +7,13 @@
  */
 
 
-#include "intelli/exec/sequentialexecutor.h"
+#include "intelli/exec/blockingexecutor.h"
 #include "intelli/node.h"
 #include "intelli/graphexecmodel.h"
 
-#include "gt_utilities.h"
+#include <gt_utilities.h>
 
 using namespace intelli;
-
-SequentialExecutor::SequentialExecutor() = default;
 
 template <typename Lambda>
 bool evaluateHelper(Node& node,
@@ -27,7 +25,7 @@ bool evaluateHelper(Node& node,
 }
 
 bool
-SequentialExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId portId)
+BlockingExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId portId)
 {
     auto const evaluatePort = [&node, &model](PortId port){
         auto data = doEvaluate(node, port);

@@ -38,7 +38,7 @@ ObjectMementoNode::ObjectMementoNode() :
             }
         };
         
-        connect(this, &Node::evaluated, w, update);
+        connect(this, &Node::inputDataRecieved, w, update);
         update();
 
         return base;

@@ -96,6 +96,24 @@ using NodeDataPtr  = std::shared_ptr<const NodeData>;
 
 using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
 
+
+namespace detail
+{
+
+template <typename T>
+struct InvalidValue
+{
+    constexpr static T get() { return std::numeric_limits<T>::max(); }
+};
+
+} // namespace detail
+
+template<typename T>
+constexpr inline T invalid() noexcept
+{
+    return detail::InvalidValue<T>::get();
+}
+
 /**
  * Connection identificator that stores
  * out `NodeId`, out `PortIndex`, in `NodeId`, in `PortIndex`
@@ -116,6 +134,14 @@ struct ConnectionId
     constexpr ConnectionId reversed() const noexcept
     {
         return { inNodeId, inPort, outNodeId, outPort };
+    }
+
+    constexpr bool isValid() const noexcept
+    {
+        return inNodeId  != invalid<NodeId>() ||
+               outNodeId != invalid<NodeId>() ||
+               inPort    != invalid<PortId>() ||
+               outPort   != invalid<PortId>();
     }
 };
 
@@ -159,12 +185,6 @@ enum class NodeIdPolicy
 namespace detail
 {
 
-template <typename T>
-struct InvalidValue
-{
-    constexpr static T get() { return std::numeric_limits<T>::max(); }
-};
-
 template <>
 struct InvalidValue<ConnectionId>
 {
@@ -182,12 +202,6 @@ struct InvalidValue<StrongType<T, Tag, InitVal>>
 };
 
 } // namespace detail
-
-template<typename T>
-constexpr inline T invalid() noexcept
-{
-    return detail::InvalidValue<T>::get();
-}
 
 template <typename T, typename Tag, T InitVal>
 constexpr inline bool

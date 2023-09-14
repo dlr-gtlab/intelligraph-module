@@ -31,12 +31,6 @@ class GraphEditor : public GtMdiItem
 {
     Q_OBJECT
 
-    struct Cleanup
-    {
-        void operator()() { }
-        QPointer<Graph> data;
-    };
-
 public:
 
     Q_INVOKABLE GraphEditor();
@@ -45,7 +39,6 @@ public:
 
 private:
 
-    gt::Finally<Cleanup> m_cleanup{Cleanup{}};
     /// scene
     volatile_ptr<GraphScene> m_scene = nullptr;
     /// view

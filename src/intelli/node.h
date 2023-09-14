@@ -32,7 +32,7 @@ enum NodeFlag
 
 using NodeFlags  = int;
 
-class Executor;
+class NodeExecutor;
 class NodeData;
 class GraphExecutionModel;
 struct NodeImpl;
@@ -48,7 +48,7 @@ class GT_INTELLI_EXPORT Node : public GtObject
 {
     Q_OBJECT
     
-    friend class Executor;
+    friend class NodeExecutor;
     friend class GraphExecutionModel;
 
 public:

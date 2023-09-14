@@ -23,7 +23,6 @@ class GroupInputProvider;
 class GroupOutputProvider;
 class Connection;
 class ConnectionGroup;
-class ModelAdapter;
 
 /**
  * @brief Opens the graph in a graph editor. The graph object should be kept
@@ -137,7 +136,34 @@ public:
     
     Q_INVOKABLE Graph();
     ~Graph();
-    
+
+    using Node::portId;
+
+    /**
+     * @brief Overload that accepts a node. Will search for the node and return
+     * the port id of the port specified port its type and index. An invalid
+     * port id is returned if the node was not found or the port is out of bounds.
+     * @param nodeId Node to access port id of
+     * @param type Port type
+     * @param portIdx Port index
+     * @return port id (may be invalid)
+     */
+    PortId portId(NodeId nodeId, PortType type, PortIndex portIdx) const;
+
+    /**
+     * @brief Returns the connection id matched by the given nodes and port
+     * indicies. This can be used to easily access a connection id without
+     * knowing the speific port ids. The returned connection id may be invalid
+     * if the port are out of bounds or a node does not exist.
+     * @param outNodeId Starting node id
+     * @param outPortIdx Starting port index
+     * @param inNodeId Ending node id
+     * @param inPortIdx Ending port index
+     * @return Connection id (may be invalid)
+     */
+    ConnectionId connectionId(NodeId outNodeId, PortIndex outPortIdx,
+                              NodeId inNodeId, PortIndex inPortIdx) const;
+
     /**
      * @brief Returns a list of all nodes in this graph
      * @return
@@ -162,27 +188,55 @@ public:
 
     /**
      * @brief Attempts to finde a connection specified by the given connectionId
-     * @param conId connection id
+     * @param conId Connection id
      * @return connection matched by conId (null if connection was not found)
      */
     Connection* findConnection(ConnectionId conId);
     Connection const* findConnection(ConnectionId conId) const;
 
     /**
-     * @brief Fins all connections associated with the node specified by node id.
+     * @brief Finds all connections associated with the node specified by node id.
      * The connections can be narrowed down to ingoing and outgoing connection
-     * @param nodeId node id
-     * @param type Connection types
+     * @param nodeId Node id
+     * @param type Connection filter (in/out going onyl or both)
      * @return Connections
      */
     QVector<ConnectionId> findConnections(NodeId nodeId, PortType type = PortType::NoType) const;
 
+    /**
+     * @brief Overload. Finds all connections associated with the node and its
+     * port id.
+     * @param nodeId Node id
+     * @param portId Port id
+     * @return Connections
+     */
     QVector<ConnectionId> findConnections(NodeId nodeId, PortId portId) const;
 
-    QVector<NodeId> findConnectedNodes(NodeId nodeId, PortType type) const;
+    /**
+     * @brief Finds all connected nodes. I.e. ancestors or descendants. A node
+     * is not listed twice.
+     * @param nodeId Node id
+     * @param type Connection filter (in/out going onyl or both)
+     * @return Connections
+     */
+    QVector<NodeId> findConnectedNodes(NodeId nodeId, PortType type = PortType::NoType) const;
+
+    /**
+     * @brief Overload. Finds all nodes that are connected to the source node
+     * and port specified.
+     * @param nodeId Node id
+     * @param portId Port id
+     * @return Connections
+     */
     QVector<NodeId> findConnectedNodes(NodeId nodeId, PortId portId) const;
 
-    static QVector<NodeId> uniqueConnections(QVector<ConnectionId> const& connections);
+    /**
+     * @brief Static method to that returns all target nodes (in going node)
+     * without duplicates
+     * @param connections Connections
+     * @return List of all unique target nodes
+     */
+    static QVector<NodeId> uniqueTargetNodes(QVector<ConnectionId> const& connections);
 
     /**
      * @brief Returns a list of all sub graphes (aka group nodes)
@@ -206,14 +260,16 @@ public:
      */
     GroupOutputProvider* outputProvider();
     GroupOutputProvider const* outputProvider() const;
+    
+    GraphExecutionModel* makeMainExecutionModel();
+
+    GraphExecutionModel* mainExecutionModel();
+    GraphExecutionModel const* mainExecutionModel() const;
 
     /**
      * @brief Clears all nodes and connections
      */
-    void clear();
-
-    ConnectionId connectionId(NodeId outNodeId, PortIndex outPortIdx,
-                              NodeId inNodeId, PortIndex inPortIdx) const;
+    void clearGraph();
 
     /**
      * @brief Appends the node to the intelli graph. Use this function instead
@@ -266,9 +322,11 @@ public:
      */
     bool deleteConnection(ConnectionId connectionId);
 
-    [[deprecated]]
-    void setNodePosition(Node* node, Position pos) {}
-
+    /**
+     * @brief Access the directed acyclic graph model used to manage the nodes
+     * and their connections
+     * @return DAG
+     */
     DirectedAcyclicGraph const& dag() const { return m_nodes; }
 
 signals:
@@ -279,6 +337,10 @@ signals:
      */
     void connectionAppended(Connection* connection);
 
+    /**
+     * @brief Emitted after a conections was deleted
+     * @param Connection id of the deleted connection
+     */
     void connectionDeleted(ConnectionId connectionId);
     
     /**
@@ -287,6 +349,10 @@ signals:
      */
     void nodeAppended(Node* node);
 
+    /**
+     * @brief Emitted after a node was deleted
+     * @param Node id of the deleted node
+     */
     void nodeDeleted(NodeId nodeId);
 
     /**

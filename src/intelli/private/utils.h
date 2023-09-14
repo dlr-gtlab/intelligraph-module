@@ -48,15 +48,8 @@ operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& d
 namespace intelli
 {
 
-//inline ConnectionId convert(QtNodes::ConnectionId con)
-//{
-//    return *reinterpret_cast<ConnectionId*>(&con);
-//}
-
-//inline QtNodes::ConnectionId convert(ConnectionId con)
-//{
-//    return *reinterpret_cast<QtNodes::ConnectionId*>(&con);
-//}
+inline constexpr static PortType          convert(QtNodes::PortType type) { return static_cast<PortType>(type); }
+inline constexpr static QtNodes::PortType convert(PortType type)          { return static_cast<QtNodes::PortType>(type); }
 
 template <typename Sender, typename SignalSender,
          typename Reciever, typename SignalReciever>

@@ -86,6 +86,8 @@ GraphBuilder::addNode(QString const& className, Position pos) noexcept(false)
 Node&
 GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos)
 {
+    if (node && !pos.isNull()) node->setPos(pos);
+
     auto* ptr = m_graph->appendNode(std::move(node));
 
     if (!ptr)
@@ -98,7 +100,7 @@ GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos)
         };
     }
 
-    if (!pos.isNull()) m_graph->setNodePosition(ptr, pos);
+    gtDebug() << "";
 
     return *ptr;
 }

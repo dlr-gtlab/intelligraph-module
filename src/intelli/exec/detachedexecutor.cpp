@@ -7,7 +7,7 @@
  */
 
 
-#include "intelli/exec/parallelexecutor.h"
+#include "intelli/exec/detachedexecutor.h"
 
 #include "intelli/graph.h"
 #include "intelli/node.h"
@@ -100,7 +100,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
                QMetaObject const* sourceMetaObject,
                QPointer<Node> targetObject,
                QMetaObject const* targetMetaObject,
-               QPointer<Executor> executor)
+               QPointer<NodeExecutor> executor)
 {
     // connect signals cloned object with original object
     for (SignalSignature const& signal : qAsConst(signalsToConnect))
@@ -137,20 +137,20 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
     return success;
 }
 
-ParallelExecutor::ParallelExecutor()
+DetachedExecutor::DetachedExecutor()
 {
     using Watcher= decltype(m_watcher);
 
     connect(&m_watcher, &Watcher::finished,
-            this, &ParallelExecutor::onFinished);
+            this, &DetachedExecutor::onFinished);
     connect(&m_watcher, &Watcher::canceled,
-            this, &ParallelExecutor::onCanceled);
+            this, &DetachedExecutor::onCanceled);
     connect(&m_watcher, &Watcher::resultReadyAt,
-            this, &ParallelExecutor::onResultReady);
+            this, &DetachedExecutor::onResultReady);
 }
 
 bool
-ParallelExecutor::canEvaluateNode(Node& node)
+DetachedExecutor::canEvaluateNode(Node& node)
 {
     if (!m_watcher.isFinished() || !m_collected)
     {
@@ -161,16 +161,10 @@ ParallelExecutor::canEvaluateNode(Node& node)
     return true;
 }
 
-ParallelExecutor::~ParallelExecutor()
-{
-    if (!ParallelExecutor::isReady())
-    {
-        gtWarning().verbose() << __func__ << "is not ready for deletion!";
-    }
-}
+DetachedExecutor::~DetachedExecutor() = default;
 
 void
-ParallelExecutor::onFinished()
+DetachedExecutor::onFinished()
 {
     if (!m_node)
     {
@@ -179,21 +173,22 @@ ParallelExecutor::onFinished()
         return;
     }
 
-//    m_node.clear();
     m_collected = true;
     emit m_node->computingFinished();
 
+    // commit suicide
     deleteLater();
 }
 
 void
-ParallelExecutor::onCanceled()
+DetachedExecutor::onCanceled()
 {
-    gtWarning().verbose() << __func__ << m_node;
+    gtError() << tr("Execution of node '%1' failed!")
+                     .arg(m_node ? m_node->objectName() : QStringLiteral("NULL"));
 }
 
 void
-ParallelExecutor::onResultReady(int result)
+DetachedExecutor::onResultReady(int result)
 {
     if (!m_node)
     {
@@ -244,7 +239,7 @@ ParallelExecutor::onResultReady(int result)
 }
 
 bool
-ParallelExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId portId)
+DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId portId)
 {
     m_port = portId;
 
@@ -362,10 +357,4 @@ ParallelExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
     future.waitForFinished();
 
     return true;
-}
-
-bool
-ParallelExecutor::isReady() const
-{
-    return m_watcher.isCanceled() || m_watcher.isFinished();
 }

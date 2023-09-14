@@ -10,20 +10,22 @@
 #ifndef GT_INTELLI_SEQUENTIALEXECUTOR_H
 #define GT_INTELLI_SEQUENTIALEXECUTOR_H
 
-#include "intelli/exec/executor.h"
+#include "intelli/nodeexecutor.h"
 
 namespace intelli
 {
 
-class SequentialExecutor : public Executor
+class BlockingExecutor : public NodeExecutor
 {
     Q_OBJECT
 
 public:
 
-    SequentialExecutor();
-    
-    bool evaluateNode(Node& node, GraphExecutionModel& model, PortId portId = invalid<PortId>()) override;
+    BlockingExecutor() = default;
+
+    bool evaluateNode(Node& node,
+                      GraphExecutionModel& model,
+                      PortId portId = invalid<PortId>());
 
 };
 
