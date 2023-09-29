@@ -45,9 +45,13 @@ public:
      */
     static NodeFactory& instance();
 
-    auto registeredNodes() const { return knownClasses(); };
+    QStringList registeredNodes() const { return knownClasses(); };
+
+    QStringList registeredCategories() const;
 
     QString nodeCategory(QString const& className) const noexcept;
+
+    QString nodeModelName(QString const& className) const noexcept;
 
     /**
      * @brief Regsiters the node so that it can be used in intelli graphs
@@ -83,8 +87,15 @@ private:
 
     using ClassName = QString;
     using NodeCategory = QString;
+    using NodeName = QString;
 
-    QHash<ClassName, NodeCategory> m_categories;
+    struct NodeMetaData
+    {
+        NodeCategory category;
+        NodeName modelName;
+    };
+
+    QHash<ClassName, NodeMetaData> m_data;
 
     NodeFactory();
 };

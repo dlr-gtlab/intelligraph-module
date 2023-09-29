@@ -100,8 +100,6 @@ GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos)
         };
     }
 
-    gtDebug() << "";
-
     return *ptr;
 }
 

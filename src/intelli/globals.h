@@ -159,19 +159,6 @@ enum class PortType
 };
 
 /**
- * @brief Graph model policies
- */
-enum [[deprecated]] ModelPolicy
-{
-    /// Model is just a dummy and may be closed as soon as its
-    /// parent model is closed
-    DummyModel = 0,
-    /// Model is active and should be kept alive if its parent model
-    /// is closed (default)
-    ActiveModel = 1
-};
-
-/**
  * @brief Policy for handling node id collisions, when appending a node to a graph
  */
 enum class NodeIdPolicy

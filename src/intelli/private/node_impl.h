@@ -21,6 +21,8 @@
 namespace intelli
 {
 
+class NodeDataInterface;
+
 template <typename Ports>
 auto findPort(Ports&& ports, PortId id)
 {
@@ -81,8 +83,10 @@ struct NodeImpl
     volatile_ptr<QWidget> widget{};
     /// factory for creating the widget
     WidgetFactory widgetFactory{};
+
+    NodeDataInterface* dataInterface{};
     /// node flags
-    NodeFlags flags{NoFlag};
+    NodeFlags flags{RequiresEvaluation};
     /// iterator for the next port id
     PortId nextPortId{0};
 

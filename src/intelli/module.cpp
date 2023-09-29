@@ -140,6 +140,7 @@ GtIntelliGraphModule::data()
     QList<QMetaObject> list;
 
     list << GT_METADATA(GraphCategory);
+    list << GT_METADATA(ConnectionGroup);
     list << GT_METADATA(Connection);
 
     return list;

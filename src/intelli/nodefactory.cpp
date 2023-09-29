@@ -27,10 +27,29 @@ NodeFactory::instance()
     return self;
 }
 
+QStringList
+NodeFactory::registeredCategories() const
+{
+    QStringList categories;
+
+    for (NodeMetaData const& data : m_data)
+    {
+        if (!categories.contains(data.category)) categories << data.category;
+    }
+
+    return categories;
+}
+
 QString
 NodeFactory::nodeCategory(const QString& className) const noexcept
 {
-    return m_categories.value(className);
+    return m_data.value(className).category;
+}
+
+QString
+NodeFactory::nodeModelName(const QString& className) const noexcept
+{
+    return m_data.value(className).modelName;
 }
 
 bool
@@ -49,11 +68,22 @@ NodeFactory::registerNode(QMetaObject const& meta,
     if (!gtObjectFactory->knownClass(className) &&
         !gtObjectFactory->registerClass(meta))
     {
-        gtError() << QObject::tr("Failed to register node in object factory!");
+        gtError() << QObject::tr("Failed to register node '%1' in object factory!")
+                         .arg(className);
         return false;
     }
 
-    m_categories.insert(className, category);
+    auto obj = std::unique_ptr<GtObject>(newObject(className));
+    auto tmp = gt::unique_qobject_cast<Node>(std::move(obj));
+    if (!tmp)
+    {
+        gtError()  << QObject::tr("Failed to register node '%1'! (not invokable?)")
+                          .arg(className);
+        unregisterClass(meta);
+        return false;
+    }
+
+    m_data.insert(className, {category, tmp->modelName()});
     return true;
 }
 

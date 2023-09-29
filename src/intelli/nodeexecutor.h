@@ -30,18 +30,20 @@ GT_INTELLI_EXPORT bool detachedEvaluation(Node& node,
                                           PortId portId = invalid<PortId>());
 
 
-class NodeExecutor : public QObject
+/**
+ * @brief The NodeExecutor class. Helper class to access private or protected
+ * members of a Node used for the evaluation.
+ */
+class NodeExecutor
 {
-    Q_OBJECT
+    NodeExecutor() = delete;
 
-protected:
-    
+public:
+
     static NodeDataPtr doEvaluate(Node& node, PortId portId);
     static NodeDataPtr doEvaluate(Node& node);
 
     static GraphExecutionModel* accessExecModel(Node& node);
-
-    NodeExecutor() = default;
 };
 
 } // namespace intelli

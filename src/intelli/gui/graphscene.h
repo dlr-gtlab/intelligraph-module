@@ -33,6 +33,8 @@ public:
 
     bool isAutoEvaluating();
 
+    QMenu* createSceneMenu(QPointF scenePos) override;
+
 public slots:
 
     void deleteSelectedObjects();

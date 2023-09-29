@@ -26,7 +26,7 @@ class GT_INTELLI_EXPORT DynamicNode : public Node
 {
     Q_OBJECT
 
-    enum DynamicPortOption
+    enum PortOption
     {
         StaticPort = 0,
         DynamicPort,
@@ -35,7 +35,7 @@ class GT_INTELLI_EXPORT DynamicNode : public Node
 public:
 
     /// Option for the node creation
-    enum DynamicNodeOption
+    enum Option
     {
         /// both inputs and ouput ports can be added dynamically
         DynamicInputAndOutput = 0,
@@ -51,7 +51,7 @@ public:
      * @brief Getter for the node option used
      * @return
      */
-    DynamicNodeOption dynamicNodeOption() const;
+    Option dynamicNodeOption() const;
 
     /**
      * @brief Retruns true if a port is considered dynamic (i.e. was added at
@@ -135,7 +135,7 @@ protected:
      * @param parent Parent object
      */
     DynamicNode(QString const& modelName,
-                              DynamicNodeOption option = {},
+                              Option option = {},
                               GtObject* parent = nullptr);
 
 private slots:
@@ -182,7 +182,7 @@ private:
     GtPropertyStructContainer m_outPorts;
 
     /// Node option
-    DynamicNodeOption m_option = DynamicInputAndOutput;
+    Option m_option = DynamicInputAndOutput;
 
     /**
      * @brief Common helper method for inserting a port at a given location.
@@ -193,7 +193,7 @@ private:
      * @param idx Where to insert the port
      * @return Port id
      */
-    PortId insertPort(DynamicPortOption option, PortType type, PortData port, int idx = -1);
+    PortId insertPort(PortOption option, PortType type, PortData port, int idx = -1);
 
     /**
      * @brief Returns the offset for to the first index of a dynamic port.

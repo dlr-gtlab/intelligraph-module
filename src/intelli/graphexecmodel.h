@@ -10,35 +10,112 @@
 #ifndef GRAPHMODEL_H
 #define GRAPHMODEL_H
 
-#include <intelli/node.h>
+#include <intelli/graph.h>
 #include <intelli/nodedata.h>
-
-#include <QtNodes/AbstractGraphModel>
-
-#include <QPointer>
 
 namespace intelli
 {
 
 class Connection;
 class Graph;
+class Node;
 
 enum class PortDataState
 {
+    /// Port data was outdata
     Outdated = 0,
+    /// Port data is valid and up-to-date
     Valid,
 };
 
-enum class NodeEvalState
+namespace dm
 {
-    Evaluated = 0,
-    Evaluating,
+
+struct PortEntry
+{
+    /// referenced port
+    PortId id;
+    /// port data state
+    PortDataState state = PortDataState::Outdated;
+    /// actual data at port
+    NodeDataPtr   data  = nullptr;
 };
 
-class GT_INTELLI_EXPORT GraphExecutionModel : public QObject
+/// helper struct representing node data and its validity state
+struct NodeData
+{
+    NodeData(NodeDataPtr _data = {}) :
+        data(std::move(_data)), state(PortDataState::Valid)
+    {}
+    template <typename T>
+    NodeData(std::shared_ptr<T> _data) :
+        data(std::move(_data)), state(PortDataState::Valid)
+    {}
+    NodeData(PortEntry const& port) :
+        data(port.data), state(port.state)
+    {}
+
+    /// actual node data
+    NodeDataPtr data;
+    /// data state
+    PortDataState state;
+
+    operator NodeDataPtr&() & { return data; }
+    operator NodeDataPtr() && { return std::move(data); }
+    operator NodeDataPtr const&() const& { return data; }
+
+    template <typename T>
+    inline auto value() const noexcept { return qobject_pointer_cast<T const>(data);}
+};
+
+struct Entry
+{
+    /// in and out ports
+    QVector<PortEntry> portsIn = {}, portsOut = {};
+
+    GT_INTELLI_EXPORT bool isEvaluated(Node const& node) const;
+
+    GT_INTELLI_EXPORT bool areInputsValid(Graph const& graph, NodeId nodeId) const;
+
+    GT_INTELLI_EXPORT bool canEvaluate(Graph const& graph, Node const& node) const;
+};
+
+using DataModel = QHash<NodeId, Entry>;
+
+} // namesace dm
+
+/**
+ * @brief The NodeDataInterface class.
+ * Interface to access and set the data of a node port
+ */
+class NodeDataInterface
+{
+public:
+
+    virtual ~NodeDataInterface() = default;
+
+    virtual dm::NodeData nodeData(NodeId nodeId, PortId portId) const = 0;
+
+    virtual bool setNodeData(NodeId nodeId, PortId portId, dm::NodeData data) = 0;
+
+};
+
+class DummyDataModel : public NodeDataInterface
+{
+    DummyDataModel(Node& node);
+
+    NodeId nodeId;
+    dm::Entry data;
+};
+
+/**
+ * @brief The GraphExecutionModel class.
+ * Manages the evaluation chain of a directed acyclic graph.
+ */
+class GT_INTELLI_EXPORT GraphExecutionModel : public QObject,
+                                              public NodeDataInterface
 {
     Q_OBJECT
-
 
 public:
 
@@ -48,52 +125,15 @@ public:
         DoNotTrigger = 1,
     };
 
-    struct PortDataEntry
+    enum Mode
     {
-        PortId id;
-        PortDataState state = PortDataState::Outdated;
-        NodeDataPtr   data  = nullptr;
-
-        bool isValid() const noexcept { return state == PortDataState::Valid; }
+        DummyModel = 1,
+        ActiveModel = 2
     };
 
-    struct Entry
-    {
-        NodeEvalState state = NodeEvalState::Evaluated;
-        QVector<PortDataEntry> portsIn = {}, portsOut = {};
+    GraphExecutionModel(Graph& graph, Mode mode = ActiveModel);
 
-        GT_INTELLI_EXPORT bool isEvaluated() const;
-
-        GT_INTELLI_EXPORT bool areInputsValid(Graph& graph, NodeId nodeId) const;
-
-        GT_INTELLI_EXPORT bool canEvaluate(Graph& graph, Node& node) const;
-    };
-
-    struct NodeModelData
-    {
-        NodeModelData(NodeDataPtr _data = {}) :
-            data(std::move(_data)), state(PortDataState::Valid)
-        {}
-        template <typename T>
-        NodeModelData(std::shared_ptr<T> _data) :
-            data(std::move(_data)), state(PortDataState::Valid)
-        {}
-        NodeModelData(PortDataEntry const& port) :
-            data(port.data), state(port.state)
-        {}
-
-        NodeDataPtr data;
-        PortDataState state;
-
-        operator NodeDataPtr&() & { return data; }
-        operator NodeDataPtr() && { return std::move(data); }
-        operator NodeDataPtr const&() const& { return data; }
-
-        template <typename T>
-        inline auto cast() const { return qobject_pointer_cast<T const>(data);}
-    };
-
-    GraphExecutionModel(Graph& graph);
+    Mode mode() const;
 
     Graph& graph();
     Graph const& graph() const;
@@ -112,14 +152,16 @@ public:
 
     bool evaluateNode(NodeId nodeId);
 
-    NodeEvalState currentState(NodeId nodeId) const;
+    bool invalidateOutPorts(NodeId nodeId);
+    bool invalidatePort(NodeId nodeId, PortId portId);
 
-    NodeModelData nodeData(NodeId nodeId, PortId portId) const;
-    NodeModelData nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;
+    dm::NodeData nodeData(NodeId nodeId, PortId portId) const override;
+    dm::NodeData nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;
     NodeDataPtrList nodeData(NodeId nodeId, PortType type) const;
 
-    bool setNodeData(NodeId nodeId, PortId portId, NodeModelData data, int option = Option::NoOption);
-    bool setNodeData(NodeId nodeId, PortType type, PortIndex idx, NodeModelData data, int option = Option::NoOption);
+    bool setNodeData(NodeId nodeId, PortId portId, dm::NodeData data) override;
+    bool setNodeData(NodeId nodeId, PortId portId, dm::NodeData data, int option);
+    bool setNodeData(NodeId nodeId, PortType type, PortIndex idx, dm::NodeData data, int option = Option::NoOption);
     bool setNodeData(NodeId nodeId, PortType type, NodeDataPtrList const& data, int option = Option::NoOption);
 
 signals:
@@ -136,21 +178,25 @@ private:
 
     struct Impl; // helper struct to "hide" implementation details
 
-    QHash<NodeId, Entry> m_data;
+    dm::DataModel m_data;
+
+    QPointer<Graph> m_graph;
+
+    Mode m_mode;
+
+    // evaluation attributes
 
     NodeId m_targetNodeId = invalid<NodeId>();
 
     bool m_autoEvaluate = false;
 
-    bool invalidateOutPorts(NodeId nodeId);
-    bool invalidatePort(NodeId nodeId, PortId portId);
-    void invalidatePort(NodeId nodeId, PortDataEntry& port);
+    void invalidatePort(NodeId nodeId, dm::PortEntry& port);
 
     bool triggerNodeExecution(NodeId nodeId);
 
     bool triggerNode(NodeId nodeId, PortId portId = invalid<PortId>());
 
-    void dependentNodeTriggered(NodeId nodeId = invalid<NodeId>());
+    void evaluateTargetNode(NodeId nodeId = invalid<NodeId>());
 
 private slots:
 

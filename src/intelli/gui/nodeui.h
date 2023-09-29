@@ -33,8 +33,10 @@ public:
     enum Option
     {
         NoOption = 0,
+        /// Deactivates all default actions
+        NoDefaultActions,
         /// Deactivates the default port actions for dynamic nodes
-        NoDefaultPortActions = 1,
+        NoDefaultPortActions,
     };
 
     using PortActionFunction = typename PortUIAction::ActionMethod;

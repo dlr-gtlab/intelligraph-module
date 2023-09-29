@@ -13,7 +13,6 @@
 #include "intelli/node.h"
 #include "intelli/nodedatafactory.h"
 #include "intelli/graph.h"
-#include "intelli/graphexecmodel.h"
 #include "intelli/private/utils.h"
 
 #include <gt_coreapplication.h>
@@ -68,7 +67,7 @@ GraphAdapterModel::GraphAdapterModel(Graph& graph)
                          .arg(graph.objectName());
     }
 
-    setObjectName("__model");
+    setObjectName("__adapter_model");
     setParent(&graph);
 
     m_graph = &graph;
@@ -78,12 +77,6 @@ GraphAdapterModel::GraphAdapterModel(Graph& graph)
 
         connect(node, &Node::nodeStateChanged,
                 this, &GraphAdapterModel::onNodeEvalStateUpdated,
-                Qt::UniqueConnection);
-        connect(node, &Node::computingStarted,
-                this, &GraphAdapterModel::onComputingStarted,
-                Qt::UniqueConnection);
-        connect(node, &Node::computingFinished,
-                this, &GraphAdapterModel::onComputingFinished,
                 Qt::UniqueConnection);
 
         connect(node, &Node::nodeChanged,
@@ -330,9 +323,9 @@ GraphAdapterModel::nodeData(QtNodes::NodeId nodeId, QtNodes::NodeRole role) cons
     case QtNodes::NodeRole::InternalData:
         return {};
     case QtNodes::NodeRole::InPortCount:
-        return node->ports(PortType::In).size();
+        return (qulonglong)node->ports(PortType::In).size();
     case QtNodes::NodeRole::OutPortCount:
-        return node->ports(PortType::Out).size();
+        return (qulonglong)node->ports(PortType::Out).size();
     case QtNodes::NodeRole::Widget:
         return QVariant::fromValue(const_cast<Node*>(node)->embeddedWidget());
     }
@@ -421,15 +414,15 @@ GraphAdapterModel::nodeFlags(QtNodes::NodeId nodeId) const
 QtNodes::NodeEvalState
 GraphAdapterModel::nodeEvalState(QtNodes::NodeId nodeId) const
 {
-    if (m_data[NodeId(nodeId)].isEvaluating)
-    {
-        return QtNodes::NodeEvalState::Evaluating;
-    }
-
     auto* node = graph().findNode(NodeId(nodeId));
     if (!node)
     {
         return QtNodes::NodeEvalState::NoState;
+    }
+
+    if (node->nodeFlags() & NodeFlag::Evaluating)
+    {
+        return QtNodes::NodeEvalState::Evaluating;
     }
 
     return node->isActive() ? QtNodes::NodeEvalState::NoState :
@@ -532,28 +525,6 @@ GraphAdapterModel::onNodeEvalStateUpdated()
 {
     auto* node = qobject_cast<Node*>(sender());
     if (!node) return;
-
-    emit nodeEvalStateUpdated(node->id());
-}
-
-void
-GraphAdapterModel::onComputingStarted()
-{
-    auto* node = qobject_cast<Node*>(sender());
-    if (!node) return;
-
-    m_data[node->id()].isEvaluating = true;
-
-    emit nodeEvalStateUpdated(node->id());
-}
-
-void
-GraphAdapterModel::onComputingFinished()
-{
-    auto* node = qobject_cast<Node*>(sender());
-    if (!node) return;
-
-    m_data[node->id()].isEvaluating = false;
 
     emit nodeEvalStateUpdated(node->id());
 }

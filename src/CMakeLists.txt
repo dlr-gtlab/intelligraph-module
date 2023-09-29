@@ -45,7 +45,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/graphexecmodel.h
     intelli/module.h
     intelli/exec/detachedexecutor.h
-    intelli/exec/blockingexecutor.h
     intelli/node/abstractgroupprovider.h
     intelli/node/doubletobool.h
     intelli/node/finddirectchild.h
@@ -85,7 +84,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/nodefactory.cpp
     intelli/package.cpp
     intelli/exec/detachedexecutor.cpp
-    intelli/exec/blockingexecutor.cpp
     intelli/data/bool.cpp
     intelli/data/double.cpp
     intelli/data/object.cpp

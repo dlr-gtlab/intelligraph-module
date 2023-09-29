@@ -19,7 +19,7 @@
 namespace intelli
 {
 
-class DetachedExecutor : public NodeExecutor
+class DetachedExecutor : public QObject
 {
     Q_OBJECT
 

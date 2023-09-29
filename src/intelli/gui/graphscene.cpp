@@ -12,6 +12,7 @@
 #include "intelli/connection.h"
 #include "intelli/graphadaptermodel.h"
 #include "intelli/graphexecmodel.h"
+#include "intelli/nodefactory.h"
 #include "intelli/nodedatafactory.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
@@ -26,6 +27,7 @@
 #include <gt_icons.h>
 #include <gt_inputdialog.h>
 #include <gt_objectmemento.h>
+#include <gt_objectio.h>
 #include <gt_objectfactory.h>
 
 #include <gt_logging.h>
@@ -39,7 +41,18 @@
 #include <QKeyEvent>
 #include <QMenuBar>
 
+#include <QLineEdit>
+#include <QWidgetAction>
+#include <QTreeWidget>
+#include <QHeaderView>
+
 using namespace intelli;
+
+template <typename T>
+inline auto makeCopy(T& obj) {
+    std::unique_ptr<GtObject> tmp{obj.copy()};
+    return gt::unique_qobject_cast<std::remove_const_t<T>>(std::move(tmp));
+};
 
 struct GraphScene::Impl
 {
@@ -140,7 +153,8 @@ GraphScene::GraphScene(Graph& graph) :
             this, &GraphScene::onPortContextMenu);
     connect(this, &QtNodes::BasicGraphicsScene::widgetResized,
             this, &GraphScene::onWidgetResized);
-    connect(this, &QtNodes::BasicGraphicsScene::nodeClicked, this, [this](QtNodes::NodeId qnodeId){
+    connect(this, &QtNodes::BasicGraphicsScene::nodeClicked,
+            this, [this](QtNodes::NodeId qnodeId){
         auto& model = adapterModel();
         model.commitPosition(NodeId(qnodeId));
         for (QtNodes::NodeId nodeId : selectedNodes())
@@ -171,6 +185,102 @@ GraphScene::isAutoEvaluating()
     return model->isAutoEvaluating();
 }
 
+QMenu*
+GraphScene::createSceneMenu(QPointF scenePos)
+{
+    auto* menu = new QMenu;
+
+    // Add filterbox to the context menu
+    auto* txtBox = new QLineEdit(menu);
+    txtBox->setPlaceholderText(QStringLiteral(" Filter"));
+    txtBox->setClearButtonEnabled(true);
+
+    auto* txtBoxAction = new QWidgetAction(menu);
+    txtBoxAction->setDefaultWidget(txtBox);
+
+    // 1.
+    menu->addAction(txtBoxAction);
+
+    // Add result treeview to the context menu
+    QTreeWidget* treeView = new QTreeWidget(menu);
+    treeView->header()->close();
+
+    auto* treeViewAction = new QWidgetAction(menu);
+    treeViewAction->setDefaultWidget(treeView);
+
+    // 2.
+    menu->addAction(treeViewAction);
+
+    auto const& factory = NodeFactory::instance();
+
+    for (QString const& cat : factory.registeredCategories())
+    {
+        if (cat.isEmpty()) continue;
+
+        auto item = new QTreeWidgetItem(treeView);
+        item->setText(0, cat);
+        item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
+    }
+
+    for (QString const& node : factory.registeredNodes())
+    {
+        auto parents = treeView->findItems(factory.nodeCategory(node), Qt::MatchExactly);
+
+        if (parents.empty()) continue;
+
+        auto item = new QTreeWidgetItem(parents.first());
+        item->setText(0, factory.nodeModelName(node));
+        item->setWhatsThis(0, node); // store class name of node
+    }
+
+    treeView->expandAll();
+
+    auto onClicked = [this, &factory, menu, scenePos](QTreeWidgetItem* item, int) {
+        item->setExpanded(true);
+
+        if (!(item->flags() & (Qt::ItemIsSelectable))) return;
+
+        auto node = factory.makeNode(item->whatsThis(0));
+        if (!node)
+        {
+            gtWarning() << tr("Failed to create new node of type %1").arg(item->text(0));
+            return;
+        }
+        node->setPos(scenePos);
+        m_data->appendNode(std::move(node));
+
+        menu->close();
+    };
+    connect(treeView, &QTreeWidget::itemClicked, menu, onClicked);
+    connect(treeView, &QTreeWidget::itemActivated, menu, onClicked);
+
+    //Setup filtering
+    connect(txtBox, &QLineEdit::textChanged, treeView, [treeView](QString const& text) {
+        QTreeWidgetItemIterator categoryIt(treeView, QTreeWidgetItemIterator::HasChildren);
+
+        while (*categoryIt) (*categoryIt++)->setHidden(true);
+
+        QTreeWidgetItemIterator it(treeView, QTreeWidgetItemIterator::NoChildren);
+        while (*it)
+        {
+            QString const& modelName = (*it)->text(0);
+            bool match = (modelName.contains(text, Qt::CaseInsensitive));
+            (*it)->setHidden(!match);
+            if (match) {
+                auto* parent = (*it)->parent();
+                while (parent)
+                {
+                    parent->setHidden(false);
+                    parent = parent->parent();
+                }
+            }
+            ++it;
+        }
+    });
+
+    return menu;
+}
+
 void
 GraphScene::deleteSelectedObjects()
 {
@@ -195,6 +305,10 @@ GraphScene::duplicateSelectedObjects()
 bool
 GraphScene::copySelectedObjects()
 {
+    auto cleanup = gt::finally([](){
+        QApplication::clipboard()->setText(QString{});
+    });
+
     auto selected = Impl::findSelectedItems(*this);
     if (selected.nodes.empty()) return false;
 
@@ -216,41 +330,60 @@ GraphScene::copySelectedObjects()
     Impl::findConnections(*m_data, selected.connections, connections);
     Impl::findNodes(*m_data, selected.nodes, nodes);
 
-#if 0
     // at least one node should be selected
     if (nodes.empty()) return false;
 
-    QJsonDocument doc(toJson(nodes, connections));
-    QApplication::clipboard()->setText(doc.toJson(QJsonDocument::Indented));
+    // append nodes and connections to graph dummy
+    Graph dummy;
+    for (auto* node : qAsConst(nodes))      dummy.appendNode(makeCopy(*node));
+    for (auto* con : qAsConst(connections)) dummy.appendConnection(makeCopy(*con));
 
+    QApplication::clipboard()->setText(dummy.toMemento().toByteArray());
+
+    cleanup.clear();
     return true;
-#else
-    return false;
-#endif
 }
 
 void
 GraphScene::pasteObjects()
 {
-    using namespace intelli;
-
     gtDebug().medium() << __FUNCTION__;
 
-#if 0
     auto text = QApplication::clipboard()->text();
     if (text.isEmpty()) return;
 
-    auto doc = QJsonDocument::fromJson(text.toUtf8());
-    if (doc.isNull()) return;
+    QDomDocument doc;
+    if (!doc.setContent(text)) return;
 
     // restore objects
-    auto objects = fromJson(doc.object());
-    if (!objects) return;
+    GtObjectMemento mem(doc.documentElement());
+    auto dummy = gt::unique_qobject_cast<Graph>(mem.toObject(*gtObjectFactory));
+    if (!dummy) return;
+
+    auto const& srcNodes = dummy->nodes();
+    auto const& srcConnections = dummy->connections();
+
+    if (srcNodes.empty()) return;
+
+    // make unique
+    std::vector<std::unique_ptr<Node>> uniqueNodes;
+    std::vector<std::unique_ptr<Connection>> uniqueConnections;
+    uniqueNodes.reserve(srcNodes.size());
+    uniqueConnections.reserve(srcConnections.size());
+
+    std::transform(srcNodes.begin(), srcNodes.end(),
+                   std::back_inserter(uniqueNodes), [](Node* node){
+        return std::unique_ptr<Node>{node};
+    });
+    std::transform(srcConnections.begin(), srcConnections.end(),
+                   std::back_inserter(uniqueConnections), [](Connection* con){
+        return std::unique_ptr<Connection>{con};
+    });
 
     // shift node positions
     constexpr QPointF offset{50, 50};
 
-    for (auto& node : objects->nodes)
+    for (auto& node : srcNodes)
     {
         node->setPos(node->pos() + offset);
     }
@@ -261,20 +394,20 @@ GraphScene::pasteObjects()
     });
 
     // append objects
-    auto newNodeIds = m_data->appendObjects(objects->nodes, objects->connections);
-    if (newNodeIds.size() != objects->nodes.size())
+    auto newNodeIds = m_data->appendObjects(uniqueNodes, uniqueConnections);
+    if (newNodeIds.size() != srcNodes.size())
     {
         gtWarning() << tr("Pasting selection failed!");
         return;
     }
 
-    // set selection
-    auto nodes = findItems<QtNodes::NodeGraphicsObject*>(*this);
+    // find affected graphics objects and set selection
+    auto nodes = Impl::findItems<QtNodes::NodeGraphicsObject*>(*this);
     auto iter = 0;
     foreach (auto* node, nodes)
     {
         auto nodeId = node->nodeId();
-        if (!newNodeIds.contains(NodeId::fromValue(nodeId)))
+        if (!newNodeIds.contains(NodeId(nodeId)))
         {
             nodes.removeAt(iter);
             continue;
@@ -282,24 +415,27 @@ GraphScene::pasteObjects()
         iter++;
     }
 
-    auto connections = findItems<QtNodes::ConnectionGraphicsObject*>(*this);
-    iter = 0;
-    foreach (auto* con, connections)
-    {
-        auto conId = con->connectionId();
-        if (!newNodeIds.contains(NodeId::fromValue(conId.inNodeId)) ||
-            !newNodeIds.contains(NodeId::fromValue(conId.outNodeId)))
-        {
-            connections.removeAt(iter);
-            continue;
-        }
-        iter++;
-    }
-
     clearSelection();
     for (auto* item : qAsConst(nodes)) item->setSelected(true);
-    for (auto* item : qAsConst(connections)) item->setSelected(true);
-#endif
+
+    if (!srcConnections.empty())
+    {
+        auto connections = Impl::findItems<QtNodes::ConnectionGraphicsObject*>(*this);
+        iter = 0;
+        foreach (auto* con, connections)
+        {
+            auto conId = con->connectionId();
+            if (!newNodeIds.contains(NodeId(conId.inNodeId)) ||
+                !newNodeIds.contains(NodeId(conId.outNodeId)))
+            {
+                connections.removeAt(iter);
+                continue;
+            }
+            iter++;
+        }
+
+        for (auto* item : qAsConst(nodes)) item->setSelected(true);
+    }
 }
 
 void

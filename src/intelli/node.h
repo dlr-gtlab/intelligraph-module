@@ -23,17 +23,22 @@ enum NodeFlag
 {
     NoFlag      = 0,
     /// Indicates node is resizeable
-    Resizable   = 1,
+    Resizable   = 1 << 0,
     /// Indicates node caption should be hidden
-    HideCaption = 2,
+    HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
-    Unique      = 4
+    Unique      = 1 << 2,
+
+    RequiresEvaluation = 1 << 3,
+
+    Evaluating = 1 << 4,
 };
 
 using NodeFlags  = int;
 
 class NodeExecutor;
 class NodeData;
+class NodeDataInterface;
 class GraphExecutionModel;
 struct NodeImpl;
 
@@ -131,6 +136,8 @@ public:
      */
     bool isActive() const;
 
+    void invalidate(bool enable = true);
+
     /**
      * @brief Sets the node id. handle with care, as this may result in
      * undesired behaviour. Will be saved persistently.
@@ -148,7 +155,7 @@ public:
      * @brief Sets the new node position. Will be saved persistently.
      * @param pos new position
      */
-    void setPos(Position pos);
+    Node& setPos(Position pos);
 
     /**
      * @brief pos
@@ -239,6 +246,13 @@ public:
      * @return Port index. May be invalid, check using "invalid<PortIndex>()"
      */
     PortIndex portIndex(PortType type, PortId id) const noexcept(false);
+
+    /**
+     * @brief Returns the port type of the given port
+     * @param id Port id to retrieve associated port type from
+     * @return Port type
+     */
+    PortType portType(PortId id) const noexcept(false);
 
     /**
      * @brief Attempts to find the port id by port index and the port type.
@@ -380,8 +394,8 @@ protected:
      */
     virtual NodeDataPtr eval(PortId outId);
 
-    GraphExecutionModel* executionModel();
-    GraphExecutionModel const* executionModel() const;
+    NodeDataInterface* nodeDataInterface();
+    NodeDataInterface const* nodeDataInterface() const;
 
     /**
      * @brief Handles the evaluation of the node (port). It is not intended to

@@ -96,13 +96,11 @@ inline bool buildGroupGraph(Graph& graph)
         group.graph.setCaption(QStringLiteral("Group"));
 
         auto& D = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("D"));
-
         auto& E = builder.addNode(QStringLiteral("intelli::NumberDisplayNode")).setCaption(QStringLiteral("E"));
-
 
         GraphBuilder groupBuilder(group.graph);
 
-        auto& group_A = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("group_A"));
+        auto& group_A = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("Group_A"));
 
         // square value 1
         builder.connect(A, PortIndex{0}, group.graph, PortIndex{0});

@@ -11,6 +11,7 @@
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
 #include "intelli/graphexecmodel.h"
+#include "intelli/nodeexecutor.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/private/utils.h"
@@ -650,6 +651,8 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
 
     emit computingStarted();
 
+    invalidate(false);
+
     auto finally = gt::finally([this](){
         emit computingFinished();
     });
@@ -732,10 +735,10 @@ Graph::onOutputProivderEvaluated(NodeId nodeId)
         emit computingFinished();
     });
 
-    auto* submodel = findDirectChild<GraphExecutionModel*>();
+    auto* submodel = NodeExecutor::accessExecModel(*output);
     if (!submodel) return;
 
-    auto* model = executionModel();
+    auto* model = NodeExecutor::accessExecModel(*this);
     if (!model) return;
 
     model->setNodeData(id(), PortType::Out, submodel->nodeData(output->id(), PortType::In));

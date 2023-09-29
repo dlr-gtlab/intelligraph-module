@@ -100,7 +100,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
                QMetaObject const* sourceMetaObject,
                QPointer<Node> targetObject,
                QMetaObject const* targetMetaObject,
-               QPointer<NodeExecutor> executor)
+               QPointer<QObject> executor)
 {
     // connect signals cloned object with original object
     for (SignalSignature const& signal : qAsConst(signalsToConnect))
@@ -204,7 +204,7 @@ DetachedExecutor::onResultReady(int result)
 
     auto outData = m_watcher.resultAt(result);
 
-    auto* model = accessExecModel(*m_node);
+    auto* model = NodeExecutor::accessExecModel(*m_node);
     if (!model)
     {
         gtError() << tr("Failed to transfer node data!")
@@ -245,11 +245,14 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
 
     if (!canEvaluateNode(node)) return false;
 
+    node.invalidate(false);
+
     m_node = &node;
     m_collected = false;
     emit m_node->computingStarted();
 
-    auto run = [targetPort = m_port,
+    auto run = [nodeId = node.id(),
+                targetPort = m_port,
                 inData  = model.nodeData(node.id(), PortType::In),
                 outData = model.nodeData(node.id(), PortType::Out),
                 memento = node.toMemento(),
@@ -258,103 +261,95 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
                 targetObject = QPointer<Node>(&node),
                 executor = this]() -> NodeDataPtrList
     {
+        auto const makeError = [nodeId](){
+            return tr("Evaluating node %1 failed!").arg(nodeId);
+        };
+
         try{
-        auto clone = gt::unique_qobject_cast<Node>(
-            memento.toObject(*gtObjectFactory)
-        );
+            auto clone = gt::unique_qobject_cast<Node>(
+                memento.toObject(*gtObjectFactory)
+            );
 
-        auto* node = clone.get();
-        if (!node)
-        {
-            gtError() << tr("Failed to clone node '%1'")
-                             .arg(memento.ident());
-            return {};
-        }
-
-        if (!signalsToConnect.empty())
-        {
-            if (!connectSignals(signalsToConnect,
-                                node, node->metaObject(),
-                                targetObject, targetMetaObject,
-                                executor))
+            auto* node = clone.get();
+            if (!node)
             {
+                gtError() << makeError()
+                          << tr("(Cloning node failed)").arg(memento.ident());
                 return {};
             }
-        }
 
-        Graph graph;
-        if (!graph.appendNode(std::move(clone))) return {};
 
-        GraphExecutionModel model(graph);
+            if (!signalsToConnect.empty())
+            {
+                if (!connectSignals(signalsToConnect,
+                                    node, node->metaObject(),
+                                    targetObject, targetMetaObject,
+                                    executor))
+                {
+                    return {};
+                }
+            }
 
-        auto const& outPorts = node->ports(PortType::Out);
-        auto const& inPorts  = node->ports(PortType::In);
+            Graph graph;
+            if (!graph.appendNode(std::move(clone))) return {};
 
-        assert(outPorts.size() == outData.size());
-        assert(inPorts.size()  == inData.size());
+            GraphExecutionModel model(graph);
 
-        // restore states
-        bool success = true;
-        success &= model.setNodeData(node->id(), PortType::In,  inData);
-        success &= model.setNodeData(node->id(), PortType::Out, outData);
+            auto const& outPorts = node->ports(PortType::Out);
+            auto const& inPorts  = node->ports(PortType::In);
 
-        if (!success) return {};
+            assert(outPorts.size() == outData.size());
+            assert(inPorts.size()  == inData.size());
 
-        // evaluate single port
-        if (targetPort != invalid<PortId>())
-        {
-            model.setNodeData(node->id(), targetPort, doEvaluate(*node, targetPort));
+            // restore states
+            bool success = true;
+            success &= model.setNodeData(node->id(), PortType::In,  inData);
+            success &= model.setNodeData(node->id(), PortType::Out, outData);
+
+            if (!success)
+            {
+                gtError() << makeError() << tr("(failed to copy source data9");
+                return {};
+            }
+
+            // evaluate single port
+            if (targetPort != invalid<PortId>())
+            {
+                model.setNodeData(node->id(), targetPort, NodeExecutor::doEvaluate(*node, targetPort));
+                return model.nodeData(node->id(), PortType::Out);
+            }
+
+            // trigger eval if no outport exists
+            if (outPorts.empty() && !inPorts.empty())
+            {
+                NodeExecutor::doEvaluate(*node);
+                return {};
+            }
+
+            // iterate over all output ports
+            for (auto& port : outPorts)
+            {
+                model.setNodeData(node->id(), port.id(), NodeExecutor::doEvaluate(*node, port.id()));
+            }
+
             return model.nodeData(node->id(), PortType::Out);
         }
-
-        // trigger eval if no outport exists
-        if (outPorts.empty() && !inPorts.empty())
+        catch (const std::exception& ex)
         {
-            doEvaluate(*node);
+            gtError() << makeError()
+                      << tr("(caught exception: %1)").arg(ex.what());
             return {};
-        }
-
-        // iterate over all output ports
-        for (auto& port : outPorts)
-        {
-            model.setNodeData(node->id(), port.id(), doEvaluate(*node, port.id()));
-        }
-
-        return model.nodeData(node->id(), PortType::Out);
         }
         catch(...)
         {
-        gtError() << "HERE: something went wrong";
-        std::exception_ptr ex_ptr = std::current_exception();
-
-        // Now you can rethrow or inspect the exception
-        try {
-            if (ex_ptr) {
-                std::rethrow_exception(ex_ptr); // Rethrow the exception
-            }
-        }
-        catch (const std::bad_alloc& ex) {
-            gtError() << "Caught std::bad_alloc: " << ex.what() << std::endl;
-        }
-        catch (const std::runtime_error& ex) {
-            gtError() << "Caught std::runtime_error: " << ex.what() << std::endl;
-        }
-        catch (const std::exception& ex) {
-            gtError() << "Caught std::exception: " << ex.what() << std::endl;
-        }
-        catch (...) {
-            gtError() << "Caught an unknown exception" << std::endl;
-        }
-        assert(false);
-        return {};
+            gtError() << makeError() << tr("(caught unkown exception)");
+            return {};
         }
     };
 
     auto* pool = QThreadPool::globalInstance();
     auto future = QtConcurrent::run(pool, std::move(run));
     m_watcher.setFuture(future);
-
-    future.waitForFinished();
 
     return true;
 }

@@ -161,8 +161,6 @@ public slots:
 private slots:
 
     void onNodeEvalStateUpdated();
-    void onComputingStarted();
-    void onComputingFinished();
 
     void onNodeChanged();
 
@@ -182,7 +180,6 @@ private:
     struct Entry
     {
         Geometry geo;
-        bool isEvaluating = false;
     };
 
     QHash<NodeId, Entry> m_data;

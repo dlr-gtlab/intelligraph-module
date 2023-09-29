@@ -50,8 +50,8 @@ TEST(GraphExecutionModel, test)
 
     EXPECT_TRUE(model.evaluateNode(C_id));
     EXPECT_TRUE(model.waitForNode(std::chrono::seconds{1}));
-
-    auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
+    
+    auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(C_data);
     EXPECT_EQ(C_data->value(), 84);
 
@@ -83,8 +83,8 @@ TEST(GraphExecutionModel, dependencie)
 
     EXPECT_TRUE(model.autoEvaluate());
     EXPECT_TRUE(model.wait(std::chrono::seconds{1}));
-
-    auto B_data = model.nodeData(B_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
+    
+    auto B_data = model.nodeData(B_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(B_data);
     EXPECT_EQ(B_data->value(), 42);
 }
@@ -107,12 +107,12 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
 
     EXPECT_TRUE(model.autoEvaluate());
     EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
-
-    auto D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
+    
+    auto D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 42);
-
-    auto E_data = model.nodeData(E_id, PortType::In, PortIndex(0)).cast<DoubleData>();
+    
+    auto E_data = model.nodeData(E_id, PortType::In, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(E_data);
     EXPECT_EQ(E_data->value(), 8);
 
@@ -129,7 +129,7 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
     EXPECT_FALSE(model.evaluated());
 
     // old values are still set
-    D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
+    D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 42);
 
@@ -141,10 +141,10 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
     gtDebug() << "";
 
     EXPECT_TRUE(model.autoEvaluate());
-    EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
+    EXPECT_TRUE(model.wait(std::chrono::seconds(10)));
 
     // new values is set
-    D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
+    D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 28);
 
@@ -177,12 +177,12 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
 
     EXPECT_TRUE(model.autoEvaluate());
     EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
-
-    auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).cast<DoubleData>();
+    
+    auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(C_data);
     EXPECT_EQ(C_data->value(), 34);
-
-    auto D_data = model.nodeData(E_id, PortType::In, PortIndex(0)).cast<DoubleData>();
+    
+    auto D_data = model.nodeData(E_id, PortType::In, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 8);
 }

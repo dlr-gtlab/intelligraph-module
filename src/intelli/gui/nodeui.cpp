@@ -53,6 +53,8 @@ NodeUI::NodeUI(Option option)
 {
     setObjectName(QStringLiteral("IntelliGraphNodeUI"));
 
+    if ((option & NoDefaultActions)) return;
+
     auto const isActive = [](GtObject* obj){
         return static_cast<Node*>(obj)->isActive();
     };

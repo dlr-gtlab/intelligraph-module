@@ -9,17 +9,67 @@
 
 #include "intelli/nodeexecutor.h"
 #include "intelli/node.h"
+#include "intelli/graph.h"
+#include "intelli/graphexecmodel.h"
 
 #include "intelli/exec/detachedexecutor.h"
-#include "intelli/exec/blockingexecutor.h"
+
+#include <gt_utilities.h>
 
 using namespace intelli;
 
 bool
 intelli::blockingEvaluation(Node& node, GraphExecutionModel& model, PortId portId)
 {
-    BlockingExecutor executor;
-    return executor.evaluateNode(node, model, portId);
+    auto const evaluatePort = [&node, &model](PortId port){
+        auto data = NodeExecutor::doEvaluate(node, port);
+
+        bool success = model.setNodeData(node.id(), port, std::move(data));
+
+        emit node.evaluated(port);
+
+        return success;
+    };
+
+    node.invalidate(false);
+
+    // cleanup routine
+    auto finally = gt::finally([&node](){
+        emit node.computingFinished();
+    });
+
+    if (portId != invalid<PortId>())
+    {
+        if (portId >= node.ports(PortType::Out).size()) return false;
+
+        emit node.computingStarted();
+
+        return evaluatePort(portId);
+    }
+
+    emit node.computingStarted();
+
+    auto const& outPorts = node.ports(PortType::Out);
+
+    // trigger eval if no outport exists
+    if (outPorts.empty())
+    {
+        NodeExecutor::doEvaluate(node);
+
+        emit node.evaluated();
+
+        return true;
+    }
+
+    bool success = true;
+
+    // iterate over all output ports
+    for (auto& port : outPorts)
+    {
+        success &= evaluatePort(port.id());
+    }
+
+    return success;
 }
 
 bool
@@ -59,5 +109,6 @@ NodeExecutor::doEvaluate(Node& node)
 GraphExecutionModel*
 NodeExecutor::accessExecModel(Node& node)
 {
-    return node.executionModel();
+    auto*  parent = qobject_cast<Graph*>(node.parent());
+    return parent ? parent->mainExecutionModel() : nullptr;
 }

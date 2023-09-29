@@ -29,7 +29,7 @@ QString const S_PORT_OPTIONAL = QStringLiteral("Optional");
 QString const S_PORT_ID = QStringLiteral("PortId");
 
 DynamicNode::DynamicNode(QString const& modelName,
-                                                     DynamicNodeOption option,
+                                                     Option option,
                                                      GtObject* parent) :
     Node(modelName, parent),
     m_inPorts("dynamicInPorts", "In Ports"),
@@ -77,7 +77,7 @@ DynamicNode::DynamicNode(QString const& modelName,
     }
 }
 
-DynamicNode::DynamicNodeOption
+DynamicNode::Option
 DynamicNode::dynamicNodeOption() const
 {
     return m_option;
@@ -136,7 +136,7 @@ DynamicNode::insertOutPort(PortData port, int idx)
 }
 
 PortId
-DynamicNode::insertPort(DynamicPortOption option, PortType type, PortData port, int idx)
+DynamicNode::insertPort(PortOption option, PortType type, PortData port, int idx)
 {
     if (idx < 0) idx = std::numeric_limits<int>::max();
 

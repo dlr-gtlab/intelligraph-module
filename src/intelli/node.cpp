@@ -8,13 +8,11 @@
 
 #include "intelli/node.h"
 
-#include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/nodeexecutor.h"
 #include "intelli/private/node_impl.h"
 
 #include <gt_qtutilities.h>
-
 
 #include <QRegExpValidator>
 #include <QVBoxLayout>
@@ -68,6 +66,13 @@ Node::Node(QString const& modelName, GtObject* parent) :
     connect(this, &Node::triggerNodeEvaluation, this, [this](){
         emit triggerPortEvaluation(invalid<PortId>());
     });
+
+    connect(this, &Node::computingStarted, this, [this](){
+        setNodeFlag(NodeFlag::Evaluating, true);
+    }, Qt::DirectConnection);
+    connect(this, &Node::computingFinished, this, [this](){
+        setNodeFlag(NodeFlag::Evaluating, false);
+    }, Qt::DirectConnection);
 }
 
 Node::~Node() = default;
@@ -86,6 +91,12 @@ Node::isActive() const
 }
 
 void
+Node::invalidate(bool enable)
+{
+    setNodeFlag(RequiresEvaluation, enable);
+}
+
+void
 Node::setId(NodeId id)
 {
     pimpl->id = id;
@@ -97,7 +108,7 @@ Node::id() const
     return NodeId{pimpl->id};
 }
 
-void
+Node&
 Node::setPos(Position pos)
 {
     if (this->pos() != pos)
@@ -106,6 +117,7 @@ Node::setPos(Position pos)
         pimpl->posY = pos.y();
         changed();
     }
+    return *this;
 }
 
 Position
@@ -265,15 +277,7 @@ Node::removePort(PortId id)
 Node::NodeDataPtr
 Node::nodeData(PortId id) const
 {
-    auto find = pimpl->find(id);
-    if (!find)
-    {
-        gtWarning() << tr("PortId '%1' not found!").arg(id)
-                    << gt::brackets(objectName());
-        return {};
-    }
-
-    auto* model = executionModel();
+    auto* model = nodeDataInterface();
     if (!model)
     {
         gtWarning() << tr("Evaluation model not found!")
@@ -281,7 +285,7 @@ Node::nodeData(PortId id) const
         return {};
     }
 
-    return model->nodeData(this->id(), find.type, find.idx);
+    return model->nodeData(this->id(), id);
 }
 
 Node::PortData*
@@ -318,6 +322,15 @@ Node::portIndex(PortType type, PortId id) const noexcept(false)
     return PortIndex{};
 }
 
+Node::PortType
+Node::portType(PortId id) const noexcept(false)
+{
+    auto find = pimpl->find(id);
+    if (!find) return PortType::NoType;
+
+    return find.type;
+}
+
 PortId
 Node::portId(PortType type, PortIndex idx) const noexcept(false)
 {
@@ -335,17 +348,18 @@ Node::eval(PortId)
     return {};
 }
 
-GraphExecutionModel*
-Node::executionModel()
+NodeDataInterface*
+Node::nodeDataInterface()
 {
-    auto*  parent = qobject_cast<Graph*>(this->parent());
-    return parent ? parent->mainExecutionModel() : nullptr;
+    if (pimpl->dataInterface) return pimpl->dataInterface;
+
+    return NodeExecutor::accessExecModel(*this);
 }
 
-GraphExecutionModel const*
-Node::executionModel() const
+NodeDataInterface const*
+Node::nodeDataInterface() const
 {
-    return const_cast<Node*>(this)->executionModel();
+    return const_cast<Node*>(this)->nodeDataInterface();
 }
 
 bool
