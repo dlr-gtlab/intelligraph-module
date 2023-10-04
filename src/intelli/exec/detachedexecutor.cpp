@@ -109,13 +109,15 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
         if (signalIndex == -1)
         {
             gtWarning()
+                << GT_CLASSNAME(DetachedExecutor)
                 << QObject::tr("Failed to forward signal from clone to source node!")
                 << gt::brackets(signal);
             return {};
         }
         assert(signalIndex == targetMetaObject->indexOfSignal(signal));
 
-        gtInfo().verbose()
+        gtDebug().verbose()
+            << GT_CLASSNAME(DetachedExecutor)
             << QObject::tr("Connecting custom Node signal '%1'").arg(signal.constData());
 
         if (!QObject::connect(sourceObject, sourceMetaObject->method(signalIndex),
@@ -123,6 +125,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
                               Qt::QueuedConnection))
         {
             gtWarning()
+                << GT_CLASSNAME(DetachedExecutor)
                 << QObject::tr("Failed to connect signal of clone with source node!")
                 << gt::brackets(signal);
             return {};
@@ -245,8 +248,6 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
 
     if (!canEvaluateNode(node)) return false;
 
-    node.invalidate(false);
-
     m_node = &node;
     m_collected = false;
     emit m_node->computingStarted();
@@ -290,10 +291,7 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
                 }
             }
 
-            Graph graph;
-            if (!graph.appendNode(std::move(clone))) return {};
-
-            GraphExecutionModel model(graph);
+            DummyDataModel model(*node);
 
             auto const& outPorts = node->ports(PortType::Out);
             auto const& inPorts  = node->ports(PortType::In);
@@ -303,8 +301,8 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
 
             // restore states
             bool success = true;
-            success &= model.setNodeData(node->id(), PortType::In,  inData);
-            success &= model.setNodeData(node->id(), PortType::Out, outData);
+            success &= model.setNodeData(PortType::In,  inData);
+            success &= model.setNodeData(PortType::Out, outData);
 
             if (!success)
             {
@@ -315,8 +313,8 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
             // evaluate single port
             if (targetPort != invalid<PortId>())
             {
-                model.setNodeData(node->id(), targetPort, NodeExecutor::doEvaluate(*node, targetPort));
-                return model.nodeData(node->id(), PortType::Out);
+                model.setNodeData(targetPort, NodeExecutor::doEvaluate(*node, targetPort));
+                return model.nodeData(PortType::Out);
             }
 
             // trigger eval if no outport exists
@@ -329,10 +327,10 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
             // iterate over all output ports
             for (auto& port : outPorts)
             {
-                model.setNodeData(node->id(), port.id(), NodeExecutor::doEvaluate(*node, port.id()));
+                model.setNodeData(port.id(), NodeExecutor::doEvaluate(*node, port.id()));
             }
 
-            return model.nodeData(node->id(), PortType::Out);
+            return model.nodeData(PortType::Out);
         }
         catch (const std::exception& ex)
         {

@@ -9,11 +9,13 @@
 
 #include "intelli/graphexecmodel.h"
 
+#include "intelli/nodeexecutor.h"
 #include "intelli/node.h"
 #include "intelli/graph.h"
 #include "intelli/connection.h"
 
 #include "intelli/private/utils.h"
+#include "intelli/private/node_impl.h"
 
 #include <gt_exceptions.h>
 #include <gt_eventloop.h>
@@ -22,60 +24,122 @@
 
 using namespace intelli;
 
-bool
-dm::Entry::isEvaluated(Node const& node) const
-{
-    return !(node.nodeFlags() & (NodeFlag::Evaluating | NodeFlag::RequiresEvaluation)) &&
-           std::all_of(portsOut.begin(), portsOut.end(), [](auto const& p){
-        return p.state == PortDataState::Valid;
-   });
-}
-
-bool
-dm::Entry::areInputsValid(Graph const& graph, NodeId nodeId) const
-{
-    bool valid = std::all_of(portsIn.begin(), portsIn.end(),
-                             [&graph, nodeId](auto const& p){
-        return graph.findConnections(nodeId, p.id).empty() ||
-               p.state == PortDataState::Valid;
-    });
-    return valid;
-}
-
-bool
-dm::Entry::canEvaluate(Graph const& graph, Node const& node) const
-{
-    auto const& nodePorts = node.ports(PortType::In);
-    assert((size_t)portsIn.size() == nodePorts.size());
-
-    return areInputsValid(graph, node.id()) &&
-           std::all_of(portsIn.begin(), portsIn.end(),
-                       [&](dm::PortEntry const& port){
-                           auto* p = node.port(port.id);
-                           return (p && p->optional) || port.data;
-                       });
-}
-
 //////////////////////////////////////////////////////
 
 DummyDataModel::DummyDataModel(Node& node) :
-    nodeId(node.id())
+    m_node(&node)
 {
+    NodeExecutor::setNodeDataInterface(node, this);
+
     auto const& inPorts  = node.ports(PortType::In);
     auto const& outPorts = node.ports(PortType::Out);
 
-    data.portsIn.reserve(inPorts.size());
-    data.portsOut.reserve(outPorts.size());
+    m_data.portsIn.reserve(inPorts.size());
+    m_data.portsOut.reserve(outPorts.size());
 
     for (auto& port : inPorts)
     {
-        data.portsIn.push_back({port.id()});
+        m_data.portsIn.push_back({port.id()});
     }
 
     for (auto& port : outPorts)
     {
-        data.portsOut.push_back({port.id()});
+        m_data.portsOut.push_back({port.id()});
     }
+}
+
+dm::NodeData
+DummyDataModel::nodeData(NodeId nodeId, PortId portId) const
+{
+    assert(m_node);
+    if (nodeId != m_node->id())
+    {
+        gtError() << QObject::tr("Failed to access node %1! (Was expecting node %2)")
+                         .arg(nodeId).arg(nodeId);
+        return {};
+    }
+
+    for (auto const* ports : {&m_data.portsIn, &m_data.portsOut})
+    {
+        for (auto const& p : *ports)
+        {
+            if (p.id == portId) return p.data;
+        }
+    }
+
+    gtError() << QObject::tr("Failed to access data of node %1! (Port id %2 not found)")
+                     .arg(nodeId).arg(portId);
+    return {};
+}
+
+dm::NodeData
+DummyDataModel::nodeData(PortId portId, dm::NodeData data)
+{
+    assert(m_node);
+    return nodeData(m_node->id(), portId);
+}
+
+NodeDataPtrList
+DummyDataModel::nodeData(PortType type) const
+{
+    assert(m_node);
+    NodeDataPtrList data;
+
+    auto const& ports = type == PortType::In ? &m_data.portsIn : &m_data.portsOut;
+    for (auto& port : *ports)
+    {
+        data.push_back({m_node->portIndex(type, port.id), port.data});
+    }
+    return data;
+}
+
+bool
+DummyDataModel::setNodeData(NodeId nodeId, PortId portId, dm::NodeData data)
+{
+    assert(m_node);
+    if (nodeId != m_node->id())
+    {
+        gtError() << QObject::tr("Failed to access node %1! (Was expecting node %2)")
+                         .arg(nodeId).arg(nodeId);
+        return false;
+    }
+
+    for (auto* ports : {&m_data.portsIn, &m_data.portsOut})
+    {
+        for (auto& p : *ports)
+        {
+            if (p.id == portId)
+            {
+                p.data = std::move(data.data);
+                return true;
+            }
+        }
+    }
+
+    gtError() << QObject::tr("Failed to set data of node %1! (Port id %2 not found)")
+                     .arg(nodeId).arg(portId);
+    return {};
+}
+
+bool
+DummyDataModel::setNodeData(PortId portId, dm::NodeData data)
+{
+    assert(m_node);
+    return setNodeData(m_node->id(), portId, std::move(data));
+}
+
+bool
+DummyDataModel::setNodeData(PortType type, const NodeDataPtrList& data)
+{
+    assert(m_node);
+    for (auto& d : data)
+    {
+        if (!setNodeData(m_node->portId(type, d.first), std::move(d.second)))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 //////////////////////////////////////////////////////
@@ -152,9 +216,7 @@ findPortDataEntry(GraphExecutionModel const& model, NodeId nodeId, PortId portId
     return findPortDataEntry(const_cast<GraphExecutionModel&>(model), nodeId, portId);
 }
 
-};
-
-//////////////////////////////////////////////////////
+}; // struct Impl;
 
 GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
     m_mode(mode)
@@ -685,7 +747,7 @@ GraphExecutionModel::nodeData(NodeId nodeId, PortType type) const
     if (entry == m_data.end())
     {
         gtError() << graph().objectName() + ':'
-                  << tr("Failed to access port data! (Invalid node %1)").arg(nodeId);
+                  << tr("Failed to access node data! (Invalid node %1)").arg(nodeId);
         return {};
     }
 

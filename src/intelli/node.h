@@ -28,9 +28,9 @@ enum NodeFlag
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
     Unique      = 1 << 2,
-
+    /// Indicates that the node requires evaluation (will be updated automatically)
     RequiresEvaluation = 1 << 3,
-
+    /// Indicates that the node is evaluating (will be set automatically)
     Evaluating = 1 << 4,
 };
 
@@ -136,7 +136,7 @@ public:
      */
     bool isActive() const;
 
-    void invalidate(bool enable = true);
+    void invalidate();
 
     /**
      * @brief Sets the node id. handle with care, as this may result in
@@ -301,12 +301,14 @@ signals:
     void inputDataRecieved(PortId portId = invalid<PortId>());
 
     /**
-     * @brief Emitted once the node evaluation has started
+     * @brief Emitted once the node evaluation has started. Will update the node
+     * flags `RequiresEvaluation` and `Evaluating` automatically.
      */
     void computingStarted();
     
     /**
-     * @brief Emitted once the node evaluation has finished
+     * @brief Emitted once the node evaluation has finished. Will update the node
+     * flag ``Evaluating` automatically.
      */
     void computingFinished();
 
@@ -394,6 +396,11 @@ protected:
      */
     virtual NodeDataPtr eval(PortId outId);
 
+    /**
+     * @brief Method to retrieve the node data interface object, which can be
+     * used to access and modify the data of this node.
+     * @return node data interface (may be null)
+     */
     NodeDataInterface* nodeDataInterface();
     NodeDataInterface const* nodeDataInterface() const;
 
@@ -401,6 +408,8 @@ protected:
      * @brief Handles the evaluation of the node (port). It is not intended to
      * actually do the evaluation (use `eval` instead), but to handle/manage the
      * execution of the node. Should only be overriden in rare cases.
+     * Note: When overriding do not forget to emit the `computingStarted` and
+     * `computingFinished` respectively.
      * @param portId Port id to evaluate. If port id is invalid, the whole
      * node (i.e. all ports) should be evaluated
      * @return Returns true if the evaluation was triggered sucessfully.

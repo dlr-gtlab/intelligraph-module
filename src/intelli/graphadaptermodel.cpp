@@ -104,7 +104,7 @@ GraphAdapterModel::GraphAdapterModel(Graph& graph)
         geo.pos  = node->pos();
         geo.size = QSize();
 
-        m_data.insert(node->id(), Entry{std::move(geo)});
+        m_geometries.insert(node->id(), std::move(geo));
 
         emit nodeCreated(node->id());
     };
@@ -116,7 +116,7 @@ GraphAdapterModel::GraphAdapterModel(Graph& graph)
 
     connect(&graph, &Graph::nodeAppended, this, onNodeAppended);
     connect(&graph, &Graph::nodeDeleted, this, [this](NodeId nodeId){
-        m_data.remove(nodeId);
+        m_geometries.remove(nodeId);
         emit nodeDeleted(nodeId);
     });
     connect(&graph, &Graph::connectionAppended, this, onConnectionAppended);
@@ -313,9 +313,9 @@ GraphAdapterModel::nodeData(QtNodes::NodeId nodeId, QtNodes::NodeRole role) cons
     case QtNodes::NodeRole::Type:
         return node->modelName();
     case QtNodes::NodeRole::Position:
-        return m_data[node->id()].geo.pos;
+        return m_geometries[node->id()].pos;
     case QtNodes::NodeRole::Size:
-        return m_data[node->id()].geo.size;
+        return m_geometries[node->id()].size;
     case QtNodes::NodeRole::Caption:
         return node->caption();
     case QtNodes::NodeRole::CaptionVisible:
@@ -360,7 +360,7 @@ GraphAdapterModel::setNodeData(QtNodes::NodeId nodeId, QtNodes::NodeRole role, Q
     case QtNodes::NodeRole::Position:
     {
         auto pos = value.toPointF();
-        m_data[node->id()].geo.pos = pos;
+        m_geometries[node->id()].pos = pos;
         emit nodePositionUpdated(nodeId);
         return true;
     }
@@ -368,7 +368,7 @@ GraphAdapterModel::setNodeData(QtNodes::NodeId nodeId, QtNodes::NodeRole role, Q
     {
         auto size = value.toSize();
         if (!size.isValid()) return false;
-        m_data[node->id()].geo.size = size;
+        m_geometries[node->id()].size = size;
         return true;
     }
     case QtNodes::NodeRole::Caption:
@@ -516,7 +516,7 @@ GraphAdapterModel::commitPosition(NodeId nodeId)
     auto& graph = this->graph();
     if (auto* node = graph.findNode(NodeId(nodeId)))
     {
-        node->setPos(m_data[nodeId].geo.pos);
+        node->setPos(m_geometries[nodeId].pos);
     }
 }
 

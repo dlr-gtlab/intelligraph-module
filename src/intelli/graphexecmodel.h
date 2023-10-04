@@ -11,7 +11,7 @@
 #define GRAPHMODEL_H
 
 #include <intelli/graph.h>
-#include <intelli/nodedata.h>
+#include <intelli/nodedatainterface.h>
 
 namespace intelli
 {
@@ -20,92 +20,29 @@ class Connection;
 class Graph;
 class Node;
 
-enum class PortDataState
-{
-    /// Port data was outdata
-    Outdated = 0,
-    /// Port data is valid and up-to-date
-    Valid,
-};
-
-namespace dm
-{
-
-struct PortEntry
-{
-    /// referenced port
-    PortId id;
-    /// port data state
-    PortDataState state = PortDataState::Outdated;
-    /// actual data at port
-    NodeDataPtr   data  = nullptr;
-};
-
-/// helper struct representing node data and its validity state
-struct NodeData
-{
-    NodeData(NodeDataPtr _data = {}) :
-        data(std::move(_data)), state(PortDataState::Valid)
-    {}
-    template <typename T>
-    NodeData(std::shared_ptr<T> _data) :
-        data(std::move(_data)), state(PortDataState::Valid)
-    {}
-    NodeData(PortEntry const& port) :
-        data(port.data), state(port.state)
-    {}
-
-    /// actual node data
-    NodeDataPtr data;
-    /// data state
-    PortDataState state;
-
-    operator NodeDataPtr&() & { return data; }
-    operator NodeDataPtr() && { return std::move(data); }
-    operator NodeDataPtr const&() const& { return data; }
-
-    template <typename T>
-    inline auto value() const noexcept { return qobject_pointer_cast<T const>(data);}
-};
-
-struct Entry
-{
-    /// in and out ports
-    QVector<PortEntry> portsIn = {}, portsOut = {};
-
-    GT_INTELLI_EXPORT bool isEvaluated(Node const& node) const;
-
-    GT_INTELLI_EXPORT bool areInputsValid(Graph const& graph, NodeId nodeId) const;
-
-    GT_INTELLI_EXPORT bool canEvaluate(Graph const& graph, Node const& node) const;
-};
-
-using DataModel = QHash<NodeId, Entry>;
-
-} // namesace dm
-
 /**
- * @brief The NodeDataInterface class.
- * Interface to access and set the data of a node port
+ * @brief The DummyDataModel class.
+ * Helper method to set and access node data of a single node
  */
-class NodeDataInterface
+class DummyDataModel : public NodeDataInterface
 {
 public:
 
-    virtual ~NodeDataInterface() = default;
-
-    virtual dm::NodeData nodeData(NodeId nodeId, PortId portId) const = 0;
-
-    virtual bool setNodeData(NodeId nodeId, PortId portId, dm::NodeData data) = 0;
-
-};
-
-class DummyDataModel : public NodeDataInterface
-{
     DummyDataModel(Node& node);
 
-    NodeId nodeId;
-    dm::Entry data;
+    dm::NodeData nodeData(PortId portId, dm::NodeData data);
+    NodeDataPtrList nodeData(PortType type) const;
+
+    bool setNodeData(PortId portId, dm::NodeData data);
+    bool setNodeData(PortType type, NodeDataPtrList const& data);
+
+private:
+
+    dm::NodeData nodeData(NodeId nodeId, PortId portId) const override;
+    bool setNodeData(NodeId nodeId, PortId portId, dm::NodeData data) override;
+
+    Node* m_node;
+    dm::Entry m_data;
 };
 
 /**

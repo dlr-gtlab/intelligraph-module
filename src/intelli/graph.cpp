@@ -651,8 +651,6 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
 
     emit computingStarted();
 
-    invalidate(false);
-
     auto finally = gt::finally([this](){
         emit computingFinished();
     });

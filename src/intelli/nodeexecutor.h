@@ -19,6 +19,7 @@ namespace intelli
 {
 
 class Node;
+class NodeDataInterface;
 class GraphExecutionModel;
 
 GT_INTELLI_EXPORT bool blockingEvaluation(Node& node,
@@ -44,6 +45,8 @@ public:
     static NodeDataPtr doEvaluate(Node& node);
 
     static GraphExecutionModel* accessExecModel(Node& node);
+
+    static void setNodeDataInterface(Node& node, NodeDataInterface* interface);
 };
 
 } // namespace intelli

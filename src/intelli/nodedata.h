@@ -52,6 +52,16 @@ private:
 };
 
 /**
+ * @brief Returns the typeid of a node data class
+ * @return Typeid
+ */
+template <typename T, gt::trait::enable_if_base_of<NodeData, T> = true>
+inline QString typeId()
+{
+    return T::staticMetaObject.className();
+}
+
+/**
  * @brief The TemplateData class. Helper class to allow for simple extension
  */
 template <typename T>
@@ -81,16 +91,6 @@ private:
 
     T m_data;
 };
-
-/**
- * @brief Returns the typeid of a node data class
- * @return Typeid
- */
-template <typename T, gt::trait::enable_if_base_of<NodeData, T> = true>
-inline QString typeId()
-{
-    return T::staticMetaObject.className();
-}
 
 } // namespace intelli
 

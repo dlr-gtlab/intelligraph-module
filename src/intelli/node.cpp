@@ -69,9 +69,13 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
     connect(this, &Node::computingStarted, this, [this](){
         setNodeFlag(NodeFlag::Evaluating, true);
+        // reset requires evaluation
+        setNodeFlag(NodeFlag::RequiresEvaluation, false);
+        emit nodeStateChanged();
     }, Qt::DirectConnection);
     connect(this, &Node::computingFinished, this, [this](){
         setNodeFlag(NodeFlag::Evaluating, false);
+        emit nodeStateChanged();
     }, Qt::DirectConnection);
 }
 
@@ -91,9 +95,9 @@ Node::isActive() const
 }
 
 void
-Node::invalidate(bool enable)
+Node::invalidate()
 {
-    setNodeFlag(RequiresEvaluation, enable);
+    setNodeFlag(RequiresEvaluation);
 }
 
 void

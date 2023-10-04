@@ -14,6 +14,8 @@
 
 #include "intelli/exec/detachedexecutor.h"
 
+#include "intelli/private/node_impl.h"
+
 #include <gt_utilities.h>
 
 using namespace intelli;
@@ -30,8 +32,6 @@ intelli::blockingEvaluation(Node& node, GraphExecutionModel& model, PortId portI
 
         return success;
     };
-
-    node.invalidate(false);
 
     // cleanup routine
     auto finally = gt::finally([&node](){
@@ -111,4 +111,10 @@ NodeExecutor::accessExecModel(Node& node)
 {
     auto*  parent = qobject_cast<Graph*>(node.parent());
     return parent ? parent->mainExecutionModel() : nullptr;
+}
+
+void
+NodeExecutor::setNodeDataInterface(Node& node, NodeDataInterface* interface)
+{
+    node.pimpl->dataInterface = interface;
 }

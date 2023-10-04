@@ -10,7 +10,6 @@
 #ifndef GT_INTELLI_MODELADAPTER_H
 #define GT_INTELLI_MODELADAPTER_H
 
-#include <intelli/globals.h>
 #include <intelli/graph.h>
 
 #include <QtNodes/AbstractGraphModel>
@@ -177,12 +176,8 @@ private:
         Position pos;
         QSize size;
     };
-    struct Entry
-    {
-        Geometry geo;
-    };
 
-    QHash<NodeId, Entry> m_data;
+    QHash<NodeId, Geometry> m_geometries;
 
     QPointer<Graph> m_graph;
 

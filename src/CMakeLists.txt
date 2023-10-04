@@ -13,6 +13,7 @@ set(PUBLIC_HEADERS
     intelli/node.h
     intelli/nodedata.h
     intelli/nodedatafactory.h
+    intelli/nodedatainterface.h
     intelli/nodeexecutor.h
     intelli/nodefactory.h
     intelli/data/bool.h
@@ -80,6 +81,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node.cpp
     intelli/nodedata.cpp
     intelli/nodedatafactory.cpp
+    intelli/nodedatainterface.cpp
     intelli/nodeexecutor.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp

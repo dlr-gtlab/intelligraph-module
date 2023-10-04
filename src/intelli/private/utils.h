@@ -35,7 +35,7 @@ operator<<(gt::log::Stream& s, QtNodes::ConnectionId const& con)
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& data)
 {
-    // temporary
+    // TODO: remove
     if (auto* d = qobject_cast<intelli::DoubleData const*>(data.get()))
     {
         gt::log::StreamStateSaver saver(s);
@@ -48,8 +48,15 @@ operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& d
 namespace intelli
 {
 
-inline constexpr static PortType          convert(QtNodes::PortType type) { return static_cast<PortType>(type); }
-inline constexpr static QtNodes::PortType convert(PortType type)          { return static_cast<QtNodes::PortType>(type); }
+inline constexpr static PortType convert(QtNodes::PortType type) noexcept
+{
+    return static_cast<PortType>(type);
+}
+
+inline constexpr static QtNodes::PortType convert(PortType type) noexcept
+{
+    return static_cast<QtNodes::PortType>(type);
+}
 
 template <typename Sender, typename SignalSender,
          typename Reciever, typename SignalReciever>
