@@ -9,11 +9,10 @@
 
 #include "intelli/exec/detachedexecutor.h"
 
-#include "intelli/graph.h"
 #include "intelli/node.h"
 #include "intelli/graphexecmodel.h"
-#include "intelli/private/node_impl.h"
 
+#include "gt_utilities.h"
 #include "gt_qtutilities.h"
 #include "gt_objectfactory.h"
 #include "gt_objectmemento.h"
@@ -215,37 +214,16 @@ DetachedExecutor::onResultReady(int result)
         return;
     }
 
-    bool success = model->setNodeData(m_node->id(), PortType::Out, outData);
-    if (!success)
+    if (!model->setNodeData(m_node->id(), PortType::Out, outData))
     {
         gtError() << tr("Failed to transfer node data!");
         return;
     }
-
-    if (outData.empty())
-    {
-        return emit m_node->evaluated();
-    }
-
-    auto const emitOutDataUpdated = [this](PortId port){
-        emit m_node->evaluated(port);
-    };
-
-    if (m_port != invalid<PortId>())
-    {
-        return emitOutDataUpdated(m_port);
-    }
-    for (auto& data : outData)
-    {
-        emitOutDataUpdated(m_node->portId(PortType::Out, data.first));
-    }
 }
 
 bool
-DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId portId)
+DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
 {
-    m_port = portId;
-
     if (!canEvaluateNode(node)) return false;
 
     m_node = &node;
@@ -253,7 +231,6 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
     emit m_node->computingStarted();
 
     auto run = [nodeId = node.id(),
-                targetPort = m_port,
                 inData  = model.nodeData(node.id(), PortType::In),
                 outData = model.nodeData(node.id(), PortType::Out),
                 memento = node.toMemento(),
@@ -279,6 +256,8 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
                 return {};
             }
 
+            assert(node->ports(PortType::Out).size() == outData.size());
+            assert(node->ports(PortType::In).size()  == inData.size());
 
             if (!signalsToConnect.empty())
             {
@@ -291,15 +270,9 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
                 }
             }
 
+            // set data
             DummyDataModel model(*node);
 
-            auto const& outPorts = node->ports(PortType::Out);
-            auto const& inPorts  = node->ports(PortType::In);
-
-            assert(outPorts.size() == outData.size());
-            assert(inPorts.size()  == inData.size());
-
-            // restore states
             bool success = true;
             success &= model.setNodeData(PortType::In,  inData);
             success &= model.setNodeData(PortType::Out, outData);
@@ -310,25 +283,8 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model, PortId po
                 return {};
             }
 
-            // evaluate single port
-            if (targetPort != invalid<PortId>())
-            {
-                model.setNodeData(targetPort, NodeExecutor::doEvaluate(*node, targetPort));
-                return model.nodeData(PortType::Out);
-            }
-
-            // trigger eval if no outport exists
-            if (outPorts.empty() && !inPorts.empty())
-            {
-                NodeExecutor::doEvaluate(*node);
-                return {};
-            }
-
-            // iterate over all output ports
-            for (auto& port : outPorts)
-            {
-                model.setNodeData(port.id(), NodeExecutor::doEvaluate(*node, port.id()));
-            }
+            // evaluate node
+            NodeExecutor::doEvaluate(*node);
 
             return model.nodeData(PortType::Out);
         }

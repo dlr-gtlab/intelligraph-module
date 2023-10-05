@@ -28,7 +28,7 @@ public:
     DetachedExecutor();
     ~DetachedExecutor();
 
-    bool evaluateNode(Node& node, GraphExecutionModel& model, PortId portId = invalid<PortId>());
+    bool evaluateNode(Node& node, GraphExecutionModel& model);
 
 protected:
     
@@ -39,8 +39,6 @@ private:
     QPointer<Node> m_node;
     
     QFutureWatcher<NodeDataPtrList> m_watcher;
-
-    PortId m_port;
 
     bool m_collected = true;
 

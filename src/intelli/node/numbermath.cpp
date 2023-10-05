@@ -8,6 +8,7 @@
 
 #include "intelli/node/numbermath.h"
 
+#include "intelli/nodedatainterface.h"
 #include "intelli/nodefactory.h"
 #include "intelli/data/double.h"
 
@@ -64,11 +65,9 @@ NumberMathNode::NumberMathNode() :
             this, &Node::triggerNodeEvaluation);
 }
 
-intelli::Node::NodeDataPtr
-NumberMathNode::eval(PortId outId)
+void
+NumberMathNode::eval()
 {
-    if (m_out != outId) return {};
-
     auto* dataA = nodeData<intelli::DoubleData*>(m_inA);
     auto* dataB = nodeData<intelli::DoubleData*>(m_inB);
 
@@ -77,27 +76,34 @@ NumberMathNode::eval(PortId outId)
     if (dataA) a = dataA->value();
     if (dataB) b = dataB->value();
 
+    double c = 0.0;
+
     switch (m_operation)
     {
     case MathOperation::Minus:
-        return std::make_shared<intelli::DoubleData>(a - b);
+        c = a - b;
+        break;
     case MathOperation::Divide:
         if (b == 0.0)
         {
             gtWarning().verbose().nospace()
                 << __FUNCTION__ << ": " << tr("Cannot divide by 0!");
-            return {};
+            break;
         }
-        return std::make_shared<DoubleData>(a / b);
+        c = a / b;
+        break;
     case MathOperation::Multiply:
-        return std::make_shared<DoubleData>(a * b);
+        c = a * b;
+        break;
     case MathOperation::Power:
-        return std::make_shared<DoubleData>(std::pow(a, b));
+        c = std::pow(a, b);
+        break;
     case MathOperation::Plus:
+        c = a + b;
         break;
     }
 
-    return std::make_shared<DoubleData>(a + b);
+    setNodeData(m_out, std::make_shared<DoubleData>(c));
 }
 
 QString

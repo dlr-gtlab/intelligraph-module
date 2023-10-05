@@ -67,11 +67,9 @@ ObjectSourceNode::ObjectSourceNode() :
     });
 }
 
-Node::NodeDataPtr
-ObjectSourceNode::eval(PortId outId)
+void
+ObjectSourceNode::eval()
 {
-    if (m_out != outId) return {};
-
     auto* linkedObject = m_object.linkedObject();
 
     m_object.revert();
@@ -84,10 +82,10 @@ ObjectSourceNode::eval(PortId outId)
 
     if (!linkedObject || !m_object.allowedClasses().contains(linkedObject->metaObject()->className()))
     {
-        return {};
+        return;
     }
 
     m_object.setVal(linkedObject->uuid());
     
-    return std::make_shared<ObjectData>(linkedObject);
+    setNodeData(m_out, std::make_shared<ObjectData>(linkedObject));
 }

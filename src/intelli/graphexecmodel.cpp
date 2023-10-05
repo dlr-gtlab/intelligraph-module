@@ -216,6 +216,30 @@ findPortDataEntry(GraphExecutionModel const& model, NodeId nodeId, PortId portId
     return findPortDataEntry(const_cast<GraphExecutionModel&>(model), nodeId, portId);
 }
 
+static bool
+doTriggerNode(GraphExecutionModel* model, Node* node)
+{
+    // subscribe to when node finished its
+    QObject::connect(node, &Node::computingFinished,
+                     model, &GraphExecutionModel::onNodeEvaluated,
+                     Qt::UniqueConnection);
+
+    auto cleanup = gt::finally([model, node](){
+        QObject::disconnect(node, &Node::computingFinished,
+                            model, &GraphExecutionModel::onNodeEvaluated);
+    });
+
+    // evaluate nodes
+    if (!node->handleNodeEvaluation(*model))
+    {
+        return false;
+    }
+
+    cleanup.clear();
+
+    return true;
+}
+
 }; // struct Impl;
 
 GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
@@ -244,7 +268,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
     connect(this, &GraphExecutionModel::graphStalled, this, [&graph](){
         gtWarning() << tr("Graph '%1' stalled!").arg(graph.objectName());
     });
-    connect(&graph, &Graph::nodeAppended, this, &GraphExecutionModel::appendNode);
+    connect(&graph, &Graph::nodeAppended, this, &GraphExecutionModel::onNodeAppended);
     connect(&graph, &Graph::nodeDeleted, this, &GraphExecutionModel::onNodeDeleted);
     connect(&graph, &Graph::connectionAppended, this, &GraphExecutionModel::onConnectedionAppended);
     connect(&graph, &Graph::connectionDeleted, this, &GraphExecutionModel::onConnectionDeleted);
@@ -253,18 +277,6 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
 GraphExecutionModel::~GraphExecutionModel()
 {
     gtTrace().verbose() << __FUNCTION__;
-}
-
-void
-GraphExecutionModel::makeActive()
-{
-    m_mode = ActiveModel;
-}
-
-GraphExecutionModel::Mode
-GraphExecutionModel::mode() const
-{
-    return m_mode;
 }
 
 Graph&
@@ -278,6 +290,18 @@ const Graph&
 GraphExecutionModel::graph() const
 {
     return const_cast<GraphExecutionModel*>(this)->graph();
+}
+
+void
+GraphExecutionModel::makeActive()
+{
+    m_mode = ActiveModel;
+}
+
+GraphExecutionModel::Mode
+GraphExecutionModel::mode() const
+{
+    return m_mode;
 }
 
 GraphExecutionModel::Insertion
@@ -331,7 +355,7 @@ GraphExecutionModel::endReset()
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
     {
-        appendNode(node);
+        onNodeAppended(node);
     }
 }
 
@@ -417,8 +441,10 @@ GraphExecutionModel::waitForNode(std::chrono::milliseconds timeout)
 }
 
 bool
-GraphExecutionModel::triggerNodeExecution(NodeId nodeId)
+GraphExecutionModel::autoEvaluateNode(NodeId nodeId)
 {
+    if (!m_autoEvaluate) return false;
+
     auto& graph = this->graph();
 
     auto makeError = [&graph](){
@@ -447,79 +473,41 @@ GraphExecutionModel::triggerNodeExecution(NodeId nodeId)
         return false;
     }
 
+
     if (node->nodeFlags() & NodeFlag::Evaluating)
     {
         gtDebug() << makeError() << tr("(node %1 already evaluating)").arg(nodeId);
         return false;
     }
 
-    if (!entry->canEvaluate(graph, *node))
+    bool isEvaluated = entry->isEvaluated(*node);
+
+    if (!isEvaluated && !entry->canEvaluate(graph, *node))
     {
         gtDebug() << makeError() << tr("(node %1 is not ready yet)").arg(nodeId);
         return false;
     }
 
-    connect(node, &Node::computingFinished,
-            this, &GraphExecutionModel::onNodeEvaluated,
-            Qt::UniqueConnection);
+    // node was evaluated, trigger next nodes
+    if (isEvaluated)
+    {
+        if (!m_autoEvaluate) return false;
 
-    bool evaluatedOnce = false;
+        auto const& targetNodes = graph.findConnectedNodes(nodeId, PortType::Out);
 
-    auto cleanup = gt::finally([&evaluatedOnce, node, this](){
-        if (!evaluatedOnce)
+        for (NodeId nextNode : targetNodes)
         {
-            disconnect(node, &Node::computingFinished,
-                       this, &GraphExecutionModel::onNodeEvaluated);
+            autoEvaluateNode(nextNode);
         }
-    });
 
-    // find ports to evaluate
-    QVector<PortId> portsToEvaluate;
-    QSet<NodeId> targetNodes;
-
-    for (auto& port : qAsConst(entry->portsOut))
-    {
-        if (port.state != PortDataState::Valid)
-        {
-            portsToEvaluate.push_back(port.id);
-        }
-        
-        auto const& nodes = graph.findConnectedNodes(nodeId, port.id);
-
-        for (NodeId n : nodes) targetNodes.insert(n);
+        return false;
     }
 
-    // all ports need evaluating
-    if (portsToEvaluate.size() == entry->portsOut.size() ||
-        node->nodeFlags() & NodeFlag::RequiresEvaluation)
-    {
-        if (entry->portsOut.empty() && !(node->nodeFlags() & NodeFlag::RequiresEvaluation)) return false;
-
-        evaluatedOnce |= node->handleNodeEvaluation(*this, invalid<PortId>());
-        return evaluatedOnce;
-    }
-
-    // evaluate ports individually
-    for (auto& port : portsToEvaluate)
-    {
-        evaluatedOnce |= node->handleNodeEvaluation(*this, port);
-    }
-
-    cleanup.finalize();
-
-    if (!m_autoEvaluate) return evaluatedOnce;
-
-    // trigger all target nodes, that have not been triggered automatically
-    for (NodeId nextNode : targetNodes)
-    {
-        triggerNodeExecution(nextNode);
-    }
-
-    return evaluatedOnce;
+    return Impl::doTriggerNode(this, node);
 }
 
 bool
-GraphExecutionModel::triggerNode(NodeId nodeId, PortId portId)
+GraphExecutionModel::evaluateDependencies(NodeId nodeId)
 {
     auto& graph = this->graph();
 
@@ -549,7 +537,12 @@ GraphExecutionModel::triggerNode(NodeId nodeId, PortId portId)
         return true;
     }
 
-    if (node->nodeFlags() & NodeFlag::Evaluating) return true;
+    if (node->nodeFlags() & NodeFlag::Evaluating)
+    {
+        // nothing to do
+        gtDebug().verbose() << tr("Node %1 is already evaluating").arg(nodeId);
+        return true;
+    }
 
     // all possible inputs are set
     if (entry->areInputsValid(graph, nodeId))
@@ -559,14 +552,15 @@ GraphExecutionModel::triggerNode(NodeId nodeId, PortId portId)
             gtError() << makeError() << tr("(node is not ready for evaluation)");
             return false;
         }
+
         gtDebug().verbose() << tr("Node %1 ready for evaluation").arg(nodeId);
-        return triggerNodeExecution(nodeId);
+        return Impl::doTriggerNode(this, node);
     }
 
     gtDebug().verbose() << tr("Node %1 not ready for evaluation. Checking dependencies...").arg(nodeId);
 
     // node dependencies not fullfilled
-    auto const& dependencies = graph.findConnections(nodeId, PortType::In);
+    auto const& dependencies = graph.findConnectedNodes(nodeId, PortType::In);
 
     if (dependencies.empty())
     {
@@ -574,9 +568,10 @@ GraphExecutionModel::triggerNode(NodeId nodeId, PortId portId)
         return false;
     }
 
-    for (auto conId : dependencies)
+    for (NodeId dependency : dependencies)
     {
-        if (!triggerNode(conId.outNodeId, conId.outPort)) return false;
+        assert (dependency != nodeId);
+        if (!evaluateDependencies(dependency)) return false;
     }
 
     return true;
@@ -625,7 +620,7 @@ GraphExecutionModel::autoEvaluate(bool enable)
 
     for (NodeId nodeId : qAsConst(rootNodes))
     {
-        triggerNodeExecution(nodeId);
+        autoEvaluateNode(nodeId);
     }
 
     return true;
@@ -695,7 +690,7 @@ GraphExecutionModel::invalidatePort(NodeId nodeId, dm::PortEntry& port)
     switch (type)
     {
     case PortType::Out:
-        node->invalidate();
+        node->setNodeFlag(NodeFlag::RequiresEvaluation);
 
         for (auto& con : graph().findConnections(nodeId, PortType::Out))
         {
@@ -717,7 +712,7 @@ GraphExecutionModel::invalidateOutPorts(NodeId nodeId)
     Node* node = graph().findNode(nodeId);
     if (!node) return false;
 
-    node->invalidate();
+    node->setNodeFlag(NodeFlag::RequiresEvaluation);
 
     for (auto& port : entry->portsOut)
     {
@@ -847,11 +842,11 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, dm::NodeData data
 
         emit node->inputDataRecieved(portId);
 
-        if (m_autoEvaluate && !(node->nodeFlags() & NodeFlag::Evaluating) && !(option & Option::DoNotTrigger))
+        if (!(node->nodeFlags() & NodeFlag::Evaluating) && !(option & Option::DoNotTrigger))
         {
             gtDebug() << graph.objectName() + ':'
                       << tr("Triggering node %1 from input data").arg(nodeId);
-            triggerNodeExecution(nodeId);
+            autoEvaluateNode(nodeId);
         }
         break;
     }
@@ -916,7 +911,7 @@ GraphExecutionModel::setNodeData(NodeId nodeId,
 }
 
 void
-GraphExecutionModel::appendNode(Node* node)
+GraphExecutionModel::onNodeAppended(Node* node)
 {
     assert(node);
 
@@ -940,13 +935,12 @@ GraphExecutionModel::appendNode(Node* node)
 
     m_data.insert(node->id(), std::move(entry));
 
-    connect(node, &Node::triggerPortEvaluation,
-            this, [this, nodeId = node->id()](PortId portId){
+    connect(node, &Node::triggerNodeEvaluation,
+            this, [this, nodeId = node->id()](){
 
-        portId == invalid<PortId>() ? invalidateOutPorts(nodeId) :
-                                      invalidatePort(nodeId, portId);
+        invalidateOutPorts(nodeId);
 
-        if (m_autoEvaluate) triggerNodeExecution(nodeId);
+                autoEvaluateNode(nodeId);
     });
 }
 
@@ -1023,7 +1017,7 @@ GraphExecutionModel::onNodeEvaluated()
         gtDebug().verbose()
             << graph.objectName() + ':'
             << tr("Node %1 requires reevaluation!").arg(node->id());
-        triggerNodeExecution(node->id());
+        autoEvaluateNode(node->id());
         return;
     }
 
@@ -1050,7 +1044,7 @@ GraphExecutionModel::onNodeEvaluated()
 
         for (NodeId nextNode : targetNodes)
         {
-            triggerNodeExecution(nextNode);
+            autoEvaluateNode(nextNode);
         }
 
         if (evaluated()) emit graphEvaluated();
@@ -1070,7 +1064,7 @@ GraphExecutionModel::evaluateTargetNode(NodeId nodeId)
         return;
     }
 
-    if (!triggerNode(m_targetNodeId))
+    if (!evaluateDependencies(m_targetNodeId))
     {
         m_targetNodeId = invalid<NodeId>();
         emit graphStalled();

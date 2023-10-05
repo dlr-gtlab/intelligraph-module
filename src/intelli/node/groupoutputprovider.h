@@ -21,13 +21,6 @@ class GroupOutputProvider : public AbstractGroupProvider<PortType::Out>
 public:
 
     Q_INVOKABLE GroupOutputProvider();
-
-protected:
-
-    NodeDataPtr eval(PortId outId) override;
-
-    bool handleNodeEvaluation(GraphExecutionModel& model, PortId portId) override;
-
 };
 
 } // namespace intelli

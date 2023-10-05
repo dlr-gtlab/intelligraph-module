@@ -57,6 +57,19 @@ TEST(GraphExecutionModel, test)
 
     dag::debugGraph(graph.dag());
     dag::debugGraph(subgraph->dag());
+
+    GraphExecutionModel model(graph);
+
+//    model.evaluateGraph().wait();
+
+//    model.evaluateGraph().then([](int success){
+//        gtDebug() << "finished";
+//    });
+
+//    model.evaluateGraph().detach();
+
+//    auto future1 = model.evaluateNode(NodeId(1));
+//    auto future2 = model.evaluateNode(NodeId(1));
 }
 
 TEST(GraphExecutionModel, evaluate_until_node)

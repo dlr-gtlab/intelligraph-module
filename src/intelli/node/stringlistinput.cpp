@@ -32,7 +32,7 @@ StringListInputNode::StringListInputNode() :
 
     setNodeFlag(Resizable);
     
-    addOutPort(typeId<StringListData>());
+    m_out = addOutPort(typeId<StringListData>());
 
     registerWidgetFactory([this]() {
         auto base = makeWidget();
@@ -56,10 +56,10 @@ StringListInputNode::StringListInputNode() :
             this, &Node::triggerNodeEvaluation);
 }
 
-Node::NodeDataPtr
-StringListInputNode::eval(PortId outId)
+void
+StringListInputNode::eval()
 {
-    return std::make_shared<StringListData>(values());
+    setNodeData(m_out, std::make_shared<StringListData>(values()));
 }
 
 QStringList

@@ -158,17 +158,6 @@ enum class PortType
     NoType
 };
 
-/**
- * @brief Policy for handling node id collisions, when appending a node to a graph
- */
-enum class NodeIdPolicy
-{
-    /// Indictaes that the node id may be updated if it already exists
-    Update = 0,
-    /// Indicates that the node id should not be updated.
-    Keep = 1
-};
-
 namespace detail
 {
 

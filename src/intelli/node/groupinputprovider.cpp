@@ -7,9 +7,6 @@
  */
 
 #include "intelli/node/groupinputprovider.h"
-#include "intelli/graphexecmodel.h"
-
-#include "intelli/nodeexecutor.h"
 
 using namespace intelli;
 
@@ -17,16 +14,6 @@ GroupInputProvider::GroupInputProvider() :
     AbstractGroupProvider("Input Provider")
 {
     setPos({-250, 0});
-}
 
-Node::NodeDataPtr
-GroupInputProvider::eval(PortId outId)
-{
-    return nodeData(outId);
-}
-
-bool
-GroupInputProvider::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
-{
-    return blockingEvaluation(*this, model, portId);
+    setNodeEvalMode(NodeEvalMode::MainThread);
 }

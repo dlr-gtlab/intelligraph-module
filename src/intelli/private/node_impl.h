@@ -86,7 +86,9 @@ struct NodeImpl
 
     NodeDataInterface* dataInterface{};
     /// node flags
-    NodeFlags flags{RequiresEvaluation};
+    NodeFlags flags{NodeFlag::DefaultNodeFlags};
+    ///
+    NodeEvalMode evalMode{NodeEvalMode::Default};
     /// iterator for the next port id
     PortId nextPortId{0};
 

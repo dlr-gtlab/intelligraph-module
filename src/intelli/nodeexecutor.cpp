@@ -21,59 +21,22 @@
 using namespace intelli;
 
 bool
-intelli::blockingEvaluation(Node& node, GraphExecutionModel& model, PortId portId)
+intelli::blockingEvaluation(Node& node, GraphExecutionModel& model)
 {
-    auto const evaluatePort = [&node, &model](PortId port){
-        auto data = NodeExecutor::doEvaluate(node, port);
-
-        bool success = model.setNodeData(node.id(), port, std::move(data));
-
-        emit node.evaluated(port);
-
-        return success;
-    };
-
     // cleanup routine
     auto finally = gt::finally([&node](){
         emit node.computingFinished();
     });
 
-    if (portId != invalid<PortId>())
-    {
-        if (portId >= node.ports(PortType::Out).size()) return false;
-
-        emit node.computingStarted();
-
-        return evaluatePort(portId);
-    }
-
     emit node.computingStarted();
 
-    auto const& outPorts = node.ports(PortType::Out);
+    NodeExecutor::doEvaluate(node);
 
-    // trigger eval if no outport exists
-    if (outPorts.empty())
-    {
-        NodeExecutor::doEvaluate(node);
-
-        emit node.evaluated();
-
-        return true;
-    }
-
-    bool success = true;
-
-    // iterate over all output ports
-    for (auto& port : outPorts)
-    {
-        success &= evaluatePort(port.id());
-    }
-
-    return success;
+    return true;
 }
 
 bool
-intelli::detachedEvaluation(Node& node, GraphExecutionModel& model, PortId portId)
+intelli::detachedEvaluation(Node& node, GraphExecutionModel& model)
 {
     if (node.findChild<DetachedExecutor*>())
     {
@@ -84,26 +47,16 @@ intelli::detachedEvaluation(Node& node, GraphExecutionModel& model, PortId portI
     auto executor = new DetachedExecutor;
     executor->setParent(&node);
 
-    return executor->evaluateNode(node, model, portId);
+    return executor->evaluateNode(node, model);
 }
 
-NodeDataPtr
-NodeExecutor::doEvaluate(Node& node, PortId portId)
-{
-    gtDebug().verbose().nospace()
-        << "### Evaluating node: '" << node.objectName()
-        << "' at output port '" << portId << "'";
-
-    return node.eval(portId);
-}
-
-NodeDataPtr
+void
 NodeExecutor::doEvaluate(Node& node)
 {
     gtDebug().verbose().nospace()
         << "### Evaluating node: '" << node.objectName() << "'";
 
-    return node.eval(invalid<PortId>());
+    node.eval();
 }
 
 GraphExecutionModel*

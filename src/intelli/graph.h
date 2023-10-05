@@ -59,6 +59,17 @@ QVector<NodeId> cyclicNodes(Graph& graph);
  */
 inline bool isAcyclic(Graph& graph) { return cyclicNodes(graph).empty(); }
 
+/**
+ * @brief Policy for handling node id collisions, when appending a node to a graph
+ */
+enum class NodeIdPolicy
+{
+    /// Indictaes that the node id may be updated if it already exists
+    Update = 0,
+    /// Indicates that the node id should not be updated.
+    Keep = 1
+};
+
 /// directed acyclic graph
 namespace dag
 {
@@ -216,7 +227,7 @@ public:
      * @brief Finds all connected nodes. I.e. ancestors or descendants. A node
      * is not listed twice.
      * @param nodeId Node id
-     * @param type Connection filter (in/out going onyl or both)
+     * @param type Connection filter (in/out going only or both)
      * @return Connections
      */
     QVector<NodeId> findConnectedNodes(NodeId nodeId, PortType type = PortType::NoType) const;
@@ -231,12 +242,14 @@ public:
     QVector<NodeId> findConnectedNodes(NodeId nodeId, PortId portId) const;
 
     /**
-     * @brief Static method to that returns all target nodes (in going node)
-     * without duplicates
+     * @brief Static method to that returns all target nodes without duplicates
      * @param connections Connections
+     * @param type The type of connections, i.e. are these outgoing connections?
+     * Then the target nodes are the ones on the in going/recieving side and
+     * vice cersa.
      * @return List of all unique target nodes
      */
-    static QVector<NodeId> uniqueTargetNodes(QVector<ConnectionId> const& connections);
+    static QVector<NodeId> uniqueTargetNodes(QVector<ConnectionId> const& connections, PortType type);
 
     /**
      * @brief Returns a list of all sub graphes (aka group nodes)
@@ -365,7 +378,7 @@ signals:
 
 protected:
     
-    bool handleNodeEvaluation(GraphExecutionModel& model, PortId portId) override;
+    bool handleNodeEvaluation(GraphExecutionModel& model) override;
 
     void onObjectDataMerged() override;
 

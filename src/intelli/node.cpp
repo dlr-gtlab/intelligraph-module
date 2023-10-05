@@ -19,6 +19,21 @@
 
 using namespace intelli;
 
+namespace
+{
+
+template <typename N, typename P>
+inline auto* dataInterface(N* node, P& pimpl)
+{
+    NodeDataInterface* model = pimpl->dataInterface;
+
+    if (!model) model = NodeExecutor::accessExecModel(*const_cast<Node*>(node));
+
+    return model;
+}
+
+} // namespace
+
 std::unique_ptr<QWidget>
 intelli::makeWidget()
 {
@@ -64,7 +79,8 @@ Node::Node(QString const& modelName, GtObject* parent) :
             this, &Node::nodeStateChanged);
 
     connect(this, &Node::triggerNodeEvaluation, this, [this](){
-        emit triggerPortEvaluation(invalid<PortId>());
+        setNodeFlag(NodeFlag::RequiresEvaluation, true);
+        emit nodeStateChanged();
     });
 
     connect(this, &Node::computingStarted, this, [this](){
@@ -73,8 +89,10 @@ Node::Node(QString const& modelName, GtObject* parent) :
         setNodeFlag(NodeFlag::RequiresEvaluation, false);
         emit nodeStateChanged();
     }, Qt::DirectConnection);
+
     connect(this, &Node::computingFinished, this, [this](){
         setNodeFlag(NodeFlag::Evaluating, false);
+        emit evaluated();
         emit nodeStateChanged();
     }, Qt::DirectConnection);
 }
@@ -95,12 +113,6 @@ bool
 Node::isActive() const
 {
     return pimpl->isActive;
-}
-
-void
-Node::invalidate()
-{
-    setNodeFlag(RequiresEvaluation);
 }
 
 void
@@ -166,6 +178,12 @@ void
 Node::setNodeFlag(NodeFlag flag, bool enable)
 {
     enable ? pimpl->flags |= flag : pimpl->flags &= ~flag;
+}
+
+void
+Node::setNodeEvalMode(NodeEvalMode mode)
+{
+    pimpl->evalMode = mode;
 }
 
 NodeFlags
@@ -284,15 +302,29 @@ Node::removePort(PortId id)
 Node::NodeDataPtr
 Node::nodeData(PortId id) const
 {
-    auto* model = nodeDataInterface();
+    auto* model = dataInterface(this, pimpl);
     if (!model)
     {
-        gtWarning() << tr("Evaluation model not found!")
+        gtWarning() << tr("Failed to access node data, evaluation model not found!")
                     << gt::brackets(objectName());
         return {};
     }
 
     return model->nodeData(this->id(), id);
+}
+
+bool
+Node::setNodeData(PortId id, NodeDataPtr data)
+{
+    auto* model = dataInterface(this, pimpl);
+    if (!model)
+    {
+        gtWarning() << tr("Failed to set node data, evaluation model not found!")
+                    << gt::brackets(objectName());
+        return false;
+    }
+
+    return model->setNodeData(this->id(), id, std::move(data));
 }
 
 Node::PortData*
@@ -348,31 +380,29 @@ Node::portId(PortType type, PortIndex idx) const noexcept(false)
     return ports.at(idx).m_id;
 }
 
-Node::NodeDataPtr
-Node::eval(PortId)
+void
+Node::eval()
 {
     // nothing to do here
-    return {};
-}
-
-NodeDataInterface*
-Node::nodeDataInterface()
-{
-    if (pimpl->dataInterface) return pimpl->dataInterface;
-
-    return NodeExecutor::accessExecModel(*this);
-}
-
-NodeDataInterface const*
-Node::nodeDataInterface() const
-{
-    return const_cast<Node*>(this)->nodeDataInterface();
 }
 
 bool
-Node::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
+Node::handleNodeEvaluation(GraphExecutionModel& model)
 {
-    return detachedEvaluation(*this, model, portId);
+    NodeEvalMode evalMode{};
+
+    switch (pimpl->evalMode)
+    {
+    case NodeEvalMode::Exclusive:
+        return blockingEvaluation(*this, model);
+    case NodeEvalMode::Detached:
+        return detachedEvaluation(*this, model);
+    case NodeEvalMode::MainThread:
+        return blockingEvaluation(*this, model);
+    }
+
+    gtError() << tr("Unkonw eval mode! (%1)").arg((int)pimpl->evalMode);
+    return false;
 }
 
 void

@@ -57,11 +57,9 @@ NumberSourceNode::NumberSourceNode() :
     });
 }
 
-Node::NodeDataPtr
-NumberSourceNode::eval(PortId outId)
+void
+NumberSourceNode::eval()
 {
-    if (m_out != outId) return {};
-
-    return std::make_shared<DoubleData>(m_value);
+    setNodeData(m_out, std::make_shared<DoubleData>(m_value));
 }
 

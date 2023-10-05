@@ -16,16 +16,6 @@ GroupOutputProvider::GroupOutputProvider() :
     AbstractGroupProvider("Output Provider")
 {
     setPos({250, 0});
-}
 
-Node::NodeDataPtr
-GroupOutputProvider::eval(PortId outId)
-{
-    return {};
-}
-
-bool
-GroupOutputProvider::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
-{
-    return blockingEvaluation(*this, model, portId);
+    setNodeEvalMode(NodeEvalMode::MainThread);
 }

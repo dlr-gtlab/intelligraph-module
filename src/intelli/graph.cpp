@@ -417,11 +417,12 @@ Graph::findConnections(NodeId nodeId, PortId portId) const
 }
 
 QVector<NodeId>
-Graph::uniqueTargetNodes(QVector<ConnectionId> const& connections)
+Graph::uniqueTargetNodes(QVector<ConnectionId> const& connections, PortType type)
 {
     QVector<NodeId> nodes;
     for (ConnectionId conId : connections)
     {
+        if (type == PortType::In) conId = conId.reversed();
         if (!nodes.contains(conId.inNodeId)) nodes.push_back(conId.inNodeId);
     }
     return nodes;
@@ -431,14 +432,14 @@ QVector<NodeId>
 Graph::findConnectedNodes(NodeId nodeId, PortType type) const
 {
     auto const& connections = findConnections(nodeId, type);
-    return uniqueTargetNodes(connections);
+    return uniqueTargetNodes(connections, type);
 }
 
 QVector<NodeId>
 Graph::findConnectedNodes(NodeId nodeId, PortId portId) const
 {
     auto const& connections = findConnections(nodeId, portId);
-    return uniqueTargetNodes(connections);
+    return uniqueTargetNodes(connections, PortType::Out);
 }
 
 QList<Graph*>
@@ -733,19 +734,14 @@ Graph::deleteConnection(ConnectionId connectionId)
 }
 
 bool
-Graph::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
+Graph::handleNodeEvaluation(GraphExecutionModel& model)
 {
     auto* input = inputProvider();
     if (!input) return false;
 
     auto* submodel = makeDummyExecutionModel();
 
-    if (portId != invalid<PortId>()) {
-        gtDebug().verbose().nospace()
-            << "### Evaluating node: '" << objectName()
-            << "' at output port '" << portId << "'";
-    } else
-        gtDebug().verbose().nospace()
+    gtDebug().verbose().nospace()
             << "### Evaluating node: '" << objectName() << "'";
 
     submodel->setNodeData(input->id(), PortType::Out, model.nodeData(id(), PortType::In));

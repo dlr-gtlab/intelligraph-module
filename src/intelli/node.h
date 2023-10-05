@@ -32,6 +32,24 @@ enum NodeFlag
     RequiresEvaluation = 1 << 3,
     /// Indicates that the node is evaluating (will be set automatically)
     Evaluating = 1 << 4,
+
+    /// default node flags
+    DefaultNodeFlags = RequiresEvaluation
+};
+
+enum class NodeEvalMode
+{
+    /// Indicates that the node will be evaluated non blockingly in a separate
+    /// thread
+    Detached = 0,
+    /// Indicates the the node should be evaluated exclusively to other nodes in
+    /// a separate thread
+    Exclusive,
+    /// Indicates that the node should be evaluated in the main thread, thus
+    /// blocking the GUI. Should only be used if node evaluates instantly.
+    MainThread,
+    /// Default behaviour
+    Default = Detached,
 };
 
 using NodeFlags  = int;
@@ -135,8 +153,6 @@ public:
      * @return is active
      */
     bool isActive() const;
-
-    void invalidate();
 
     /**
      * @brief Sets the node id. handle with care, as this may result in
@@ -273,25 +289,16 @@ public:
 signals:
 
     /**
-     * @brief Triggers the evaluation of the output port speicified. It is not
-     * guranteed to be evaluated, as the underling graph execution model must
-     * be active
-     * @param portId Port id to evaluate. If port id is invalid, the whole
-     * node (i.e. all ports) should be evaluated
-     */
-    void triggerPortEvaluation(PortId portId);
-
-    /**
-     * @brief Helper signal to trigger the evaluation of the whole node.
+     * @brief Triggers the evaluation of node. It is not guranteed to be
+     * evaluated, as the underling graph execution model must be active
      */
     void triggerNodeEvaluation();
 
     /**
      * @brief Emitted if the node has evaluated and the output data has changed.
      * Will be called automatically and should not be triggered by the "user".
-     * @param portId Output port that was evaluated
      */
-    void evaluated(PortId portId = invalid<PortId>());
+    void evaluated();
 
     /**
      * @brief Emitted if new input data was recieved, just before evaluating.
@@ -390,36 +397,23 @@ protected:
     Node(QString const& modelName, GtObject* parent = nullptr);
 
     /**
-     * @brief Main evaluation method to override. Will be called for each output
-     * port. If no output ports are registered, but input ports are, an invalid
-     * port id will be passed and the returned data will be discarded. Will not
+     * @brief Main evaluation method to override. Will be called once, the
+     * "user" has to calculate and set the data for all output ports. Will not
      * be called if any required input port has no valid data associated
      * (see PortPolicy)
-     * @param outId Output port id to evaluate the data for
-     * @return Node data on the output port
      */
-    virtual NodeDataPtr eval(PortId outId);
+    virtual void eval();
 
     /**
-     * @brief Method to retrieve the node data interface object, which can be
-     * used to access and modify the data of this node.
-     * @return node data interface (may be null)
-     */
-    NodeDataInterface* nodeDataInterface();
-    NodeDataInterface const* nodeDataInterface() const;
-
-    /**
-     * @brief Handles the evaluation of the node (port). It is not intended to
+     * @brief Handles the evaluation of the node. This method is not intended to
      * actually do the evaluation (use `eval` instead), but to handle/manage the
      * execution of the node. Should only be overriden in rare cases.
      * Note: When overriding do not forget to emit the `computingStarted` and
      * `computingFinished` respectively.
-     * @param portId Port id to evaluate. If port id is invalid, the whole
-     * node (i.e. all ports) should be evaluated
      * @return Returns true if the evaluation was triggered sucessfully.
      * (node may be evaluated non-blocking)
      */
-    virtual bool handleNodeEvaluation(GraphExecutionModel& model, PortId portId);
+    virtual bool handleNodeEvaluation(GraphExecutionModel& model);
 
     /**
      * @brief Should be called within the constructor. Used to register
@@ -436,6 +430,12 @@ protected:
      * @param enable Whether to enable or disable the flag
      */
     void setNodeFlag(NodeFlag flag, bool enable = true);
+
+    /**
+     * @brief Sets the node evaluation mode
+     * @param mode Node eval mode
+     */
+    void setNodeEvalMode(NodeEvalMode mode);
 
     /**
      * @brief Appends the output port
@@ -494,6 +494,15 @@ protected:
      * @return Port data (may be null)
      */
     NodeDataPtr nodeData(PortId id) const;
+
+    /**
+     * @brief Sets the node data at the specified port. Should be used
+     * inside the eval method.
+     * @param id Port to set the data of
+     * @param data The new data
+     * @return Success
+     */
+    bool setNodeData(PortId id, NodeDataPtr data);
 
     /**
      * @brief Overload that casts the node data of the specified port to the

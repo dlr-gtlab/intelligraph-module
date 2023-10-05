@@ -91,14 +91,22 @@ public:
     GraphExecutionModel(Graph& graph, Mode mode = ActiveModel);
     ~GraphExecutionModel();
 
-    void makeActive();
-    Mode mode() const;
-
     Graph& graph();
     Graph const& graph() const;
 
+    void makeActive();
+    Mode mode() const;
+
     void reset();
 
+    /**
+     * @brief Will tell the model that new nodes and connections are about to be
+     * inserted and pause the auto evaluation to avoid redundand evaluation of
+     * nodes. Should be called when bulk inserting multiple objects.
+     * Once the helper object is destroyed the model resumes evaluation.
+     * @return Scoped object which tells the model to begin reevaluating the
+     * graph.
+     */
     GT_NO_DISCARD Insertion beginInsertion();
 
     bool evaluated();
@@ -108,6 +116,21 @@ public:
 
     bool autoEvaluate(bool enable = true);
     bool isAutoEvaluating() const;
+
+    struct Future
+    {
+        GraphExecutionModel* model;
+
+        bool wait(std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
+
+        bool detach();
+
+        bool then(std::function<void(int success)>);
+    };
+
+
+    GT_NO_DISCARD
+    Future evaluateGraph();
 
     bool evaluateNode(NodeId nodeId, ExecMode mode = ExecMode::Blocking);
 
@@ -159,15 +182,15 @@ private:
 
     void invalidatePort(NodeId nodeId, dm::PortEntry& port);
 
-    bool triggerNodeExecution(NodeId nodeId);
+    bool autoEvaluateNode(NodeId nodeId);
 
-    bool triggerNode(NodeId nodeId, PortId portId = invalid<PortId>());
+    bool evaluateDependencies(NodeId nodeId);
 
     void evaluateTargetNode(NodeId nodeId = invalid<NodeId>());
 
 private slots:
 
-    void appendNode(Node* node);
+    void onNodeAppended(Node* node);
 
     void onNodeDeleted(NodeId nodeId);
 

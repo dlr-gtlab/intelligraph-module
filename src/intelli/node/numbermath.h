@@ -37,7 +37,7 @@ public:
 
 protected:
 
-    NodeDataPtr eval(PortId outId) override;
+    void eval() override;
 
 private:
 
