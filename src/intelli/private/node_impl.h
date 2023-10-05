@@ -37,7 +37,7 @@ struct NodeImpl
     using PortData      = Node::PortData;
     using WidgetFactory = Node::WidgetFactory;
 
-    NodeImpl(QString const& name) : modelName(name) {}
+    NodeImpl(QString const& name) : modelName(name) { }
 
     /// node id
     UIntProperty id{

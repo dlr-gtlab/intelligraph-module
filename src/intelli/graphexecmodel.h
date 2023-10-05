@@ -13,12 +13,21 @@
 #include <intelli/graph.h>
 #include <intelli/nodedatainterface.h>
 
+#include <gt_finally.h>
+#include <gt_platform.h>
+
 namespace intelli
 {
 
 class Connection;
 class Graph;
 class Node;
+
+enum ExecMode
+{
+    Blocking,
+    Async
+};
 
 /**
  * @brief The DummyDataModel class.
@@ -41,7 +50,7 @@ private:
     dm::NodeData nodeData(NodeId nodeId, PortId portId) const override;
     bool setNodeData(NodeId nodeId, PortId portId, dm::NodeData data) override;
 
-    Node* m_node;
+    Node* m_node = nullptr;
     dm::Entry m_data;
 };
 
@@ -68,16 +77,29 @@ public:
         ActiveModel = 2
     };
 
-    GraphExecutionModel(Graph& graph, Mode mode = ActiveModel);
+    struct EndInsertionFunctor
+    {
+        inline void operator()() const noexcept
+        {
+            if(model) model->endInsertion();
+        }
+        GraphExecutionModel* model;
+    };
 
+    using Insertion = gt::Finally<EndInsertionFunctor>;
+
+    GraphExecutionModel(Graph& graph, Mode mode = ActiveModel);
+    ~GraphExecutionModel();
+
+    void makeActive();
     Mode mode() const;
 
     Graph& graph();
     Graph const& graph() const;
 
-    void beginReset();
-    void endReset();
     void reset();
+
+    GT_NO_DISCARD Insertion beginInsertion();
 
     bool evaluated();
 
@@ -87,7 +109,7 @@ public:
     bool autoEvaluate(bool enable = true);
     bool isAutoEvaluating() const;
 
-    bool evaluateNode(NodeId nodeId);
+    bool evaluateNode(NodeId nodeId, ExecMode mode = ExecMode::Blocking);
 
     bool invalidateOutPorts(NodeId nodeId);
     bool invalidatePort(NodeId nodeId, PortId portId);
@@ -126,6 +148,14 @@ private:
     NodeId m_targetNodeId = invalid<NodeId>();
 
     bool m_autoEvaluate = false;
+
+    bool m_isInserting = false;
+
+    void beginReset();
+
+    void endReset();
+
+    void endInsertion();
 
     void invalidatePort(NodeId nodeId, dm::PortEntry& port);
 

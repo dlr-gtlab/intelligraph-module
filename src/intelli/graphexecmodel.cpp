@@ -221,7 +221,7 @@ findPortDataEntry(GraphExecutionModel const& model, NodeId nodeId, PortId portId
 GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
     m_mode(mode)
 {
-    if (graph.mainExecutionModel())
+    if (graph.executionModel())
     {
         gtError() << tr("Graph '%1' already has an execution model!")
                          .arg(graph.objectName());
@@ -250,6 +250,17 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
     connect(&graph, &Graph::connectionDeleted, this, &GraphExecutionModel::onConnectionDeleted);
 }
 
+GraphExecutionModel::~GraphExecutionModel()
+{
+    gtTrace().verbose() << __FUNCTION__;
+}
+
+void
+GraphExecutionModel::makeActive()
+{
+    m_mode = ActiveModel;
+}
+
 GraphExecutionModel::Mode
 GraphExecutionModel::mode() const
 {
@@ -269,6 +280,22 @@ GraphExecutionModel::graph() const
     return const_cast<GraphExecutionModel*>(this)->graph();
 }
 
+GraphExecutionModel::Insertion
+GraphExecutionModel::beginInsertion()
+{
+    m_isInserting = true;
+    return gt::finally(EndInsertionFunctor{this});
+}
+
+void
+GraphExecutionModel::endInsertion()
+{
+    m_isInserting = false;
+
+    // restart auto evaluation
+    autoEvaluate(m_autoEvaluate);
+}
+
 void
 GraphExecutionModel::reset()
 {
@@ -279,6 +306,9 @@ GraphExecutionModel::reset()
 void
 GraphExecutionModel::beginReset()
 {
+    m_autoEvaluate = false;
+    m_targetNodeId = NodeId();
+
     auto& graph = this->graph();
     auto iter = m_data.keyBegin();
     auto end  = m_data.keyEnd();
@@ -420,7 +450,6 @@ GraphExecutionModel::triggerNodeExecution(NodeId nodeId)
     if (node->nodeFlags() & NodeFlag::Evaluating)
     {
         gtDebug() << makeError() << tr("(node %1 already evaluating)").arg(nodeId);
-//        invalidateOutPorts(nodeId);
         return false;
     }
 
@@ -515,9 +544,8 @@ GraphExecutionModel::triggerNode(NodeId nodeId, PortId portId)
 
     if (entry->isEvaluated(*node))
     {
-        gtDebug().verbose() << tr("Node %1 was already evaluated").arg(nodeId);
         // nothing to do
-        evaluateTargetNode(nodeId);
+        gtDebug().verbose() << tr("Node %1 was already evaluated").arg(nodeId);
         return true;
     }
 
@@ -538,15 +566,15 @@ GraphExecutionModel::triggerNode(NodeId nodeId, PortId portId)
     gtDebug().verbose() << tr("Node %1 not ready for evaluation. Checking dependencies...").arg(nodeId);
 
     // node dependencies not fullfilled
-    auto const& connections = graph.findConnections(nodeId, PortType::In);
+    auto const& dependencies = graph.findConnections(nodeId, PortType::In);
 
-    if (connections.empty())
+    if (dependencies.empty())
     {
         gtError() << makeError() << tr("(node has no input connections but is not ready for evaluation)");
         return false;
     }
 
-    for (auto conId : connections)
+    for (auto conId : dependencies)
     {
         if (!triggerNode(conId.outNodeId, conId.outPort)) return false;
     }
@@ -610,7 +638,7 @@ GraphExecutionModel::isAutoEvaluating() const
 }
 
 bool
-GraphExecutionModel::evaluateNode(NodeId nodeId)
+GraphExecutionModel::evaluateNode(NodeId nodeId, ExecMode mode)
 {
     if (nodeId == invalid<NodeId>()) return false;
 
@@ -660,7 +688,7 @@ GraphExecutionModel::invalidatePort(NodeId nodeId, dm::PortEntry& port)
     port.state = PortDataState::Outdated;
 
     gtDebug() << graph().objectName() + ':'
-              << "Invalidating node " << nodeId << "port id" << port.id;
+              << "Invalidating node" << nodeId << "port id" << port.id;
 
     PortType type = node->portType(port.id);
 
@@ -955,6 +983,8 @@ GraphExecutionModel::onConnectedionAppended(Connection* con)
         return;
     }
 
+    if (m_autoEvaluate && m_isInserting) return;
+
     int option = Option::NoOption;
     if (node->nodeFlags() & NodeFlag::Evaluating) option |= Option::DoNotTrigger;
     
@@ -1021,18 +1051,6 @@ GraphExecutionModel::onNodeEvaluated()
         for (NodeId nextNode : targetNodes)
         {
             triggerNodeExecution(nextNode);
-        }
-
-        if (0)
-        {
-            std::for_each(m_data.keyValueBegin(), m_data.keyValueEnd(),
-                        [&graph](std::pair<NodeId, dm::Entry&> const& p){
-                                       auto* node = graph.findNode(p.first);
-                                       if (!node) return false;
-                                       gtDebug() << graph.objectName() + ':' << "HERE" << node->id() << !(node->nodeFlags() & Evaluating) << !(node->nodeFlags() & RequiresEvaluation) << p.second.areInputsValid(graph, p.first);
-                                       return !(node->nodeFlags() & (NodeFlag::Evaluating | NodeFlag::RequiresEvaluation))
-                                              && p.second.areInputsValid(graph, p.first);
-                           });
         }
 
         if (evaluated()) emit graphEvaluated();

@@ -228,13 +228,13 @@ NodeUI::executeNode(GtObject* obj)
         node->setActive(old);
     });
     Q_UNUSED(cleanup);
-
-    auto* model = graph->makeMainExecutionModel();
+    
+    auto* model = graph->makeExecutionModel();
 
     node->setActive();
 //    emit node->triggerNodeEvaluation();
 
-    model->evaluateNode(node->id());
+    model->evaluateNode(node->id(), ExecMode::Async);
 }
 
 void

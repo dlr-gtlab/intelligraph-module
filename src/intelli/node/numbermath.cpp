@@ -84,7 +84,7 @@ NumberMathNode::eval(PortId outId)
     case MathOperation::Divide:
         if (b == 0.0)
         {
-            gtWarning().nospace()
+            gtWarning().verbose().nospace()
                 << __FUNCTION__ << ": " << tr("Cannot divide by 0!");
             return {};
         }

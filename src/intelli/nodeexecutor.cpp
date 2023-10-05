@@ -91,7 +91,7 @@ NodeDataPtr
 NodeExecutor::doEvaluate(Node& node, PortId portId)
 {
     gtDebug().verbose().nospace()
-        << "### Evaluating node:  '" << node.objectName()
+        << "### Evaluating node: '" << node.objectName()
         << "' at output port '" << portId << "'";
 
     return node.eval(portId);
@@ -101,7 +101,7 @@ NodeDataPtr
 NodeExecutor::doEvaluate(Node& node)
 {
     gtDebug().verbose().nospace()
-        << "### Evaluating node:  '" << node.objectName() << "'";
+        << "### Evaluating node: '" << node.objectName() << "'";
 
     return node.eval(invalid<PortId>());
 }
@@ -110,7 +110,7 @@ GraphExecutionModel*
 NodeExecutor::accessExecModel(Node& node)
 {
     auto*  parent = qobject_cast<Graph*>(node.parent());
-    return parent ? parent->mainExecutionModel() : nullptr;
+    return parent ? parent->executionModel() : nullptr;
 }
 
 void

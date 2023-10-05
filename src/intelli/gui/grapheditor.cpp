@@ -36,8 +36,8 @@ GraphEditor::GraphEditor() :
 void
 GraphEditor::setData(GtObject* obj)
 {
-    auto data  = qobject_cast<Graph*>(obj);
-    if (!data)
+    auto graph  = qobject_cast<Graph*>(obj);
+    if (!graph)
     {
         gtError().verbose()
             << tr("Not an intelli graph!") << obj;
@@ -52,13 +52,13 @@ GraphEditor::setData(GtObject* obj)
     }
 
     // close window if data was deleted
-    connect(data, &QObject::destroyed, this, &QObject::deleteLater);
+    connect(graph, &QObject::destroyed, this, &QObject::deleteLater);
 
     // close graph model if its no longer used
-    m_scene = make_volatile<GraphScene>(*data);
+    m_scene = make_volatile<GraphScene>(*graph);
 
     m_view->setScene(*m_scene);
     m_view->centerScene();
 
-    setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + data->caption());
+    setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + graph->caption());
 }

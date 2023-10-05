@@ -307,8 +307,8 @@ signals:
     void computingStarted();
     
     /**
-     * @brief Emitted once the node evaluation has finished. Will update the node
-     * flag ``Evaluating` automatically.
+     * @brief Emitted once the node evaluation has finished. Will update the
+     * node flag `Evaluating` automatically.
      */
     void computingFinished();
 
@@ -323,6 +323,12 @@ signals:
      * representation in case a port has changed for example.
      */
     void nodeChanged();
+
+    /**
+     * @brief Emitted just before the node is deleted similar to
+     * QObject::destroyed with the difference that one may still access members
+     */
+    void nodeAboutToBeDeleted(NodeId nodeId);
 
     /**
      * @brief Emitted if port specific data has changed (e.g. port cpation).
@@ -361,17 +367,15 @@ signals:
 
     /**
      * @brief Will be emitted once a port was connected
-     * @param type Port type (i.e. Input or Output port)
-     * @param idx Port index that was connected
+     * @param id Port that was connected
      */
-    void portConnected(PortType type, PortIndex idx);
+    void portConnected(PortId id);
 
     /**
      * @brief Will be emitted once a port was disconnected
-     * @param type Port type (i.e. Input or Output port)
-     * @param idx Port index that was disconnected
+     * @param id Port that was disconnected
      */
-    void portDisconnected(PortType type, PortIndex idx);
+    void portDisconnected(PortId id);
 
 protected:
 

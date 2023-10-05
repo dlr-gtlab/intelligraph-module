@@ -79,7 +79,10 @@ Node::Node(QString const& modelName, GtObject* parent) :
     }, Qt::DirectConnection);
 }
 
-Node::~Node() = default;
+Node::~Node()
+{
+    emit nodeAboutToBeDeleted(id());
+}
 
 void
 Node::setActive(bool active)

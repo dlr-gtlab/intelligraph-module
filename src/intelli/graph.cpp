@@ -26,8 +26,11 @@
 
 using namespace intelli;
 
+struct Graph::Impl
+{
+
 /// checks and updates the node id of the node depending of the policy specified
-bool
+static bool
 updateNodeId(Graph const& graph, Node& node, NodeIdPolicy policy)
 {
     auto const nodes = graph.nodes();
@@ -50,6 +53,141 @@ updateNodeId(Graph const& graph, Node& node, NodeIdPolicy policy)
     }
     return true;
 }
+
+/// Functor to handle port deletion
+struct PortDeleted
+{
+    PortDeleted(Graph* g, Node* n) : graph(g), node(n)
+    {
+        assert(graph);
+        assert(node);
+    }
+
+    void operator()(PortType type, PortIndex idx)
+    {
+        auto port = node->portId(type, idx);
+        if (port == invalid<PortId>())
+        {
+            gtWarning() << tr("Failed to update connections of deleted port %1 with %2 of node %3!")
+                               .arg(port).arg(toString(type)).arg(node->id());
+            return;
+        }
+
+        auto const& connections = graph->findConnections(node->id(), port);
+        for (auto conId : connections)
+        {
+            graph->deleteConnection(conId);
+        }
+    }
+
+private:
+
+    Graph* graph = nullptr;
+    Node* node = nullptr;
+};
+
+/// Functor to handle node deletion
+struct NodeDeleted
+{
+    NodeDeleted(Graph* g) : graph(g)
+    {
+        assert(graph);
+    }
+
+    void operator()(NodeId nodeId)
+    {
+        gtInfo().verbose() << tr("Deleting node %1 from map").arg(nodeId);
+
+        auto node = graph->m_nodes.find(nodeId);
+        if (node == graph->m_nodes.end())
+        {
+            gtWarning() << tr("Failed to delete node") << nodeId
+                        << tr("(node was not found!)");
+            return;
+        }
+
+        auto const& connections = graph->findConnections(nodeId);
+        for (auto conId : connections)
+        {
+            graph->deleteConnection(conId);
+        }
+
+        graph->m_nodes.erase(node);
+
+        node = graph->m_nodes.find(nodeId);
+        if (node != graph->m_nodes.end())
+        {
+            gtError() << tr("something went wrong?") << nodeId;
+        }
+
+        emit graph->nodeDeleted(nodeId);
+    }
+
+private:
+
+    Graph* graph = nullptr;
+};
+
+/// Functor to handle connection deletion
+struct ConnectionDeleted
+{
+    ConnectionDeleted(Graph* g, ConnectionId id) : graph(g), conId(id)
+    {
+        assert(graph);
+        assert(conId.isValid());
+    }
+
+    void operator()()
+    {
+        auto ancestorConnection   = dag::ConnectionDetail::fromConnection(conId.reversed());
+        auto descendantConnection = dag::ConnectionDetail::fromConnection(conId);
+
+        auto* targetNode = graph->findNodeEntry(conId.inNodeId);
+        auto* sourceNode = graph->findNodeEntry(conId.outNodeId);
+
+        if (!targetNode || !sourceNode)
+        {
+            gtWarning() << tr("Failed to delete connection %1").arg(toString(conId))
+                        << tr("(in-node or out-node was not found!)");
+            return;
+        }
+
+        assert(targetNode->node &&
+               targetNode->node->id() == conId.inNodeId &&
+               targetNode->node->parent()  == graph);
+        assert(sourceNode->node &&
+               sourceNode->node->id() == conId.outNodeId &&
+               sourceNode->node->parent() == graph);
+
+        auto inIdx  = targetNode->ancestors.indexOf(ancestorConnection);
+        auto outIdx = sourceNode->descendants.indexOf(descendantConnection);
+
+        if (inIdx < 0 || outIdx < 0)
+        {
+            gtWarning() << tr("Failed to delete connection %1").arg(toString(conId))
+                        << tr("(in-connection and out-connection was not found!)")
+                        << "in:" << (inIdx >= 0) << "and out:" << (outIdx >= 0);
+            return;
+        }
+
+        gtInfo().verbose() << tr("Deleting connection %1 from map").arg(toString(conId));
+
+        emit targetNode->node->portDisconnected(conId.inPort);
+        emit sourceNode->node->portDisconnected(conId.outPort);
+
+        targetNode->ancestors.remove(inIdx);
+        sourceNode->descendants.remove(outIdx);
+
+        emit graph->connectionDeleted(conId);
+    }
+
+private:
+
+    Graph* graph = nullptr;
+    ConnectionId conId;
+};
+
+}; // struct Impl
 
 Graph::Graph() :
     Node("Graph")
@@ -78,6 +216,7 @@ Graph::~Graph() = default;
 QList<Node*>
 Graph::nodes()
 {
+
     return findDirectChildren<Node*>();
 }
 
@@ -156,23 +295,32 @@ Graph::outputProvider() const
 }
 
 GraphExecutionModel*
-Graph::makeMainExecutionModel()
+Graph::makeExecutionModel()
 {
-    if (auto* model = mainExecutionModel()) return model;
+    auto* model = makeDummyExecutionModel();
+    model->makeActive();
 
-    return new GraphExecutionModel(*this);
+    return model;
 }
 
 GraphExecutionModel*
-Graph::mainExecutionModel()
+Graph::makeDummyExecutionModel()
+{
+    if (auto* model = executionModel()) return model;
+
+    return new GraphExecutionModel(*this, GraphExecutionModel::DummyModel);
+}
+
+GraphExecutionModel*
+Graph::executionModel()
 {
     return findDirectChild<GraphExecutionModel*>();
 }
 
 GraphExecutionModel const*
-Graph::mainExecutionModel() const
+Graph::executionModel() const
 {
-    return const_cast<Graph*>(this)->mainExecutionModel();
+    return const_cast<Graph*>(this)->executionModel();
 }
 
 Node*
@@ -254,6 +402,8 @@ Graph::findConnections(NodeId nodeId, PortId portId) const
         {
             connections.append(con.toConnection(nodeId).reversed());
         }
+        // there should only exist one ingoing connection
+        assert(connections.size() <= 1);
     }
     for (auto& con : entry->descendants)
     {
@@ -375,25 +525,31 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
 Node*
 Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 {
-    auto makeError = [n = node.get()](){
-        return  tr("Failed to append node '%1' to intelli graph!")
-                .arg(n->objectName());
-    };
-
     if (!node) return {};
 
-    if (!updateNodeId(*this, *node, policy))
+    auto makeError = [n = node.get()](){
+        return  tr("Failed to append node '%1' to intelli graph!")
+            .arg(n->objectName());
+    };
+
+    // check if node exists and update node id if necessary
+    if (!Impl::updateNodeId(*this, *node, policy))
     {
         gtWarning() << makeError()
                     << tr("(node id '%2' already exists)").arg(node->id());
         return {};
     }
 
+    NodeId nodeId = node->id();
+
+    // append node to hierarchy
     if (!appendChild(node.get()))
     {
         gtWarning() << makeError();
         return {};
     }
+
+    node->updateObjectName();
 
     // init input output providers of sub graph
     if (auto* graph = qobject_cast<Graph*>(node.get()))
@@ -401,53 +557,18 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
         graph->initInputOutputProviders();
     }
 
-    node->updateObjectName();
-
-    NodeId nodeId = node->id();
-
-    gtInfo().verbose() << tr("Appending node to map: %1 (id: %2)")
+    // append node to model
+    gtDebug().verbose() << tr("Appending node to map: %1 (id: %2)")
                               .arg(node->objectName()).arg(nodeId);
 
     m_nodes.insert(nodeId, dag::Entry{ node.get() });
 
-    connect(node.get(), &Node::portAboutToBeDeleted, this,
-            [this, node = node.get()](PortType type, PortIndex idx){
-        auto port = node->portId(type, idx);
-        if (port == invalid<PortId>())
-        {
-            gtWarning() << tr("Failed to update connections of deleted port %1 with %2 of node %3!")
-                               .arg(port).arg(toString(type)).arg(node->id());
-            return;
-        }
+    // setup connections
+    connect(node.get(), &Node::portAboutToBeDeleted,
+            this, Impl::PortDeleted(this, node.get()));
 
-        auto const& connections = findConnections(node->id(), port);
-        for (auto conId : connections)
-        {
-            deleteConnection(conId);
-        }
-    });
-
-    connect(node.get(), &QObject::destroyed, this, [this, nodeId](){
-        gtInfo().verbose() << tr("Deleting node %1 from map").arg(nodeId);
-
-        auto node = m_nodes.find(nodeId);
-        if (node == m_nodes.end())
-        {
-            gtWarning() << tr("Failed to delete node") << nodeId
-                        << tr("(node was not found!)");
-            return;
-        }
-
-        auto const& connections = findConnections(nodeId);
-        for (auto conId : connections)
-        {
-            deleteConnection(conId);
-        }
-
-        m_nodes.erase(node);
-
-        emit nodeDeleted(nodeId);
-    });
+    connect(node.get(), &Node::nodeAboutToBeDeleted,
+            this, Impl::NodeDeleted(this));
 
     // update graph model
     emit nodeAppended(node.get());
@@ -458,16 +579,17 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 Connection*
 Graph::appendConnection(std::unique_ptr<Connection> connection)
 {
-    auto makeError = [c = connection.get()](){
-        return tr("Failed to append connection '%1' to intelli graph!")
-                   .arg(toString(c->connectionId()));
-    };
 
-    // connection may already exist
     if (!connection) return {};
 
     auto conId = connection->connectionId();
 
+    auto makeError = [conId](){
+        return tr("Failed to append connection '%1' to intelli graph!")
+            .arg(toString(conId));
+    };
+
+    // connection may already exist
     if (findConnection(conId))
     {
         gtWarning() << makeError()
@@ -475,6 +597,7 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
         return {};
     }
 
+    // append connection to hierarchy
     if (!connectionGroup().appendChild(connection.get()))
     {
         gtWarning() << makeError();
@@ -483,6 +606,7 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
 
     connection->updateObjectName();
 
+    // check if nodes exist
     auto* targetNode = findNodeEntry(conId.inNodeId);
     auto* sourceNode = findNodeEntry(conId.outNodeId);
 
@@ -500,6 +624,7 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
            sourceNode->node->id() == conId.outNodeId &&
            sourceNode->node->parent() == this);
 
+    // check if ports to connect exist
     auto inPort  = targetNode->node->port(conId.inPort);
     auto outPort = sourceNode->node->port(conId.outPort);
 
@@ -510,51 +635,21 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
         return {};
     }
 
-//    gtInfo().verbose() << tr("Appending connection %1 to map").arg(toString(conId));
+    gtInfo().verbose() << tr("Appending connection %1 to map").arg(toString(conId));
 
+    // append connection to model
     auto ancestorConnection   = dag::ConnectionDetail::fromConnection(conId.reversed());
     auto descendantConnection = dag::ConnectionDetail::fromConnection(conId);
 
     targetNode->ancestors.append(ancestorConnection);
     sourceNode->descendants.append(descendantConnection);
 
+    emit targetNode->node->portConnected(conId.inPort);
+    emit sourceNode->node->portConnected(conId.outPort);
+
+    // setup connections
     connect(connection.get(), &QObject::destroyed,
-            this, [this, conId, ancestorConnection, descendantConnection](){
-        auto* targetNode = findNodeEntry(conId.inNodeId);
-        auto* sourceNode = findNodeEntry(conId.outNodeId);
-
-        if (!targetNode || !sourceNode)
-        {
-            gtWarning() << tr("Failed to delete connection %1").arg(toString(conId))
-                        << tr("(in-node or out-node was not found!)");
-            return;
-        }
-
-        assert(!targetNode->node ||
-               (targetNode->node->id()  == conId.inNodeId &&
-                targetNode->node->parent()  == this));
-        assert(!sourceNode->node ||
-               (sourceNode->node->id() == conId.outNodeId &&
-                sourceNode->node->parent() == this));
-
-        auto inIdx  = targetNode->ancestors.indexOf(ancestorConnection);
-        auto outIdx = sourceNode->descendants.indexOf(descendantConnection);
-
-        if (inIdx < 0 || outIdx < 0)
-        {
-            gtWarning() << tr("Failed to delete connection %1").arg(toString(conId))
-                        << tr("(in-connection and out-connection was not found!)")
-                        << "in:" << (inIdx >= 0) << "and out:" << (outIdx >= 0);
-            return;
-        }
-
-        gtInfo().verbose() << tr("Deleting connection %1 from map").arg(toString(conId));
-
-        targetNode->ancestors.remove(inIdx);
-        sourceNode->descendants.remove(outIdx);
-
-        emit connectionDeleted(conId);
-    });
+            this, Impl::ConnectionDeleted(this, conId));
 
     // update graph model
     emit connectionAppended(connection.get());
@@ -566,6 +661,13 @@ QVector<NodeId>
 Graph::appendObjects(std::vector<std::unique_ptr<Node>>& nodes,
                      std::vector<std::unique_ptr<Connection>>& connections)
 {
+    GraphExecutionModel::Insertion command;
+
+    if (auto* model = executionModel())
+    {
+        command = model->beginInsertion();
+    }
+
     QVector<NodeId> nodeIds;
 
     for (auto& obj : nodes)
@@ -584,8 +686,6 @@ Graph::appendObjects(std::vector<std::unique_ptr<Node>>& nodes,
         if (oldId == newId) continue;
 
         // update connections
-        gtInfo().verbose() << tr("Updating node id from %1 to %2...").arg(oldId).arg(newId);
-
         for (auto& con : connections)
         {
             if (con->inNodeId() == oldId)
@@ -601,8 +701,8 @@ Graph::appendObjects(std::vector<std::unique_ptr<Node>>& nodes,
 
     for (auto& obj : connections)
     {
-        auto* con = appendConnection(std::move(obj));
-        if (!con) return nodeIds;
+        // TODO: signal to reciever that the method failed
+        if (!appendConnection(std::move(obj))) return nodeIds;
     }
 
     return nodeIds;
@@ -638,16 +738,20 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
     auto* input = inputProvider();
     if (!input) return false;
 
-    auto* submodel = makeMainExecutionModel();
+    auto* submodel = makeDummyExecutionModel();
 
-    gtDebug().verbose().nospace()
-        << "### Evaluating node:  '" << objectName()
-        << "' at output port '" << portId << "'";
+    if (portId != invalid<PortId>()) {
+        gtDebug().verbose().nospace()
+            << "### Evaluating node: '" << objectName()
+            << "' at output port '" << portId << "'";
+    } else
+        gtDebug().verbose().nospace()
+            << "### Evaluating node: '" << objectName() << "'";
 
     submodel->setNodeData(input->id(), PortType::Out, model.nodeData(id(), PortType::In));
 
     connect(submodel, &GraphExecutionModel::nodeEvaluated,
-            this, &Graph::onOutputProivderEvaluated, Qt::UniqueConnection);
+            this, &Graph::outputProivderEvaluated, Qt::UniqueConnection);
 
     emit computingStarted();
 
@@ -665,7 +769,7 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model, PortId portId)
 void
 Graph::onObjectDataMerged()
 {
-    gtDebug().verbose() << __FUNCTION__;
+    gtTrace().verbose() << __FUNCTION__;
 
     auto const& nodes = this->nodes();
     auto const& connections = this->connections();
@@ -722,7 +826,7 @@ Graph::initInputOutputProviders()
 }
 
 void
-Graph::onOutputProivderEvaluated(NodeId nodeId)
+Graph::outputProivderEvaluated(NodeId nodeId)
 {
     auto* output = outputProvider();
     if (!output) return;

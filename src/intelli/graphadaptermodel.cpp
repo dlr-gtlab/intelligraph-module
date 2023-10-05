@@ -131,7 +131,7 @@ GraphAdapterModel::GraphAdapterModel(Graph& graph)
 
 GraphAdapterModel::~GraphAdapterModel()
 {
-    gtDebug() << __FUNCTION__;
+    gtTrace().verbose() << __FUNCTION__;
 }
 
 Graph&
@@ -268,7 +268,11 @@ GraphAdapterModel::addConnection(QtNodes::ConnectionId connectionId)
 
     auto command = gtApp->makeCommand(&graph, tr("Appending %1").arg(toString(conId)));
     Q_UNUSED(command);
-    graph.appendConnection(std::make_unique<Connection>(conId));
+
+    if (!graph.appendConnection(std::make_unique<Connection>(conId)))
+    {
+        emit connectionDeleted(connectionId);
+    }
 }
 
 bool
@@ -493,6 +497,7 @@ bool
 GraphAdapterModel::deleteConnection(QtNodes::ConnectionId connectionId)
 {
     auto conId = convert(connectionId);
+    // don't delete the connections that are beeing moved
     if (m_shiftedConnections.contains(conId)) return false;
 
     auto& graph = this->graph();

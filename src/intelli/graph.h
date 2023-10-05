@@ -261,10 +261,10 @@ public:
     GroupOutputProvider* outputProvider();
     GroupOutputProvider const* outputProvider() const;
     
-    GraphExecutionModel* makeMainExecutionModel();
+    GraphExecutionModel* makeExecutionModel();
 
-    GraphExecutionModel* mainExecutionModel();
-    GraphExecutionModel const* mainExecutionModel() const;
+    GraphExecutionModel* executionModel();
+    GraphExecutionModel const* executionModel() const;
 
     /**
      * @brief Clears all nodes and connections
@@ -371,6 +371,8 @@ protected:
 
 private:
 
+    struct Impl;
+
     DirectedAcyclicGraph m_nodes;
 
     /**
@@ -392,9 +394,11 @@ private:
      */
     void initInputOutputProviders();
 
+    GraphExecutionModel* makeDummyExecutionModel();
+
 private slots:
 
-    void onOutputProivderEvaluated(NodeId nodeId);
+    void outputProivderEvaluated(NodeId nodeId);
 };
 
 } // namespace intelli

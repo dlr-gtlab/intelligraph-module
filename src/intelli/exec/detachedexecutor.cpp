@@ -109,7 +109,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
         if (signalIndex == -1)
         {
             gtWarning()
-                << GT_CLASSNAME(DetachedExecutor)
+                << GT_CLASSNAME(DetachedExecutor) << '-'
                 << QObject::tr("Failed to forward signal from clone to source node!")
                 << gt::brackets(signal);
             return {};
@@ -117,7 +117,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
         assert(signalIndex == targetMetaObject->indexOfSignal(signal));
 
         gtDebug().verbose()
-            << GT_CLASSNAME(DetachedExecutor)
+            << GT_CLASSNAME(DetachedExecutor) << '-'
             << QObject::tr("Connecting custom Node signal '%1'").arg(signal.constData());
 
         if (!QObject::connect(sourceObject, sourceMetaObject->method(signalIndex),
@@ -125,7 +125,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
                               Qt::QueuedConnection))
         {
             gtWarning()
-                << GT_CLASSNAME(DetachedExecutor)
+                << GT_CLASSNAME(DetachedExecutor) << '-'
                 << QObject::tr("Failed to connect signal of clone with source node!")
                 << gt::brackets(signal);
             return {};
@@ -135,8 +135,8 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
     // destroy connections if the executor is destroyed
     auto success = QObject::connect(executor, &QObject::destroyed,
                                     sourceObject, [targetObject, sourceObject](){
-                                        if (sourceObject && targetObject) sourceObject->disconnect(targetObject);
-                                    });
+        if (sourceObject && targetObject) sourceObject->disconnect(targetObject);
+    });
     return success;
 }
 

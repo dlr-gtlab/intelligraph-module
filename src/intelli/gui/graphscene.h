@@ -52,8 +52,8 @@ protected:
 private:
 
     struct Impl;
-
-    QPointer<Graph> m_data = nullptr;
+    
+    QPointer<Graph> m_graph = nullptr;
 
 //    QPointer<QtNodes::AbstractGraphModel> m_model = nullptr;
 

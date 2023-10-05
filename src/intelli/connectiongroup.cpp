@@ -25,7 +25,7 @@ ConnectionGroup::ConnectionGroup(GtObject* parent) :
 void
 ConnectionGroup::onObjectDataMerged()
 {
-    gtDebug().verbose() << __FUNCTION__;
+    gtTrace().verbose() << __FUNCTION__;
 
     // the user may have deleted connections only, which must be restored
     emit mergeConnections();
