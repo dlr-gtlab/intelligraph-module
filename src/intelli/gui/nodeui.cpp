@@ -232,9 +232,8 @@ NodeUI::executeNode(GtObject* obj)
     auto* model = graph->makeExecutionModel();
 
     node->setActive();
-//    emit node->triggerNodeEvaluation();
 
-    model->evaluateNode(node->id(), ExecMode::Async);
+    model->evaluateNode(node->id());
 }
 
 void

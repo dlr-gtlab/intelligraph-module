@@ -6,7 +6,6 @@
  *  E-Mail: marius.broecker@dlr.de
  */
 
-#include "qfuture.h"
 #include "test_helper.h"
 
 #include "intelli/graphexecmodel.h"
@@ -21,99 +20,41 @@ using namespace intelli;
 TEST(GraphExecutionModel, test)
 {
     Graph graph;
-    Graph* subgraph = nullptr;
 
-    GraphBuilder builder(graph);
-
-    try
-    {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
-        auto& B = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("B"));
-        auto& C = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("C"));
-
-        builder.connect(A, PortIndex(0), B, PortIndex(0));
-        builder.connect(B, PortIndex(0), C, PortIndex(0));
-        builder.connect(B, PortIndex(0), C, PortIndex(1));
-
-        // set in port 2 of node B to required thus graph cannot be evaluated
-        //        B.port(B.portId(PortType::In, PortIndex(1)))->optional = false;
-
-        auto subnode = builder.addGraph({typeId<DoubleData>()},
-                                        {typeId<DoubleData>()});
-
-        subgraph = &subnode.graph;
-
-        GraphBuilder subbuilder(subnode.graph);
-
-        subbuilder.connect(subnode.inNode, PortIndex(0), subnode.outNode, PortIndex(0));
-
-        setNodeProperty(A, QStringLiteral("value"), 42);
-    }
-    catch (std::logic_error const& e)
-    {
-        gtError() << e.what();
-        ASSERT_NO_THROW(throw e);
-    }
+    ASSERT_TRUE(test::buildBasicGraph(graph));
 
     dag::debugGraph(graph.dag());
-    dag::debugGraph(subgraph->dag());
 
     GraphExecutionModel model(graph);
 
-//    model.evaluateGraph().wait();
+    EXPECT_TRUE(model.autoEvaluate().wait(std::chrono::seconds(1)));
 
-//    model.evaluateGraph().then([](int success){
-//        gtDebug() << "finished";
-//    });
-
-//    model.evaluateGraph().detach();
-
-//    auto future1 = model.evaluateNode(NodeId(1));
-//    auto future2 = model.evaluateNode(NodeId(1));
+    EXPECT_TRUE(model.isEvaluated());
 }
 
 TEST(GraphExecutionModel, evaluate_until_node)
 {
     Graph graph;
 
-    GraphBuilder builder(graph);
-
-    try
-    {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
-        auto& B = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("B"));
-        auto& C = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("C"));
-
-        builder.connect(A, PortIndex(0), B, PortIndex(0));
-        builder.connect(B, PortIndex(0), C, PortIndex(0));
-        builder.connect(B, PortIndex(0), C, PortIndex(1));
-
-        // set in port 2 of node B to required thus graph cannot be evaluated
-//        B.port(B.portId(PortType::In, PortIndex(1)))->optional = false;
-
-        setNodeProperty(A, QStringLiteral("value"), 42);
-    }
-    catch (std::logic_error const& e)
-    {
-        gtError() << e.what();
-        ASSERT_NO_THROW(throw e);
-    }
+    ASSERT_TRUE(test::buildLinearGraph(graph));
 
     dag::debugGraph(graph.dag());
 
     GraphExecutionModel model(graph);
 
-    EXPECT_TRUE(model.evaluateNode(C_id));
-    EXPECT_TRUE(model.waitForNode(std::chrono::seconds{1}));
+    EXPECT_TRUE(model.evaluateNode(C_id).wait(std::chrono::seconds(1)));
     
+    EXPECT_TRUE(model.isNodeEvaluated(C_id));
+
     auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(C_data);
     EXPECT_EQ(C_data->value(), 84);
 
-    EXPECT_TRUE(model.evaluateNode(C_id));
+    // node is already evaluated
+    EXPECT_TRUE(model.evaluateNode(C_id).wait(std::chrono::seconds(0)));
 }
 
-TEST(GraphExecutionModel, node_with_partial_inputs)
+TEST(GraphExecutionModel, evaluate_node_with_partial_inputs)
 {
     Graph graph;
 
@@ -136,12 +77,30 @@ TEST(GraphExecutionModel, node_with_partial_inputs)
 
     GraphExecutionModel model(graph);
 
-    EXPECT_TRUE(model.autoEvaluate());
-    EXPECT_TRUE(model.wait(std::chrono::seconds{1}));
+    EXPECT_TRUE(model.evaluateNode(B_id).wait(std::chrono::seconds{1}));
+
+    EXPECT_TRUE(model.isNodeEvaluated(B_id));
     
     auto B_data = model.nodeData(B_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(B_data);
     EXPECT_EQ(B_data->value(), 42);
+}
+
+TEST(GraphExecutionModel, evaluate_graph)
+{
+    Graph graph;
+
+    ASSERT_TRUE(test::buildLinearGraph(graph));
+
+    dag::debugGraph(graph.dag());
+
+    GraphExecutionModel model(graph);
+
+    auto future = model.evaluateGraph();
+
+    EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
+
+    EXPECT_TRUE(model.isEvaluated());
 }
 
 TEST(GraphExecutionModel, auto_evaluate_basic_graph)
@@ -158,10 +117,11 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
 
     GraphExecutionModel model(graph);
 
-    EXPECT_FALSE(model.evaluated());
+    EXPECT_FALSE(model.isEvaluated());
 
-    EXPECT_TRUE(model.autoEvaluate());
-    EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
+    EXPECT_TRUE(model.autoEvaluate().wait(std::chrono::seconds(1)));
+
+    EXPECT_TRUE(model.isEvaluated());
     
     auto D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(D_data);
@@ -171,39 +131,42 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
     ASSERT_TRUE(E_data);
     EXPECT_EQ(E_data->value(), 8);
 
-    EXPECT_TRUE(model.evaluated());
-
     // disable auto evaluation
 
     gtDebug() << "";
 
-    EXPECT_TRUE(model.autoEvaluate(false));
+    model.disableAutoEvaluation();
+
+    EXPECT_TRUE(model.isEvaluated());
+
+    EXPECT_TRUE(model.isNodeEvaluated(D_id));
 
     model.setNodeData(A_id, PortType::Out, PortIndex(0), std::make_shared<DoubleData>(12));
 
-    EXPECT_FALSE(model.evaluated());
+    // model invalidated
+    EXPECT_FALSE(model.isEvaluated());
+
+    EXPECT_FALSE(model.isNodeEvaluated(D_id));
 
     // old values are still set
     D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 42);
 
-    // not auto evaluating
-    EXPECT_FALSE(model.wait(std::chrono::seconds(1)));
-
     // reenable auto evaluation
 
     gtDebug() << "";
 
-    EXPECT_TRUE(model.autoEvaluate());
-    EXPECT_TRUE(model.wait(std::chrono::seconds(10)));
+    EXPECT_TRUE(model.autoEvaluate().wait(std::chrono::seconds(10)));
 
     // new values is set
     D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 28);
 
-    EXPECT_TRUE(model.evaluated());
+    EXPECT_TRUE(model.isEvaluated());
+
+    EXPECT_TRUE(model.isNodeEvaluated(D_id));
 }
 
 TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
@@ -227,11 +190,21 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
     // auto evaluate
 
     GraphExecutionModel model(graph);
-    GraphExecutionModel* submodel = graph.executionModel();
-    ASSERT_EQ(submodel, &model);
+    GraphExecutionModel& submodel = *subGraph->makeExecutionModel();
+    ASSERT_EQ(&model, graph.executionModel());
+    ASSERT_NE(&model, &submodel);
 
-    EXPECT_TRUE(model.autoEvaluate());
-    EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
+    EXPECT_FALSE(submodel.isEvaluated());
+
+    EXPECT_FALSE(model.isEvaluated());
+    EXPECT_FALSE(model.isNodeEvaluated(submodel.graph().id()));
+
+    EXPECT_TRUE(model.autoEvaluate().wait(std::chrono::seconds(1)));
+
+    EXPECT_TRUE(submodel.isEvaluated());
+
+    EXPECT_TRUE(model.isEvaluated());
+    EXPECT_TRUE(model.isNodeEvaluated(submodel.graph().id()));
     
     auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(C_data);
@@ -271,15 +244,14 @@ TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
 
     GraphExecutionModel model(graph);
 
-    EXPECT_FALSE(model.evaluated());
+    EXPECT_FALSE(model.isEvaluated());
 
-    EXPECT_TRUE(model.autoEvaluate());
-    // TODO: make graph stall
-    EXPECT_FALSE(model.wait(std::chrono::seconds(1)));
+    EXPECT_FALSE(model.autoEvaluate().wait(std::chrono::seconds(1)));
 
-    EXPECT_FALSE(model.evaluated());
+    EXPECT_FALSE(model.isEvaluated());
 
     // node C an subsequent nodes were not evaluated
+    EXPECT_FALSE(model.isNodeEvaluated(C_id));
     EXPECT_TRUE(C->nodeFlags() & NodeFlag::RequiresEvaluation);
     EXPECT_FALSE(C->nodeFlags() & NodeFlag::Evaluating);
 
@@ -287,6 +259,7 @@ TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
     EXPECT_EQ(C_data.state, PortDataState::Outdated);
     EXPECT_EQ(C_data.data, nullptr);
 
+    EXPECT_FALSE(model.isNodeEvaluated(D_id));
     EXPECT_TRUE(D->nodeFlags() & NodeFlag::RequiresEvaluation);
     EXPECT_FALSE(D->nodeFlags() & NodeFlag::Evaluating);
 
@@ -298,6 +271,10 @@ TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
     EXPECT_FALSE(A->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
     EXPECT_FALSE(B->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
     EXPECT_FALSE(E->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
+
+    EXPECT_TRUE(model.isNodeEvaluated(A_id));
+    EXPECT_TRUE(model.isNodeEvaluated(B_id));
+    EXPECT_TRUE(model.isNodeEvaluated(E_id));
 
     auto A_data = model.nodeData(A_id, PortType::Out, PortIndex(0));
     EXPECT_EQ(A_data.state, PortDataState::Valid);
@@ -314,10 +291,15 @@ TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
     // set C as active -> the whole graph should be evaluated
     C->setActive();
 
-    EXPECT_TRUE(model.autoEvaluate());
-    EXPECT_TRUE(model.wait(std::chrono::seconds(1)));
+    EXPECT_TRUE(model.autoEvaluate().wait(std::chrono::seconds(1)));
 
-    EXPECT_TRUE(model.evaluated());
+    EXPECT_TRUE(model.isEvaluated());
+
+    EXPECT_FALSE(C->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
+    EXPECT_FALSE(D->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
+
+    EXPECT_TRUE(model.isNodeEvaluated(C_id));
+    EXPECT_TRUE(model.isNodeEvaluated(D_id));
 }
 
 TEST(GraphExecutionModel, do_not_evaluate_cyclic_graphs)
@@ -364,6 +346,14 @@ TEST(GraphExecutionModel, do_not_evaluate_cyclic_graphs)
 
     GraphExecutionModel model(graph);
 
-    EXPECT_FALSE(model.autoEvaluate());
-    EXPECT_FALSE(model.wait(std::chrono::seconds(1)));
+    EXPECT_FALSE(model.autoEvaluate().wait(std::chrono::seconds(1)));
+    EXPECT_FALSE(model.isEvaluated());
+
+    EXPECT_FALSE(model.evaluateGraph().wait(std::chrono::seconds(1)));
+    EXPECT_FALSE(model.isEvaluated());
+
+    EXPECT_FALSE(model.evaluateNode(E_id).wait(std::chrono::seconds(1)));
+
+    EXPECT_FALSE(model.isEvaluated());
+    EXPECT_FALSE(model.isNodeEvaluated(E_id));
 }

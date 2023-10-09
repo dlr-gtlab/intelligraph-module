@@ -72,11 +72,11 @@ struct Entry
     /// in and out ports
     QVector<PortEntry> portsIn = {}, portsOut = {};
 
-    GT_INTELLI_EXPORT bool isEvaluated(Node const& node) const;
+    bool isEvaluated(Node const& node) const;
 
-    GT_INTELLI_EXPORT bool areInputsValid(Graph const& graph, NodeId nodeId) const;
+    bool areInputsValid(Graph const& graph, NodeId nodeId) const;
 
-    GT_INTELLI_EXPORT bool canEvaluate(Graph const& graph, Node const& node) const;
+    bool canEvaluate(Graph const& graph, Node const& node) const;
 };
 
 using DataModel = QHash<NodeId, Entry>;

@@ -179,12 +179,13 @@ GraphScene::~GraphScene()
     gtTrace().verbose() << __FUNCTION__;
 }
 
-bool
+void
 GraphScene::autoEvaluate(bool enable)
 {
     auto* model = m_graph->makeExecutionModel();
 
-    return model->autoEvaluate(enable);
+    enable ? (void)model->autoEvaluate().detach() :
+             model->disableAutoEvaluation();
 }
 
 bool

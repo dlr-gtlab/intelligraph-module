@@ -208,6 +208,8 @@ public:
      */
     NodeFlags nodeFlags() const;
 
+    NodeEvalMode nodeEvalMode() const;
+
     /**
      * @brief Setter for the caption. Will be saved persistently
      * @param caption New caption
@@ -256,17 +258,18 @@ public:
     PortData const* port(PortId id) const noexcept;
 
     /**
-     * @brief Returns the port index for the port id and the port type.
+     * @brief Returns the port index of the port id and its port type.
      * @param type Port type (input or output)
      * @param id Port id
-     * @return Port index. May be invalid, check using "invalid<PortIndex>()"
+     * @return Port index. May be invalid, check using `invalid<PortIndex>()`
      */
     PortIndex portIndex(PortType type, PortId id) const noexcept(false);
 
     /**
      * @brief Returns the port type of the given port
-     * @param id Port id to retrieve associated port type from
-     * @return Port type
+     * @param id Port id
+     * @return Port type. `PortyType::NoTyp` is returned if the given port
+     * does not exist
      */
     PortType portType(PortId id) const noexcept(false);
 
@@ -274,7 +277,7 @@ public:
      * @brief Attempts to find the port id by port index and the port type.
      * @param type Port type (input or output)
      * @param idx Port index
-     * @return Port id. May be invalid, check using "invalid<PortId>()"
+     * @return Port id. May be invalid, check using `invalid<PortId>()`
      */
     PortId portId(PortType type, PortIndex idx) const noexcept(false);
 

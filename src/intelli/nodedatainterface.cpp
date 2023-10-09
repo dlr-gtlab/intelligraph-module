@@ -9,7 +9,6 @@
 
 #include "intelli/nodedatainterface.h"
 #include "intelli/node.h"
-#include "intelli/nodedata.h"
 #include "intelli/graph.h"
 
 using namespace intelli;

@@ -192,6 +192,12 @@ Node::nodeFlags() const
     return pimpl->flags;
 }
 
+NodeEvalMode
+Node::nodeEvalMode() const
+{
+    return pimpl->evalMode;
+}
+
 Node&
 Node::setCaption(QString const& caption)
 {
@@ -389,12 +395,9 @@ Node::eval()
 bool
 Node::handleNodeEvaluation(GraphExecutionModel& model)
 {
-    NodeEvalMode evalMode{};
-
     switch (pimpl->evalMode)
     {
     case NodeEvalMode::Exclusive:
-        return blockingEvaluation(*this, model);
     case NodeEvalMode::Detached:
         return detachedEvaluation(*this, model);
     case NodeEvalMode::MainThread:

@@ -29,7 +29,7 @@ public:
     GraphScene(Graph& graph);
     ~GraphScene();
 
-    bool autoEvaluate(bool enable = true);
+    void autoEvaluate(bool enable = true);
 
     bool isAutoEvaluating();
 

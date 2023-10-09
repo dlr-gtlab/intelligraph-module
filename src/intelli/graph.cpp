@@ -755,7 +755,7 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model)
         emit computingFinished();
     });
 
-    if (!submodel->autoEvaluate()) return false;
+    if (!submodel->autoEvaluate().detach()) return false;
 
     finally.clear();
 

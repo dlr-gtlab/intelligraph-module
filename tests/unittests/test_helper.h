@@ -77,6 +77,30 @@ inline bool buildBasicGraph(Graph& graph)
     return true;
 }
 
+inline bool buildLinearGraph(Graph& graph)
+{
+    GraphBuilder builder(graph);
+
+    try
+    {
+        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
+        auto& B = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("B"));
+        auto& C = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("C"));
+
+        builder.connect(A, PortIndex(0), B, PortIndex(0));
+        builder.connect(B, PortIndex(0), C, PortIndex(0));
+        builder.connect(B, PortIndex(0), C, PortIndex(1));
+
+        setNodeProperty(A, QStringLiteral("value"), 42);
+    }
+    catch (std::logic_error const& e)
+    {
+        gtError() << e.what();
+        return false;
+    }
+    return true;
+}
+
 inline bool buildGroupGraph(Graph& graph)
 {
     GraphBuilder builder(graph);
