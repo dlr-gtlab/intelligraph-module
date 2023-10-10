@@ -158,6 +158,19 @@ enum class PortType
     NoType
 };
 
+inline constexpr PortType invert(PortType type) noexcept
+{
+    switch (type)
+    {
+    case PortType::In:
+        return PortType::Out;
+    case PortType::Out:
+        return PortType::In;
+    default:
+        return type;
+    }
+}
+
 namespace detail
 {
 

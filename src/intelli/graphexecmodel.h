@@ -68,7 +68,7 @@ public:
         ActiveModel = 2
     };
 
-    struct EndInsertionFunctor
+    struct EndModificationFunctor
     {
         inline void operator()() const noexcept
         {
@@ -77,7 +77,7 @@ public:
         GraphExecutionModel* model;
     };
 
-    using Insertion = gt::Finally<EndInsertionFunctor>;
+    using Modification = gt::Finally<EndModificationFunctor>;
 
     GraphExecutionModel(Graph& graph, Mode mode = ActiveModel);
     ~GraphExecutionModel();
@@ -91,6 +91,16 @@ public:
     void reset();
 
     /**
+     * @brief Static wrapper around `beginModification`. Will check if model is
+     * a valid object and start the modification.
+     * @param model
+     * @return Scoped object which tells the model to begin reevaluating the
+     * graph.
+     */
+    GT_NO_DISCARD
+    static Modification modify(GraphExecutionModel* model);
+
+    /**
      * @brief Will tell the model that new nodes and connections are about to be
      * inserted and pause the auto evaluation to avoid redundand evaluation of
      * nodes. Should be called when bulk inserting multiple objects.
@@ -99,7 +109,7 @@ public:
      * graph.
      */
     GT_NO_DISCARD
-    Insertion beginInsertion();
+    Modification beginModification();
 
     /**
      * @brief Returns whether the underlying graph has been evaluated completly,

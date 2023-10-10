@@ -37,34 +37,37 @@ struct PortEntry
     /// port data state
     PortDataState state = PortDataState::Outdated;
     /// actual data at port
-    NodeDataPtr   data  = nullptr;
+    NodeDataPtr data = nullptr;
 };
 
 /// helper struct representing node data and its validity state
 struct NodeData
 {
+    NodeData(std::nullptr_t) :
+        data(nullptr)
+    {}
     NodeData(NodeDataPtr _data = {}) :
-        data(std::move(_data)), state(PortDataState::Valid)
+        data(std::move(_data))
     {}
     template <typename T>
     NodeData(std::shared_ptr<T> _data) :
-        data(std::move(_data)), state(PortDataState::Valid)
+        data(std::move(_data))
     {}
     NodeData(PortEntry const& port) :
         data(port.data), state(port.state)
     {}
 
     /// actual node data
-    NodeDataPtr data;
+    NodeDataPtr data{nullptr};
     /// data state
-    PortDataState state;
+    PortDataState state{PortDataState::Valid};
 
     operator NodeDataPtr&() & { return data; }
     operator NodeDataPtr() && { return std::move(data); }
     operator NodeDataPtr const&() const& { return data; }
 
     template <typename T>
-    inline auto value() const noexcept { return qobject_pointer_cast<T const>(data);}
+    inline auto value() const noexcept { return qobject_pointer_cast<T const>(data); }
 };
 
 struct Entry

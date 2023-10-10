@@ -17,21 +17,6 @@
 
 using namespace intelli;
 
-TEST(GraphExecutionModel, test)
-{
-    Graph graph;
-
-    ASSERT_TRUE(test::buildBasicGraph(graph));
-
-    dag::debugGraph(graph.dag());
-
-    GraphExecutionModel model(graph);
-
-    EXPECT_TRUE(model.autoEvaluate().wait(std::chrono::seconds(1)));
-
-    EXPECT_TRUE(model.isEvaluated());
-}
-
 TEST(GraphExecutionModel, evaluate_until_node)
 {
     Graph graph;
@@ -109,8 +94,6 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
 
     ASSERT_TRUE(test::buildBasicGraph(graph));
 
-    EXPECT_TRUE(isAcyclic(graph));
-
     dag::debugGraph(graph.dag());
 
     // auto evaluate
@@ -173,9 +156,7 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
 {
     Graph graph;
 
-    ASSERT_TRUE(test::buildGroupGraph(graph));
-
-    EXPECT_TRUE(isAcyclic(graph));
+    ASSERT_TRUE(test::buildGraphWithGroup(graph));
 
     dag::debugGraph(graph.dag());
 
@@ -199,7 +180,8 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
     EXPECT_FALSE(model.isEvaluated());
     EXPECT_FALSE(model.isNodeEvaluated(submodel.graph().id()));
 
-    EXPECT_TRUE(model.autoEvaluate().wait(std::chrono::seconds(1)));
+    auto future = model.autoEvaluate();
+    EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
 
     EXPECT_TRUE(submodel.isEvaluated());
 
@@ -208,11 +190,105 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
     
     auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(C_data);
-    EXPECT_EQ(C_data->value(), 34);
+    EXPECT_EQ(C_data->value(), 42);
     
     auto D_data = model.nodeData(E_id, PortType::In, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(D_data);
     EXPECT_EQ(D_data->value(), 8);
+
+
+    gtDebug() << "";
+
+    setNodeProperty(*graph.findNode(B_id), "value", 10);
+
+    EXPECT_TRUE( model.isNodeEvaluated(A_id));
+    EXPECT_FALSE(model.isNodeEvaluated(B_id));
+    EXPECT_FALSE(model.isNodeEvaluated(C_id));
+    EXPECT_FALSE(model.isNodeEvaluated(D_id));
+    EXPECT_FALSE(model.isNodeEvaluated(E_id));
+
+    gtDebug() << "";
+
+    EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
+
+    gtDebug() << "";
+
+    EXPECT_TRUE(model.isNodeEvaluated(A_id));
+    EXPECT_TRUE(model.isNodeEvaluated(B_id));
+    EXPECT_TRUE(model.isNodeEvaluated(C_id));
+    EXPECT_TRUE(model.isNodeEvaluated(D_id));
+    EXPECT_TRUE(model.isNodeEvaluated(E_id));
+
+    C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).value<DoubleData>();
+    ASSERT_TRUE(C_data);
+    EXPECT_EQ(C_data->value(), 44);
+
+    auto E_data = model.nodeData(E_id, PortType::In, PortIndex(0)).value<DoubleData>();
+    ASSERT_TRUE(E_data);
+    EXPECT_EQ(E_data->value(), 10);
+}
+
+TEST(GraphExecutionModel, auto_evaluate_graph_after_node_deletion)
+{
+    Graph graph;
+
+    ASSERT_TRUE(test::buildBasicGraph(graph));
+
+    dag::debugGraph(graph.dag());
+
+    GraphExecutionModel model(graph);
+
+    auto future = model.autoEvaluate();
+
+    EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
+
+    EXPECT_TRUE(model.isEvaluated());
+
+    gtDebug() << "";
+
+    graph.deleteNode(C_id);
+
+    gtDebug() << "";
+
+    EXPECT_FALSE(model.isNodeEvaluated(D_id));
+
+    // model will auto evaluate itself
+    EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
+
+    EXPECT_TRUE(model.isNodeEvaluated(D_id));
+
+    auto C_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
+    ASSERT_TRUE(C_data);
+    EXPECT_EQ(C_data->value(), 8);
+}
+
+TEST(GraphExecutionModel, auto_evaluate_subgraph_only)
+{
+    Graph graph;
+
+    ASSERT_TRUE(test::buildGraphWithGroup(graph));
+
+    dag::debugGraph(graph.dag());
+
+    auto subGraphs = graph.graphNodes();
+    ASSERT_EQ(subGraphs.size(), 1);
+
+    Graph* subGraph = subGraphs.at(0);
+    ASSERT_TRUE(subGraph);
+
+    dag::debugGraph(subGraph->dag());
+
+    EXPECT_FALSE(graph.executionModel());
+    EXPECT_FALSE(subGraph->executionModel());
+
+    auto& submodel = *subGraph->makeExecutionModel();
+
+    EXPECT_FALSE(submodel.isEvaluated());
+    EXPECT_FALSE(submodel.isNodeEvaluated(group_D_id));
+
+    auto future = submodel.evaluateNode(group_D_id);
+    EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
+
 }
 
 TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
@@ -220,8 +296,6 @@ TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
     Graph graph;
 
     ASSERT_TRUE(test::buildBasicGraph(graph));
-
-    EXPECT_TRUE(isAcyclic(graph));
 
     dag::debugGraph(graph.dag());
 

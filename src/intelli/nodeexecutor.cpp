@@ -40,7 +40,7 @@ intelli::detachedEvaluation(Node& node, GraphExecutionModel& model)
 {
     if (node.findChild<DetachedExecutor*>())
     {
-        gtError() << QObject::tr("Node already has a executor!");
+        gtError() << QObject::tr("Node %1 already has a executor!").arg(node.id());
         return false;
     }
 

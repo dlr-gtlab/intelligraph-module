@@ -176,7 +176,8 @@ DetachedExecutor::onFinished()
     }
 
     m_collected = true;
-    emit m_node->computingFinished();
+
+    connect(this, &QObject::destroyed, m_node, &Node::computingFinished);
 
     // commit suicide
     deleteLater();
@@ -186,7 +187,7 @@ void
 DetachedExecutor::onCanceled()
 {
     gtError() << tr("Execution of node '%1' failed!")
-                     .arg(m_node ? m_node->objectName() : QStringLiteral("NULL"));
+                     .arg(m_node ? m_node->objectName() : QStringLiteral("<null>"));
 }
 
 void

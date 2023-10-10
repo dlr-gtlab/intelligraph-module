@@ -51,7 +51,7 @@ GraphEditor::setData(GtObject* obj)
         return;
     }
 
-    // close window if data was deleted
+    // close width if graph is destroyed
     connect(graph, &QObject::destroyed, this, &QObject::deleteLater);
 
     // close graph model if its no longer used

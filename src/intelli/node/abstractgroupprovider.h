@@ -23,16 +23,6 @@ class AbstractGroupProvider : public DynamicNode
 {
 public:
 
-    static constexpr inline PortType INVERSE_TYPE() noexcept
-    {
-        return Type == PortType::In ? PortType::Out : PortType::In;
-    }
-
-    static constexpr inline PortType TYPE() noexcept
-    {
-        return Type;
-    }
-
     AbstractGroupProvider(QString const& modelName) :
         DynamicNode(modelName, Type == PortType::In ? DynamicOutputOnly : DynamicInputOnly)
     {
@@ -56,7 +46,7 @@ public:
     bool insertPort(PortData data, int idx = -1)
     {
         PortId id;
-        switch (INVERSE_TYPE())
+        switch (invert(Type))
         {
         case PortType::In:
             id = insertInPort(data, idx);
@@ -76,7 +66,7 @@ private slots:
         auto* graph = findParent<Graph*>();
         if (!graph) return;
 
-        PortId id = portId(INVERSE_TYPE(), idx);
+        PortId id = portId(invert(Type), idx);
         if (auto* port = this->port(id))
         {
             Type == PortType::In ?
@@ -93,12 +83,12 @@ private slots:
         auto* port = this->port(id);
         if (!port) return;
 
-        auto  idx    = portIndex(INVERSE_TYPE(), id);
+        auto idx = portIndex(invert(Type), id);
         auto graphPortId = graph->portId(Type, idx);
-        auto* graphPort   = graph->port(graphPortId);
+        auto* graphPort  = graph->port(graphPortId);
         if (!graphPort) return;
 
-        graphPort->typeId = port->typeId;
+        graphPort->typeId  = port->typeId;
         graphPort->caption = port->caption;
         emit graph->portChanged(graphPortId);
     }

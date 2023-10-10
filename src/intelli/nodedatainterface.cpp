@@ -18,8 +18,8 @@ dm::Entry::isEvaluated(Node const& node) const
 {
     return !(node.nodeFlags() & (NodeFlag::Evaluating | NodeFlag::RequiresEvaluation)) &&
            std::all_of(portsOut.begin(), portsOut.end(), [](auto const& p){
-               return p.state == PortDataState::Valid;
-           });
+        return p.state == PortDataState::Valid;
+    });
 }
 
 bool

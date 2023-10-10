@@ -26,6 +26,9 @@ constexpr NodeId D_id{3};
 constexpr NodeId E_id{4};
 
 constexpr NodeId group_A_id{2};
+constexpr NodeId group_B_id{3};
+constexpr NodeId group_C_id{4};
+constexpr NodeId group_D_id{5};
 
 namespace test
 {
@@ -74,6 +77,8 @@ inline bool buildBasicGraph(Graph& graph)
         return false;
     }
 
+    EXPECT_TRUE(isAcyclic(graph));
+
     return true;
 }
 
@@ -98,10 +103,13 @@ inline bool buildLinearGraph(Graph& graph)
         gtError() << e.what();
         return false;
     }
+
+    EXPECT_TRUE(isAcyclic(graph));
+
     return true;
 }
 
-inline bool buildGroupGraph(Graph& graph)
+inline bool buildGraphWithGroup(Graph& graph)
 {
     GraphBuilder builder(graph);
 
@@ -124,17 +132,25 @@ inline bool buildGroupGraph(Graph& graph)
 
         GraphBuilder groupBuilder(group.graph);
 
-        auto& group_A = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("Group_A"));
+        auto& group_A = groupBuilder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("Group_A"));
+        auto& group_B = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("Group_B"));
+        auto& group_C = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("Group_C"));
+        auto& group_D = groupBuilder.addNode(QStringLiteral("intelli::NumberDisplayNode")).setCaption(QStringLiteral("Group_D"));
 
         // square value 1
         builder.connect(A, PortIndex{0}, group.graph, PortIndex{0});
         builder.connect(B, PortIndex{0}, group.graph, PortIndex{1});
 
-        // multiply value 2 by result of square
-        groupBuilder.connect(group.inNode, PortIndex{0}, group_A, PortIndex{0});
-        groupBuilder.connect(group.inNode, PortIndex{1}, group_A, PortIndex{1});
+        // build group logic
+        groupBuilder.connect(group_A, PortIndex{0}, group_B, PortIndex{0});
+        groupBuilder.connect(group.inNode, PortIndex{0}, group_B, PortIndex{1});
 
-        groupBuilder.connect(group_A, PortIndex{0}, group.outNode, PortIndex{0});
+        groupBuilder.connect(group_B, PortIndex{0}, group_C, PortIndex{0});
+        groupBuilder.connect(group.inNode, PortIndex{1}, group_C, PortIndex{1});
+
+        groupBuilder.connect(group_C, PortIndex{0}, group.outNode, PortIndex{0});
+
+        groupBuilder.connect(group_C, PortIndex{0}, group_D, PortIndex{0});
 
         builder.connect(group.graph, PortIndex{0}, D, PortIndex{0});
         builder.connect(B, PortIndex{0}, D, PortIndex{1});
@@ -145,8 +161,9 @@ inline bool buildGroupGraph(Graph& graph)
         // set values
         setNodeProperty(A, QStringLiteral("value"), 26);
         setNodeProperty(B, QStringLiteral("value"),  8);
+        setNodeProperty(group_A, QStringLiteral("value"), 8);
 
-        setNodeProperty(group_A, QStringLiteral("operation"), QStringLiteral("Plus"));
+        setNodeProperty(group_B, QStringLiteral("operation"), QStringLiteral("Plus"));
         setNodeProperty(D,       QStringLiteral("operation"), QStringLiteral("Plus"));
 
         EXPECT_EQ(A.id(), A_id);
@@ -155,12 +172,17 @@ inline bool buildGroupGraph(Graph& graph)
         EXPECT_EQ(D.id(), D_id);
         EXPECT_EQ(E.id(), E_id);
         EXPECT_EQ(group_A.id(), group_A_id);
+        EXPECT_EQ(group_B.id(), group_B_id);
+        EXPECT_EQ(group_C.id(), group_C_id);
+        EXPECT_EQ(group_D.id(), group_D_id);
     }
     catch(std::logic_error const& e)
     {
         gtError() << "Buidling graph failed! Error:" << e.what();
         return false;
     }
+
+    EXPECT_TRUE(isAcyclic(graph));
 
     return true;
 }

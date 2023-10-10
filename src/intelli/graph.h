@@ -342,6 +342,11 @@ public:
      */
     DirectedAcyclicGraph const& dag() const { return m_nodes; }
 
+    /**
+     * @brief initializes the input and output of this graph
+     */
+    void initInputOutputProviders();
+
 signals:
 
     /**
@@ -399,13 +404,11 @@ private:
     void restoreNode(Node* node);
     void restoreConnection(Connection* connection);
 
+    void restoreConnections();
+    void restoreNodesAndConnections();
+
     dag::Entry* findNodeEntry(NodeId nodeId);
     dag::Entry const* findNodeEntry(NodeId nodeId) const;
-
-    /**
-     * @brief initializes the input and output of this graph
-     */
-    void initInputOutputProviders();
 
     GraphExecutionModel* makeDummyExecutionModel();
 

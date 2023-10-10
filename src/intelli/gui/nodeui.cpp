@@ -115,6 +115,17 @@ NodeUI::NodeUI(Option option)
         .setIcon(gt::gui::icon::delete_())
         .setVerificationMethod(isDynamicPort)
         .setVisibilityMethod(isDynamicNode);
+
+    if (!gtApp || !gtApp->devMode()) return;
+
+    addPortAction(tr("Port Info"), [](Node* obj, PortType type, PortIndex idx){
+            if (!obj) return;
+            gtInfo() << tr("Node '%1' (id: %2), Port id: %3")
+                            .arg(obj->caption())
+                            .arg(obj->id())
+                            .arg(obj->portId(type, idx));
+        })
+        .setIcon(gt::gui::icon::bug());
 }
 
 QIcon
@@ -233,7 +244,7 @@ NodeUI::executeNode(GtObject* obj)
 
     node->setActive();
 
-    model->evaluateNode(node->id());
+    model->evaluateNode(node->id()).detach();
 }
 
 void

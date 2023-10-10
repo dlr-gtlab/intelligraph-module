@@ -106,6 +106,8 @@ struct NodeDeleted
             return;
         }
 
+        auto cmd = GraphExecutionModel::modify(graph->executionModel());
+
         auto const& connections = graph->findConnections(nodeId);
         for (auto conId : connections)
         {
@@ -175,8 +177,8 @@ struct ConnectionDeleted
         emit targetNode->node->portDisconnected(conId.inPort);
         emit sourceNode->node->portDisconnected(conId.outPort);
 
-        targetNode->ancestors.remove(inIdx);
-        sourceNode->descendants.remove(outIdx);
+        targetNode->ancestors.removeAt(inIdx);
+        sourceNode->descendants.removeAt(outIdx);
 
         emit graph->connectionDeleted(conId);
     }
@@ -199,15 +201,7 @@ Graph::Graph() :
     group->setDefault(true);
 
     connect(group, &ConnectionGroup::mergeConnections, this, [this](){
-        auto const& connections = this->connections();
-
-        for (auto* connection : connections)
-        {
-            if (!findNode(connection->inNodeId()) ||
-                !findNode(connection->outNodeId())) continue;
-
-            restoreConnection(connection);
-        }
+        restoreConnections();
     });
 }
 
@@ -439,7 +433,8 @@ QVector<NodeId>
 Graph::findConnectedNodes(NodeId nodeId, PortId portId) const
 {
     auto const& connections = findConnections(nodeId, portId);
-    return uniqueTargetNodes(connections, PortType::Out);
+    auto const* node = findNode(nodeId);
+    return uniqueTargetNodes(connections, node ? node->portType(portId) : PortType::Out);
 }
 
 QList<Graph*>
@@ -537,11 +532,26 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     if (!Impl::updateNodeId(*this, *node, policy))
     {
         gtWarning() << makeError()
-                    << tr("(node id '%2' already exists)").arg(node->id());
+                    << tr("(node already exists)");
         return {};
     }
 
     NodeId nodeId = node->id();
+
+    // check if node is unique
+    if (node->nodeFlags() & NodeFlag::Unique)
+    {
+        auto const& nodes = this->nodes();
+        for (Node const* exstNode : nodes)
+        {
+            if (exstNode->modelName() == node->modelName())
+            {
+                gtWarning() << makeError()
+                            << tr("(node is unique and already exists)");
+                return {};
+            }
+        }
+    }
 
     // append node to hierarchy
     if (!appendChild(node.get()))
@@ -662,12 +672,7 @@ QVector<NodeId>
 Graph::appendObjects(std::vector<std::unique_ptr<Node>>& nodes,
                      std::vector<std::unique_ptr<Connection>>& connections)
 {
-    GraphExecutionModel::Insertion command;
-
-    if (auto* model = executionModel())
-    {
-        command = model->beginInsertion();
-    }
+    auto cmd = GraphExecutionModel::modify(executionModel());
 
     QVector<NodeId> nodeIds;
 
@@ -744,12 +749,16 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model)
     gtDebug().verbose().nospace()
             << "### Evaluating node: '" << objectName() << "'";
 
+    emit computingStarted();
+    // trick the submodel into thinking that the node was already evaluated
+    emit input->computingStarted();
+
     submodel->setNodeData(input->id(), PortType::Out, model.nodeData(id(), PortType::In));
 
     connect(submodel, &GraphExecutionModel::nodeEvaluated,
             this, &Graph::outputProivderEvaluated, Qt::UniqueConnection);
 
-    emit computingStarted();
+    emit input->computingFinished();
 
     auto finally = gt::finally([this](){
         emit computingFinished();
@@ -767,18 +776,7 @@ Graph::onObjectDataMerged()
 {
     gtTrace().verbose() << __FUNCTION__;
 
-    auto const& nodes = this->nodes();
-    auto const& connections = this->connections();
-
-    for (auto* node : nodes)
-    {
-        restoreNode(node);
-    }
-
-    for (auto* connection : connections)
-    {
-        restoreConnection(connection);
-    }
+    restoreNodesAndConnections();
 }
 
 void
@@ -806,6 +804,41 @@ Graph::restoreConnection(Connection* connection)
     ptr->setParent(nullptr);
 
     appendConnection(std::move(ptr));
+}
+
+void
+Graph::restoreConnections()
+{
+    auto cmd = GraphExecutionModel::modify(executionModel());
+
+    auto const& connections = this->connections();
+
+    for (auto* connection : connections)
+    {
+        if (!findNode(connection->inNodeId()) ||
+            !findNode(connection->outNodeId())) continue;
+
+        restoreConnection(connection);
+    }
+}
+
+void
+Graph::restoreNodesAndConnections()
+{
+    auto cmd = GraphExecutionModel::modify(executionModel());
+
+    auto const& nodes = this->nodes();
+    auto const& connections = this->connections();
+
+    for (auto* node : nodes)
+    {
+        restoreNode(node);
+    }
+
+    for (auto* connection : connections)
+    {
+        restoreConnection(connection);
+    }
 }
 
 void
