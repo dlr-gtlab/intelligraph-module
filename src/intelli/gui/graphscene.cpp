@@ -141,8 +141,10 @@ GraphAdapterModel& initGraph(Graph& graph)
 {
     auto* model = graph.executionModel();
 
-    if (!model) graph.makeExecutionModel();
+    if (!model) model = graph.makeExecutionModel();
     else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
+
+    model->autoEvaluate().detach();
 
     return *new GraphAdapterModel(graph);
 }

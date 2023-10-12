@@ -48,7 +48,7 @@ DummyDataModel::DummyDataModel(Node& node) :
     }
 }
 
-dm::NodeData
+dm::NodeDataSet
 DummyDataModel::nodeData(NodeId nodeId, PortId portId) const
 {
     assert(m_node);
@@ -72,8 +72,8 @@ DummyDataModel::nodeData(NodeId nodeId, PortId portId) const
     return {};
 }
 
-dm::NodeData
-DummyDataModel::nodeData(PortId portId, dm::NodeData data)
+dm::NodeDataSet
+DummyDataModel::nodeData(PortId portId, dm::NodeDataSet data)
 {
     assert(m_node);
     return nodeData(m_node->id(), portId);
@@ -94,7 +94,7 @@ DummyDataModel::nodeData(PortType type) const
 }
 
 bool
-DummyDataModel::setNodeData(NodeId nodeId, PortId portId, dm::NodeData data)
+DummyDataModel::setNodeData(NodeId nodeId, PortId portId, dm::NodeDataSet data)
 {
     assert(m_node);
     if (nodeId != m_node->id())
@@ -122,7 +122,7 @@ DummyDataModel::setNodeData(NodeId nodeId, PortId portId, dm::NodeData data)
 }
 
 bool
-DummyDataModel::setNodeData(PortId portId, dm::NodeData data)
+DummyDataModel::setNodeData(PortId portId, dm::NodeDataSet data)
 {
     assert(m_node);
     return setNodeData(m_node->id(), portId, std::move(data));
@@ -475,14 +475,11 @@ GraphExecutionModel::isEvaluated() const
 bool
 GraphExecutionModel::isNodeEvaluated(NodeId nodeId) const
 {
-    auto& graph = this->graph();
+    auto find = Impl::findNode(*this, nodeId);
 
-    auto entry = m_data.find(nodeId);
-    auto* node = graph.findNode(nodeId);
-
-    return entry != m_data.end() && node
-           && !(node->nodeFlags() & (NodeFlag::Evaluating | NodeFlag::RequiresEvaluation))
-           && entry->areInputsValid(graph, nodeId);
+    return find
+           && find.isEvaluated()
+           && find.areInputsValid();
 }
 
 bool
@@ -930,7 +927,7 @@ GraphExecutionModel::invalidatePort(NodeId nodeId, PortId portId)
     return true;
 }
 
-dm::NodeData
+dm::NodeDataSet
 GraphExecutionModel::nodeData(NodeId nodeId, PortId portId) const
 {
     auto port = Impl::findPortDataEntry(*this, nodeId, portId);
@@ -946,7 +943,7 @@ GraphExecutionModel::nodeData(NodeId nodeId, PortId portId) const
     return *port;
 }
 
-dm::NodeData
+dm::NodeDataSet
 GraphExecutionModel::nodeData(NodeId nodeId, PortType type, PortIndex idx) const
 {
     auto* node = graph().findNode(nodeId);
@@ -985,7 +982,7 @@ GraphExecutionModel::nodeData(NodeId nodeId, PortType type) const
 }
 
 bool
-GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, dm::NodeData data)
+GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, dm::NodeDataSet data)
 {
     auto const makeError = [this, nodeId](){
         return Impl::graphName(*this) +
@@ -1066,7 +1063,7 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, dm::NodeData data
 }
 
 bool
-GraphExecutionModel::setNodeData(NodeId nodeId, PortType type, PortIndex idx, dm::NodeData data)
+GraphExecutionModel::setNodeData(NodeId nodeId, PortType type, PortIndex idx, dm::NodeDataSet data)
 {
     auto* node = graph().findNode(nodeId);
     if (!node)

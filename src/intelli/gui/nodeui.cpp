@@ -243,7 +243,7 @@ NodeUI::executeNode(GtObject* obj)
     auto* model = graph->makeExecutionModel();
 
     node->setActive();
-
+    model->invalidateOutPorts(node->id());
     model->evaluateNode(node->id()).detach();
 }
 

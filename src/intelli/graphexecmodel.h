@@ -33,16 +33,16 @@ public:
 
     DummyDataModel(Node& node);
 
-    dm::NodeData nodeData(PortId portId, dm::NodeData data);
+    dm::NodeDataSet nodeData(PortId portId, dm::NodeDataSet data);
     NodeDataPtrList nodeData(PortType type) const;
 
-    bool setNodeData(PortId portId, dm::NodeData data);
+    bool setNodeData(PortId portId, dm::NodeDataSet data);
     bool setNodeData(PortType type, NodeDataPtrList const& data);
 
 private:
 
-    dm::NodeData nodeData(NodeId nodeId, PortId portId) const override;
-    bool setNodeData(NodeId nodeId, PortId portId, dm::NodeData data) override;
+    dm::NodeDataSet nodeData(NodeId nodeId, PortId portId) const override;
+    bool setNodeData(NodeId nodeId, PortId portId, dm::NodeDataSet data) override;
 
     Node* m_node = nullptr;
     dm::Entry m_data;
@@ -171,12 +171,12 @@ public:
     bool invalidateOutPorts(NodeId nodeId);
     bool invalidatePort(NodeId nodeId, PortId portId);
 
-    dm::NodeData nodeData(NodeId nodeId, PortId portId) const override;
-    dm::NodeData nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;
+    dm::NodeDataSet nodeData(NodeId nodeId, PortId portId) const override;
+    dm::NodeDataSet nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;
     NodeDataPtrList nodeData(NodeId nodeId, PortType type) const;
 
-    bool setNodeData(NodeId nodeId, PortId portId, dm::NodeData data) override;
-    bool setNodeData(NodeId nodeId, PortType type, PortIndex idx, dm::NodeData data);
+    bool setNodeData(NodeId nodeId, PortId portId, dm::NodeDataSet data) override;
+    bool setNodeData(NodeId nodeId, PortType type, PortIndex idx, dm::NodeDataSet data);
     bool setNodeData(NodeId nodeId, PortType type, NodeDataPtrList const& data);
 
     void debug() const;

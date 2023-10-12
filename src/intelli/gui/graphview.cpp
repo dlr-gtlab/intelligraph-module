@@ -143,23 +143,23 @@ GraphView::setScene(GraphScene& scene)
     addAction(autoEvaluate);
     addAction(stopAutoEvaluate);
 
-    autoEvaluate->setVisible(true);
-    stopAutoEvaluate->setVisible(false);
+    connect(m_sceneMenu, &QMenu::aboutToShow,
+            this, [&scene, autoEvaluate, stopAutoEvaluate](){
+        bool isAutoEvaluating = scene.isAutoEvaluating();
+        autoEvaluate->setVisible(!isAutoEvaluating);
+        stopAutoEvaluate->setVisible(isAutoEvaluating);
+    });
 
     connect(autoEvaluate, &QAction::triggered, &scene, [=](){
         if (auto* scene = nodeScene())
         {
             scene->autoEvaluate(true);
-            autoEvaluate->setVisible(false);
-            stopAutoEvaluate->setVisible(true);
         }
     });
     connect(stopAutoEvaluate, &QAction::triggered, &scene, [=](){
         if (auto* scene = nodeScene())
         {
             scene->autoEvaluate(false);
-            autoEvaluate->setVisible(true);
-            stopAutoEvaluate->setVisible(false);
         }
     });
 

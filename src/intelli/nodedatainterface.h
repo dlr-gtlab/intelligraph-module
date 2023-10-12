@@ -41,19 +41,19 @@ struct PortEntry
 };
 
 /// helper struct representing node data and its validity state
-struct NodeData
+struct NodeDataSet
 {
-    NodeData(std::nullptr_t) :
+    NodeDataSet(std::nullptr_t) :
         data(nullptr)
     {}
-    NodeData(NodeDataPtr _data = {}) :
+    NodeDataSet(NodeDataPtr _data = {}) :
         data(std::move(_data))
     {}
     template <typename T>
-    NodeData(std::shared_ptr<T> _data) :
+    NodeDataSet(std::shared_ptr<T> _data) :
         data(std::move(_data))
     {}
-    NodeData(PortEntry const& port) :
+    NodeDataSet(PortEntry const& port) :
         data(port.data), state(port.state)
     {}
 
@@ -96,9 +96,9 @@ public:
 
     virtual ~NodeDataInterface() = default;
 
-    virtual dm::NodeData nodeData(NodeId nodeId, PortId portId) const = 0;
+    virtual dm::NodeDataSet nodeData(NodeId nodeId, PortId portId) const = 0;
 
-    virtual bool setNodeData(NodeId nodeId, PortId portId, dm::NodeData data) = 0;
+    virtual bool setNodeData(NodeId nodeId, PortId portId, dm::NodeDataSet data) = 0;
 };
 
 } // namespace intelli
