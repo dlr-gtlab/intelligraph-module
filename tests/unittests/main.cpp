@@ -9,7 +9,7 @@
 
 #include "node/test_dynamic.h"
 #include "intelli/connection.h"
-#include <intelli/core.h>
+#include "intelli/core.h"
 
 #include <gt_objectfactory.h>
 
@@ -24,12 +24,12 @@ auto init_log_once = [](){
     logger.setVerbosity(gt::log::Everything);
     return 0;
 }();
+
 int
 main(int argc, char** argv)
 {
     [](){
         TestDynamicNode::registerOnce();
-
         gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
     }();
 

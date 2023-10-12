@@ -187,6 +187,29 @@ intelli::FutureNodeEvaluated::wait(std::chrono::milliseconds timeout)
     return eventLoop.exec() == GtEventLoop::Success;
 }
 
+dm::NodeDataSet
+intelli::FutureNodeEvaluated::get(PortId port, std::chrono::milliseconds timeout)
+{
+    if (!m_model) return {};
+
+    if (port == invalid<PortId>()) return {};
+
+    if (!wait(timeout)) return {};
+
+    return m_model->nodeData(m_targetNode, port);
+}
+
+dm::NodeDataSet
+intelli::FutureNodeEvaluated::get(PortType type, PortIndex idx, std::chrono::milliseconds timeout)
+{
+    if (!m_model) return {};
+
+    auto* node = m_model->graph().findNode(m_targetNode);
+    if (!node) return {};
+
+    return get(node->portId(type, idx), timeout);
+}
+
 //////////////////////////////////////////////////////
 
 struct GraphExecutionModel::Impl

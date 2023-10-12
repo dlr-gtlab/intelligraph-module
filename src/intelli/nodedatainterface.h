@@ -40,6 +40,20 @@ struct PortEntry
     NodeDataPtr data = nullptr;
 };
 
+struct Entry
+{
+    /// in and out ports
+    QVector<PortEntry> portsIn = {}, portsOut = {};
+
+    bool isEvaluated(Node const& node) const;
+
+    bool areInputsValid(Graph const& graph, NodeId nodeId) const;
+
+    bool canEvaluate(Graph const& graph, Node const& node) const;
+};
+
+using DataModel = QHash<NodeId, Entry>;
+
 /// helper struct representing node data and its validity state
 struct NodeDataSet
 {
@@ -69,20 +83,6 @@ struct NodeDataSet
     template <typename T>
     inline auto value() const noexcept { return qobject_pointer_cast<T const>(data); }
 };
-
-struct Entry
-{
-    /// in and out ports
-    QVector<PortEntry> portsIn = {}, portsOut = {};
-
-    bool isEvaluated(Node const& node) const;
-
-    bool areInputsValid(Graph const& graph, NodeId nodeId) const;
-
-    bool canEvaluate(Graph const& graph, Node const& node) const;
-};
-
-using DataModel = QHash<NodeId, Entry>;
 
 } // namesace dm
 

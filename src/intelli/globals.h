@@ -11,6 +11,8 @@
 
 #include <gt_logging.h>
 
+#include <chrono>
+
 #include <QPointF>
 #include <QRegExp>
 
@@ -18,6 +20,8 @@ namespace intelli
 {
 
 class NodeData;
+
+constexpr auto max_timeout = std::chrono::milliseconds::max();
 
 // Base class for typesafe type aliases
 template <typename T, typename Tag, T InitValue = 0>

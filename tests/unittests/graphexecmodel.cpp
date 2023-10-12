@@ -17,7 +17,7 @@
 
 using namespace intelli;
 
-TEST(GraphExecutionModel, evaluate_until_node)
+TEST(GraphExecutionModel, evaluate_node)
 {
     Graph graph;
 
@@ -27,11 +27,12 @@ TEST(GraphExecutionModel, evaluate_until_node)
 
     GraphExecutionModel model(graph);
 
-    EXPECT_TRUE(model.evaluateNode(C_id).wait(std::chrono::seconds(1)));
+    auto future = model.evaluateNode(C_id);
+    EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
     
     EXPECT_TRUE(model.isNodeEvaluated(C_id));
 
-    auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0)).value<DoubleData>();
+    auto C_data = future.get(PortType::Out, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(C_data);
     EXPECT_EQ(C_data->value(), 84);
 
