@@ -673,7 +673,7 @@ GraphExecutionModel::autoEvaluateNode(NodeId nodeId)
 
         auto const& targetNodes = graph.findConnectedNodes(nodeId, PortType::Out);
 
-        bool success = false;
+        bool success = targetNodes.empty();
 
         for (NodeId nextNode : targetNodes) success |= autoEvaluateNode(nextNode);
 
@@ -847,7 +847,8 @@ GraphExecutionModel::evaluateNextInQueue()
         if (!Impl::doTriggerNode(*this, node))
         {
             gtError() << makeError(node) << tr("(Node execution failed)");
-            m_evaluatingNodes.removeLast();
+            // node may already be removed here
+            m_evaluatingNodes.removeOne(node);
             continue;
         }
 

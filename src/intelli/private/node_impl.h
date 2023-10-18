@@ -140,6 +140,20 @@ struct NodeImpl
         }
         return {};
     }
+
+    PortId incNextPortId(PortId id)
+    {
+        if (id != invalid<PortId>())
+        {
+            // port already exists
+            if (find(id)) return PortId{};
+
+            id = std::max(nextPortId, id);
+            nextPortId = PortId(id + 1);
+            return id;
+        }
+        return nextPortId++;
+    }
 };
 
 } // namespace intelli

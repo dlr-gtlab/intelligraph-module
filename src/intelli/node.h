@@ -118,6 +118,23 @@ public:
             optional(_optional)
         {}
 
+        /// creates a Portdata struct with a custom port id
+        template<typename ...T>
+        static PortData customId(PortId id, T&&... args)
+        {
+            PortData pd(std::forward<T>(args)...);
+            pd.m_id = id;
+            return pd;
+        }
+
+        /// creates a copy of this object but resets the id parameter
+        PortData copy() const
+        {
+            PortData pd(*this);
+            pd.m_id = invalid<PortId>();
+            return pd;
+        }
+
         // type id for port data (classname)
         QString typeId;
         // custom port caption (optional)

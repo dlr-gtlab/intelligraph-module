@@ -44,7 +44,9 @@ public:
         DynamicInputOnly,
         /// only output ports may be added dynamically (input ports may still be
         /// added, but wont be saved persistently)
-        DynamicOutputOnly
+        DynamicOutputOnly,
+        /// no ports can be added dynamically
+        NoDynamicPorts
     };
 
     /**

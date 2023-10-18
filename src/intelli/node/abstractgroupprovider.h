@@ -69,9 +69,10 @@ private slots:
         PortId id = portId(invert(Type), idx);
         if (auto* port = this->port(id))
         {
+            auto p = port->copy();
             Type == PortType::In ?
-                graph->insertInPort(*port, idx) :
-                graph->insertOutPort(*port, idx);
+                graph->insertInPort( std::move(p), idx) :
+                graph->insertOutPort(std::move(p), idx);
         }
     }
 

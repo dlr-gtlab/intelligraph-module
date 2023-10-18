@@ -162,6 +162,17 @@ GraphAdapterModel::convert(ConnectionId conId) const
         return { invalid<NodeId>(), invalid<PortIndex>(), invalid<NodeId>(), invalid<PortIndex>() };
     }
 
+    auto outPort = outNode->portIndex(PortType::Out, conId.outPort);
+    auto inPort  =  inNode->portIndex(PortType::In,  conId.inPort);
+
+    if (outPort == invalid<PortIndex>() || inPort == invalid<PortIndex>())
+    {
+        gtError() << tr("Failed to convert connection %1, invalid in or out port!")
+                         .arg(toString(conId))
+                  << tr("Outport: %1, Inport: %2").arg(outPort).arg(inPort);
+        return { invalid<NodeId>(), invalid<PortIndex>(), invalid<NodeId>(), invalid<PortIndex>() };
+    }
+
     return {
         outNode->id(),
         outNode->portIndex(PortType::Out, conId.outPort),

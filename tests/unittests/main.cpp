@@ -8,6 +8,7 @@
 #include "gtest/gtest.h"
 
 #include "node/test_dynamic.h"
+#include "node/test_node.h"
 #include "intelli/connection.h"
 #include "intelli/core.h"
 
@@ -30,6 +31,7 @@ main(int argc, char** argv)
 {
     [](){
         TestDynamicNode::registerOnce();
+        TestNode::registerOnce();
         gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
     }();
 

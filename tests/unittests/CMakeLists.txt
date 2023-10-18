@@ -23,9 +23,11 @@ add_executable(IntelliGraphUnitTests
     graph.cpp
     graphbuilder.cpp
     graphexecmodel.cpp
+    portdata.cpp
     strongtypes.cpp
 
     node/test_dynamic.h node/test_dynamic.cpp
+    node/test_node.h node/test_node.cpp
 )
 
 target_link_libraries(IntelliGraphUnitTests PRIVATE

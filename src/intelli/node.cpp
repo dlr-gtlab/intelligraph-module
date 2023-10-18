@@ -11,6 +11,7 @@
 #include "intelli/graphexecmodel.h"
 #include "intelli/nodeexecutor.h"
 #include "intelli/private/node_impl.h"
+#include "intelli/private/utils.h"
 
 #include <gt_qtutilities.h>
 
@@ -262,9 +263,14 @@ Node::insertOutPort(PortData port, int idx) noexcept(false)
 PortId
 Node::insertPort(PortType type, PortData port, int idx) noexcept(false)
 {
+    auto const makeError = [this, type, idx](){
+        return objectName() + QStringLiteral(": ") +
+               tr("Failed to insert port idx %1 (%2)").arg(idx).arg(toString(type));
+    };
+
     if (port.typeId.isEmpty())
     {
-        gtWarning() << tr("Invalid port typeId specified!");
+        gtWarning() << makeError() << tr("(Invalid typeId specified)");
         return PortId{};
     }
 
@@ -277,13 +283,22 @@ Node::insertPort(PortType type, PortData port, int idx) noexcept(false)
         iter = std::next(ports.begin(), idx);
     }
 
+    // update port id if necessary
+    PortId id = pimpl->incNextPortId(port.m_id);
+    if (id == invalid<PortId>())
+    {
+        gtWarning() << makeError() << tr("(Port id %1 already exists)").arg(port.m_id);
+        return PortId{};
+    }
+
+    port.m_id = id;
+
     // notify model
     PortIndex pidx = PortIndex::fromValue(std::distance(ports.begin(), iter));
     emit portAboutToBeInserted(type, pidx);
     auto finally = gt::finally([=](){ emit portInserted(type, pidx); });
 
-    PortId id = pimpl->nextPortId++;
-    port.m_id = id;
+    // do the insertion
     ports.insert(iter, std::move(port));
 
     return id;
@@ -311,8 +326,9 @@ Node::nodeData(PortId id) const
     auto* model = dataInterface(this, pimpl);
     if (!model)
     {
-        gtWarning() << tr("Failed to access node data, evaluation model not found!")
-                    << gt::brackets(objectName());
+        gtWarning().nospace()
+            << objectName() << ": "
+            << tr("Failed to access node data, evaluation model not found!");
         return {};
     }
 
@@ -325,8 +341,9 @@ Node::setNodeData(PortId id, NodeDataPtr data)
     auto* model = dataInterface(this, pimpl);
     if (!model)
     {
-        gtWarning() << tr("Failed to set node data, evaluation model not found!")
-                    << gt::brackets(objectName());
+        gtWarning().nospace()
+            << objectName() << ": "
+            << tr("Failed to set node data, evaluation model not found!");
         return false;
     }
 
@@ -404,7 +421,9 @@ Node::handleNodeEvaluation(GraphExecutionModel& model)
         return blockingEvaluation(*this, model);
     }
 
-    gtError() << tr("Unkonw eval mode! (%1)").arg((int)pimpl->evalMode);
+    gtError().nospace()
+        << objectName() << ": "
+        << tr("Unkonw eval mode! (%1)").arg((int)pimpl->evalMode);
     return false;
 }
 

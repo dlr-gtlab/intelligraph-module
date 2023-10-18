@@ -29,7 +29,7 @@ NumberMathNode::NumberMathNode() :
 
     // out ports
     m_out = addOutPort(PortData{
-        intelli::typeId<DoubleData>(),
+        typeId<DoubleData>(),
         QStringLiteral("result") // custom port caption
     });
 
