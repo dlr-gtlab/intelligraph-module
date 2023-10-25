@@ -267,6 +267,10 @@ GraphScene::createSceneMenu(QPointF scenePos)
             return;
         }
         node->setPos(scenePos);
+
+        auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'").arg(node->caption()));
+        Q_UNUSED(cmd);
+
         m_graph->appendNode(std::move(node));
 
         menu->close();
