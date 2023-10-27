@@ -27,6 +27,21 @@ class Package : public GtPackage
 public:
 
     Q_INVOKABLE Package();
+
+protected:
+    /**
+     * @brief Module specific data read method.
+     * @param Root data.
+     * @return Returns true if data was successfully read.
+     */
+    bool readData(const QDomElement& root);
+
+    /**
+     * @brief Module specific data save method.
+     * @param Root data.
+     * @return Returns true if data was successfully read.
+     */
+    bool saveData(QDomElement& root, QDomDocument& doc);
 };
 
 } // namespace intelli

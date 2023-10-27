@@ -16,7 +16,6 @@
 #include "gt_structproperty.h"
 #include "gt_stringproperty.h"
 #include "gt_boolproperty.h"
-#include "gt_intproperty.h"
 #include "gt_exceptions.h"
 
 using namespace intelli;
