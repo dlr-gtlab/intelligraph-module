@@ -12,7 +12,7 @@
 
 #include "intelli/graph.h"
 
-#include <QtNodes/DataFlowGraphicsScene>
+#include <QtNodes/BasicGraphicsScene>
 #include <QtNodes/Definitions>
 
 namespace intelli
@@ -54,8 +54,6 @@ private:
     struct Impl;
     
     QPointer<Graph> m_graph = nullptr;
-
-//    QPointer<QtNodes::AbstractGraphModel> m_model = nullptr;
 
     void deleteNodes(std::vector<QtNodes::NodeId> const& nodeIds);
 

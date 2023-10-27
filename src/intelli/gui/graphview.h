@@ -12,8 +12,6 @@
 
 #include <QGraphicsView>
 
-namespace QtNodes { class DataFlowGraphModel; }
-
 class QMenu;
 
 namespace intelli

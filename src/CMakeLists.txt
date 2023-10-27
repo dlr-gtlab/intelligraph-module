@@ -9,6 +9,7 @@ set(PUBLIC_HEADERS
     intelli/globals.h
     intelli/graph.h
     intelli/graphbuilder.h
+    intelli/graphexecmodel.h
     intelli/memory.h
     intelli/node.h
     intelli/nodedata.h
@@ -43,7 +44,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/connectiongroup.h
     intelli/graphadaptermodel.h
     intelli/graphcategory.h
-    intelli/graphexecmodel.h
     intelli/module.h
     intelli/exec/detachedexecutor.h
     intelli/node/abstractgroupprovider.h
