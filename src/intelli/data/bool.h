@@ -15,7 +15,7 @@
 namespace intelli
 {
 
-class BoolData : public TemplateData<bool>
+class GT_INTELLI_EXPORT BoolData : public TemplateData<bool>
 {
     Q_OBJECT
 

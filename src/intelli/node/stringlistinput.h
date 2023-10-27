@@ -28,11 +28,13 @@ public:
 
 protected:
 
-    NodeDataPtr eval(PortId outId) override;
+    void eval() override;
 
 private:
 
     GtPropertyStructContainer m_values;
+
+    PortId m_out;
 
     QStringList values() const;
 };

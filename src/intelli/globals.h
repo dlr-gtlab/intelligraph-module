@@ -11,11 +11,17 @@
 
 #include <gt_logging.h>
 
+#include <chrono>
+
 #include <QPointF>
 #include <QRegExp>
 
 namespace intelli
 {
+
+class NodeData;
+
+constexpr auto max_timeout = std::chrono::milliseconds::max();
 
 // Base class for typesafe type aliases
 template <typename T, typename Tag, T InitValue = 0>
@@ -35,14 +41,21 @@ public:
     ~StrongType() = default;
 
     template<typename U>
-    static StrongType fromValue(U value) { return StrongType{static_cast<T>(value)}; }
+    constexpr static StrongType fromValue(U value) { return StrongType{static_cast<T>(value)}; }
 
     // Overload comparison operators as needed
     constexpr inline bool
     operator==(StrongType const& other) const noexcept { return m_value == other.m_value; }
-
     constexpr inline bool
     operator!=(StrongType const& other) const noexcept { return !(*this == other); }
+
+    // do not allow comparissions between different strong types
+    template<typename U, typename UTag, U u>
+    constexpr inline bool
+    operator==(StrongType<U, UTag, u> const& other) const noexcept = delete;
+    template<typename U, typename UTag, U u>
+    constexpr inline bool
+    operator!=(StrongType<U, UTag, u> const& other) const noexcept = delete;
 
     constexpr inline StrongType&
     operator+=(StrongType const& o) noexcept { m_value += o.m_value; return *this; }
@@ -67,7 +80,7 @@ public:
     constexpr inline StrongType
     operator--(int) noexcept { StrongType tmp(*this); operator--(); return tmp; }
 
-    operator T() const { return value(); }
+    constexpr operator T() const { return value(); }
 
     // Access the underlying value
     constexpr inline T
@@ -83,62 +96,10 @@ using PortId    = StrongType<unsigned, struct PortId_, std::numeric_limits<unsig
 
 using Position = QPointF;
 
-/**
- * Connection identificator that stores
- * out `NodeId`, out `PortIndex`, in `NodeId`, in `PortIndex`
- */
-struct ConnectionId
-{
-    NodeId outNodeId;
-    PortIndex outPortIndex;
-    NodeId inNodeId;
-    PortIndex inPortIndex;
-};
+using NodeDataPtr  = std::shared_ptr<const NodeData>;
 
-/**
- * @brief Denotes the possible port types
- */
-enum PortType
-{
-    In = 0,
-    Out,
-    NoType
-};
+using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
 
-/**
- * @brief Graph model policies
- */
-enum ModelPolicy
-{
-    /// Model is just a dummy and may be closed as soon as its
-    /// parent model is closed
-    DummyModel = 0,
-    /// Model is active and should be kept alive if its parent model
-    /// is closed (default)
-    ActiveModel = 1
-};
-
-/**
- * @brief Policy for handling node id collisions, when appending a node to a graph
- */
-enum NodeIdPolicy
-{
-    /// Indictaes that the node id may be updated if it already exists
-    UpdateNodeId = 0,
-    /// Indicates that the node id should not be updated.
-    KeepNodeId = 1
-};
-
-/**
- * @brief Defines the execution modes
- */
-enum class ExecutionMode
-{
-    None = 0,
-    Sequential,
-    Parallel,
-    Default = 255
-};
 
 namespace detail
 {
@@ -147,6 +108,82 @@ template <typename T>
 struct InvalidValue
 {
     constexpr static T get() { return std::numeric_limits<T>::max(); }
+};
+
+} // namespace detail
+
+template<typename T>
+constexpr inline T invalid() noexcept
+{
+    return detail::InvalidValue<T>::get();
+}
+
+/**
+ * Connection identificator that stores
+ * out `NodeId`, out `PortIndex`, in `NodeId`, in `PortIndex`
+ */
+struct ConnectionId
+{
+    constexpr ConnectionId(NodeId _outNode, PortId _outPort,
+                           NodeId _inNode, PortId _inPort) :
+        outNodeId(_outNode), outPort(_outPort),
+        inNodeId(_inNode), inPort(_inPort)
+    {}
+
+    NodeId outNodeId;
+    PortId outPort;
+    NodeId inNodeId;
+    PortId inPort;
+    
+    constexpr ConnectionId reversed() const noexcept
+    {
+        return { inNodeId, inPort, outNodeId, outPort };
+    }
+
+    constexpr bool isValid() const noexcept
+    {
+        return inNodeId  != invalid<NodeId>() ||
+               outNodeId != invalid<NodeId>() ||
+               inPort    != invalid<PortId>() ||
+               outPort   != invalid<PortId>();
+    }
+};
+
+/**
+ * @brief Denotes the possible port types
+ */
+enum class PortType
+{
+    /// Input port
+    In = 0,
+    /// Output port
+    Out,
+    /// Undefined port type (most uses are invalid!)
+    NoType
+};
+
+inline constexpr PortType invert(PortType type) noexcept
+{
+    switch (type)
+    {
+    case PortType::In:
+        return PortType::Out;
+    case PortType::Out:
+        return PortType::In;
+    default:
+        return type;
+    }
+}
+
+namespace detail
+{
+
+template <>
+struct InvalidValue<ConnectionId>
+{
+    constexpr static ConnectionId get() {
+        return ConnectionId{ NodeId{}, PortId{}, NodeId{}, PortId{} };
+    }
 };
 
 template <typename T, typename Tag, T InitVal>
@@ -159,11 +196,35 @@ struct InvalidValue<StrongType<T, Tag, InitVal>>
 
 } // namespace detail
 
-template<typename T>
-constexpr inline T invalid() noexcept
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator+=(StrongType<T, Tag, InitVal> const& a,
+           StrongType<T, Tag, InitVal> const& b) noexcept { return a += b; }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator-=(StrongType<T, Tag, InitVal> const& a,
+           StrongType<T, Tag, InitVal> const& b) noexcept { return a -= b; }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator*=(StrongType<T, Tag, InitVal> const& a,
+           StrongType<T, Tag, InitVal> const& b) noexcept{ return a *= b; }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator/=(StrongType<T, Tag, InitVal> const& a,
+           StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
+
+inline bool
+operator==(ConnectionId const& a, ConnectionId const& b)
 {
-    return detail::InvalidValue<T>::get();
+    return a.outNodeId == b.outNodeId && a.outPort == b.outPort &&
+           a.inNodeId  == b.inNodeId  && a.inPort  == b.inPort;
 }
+
+inline bool
+operator!=(ConnectionId const& a, ConnectionId const& b) { return !(a == b); }
 
 } // namespace intelli
 
@@ -184,37 +245,8 @@ inline QRegExp forClassNames()
 
 } // namespace re
 
-} // namespace gt
-
-template <typename T, typename Tag, T InitVal>
-constexpr inline bool
-operator+=(intelli::StrongType<T, Tag, InitVal> const& a,
-           intelli::StrongType<T, Tag, InitVal> const& b) noexcept { return a += b; }
-
-template <typename T, typename Tag, T InitVal>
-constexpr inline bool
-operator-=(intelli::StrongType<T, Tag, InitVal> const& a,
-           intelli::StrongType<T, Tag, InitVal> const& b) noexcept { return a -= b; }
-
-template <typename T, typename Tag, T InitVal>
-constexpr inline bool
-operator*=(intelli::StrongType<T, Tag, InitVal> const& a,
-           intelli::StrongType<T, Tag, InitVal> const& b) noexcept{ return a *= b; }
-
-template <typename T, typename Tag, T InitVal>
-constexpr inline bool
-operator/=(intelli::StrongType<T, Tag, InitVal> const& a,
-           intelli::StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
-
-inline bool
-operator==(intelli::ConnectionId const& a, intelli::ConnectionId const& b)
+namespace log
 {
-    return a.outNodeId == b.outNodeId && a.outPortIndex == b.outPortIndex &&
-           a.inNodeId  == b.inNodeId  && a.inPortIndex  == b.inPortIndex;
-}
-
-inline bool
-operator!=(intelli::ConnectionId const& a, intelli::ConnectionId const& b) { return !(a == b); }
 
 template <typename T, typename Tag, T InitVal>
 inline gt::log::Stream&
@@ -230,8 +262,8 @@ operator<<(gt::log::Stream& s, intelli::ConnectionId const& con)
         gt::log::StreamStateSaver saver(s);
         s.nospace()
             << "NodeConnection["
-            << con.outNodeId << ":" << con.outPortIndex << "/"
-            << con.inNodeId  << ":" << con.inPortIndex  << "]";
+            << con.outNodeId << ":" << con.outPort << "/"
+            << con.inNodeId  << ":" << con.inPort  << "]";
     }
     return s.doLogSpace();
 }
@@ -253,6 +285,10 @@ operator<<(gt::log::Stream& s, intelli::PortType type)
     }
     return s.doLogSpace();
 }
+
+} // namespace log
+
+} // namespace gt
 
 namespace gt
 {

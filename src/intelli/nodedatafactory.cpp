@@ -38,9 +38,8 @@ NodeDataFactory::registerData(const QMetaObject& meta) noexcept
     auto tmp = gt::unique_qobject_cast<NodeData>(std::move(obj));
     if (!tmp)
     {
-        gtError()
-            << QObject::tr("Failed to register node data '%1'! (not invokable?)")
-               .arg(className);
+        gtError() << QObject::tr("Failed to register node data '%1'! (not invokable?)")
+                         .arg(className);
         unregisterClass(meta);
         return false;
     }
@@ -48,9 +47,8 @@ NodeDataFactory::registerData(const QMetaObject& meta) noexcept
     auto typeName = tmp->typeName();
     if (typeName.isEmpty())
     {
-        gtError()
-            << QObject::tr("Failed to register node data '%1'! (invalid type name)")
-               .arg(className);
+        gtError() << QObject::tr("Failed to register node data '%1'! (invalid type name)")
+                         .arg(className);
         unregisterClass(meta);
         return false;
     }

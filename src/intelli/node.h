@@ -21,19 +21,43 @@ namespace intelli
 
 enum NodeFlag
 {
-    NoFlag        = 0,
+    NoFlag      = 0,
     /// Indicates node is resizeable
-    Resizable     = 1,
+    Resizable   = 1 << 0,
     /// Indicates node caption should be hidden
-    HideCaption   = 2,
+    HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
-    Unique        = 4
+    Unique      = 1 << 2,
+    /// Indicates that the node requires evaluation (will be updated automatically)
+    RequiresEvaluation = 1 << 3,
+    /// Indicates that the node is evaluating (will be set automatically)
+    Evaluating = 1 << 4,
+
+    /// default node flags
+    DefaultNodeFlags = RequiresEvaluation
+};
+
+enum class NodeEvalMode
+{
+    /// Indicates that the node will be evaluated non blockingly in a separate
+    /// thread
+    Detached = 0,
+    /// Indicates the the node should be evaluated exclusively to other nodes in
+    /// a separate thread
+    Exclusive,
+    /// Indicates that the node should be evaluated in the main thread, thus
+    /// blocking the GUI. Should only be used if node evaluates instantly.
+    MainThread,
+    /// Default behaviour
+    Default = Detached,
 };
 
 using NodeFlags  = int;
 
-class Executor;
+class NodeExecutor;
 class NodeData;
+class NodeDataInterface;
+class GraphExecutionModel;
 struct NodeImpl;
 
 /**
@@ -47,20 +71,19 @@ class GT_INTELLI_EXPORT Node : public GtObject
 {
     Q_OBJECT
     
-    friend class Executor;
+    friend class NodeExecutor;
+    friend class GraphExecutionModel;
 
 public:
 
-    using NodeId    = intelli::NodeId;
-    using NodeFlag  = intelli::NodeFlag;
-    using NodeFlags = intelli::NodeFlags;
-    using PortType  = intelli::PortType;
-    using PortId    = intelli::PortId;
-    using PortIndex = intelli::PortIndex;
-    using Position  = intelli::Position;
-
-    using ExecutionMode = intelli::ExecutionMode;
-    using NodeDataPtr  = std::shared_ptr<const NodeData>;
+    using NodeId      = intelli::NodeId;
+    using NodeFlag    = intelli::NodeFlag;
+    using NodeFlags   = intelli::NodeFlags;
+    using PortType    = intelli::PortType;
+    using PortId      = intelli::PortId;
+    using PortIndex   = intelli::PortIndex;
+    using Position    = intelli::Position;
+    using NodeDataPtr = intelli::NodeDataPtr;
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
@@ -95,6 +118,23 @@ public:
             optional(_optional)
         {}
 
+        /// creates a Portdata struct with a custom port id
+        template<typename ...T>
+        static PortData customId(PortId id, T&&... args)
+        {
+            PortData pd(std::forward<T>(args)...);
+            pd.m_id = id;
+            return pd;
+        }
+
+        /// creates a copy of this object but resets the id parameter
+        PortData copy() const
+        {
+            PortData pd(*this);
+            pd.m_id = invalid<PortId>();
+            return pd;
+        }
+
         // type id for port data (classname)
         QString typeId;
         // custom port caption (optional)
@@ -118,15 +158,6 @@ public:
     };
     
     ~Node();
-
-    /* node specifc methods */
-
-    /**
-     * @brief Sets the node executor or disables it. Only a node with a valid
-     * executer can be evaluated. A node has no executor assigned by default.
-     * @param executorMode New executor
-     */
-    void setExecutor(ExecutionMode executorMode);
 
     /**
      * @brief Setter for the automatic node evaluation flag
@@ -157,7 +188,7 @@ public:
      * @brief Sets the new node position. Will be saved persistently.
      * @param pos new position
      */
-    void setPos(Position pos);
+    Node& setPos(Position pos);
 
     /**
      * @brief pos
@@ -194,11 +225,14 @@ public:
      */
     NodeFlags nodeFlags() const;
 
+    NodeEvalMode nodeEvalMode() const;
+
     /**
      * @brief Setter for the caption. Will be saved persistently
      * @param caption New caption
+     * @return Returns a reference to this node for method chaining
      */
-    void setCaption(QString const& caption);
+    Node& setCaption(QString const& caption);
 
     /**
      * @brief Caption of the node
@@ -241,18 +275,26 @@ public:
     PortData const* port(PortId id) const noexcept;
 
     /**
-     * @brief Returns the port index for the port id and the port type.
+     * @brief Returns the port index of the port id and its port type.
      * @param type Port type (input or output)
      * @param id Port id
-     * @return Port index. May be invalid, check using "invalid<PortIndex>()"
+     * @return Port index. May be invalid, check using `invalid<PortIndex>()`
      */
     PortIndex portIndex(PortType type, PortId id) const noexcept(false);
+
+    /**
+     * @brief Returns the port type of the given port
+     * @param id Port id
+     * @return Port type. `PortyType::NoTyp` is returned if the given port
+     * does not exist
+     */
+    PortType portType(PortId id) const noexcept(false);
 
     /**
      * @brief Attempts to find the port id by port index and the port type.
      * @param type Port type (input or output)
      * @param idx Port index
-     * @return Port id. May be invalid, check using "invalid<PortId>()"
+     * @return Port id. May be invalid, check using `invalid<PortId>()`
      */
     PortId portId(PortType type, PortIndex idx) const noexcept(false);
 
@@ -264,100 +306,36 @@ public:
      */
     QWidget* embeddedWidget();
 
-    /**
-     * @brief Sets the node data at the input port specified by the index.
-     * Triggers the evaluation of all output ports
-     * @param idx Input port index
-     * @param data Node data.
-     */
-    bool setInData(PortIndex idx, NodeDataPtr data);
-
-    /**
-     * @brief Returns the input node data specified by the index.
-     * @param idx Input port index
-     * @return Node data. Null if idx is invalid
-     */
-    NodeDataPtr const& inData(PortIndex idx);
-
-    /**
-     * @brief May be used to override the out data
-     * @param idx Output port index
-     * @param data New data
-     * @return success
-     */
-    bool setOutData(PortIndex idx, NodeDataPtr data);
-
-    /**
-     * @brief Returns the output node data specified by the index.
-     * @param idx Output port index
-     * @return Node data. Null if idx is invalid
-     */
-    NodeDataPtr const& outData(PortIndex idx);
-
-public slots:
-
-    /**
-     * @brief This will schedule the evaluation of all output ports.
-     */
-    void updateNode();
-
-    /**
-     * @brief This will schedule the evaluation of the output port specified by
-     * idx.
-     * @param idx Output port index. May be calculated using an output port id.
-     */
-    void updatePort(PortIndex idx);
-
-    /**
-     * @brief Triggers the evaluation of the node. It is not intended to
-     * actually do the evaluation (use `eval` instead), but to handle/manage the
-     * execution of the node. Should only be overriden in rare cases.
-     * @param idx Port index to evaluate. If port index is invalid, the whole
-     * node (i.e. all ports) should be evaluated
-     * @return Returns true if the evaluation was triggered sucessfully.
-     * (node may evaluated non-blocking)
-     */
-    virtual bool triggerEvaluation(PortIndex idx = PortIndex{});
-
 signals:
+
+    /**
+     * @brief Triggers the evaluation of node. It is not guranteed to be
+     * evaluated, as the underling graph execution model must be active
+     */
+    void triggerNodeEvaluation();
 
     /**
      * @brief Emitted if the node has evaluated and the output data has changed.
      * Will be called automatically and should not be triggered by the "user".
-     * @param idx Output port index. May be mapped to an output port id.
      */
-    void evaluated(PortIndex idx = PortIndex{});
-
-    /**
-     * @brief Emitted if the output data has changed (may be invalid), just
-     * after evaluating. Will be called automatically and should not be triggered
-     * by the "user". Triggers the evaluation of all connected ports.
-     * @param idx Output port index. May be mapped to an output port id.
-     */
-    void outDataUpdated(PortIndex idx = PortIndex{});
-
-    /**
-     * @brief Emitted if the output data was invalidated, just after evaluating.
-     * Will be called automatically and should not be triggered by the "user".
-     * Triggers the invalidation of all connected ports
-     * @param idx Output port index. May be mapped to an output port id.
-     */
-    void outDataInvalidated(PortIndex idx = PortIndex{});
+    void evaluated();
 
     /**
      * @brief Emitted if new input data was recieved, just before evaluating.
      * Data may be invalid. Should not be triggered by the "user".
-     * @param idx Input port index. May be mapped to an input port id.
+     * @param portId Input port that recieved data
      */
-    void inputDataRecieved(PortIndex idx = PortIndex{});
+    void inputDataRecieved(PortId portId = invalid<PortId>());
 
     /**
-     * @brief Emitted once the node evaluation has started
+     * @brief Emitted once the node evaluation has started. Will update the node
+     * flags `RequiresEvaluation` and `Evaluating` automatically.
      */
     void computingStarted();
     
     /**
-     * @brief Emitted once the node evaluation has finished
+     * @brief Emitted once the node evaluation has finished. Will update the
+     * node flag `Evaluating` automatically.
      */
     void computingFinished();
 
@@ -372,6 +350,12 @@ signals:
      * representation in case a port has changed for example.
      */
     void nodeChanged();
+
+    /**
+     * @brief Emitted just before the node is deleted similar to
+     * QObject::destroyed with the difference that one may still access members
+     */
+    void nodeAboutToBeDeleted(NodeId nodeId);
 
     /**
      * @brief Emitted if port specific data has changed (e.g. port cpation).
@@ -410,19 +394,20 @@ signals:
 
     /**
      * @brief Will be emitted once a port was connected
-     * @param type Port type (i.e. Input or Output port)
-     * @param idx Port index that was connected
+     * @param id Port that was connected
      */
-    void portConnected(PortType type, PortIndex idx);
+    void portConnected(PortId id);
 
     /**
      * @brief Will be emitted once a port was disconnected
-     * @param type Port type (i.e. Input or Output port)
-     * @param idx Port index that was disconnected
+     * @param id Port that was disconnected
      */
-    void portDisconnected(PortType type, PortIndex idx);
+    void portDisconnected(PortId id);
 
 protected:
+
+    /// prefer Graph::appendNode
+    using GtObject::setParent;
 
     /**
      * @brief constructor. Must initialize the model name.
@@ -432,15 +417,23 @@ protected:
     Node(QString const& modelName, GtObject* parent = nullptr);
 
     /**
-     * @brief Main evaluation method to override. Will be called for each output
-     * port. If no output ports are registered, but input ports are, an invalid
-     * port id will be passed and the returned data will be discarded. Will not
+     * @brief Main evaluation method to override. Will be called once, the
+     * "user" has to calculate and set the data for all output ports. Will not
      * be called if any required input port has no valid data associated
      * (see PortPolicy)
-     * @param outId Output port id to evaluate the data for
-     * @return Node data on the output port
      */
-    virtual NodeDataPtr eval(PortId outId);
+    virtual void eval();
+
+    /**
+     * @brief Handles the evaluation of the node. This method is not intended to
+     * actually do the evaluation (use `eval` instead), but to handle/manage the
+     * execution of the node. Should only be overriden in rare cases.
+     * Note: When overriding do not forget to emit the `computingStarted` and
+     * `computingFinished` respectively.
+     * @return Returns true if the evaluation was triggered sucessfully.
+     * (node may be evaluated non-blocking)
+     */
+    virtual bool handleNodeEvaluation(GraphExecutionModel& model);
 
     /**
      * @brief Should be called within the constructor. Used to register
@@ -457,6 +450,12 @@ protected:
      * @param enable Whether to enable or disable the flag
      */
     void setNodeFlag(NodeFlag flag, bool enable = true);
+
+    /**
+     * @brief Sets the node evaluation mode
+     * @param mode Node eval mode
+     */
+    void setNodeEvalMode(NodeEvalMode mode);
 
     /**
      * @brief Appends the output port
@@ -510,31 +509,20 @@ protected:
     bool removePort(PortId id);
 
     /**
-     * @brief Returns the specified port data
-     * @param id Port id (output or input)
-     * @return Port data (may be null)
-     */
-    [[deprecated("Use nodeData instead")]]
-    NodeDataPtr const& portData(PortId id) const { return nodeData(id); }
-
-    /**
-     * @brief Overload that casts the port data to the desired type.
-     * @param id Port id (output or input)
-     * @return Port data
-     */
-    template <typename T, typename U = std::remove_pointer_t<T>>
-    [[deprecated("Use nodeData<T*> instead")]]
-    U const* portData(PortId id) const
-    {
-        return qobject_cast<U const*>(nodeData(id).get());
-    }
-
-    /**
      * @brief Returns the node data of the specified port
      * @param id Port id (output or input)
      * @return Port data (may be null)
      */
-    NodeDataPtr const& nodeData(PortId id) const;
+    NodeDataPtr nodeData(PortId id) const;
+
+    /**
+     * @brief Sets the node data at the specified port. Should be used
+     * inside the eval method.
+     * @param id Port to set the data of
+     * @param data The new data
+     * @return Success
+     */
+    bool setNodeData(PortId id, NodeDataPtr data);
 
     /**
      * @brief Overload that casts the node data of the specified port to the

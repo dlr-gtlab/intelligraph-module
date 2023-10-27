@@ -10,16 +10,14 @@
 #ifndef GT_INTELLI_VIEW_H
 #define GT_INTELLI_VIEW_H
 
-#include "intelli/gui/graphscene.h"
-
 #include <QGraphicsView>
-
-namespace QtNodes { class DataFlowGraphModel; }
 
 class QMenu;
 
 namespace intelli
 {
+
+class GraphScene;
 
 class GraphView : public QGraphicsView
 {
@@ -46,8 +44,6 @@ public:
     
     GraphScene* nodeScene();
 
-    QtNodes::DataFlowGraphModel* graphModel();
-
 public slots:
 
     void centerScene();
@@ -57,10 +53,6 @@ public slots:
     void scaleDown();
 
     void setScale(double scale);
-
-    void loadFromJson();
-
-    void saveToJson();
 
 signals:
 
@@ -89,8 +81,6 @@ private:
 
     QMenu* m_sceneMenu = nullptr;
     QMenu* m_editMenu = nullptr;
-
-    void loadScene(QJsonObject const& scene);
 };
 
 } // namespace intelli

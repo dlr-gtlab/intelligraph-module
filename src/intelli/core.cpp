@@ -19,21 +19,16 @@
 #include "intelli/node/stringlistinput.h"
 #include "intelli/node/finddirectchild.h"
 
-#ifdef GTIG_DEVELOPER_PREVIEW
-#include "intelli/node/conditional.h"
-#include "intelli/node/doubletobool.h"
-#endif
-
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodefactory.h"
 
 using namespace intelli;
 
-
-void intelli::initModule()
+void
+intelli::initModule()
 {
     static auto _ = [](){
-        gtTrace() << "Initializing...";
+        gtTrace() << "Initializing nodes...";
 
         GT_INTELLI_REGISTER_DATA(StringListData);
         GT_INTELLI_REGISTER_DATA(BoolData);
@@ -54,10 +49,6 @@ void intelli::initModule()
 
         GT_INTELLI_REGISTER_NODE(StringListInputNode, "Input");
 
-    #ifdef GTIG_DEVELOPER_PREVIEW
-        GT_INTELLI_REGISTER_NODE(ConditionalNode, "Conditional");
-        GT_INTELLI_REGISTER_NODE(CheckDoubleNode, "Conditional");
-    #endif
         return true;
     }();
 

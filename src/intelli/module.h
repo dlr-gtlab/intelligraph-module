@@ -57,13 +57,14 @@ public:
 
     /**
      * @brief Passes additional module information to the framework.
-     *
-     * NOTE: A reference to the author can significantly help the user to
-     * know who to contact in case of issues or other request.
      * @return module meta information.
      */
     MetaInformation metaInformation() const override;
 
+    /**
+     * @brief Upgrade routines
+     * @return List of all upgrade routines of the module.
+     */
     QList<gt::VersionUpgradeRoutine> upgradeRoutines() const override;
 
     /**

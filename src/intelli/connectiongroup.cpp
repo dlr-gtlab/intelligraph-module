@@ -8,10 +8,9 @@
 
 #include "intelli/connectiongroup.h"
 
-#include "intelli/graph.h"
-#include "intelli/adapter/modeladapter.h"
-
 #include "gt_coreapplication.h"
+
+#include "gt_logging.h"
 
 using namespace intelli;
 
@@ -26,6 +25,8 @@ ConnectionGroup::ConnectionGroup(GtObject* parent) :
 void
 ConnectionGroup::onObjectDataMerged()
 {
+    gtTrace().verbose() << __FUNCTION__;
+
     // the user may have deleted connections only, which must be restored
     emit mergeConnections();
 }

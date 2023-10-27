@@ -9,14 +9,12 @@
 #include "intelli/nodefactory.h"
 
 #include "intelli/node.h"
-#include "intelli/adapter/objectmodel.h"
+//#include "intelli/adapter/objectmodel.h"
 
 #include "gt_objectfactory.h"
 #include "gt_utilities.h"
 #include "gt_qtutilities.h"
 #include "gt_algorithms.h"
-
-#include <QtNodes/NodeDelegateModelRegistry>
 
 using namespace intelli;
 
@@ -29,15 +27,34 @@ NodeFactory::instance()
     return self;
 }
 
+QStringList
+NodeFactory::registeredCategories() const
+{
+    QStringList categories;
+
+    for (NodeMetaData const& data : m_data)
+    {
+        if (!categories.contains(data.category)) categories << data.category;
+    }
+
+    return categories;
+}
+
 QString
 NodeFactory::nodeCategory(const QString& className) const noexcept
 {
-    return m_categories.value(className);
+    return m_data.value(className).category;
+}
+
+QString
+NodeFactory::nodeModelName(const QString& className) const noexcept
+{
+    return m_data.value(className).modelName;
 }
 
 bool
 NodeFactory::registerNode(QMetaObject const& meta,
-                                        QString const& category) noexcept
+                          QString const& category) noexcept
 {
     QString className = meta.className();
 
@@ -51,11 +68,22 @@ NodeFactory::registerNode(QMetaObject const& meta,
     if (!gtObjectFactory->knownClass(className) &&
         !gtObjectFactory->registerClass(meta))
     {
-        gtError() << QObject::tr("Failed to register node in object factory!");
+        gtError() << QObject::tr("Failed to register node '%1' in object factory!")
+                         .arg(className);
         return false;
     }
 
-    m_categories.insert(className, category);
+    auto obj = std::unique_ptr<GtObject>(newObject(className));
+    auto tmp = gt::unique_qobject_cast<Node>(std::move(obj));
+    if (!tmp)
+    {
+        gtError()  << QObject::tr("Failed to register node '%1'! (not invokable?)")
+                          .arg(className);
+        unregisterClass(meta);
+        return false;
+    }
+
+    m_data.insert(className, {category, tmp->modelName()});
     return true;
 }
 
@@ -89,21 +117,4 @@ NodeFactory::makeNode(QString const& className) const noexcept(false)
     }
 
     return node;
-}
-
-std::unique_ptr<NodeFactory::NodeDelegateModelRegistry>
-NodeFactory::makeRegistry() noexcept
-{
-    auto registry = std::make_unique<QtNodes::NodeDelegateModelRegistry>();
-
-    gt::for_each_key(m_knownClasses.begin(), m_knownClasses.end(),
-                     [&, this](auto const& name){
-        auto const& cat = m_categories.value(name);
-
-        registry->registerModel<ObjectModel>([=](){
-            return std::make_unique<ObjectModel>(name);
-        }, cat);
-    });
-
-    return registry;
 }

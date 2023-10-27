@@ -8,16 +8,14 @@
 
 #include "intelli/node/groupoutputprovider.h"
 
+#include "intelli/nodeexecutor.h"
+
 using namespace intelli;
 
 GroupOutputProvider::GroupOutputProvider() :
     AbstractGroupProvider("Output Provider")
 {
     setPos({250, 0});
-}
 
-Node::NodeDataPtr
-GroupOutputProvider::eval(PortId outId)
-{
-    return {};
+    setNodeEvalMode(NodeEvalMode::MainThread);
 }

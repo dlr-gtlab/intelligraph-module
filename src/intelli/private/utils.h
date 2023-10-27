@@ -35,7 +35,7 @@ operator<<(gt::log::Stream& s, QtNodes::ConnectionId const& con)
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& data)
 {
-    // temporary
+    // TODO: remove
     if (auto* d = qobject_cast<intelli::DoubleData const*>(data.get()))
     {
         gt::log::StreamStateSaver saver(s);
@@ -48,14 +48,14 @@ operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& d
 namespace intelli
 {
 
-inline ConnectionId convert(QtNodes::ConnectionId con)
+inline constexpr static PortType convert(QtNodes::PortType type) noexcept
 {
-    return *reinterpret_cast<ConnectionId*>(&con);
+    return static_cast<PortType>(type);
 }
 
-inline QtNodes::ConnectionId convert(ConnectionId con)
+inline constexpr static QtNodes::PortType convert(PortType type) noexcept
 {
-    return *reinterpret_cast<QtNodes::ConnectionId*>(&con);
+    return static_cast<QtNodes::PortType>(type);
 }
 
 template <typename Sender, typename SignalSender,
@@ -90,11 +90,12 @@ auto ignoreSignal(Sender sender, SignalSender signalSender,
     };
 }
 
-inline unsigned fromInt(GtIntProperty const& p) noexcept
+template <typename T>
+inline QString toString(T const& t)
 {
-    return p.get() >= 0 ? static_cast<unsigned>(p) :
-
-               std::numeric_limits<unsigned>::max();
+    gt::log::Stream s;
+    s.nospace() << t;
+    return QString::fromStdString(s.str());
 }
 
 } // namespace intelli

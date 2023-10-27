@@ -22,7 +22,6 @@ StringListInputNode::StringListInputNode() :
     Node(tr("Stringlist Input")),
     m_values("values", "Values")
 {
-
     GtPropertyStructDefinition stringEntryDef{QStringLiteral("StringStruct")};
     stringEntryDef.defineMember(QStringLiteral("value"),
                                 gt::makeStringProperty());
@@ -33,7 +32,7 @@ StringListInputNode::StringListInputNode() :
 
     setNodeFlag(Resizable);
     
-    addOutPort(typeId<StringListData>());
+    m_out = addOutPort(typeId<StringListData>());
 
     registerWidgetFactory([this]() {
         auto base = makeWidget();
@@ -42,7 +41,7 @@ StringListInputNode::StringListInputNode() :
         w->setReadOnly(true);
         w->setToolTip(tr("Use the properties dock to add entries."));
         
-        connect(this, &Node::outDataUpdated, w, [this, w](){
+        connect(this, &Node::evaluated, w, [this, w](){
             w->setPlainText(values().join("\n"));
         });
 
@@ -50,17 +49,17 @@ StringListInputNode::StringListInputNode() :
     });
 
     connect(&m_values, &GtPropertyStructContainer::entryAdded,
-            this, &Node::updateNode);
+            this, &Node::triggerNodeEvaluation);
     connect(&m_values, &GtPropertyStructContainer::entryRemoved,
-            this, &Node::updateNode);
+            this, &Node::triggerNodeEvaluation);
     connect(&m_values, &GtPropertyStructContainer::entryChanged,
-            this, &Node::updateNode);
+            this, &Node::triggerNodeEvaluation);
 }
 
-Node::NodeDataPtr
-StringListInputNode::eval(PortId outId)
+void
+StringListInputNode::eval()
 {
-    return std::make_shared<StringListData>(values());
+    setNodeData(m_out, std::make_shared<StringListData>(values()));
 }
 
 QStringList

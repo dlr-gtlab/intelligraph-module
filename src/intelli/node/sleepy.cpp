@@ -54,11 +54,9 @@ SleepyNode::SleepyNode() :
     });
 }
 
-Node::NodeDataPtr
-SleepyNode::eval(PortId outId)
+void
+SleepyNode::eval()
 {
-    if (m_out != outId) return {};
-
     auto data = nodeData(m_in);
 
     constexpr int intervalMs = 500;
@@ -77,5 +75,5 @@ SleepyNode::eval(PortId outId)
 
     emit timePassed(100);
 
-    return data;
+    setNodeData(m_out, std::move(data));
 }

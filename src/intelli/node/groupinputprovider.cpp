@@ -14,10 +14,6 @@ GroupInputProvider::GroupInputProvider() :
     AbstractGroupProvider("Input Provider")
 {
     setPos({-250, 0});
-}
 
-Node::NodeDataPtr
-GroupInputProvider::eval(PortId outId)
-{
-    return outData(portIndex(PortType::Out, outId));
+    setNodeEvalMode(NodeEvalMode::MainThread);
 }

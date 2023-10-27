@@ -11,7 +11,7 @@
 
 #include <intelli/memory.h>
 #include <intelli/node.h>
-#include <intelli/exec/executor.h>
+#include <intelli/property/uint.h>
 
 #include <gt_intproperty.h>
 #include <gt_doubleproperty.h>
@@ -20,6 +20,8 @@
 
 namespace intelli
 {
+
+class NodeDataInterface;
 
 template <typename Ports>
 auto findPort(Ports&& ports, PortId id)
@@ -35,11 +37,11 @@ struct NodeImpl
     using PortData      = Node::PortData;
     using WidgetFactory = Node::WidgetFactory;
 
-    NodeImpl(QString const& name) : modelName(name) {}
+    NodeImpl(QString const& name) : modelName(name) { }
 
     /// node id
-    GtIntProperty id{
-        "id", QObject::tr("Node Id"), QObject::tr("Node Id")
+    UIntProperty id{
+        "id", QObject::tr("Node Id"), QObject::tr("Node Id"), invalid<NodeId>()
     };
 
     /// x position of node
@@ -77,36 +79,18 @@ struct NodeImpl
     QString modelName;
     /// ports
     std::vector<PortData> inPorts, outPorts{};
-    /// data
-    std::vector<NodeDataPtr> inData, outData{};
-    /// node executor
-    std::unique_ptr<Executor> executor;
     /// owning pointer to widget, may be deleted earlier
     volatile_ptr<QWidget> widget{};
     /// factory for creating the widget
     WidgetFactory widgetFactory{};
+
+    NodeDataInterface* dataInterface{};
     /// node flags
-    NodeFlags flags{NoFlag};
+    NodeFlags flags{NodeFlag::DefaultNodeFlags};
+    ///
+    NodeEvalMode evalMode{NodeEvalMode::Default};
     /// iterator for the next port id
     PortId nextPortId{0};
-
-    bool requiresEvaluation{true};
-
-    bool canEvaluate() const
-    {
-        assert(inData.size() == inPorts.size());
-
-        PortIndex idx{0};
-        for (auto const& data : inData)
-        {
-            auto const& p = inPorts.at(idx++);
-
-            // check if data is required and valid
-            if (!p.optional && !data) return false;
-        }
-
-        return true;
-    }
 
     std::vector<PortData>& ports(PortType type) noexcept(false)
     {
@@ -130,37 +114,14 @@ struct NodeImpl
         return const_cast<NodeImpl*>(this)->ports(type);
     }
 
-    std::vector<NodeDataPtr>& nodeData(PortType type) noexcept(false)
-    {
-        switch (type)
-        {
-        case PortType::In:
-            return inData;
-        case PortType::Out:
-            return outData;
-        case PortType::NoType:
-            break;
-        }
-
-        throw GTlabException{
-            __FUNCTION__, QStringLiteral("Invalid port type specified!")
-        };
-    }
-
-    std::vector<NodeDataPtr> const& nodeData(PortType type) const noexcept(false)
-    {
-        return const_cast<NodeImpl*>(this)->nodeData(type);
-    }
-
     struct FindData
     {
         PortType type{PortType::NoType};
         PortIndex idx{};
         std::vector<PortData>* ports{};
-        std::vector<NodeDataPtr>* data{};
 
         operator bool() const {
-            return ports && data && type != PortType::NoType && idx != invalid<PortIndex>();
+            return ports && type != PortType::NoType && idx != invalid<PortIndex>();
         }
     };
 
@@ -174,12 +135,24 @@ struct NodeImpl
             if (iter != ports.end())
             {
                 auto idx = std::distance(ports.begin(), iter);
-                auto& data = nodeData(type);
-                assert(ports.size() == data.size());
-                return {type, PortIndex::fromValue(idx), &ports, &data};
+                return {type, PortIndex::fromValue(idx), &ports};
             }
         }
         return {};
+    }
+
+    PortId incNextPortId(PortId id)
+    {
+        if (id != invalid<PortId>())
+        {
+            // port already exists
+            if (find(id)) return PortId{};
+
+            id = std::max(nextPortId, id);
+            nextPortId = PortId(id + 1);
+            return id;
+        }
+        return nextPortId++;
     }
 };
 

@@ -8,31 +8,23 @@
 
 
 #include "intelli/gui/graphview.h"
+#include "intelli/gui/graphscene.h"
 
 #include "gt_objectuiaction.h"
-#include "gt_customactionmenu.h"
-#include "gt_filedialog.h"
 #include "gt_icons.h"
-#include "gt_utilities.h"
+#include "gt_guiutilities.h"
 #include "gt_application.h"
 
 #include <gt_logging.h>
 
-#include <QtNodes/BasicGraphicsScene>
-#include <QtNodes/StyleCollection>
 #include <QtNodes/DataFlowGraphModel>
 #include <QtNodes/internal/locateNode.hpp>
 #include <QtNodes/internal/NodeGraphicsObject.hpp>
 
-#include <QFileInfo>
-#include <QFile>
-#include <QClipboard>
-#include <QApplication>
+#include <QCoreApplication>
 #include <QWheelEvent>
 #include <QGraphicsSceneWheelEvent>
-#include <QGraphicsProxyWidget>
 #include <QMenuBar>
-#include <QJsonDocument>
 #include <QVBoxLayout>
 
 #include <cmath>
@@ -71,35 +63,12 @@ GraphView::GraphView(QWidget *parent) :
     m_sceneMenu = sceneMenu;
     m_sceneMenu->setEnabled(false);
 
-    GtObjectUIAction saveAction(tr("Save"), [this](GtObject*){
-        saveToJson();
-    });
-    saveAction.setIcon(gt::gui::icon::save());
-
-    GtObjectUIAction loadAction(tr("Load"), [this](GtObject*){
-        loadFromJson();
-    });
-    loadAction.setIcon(gt::gui::icon::import());
-
-    GtObjectUIAction printGraphAction(tr("Copy to clipboard"), [this](GtObject*){
-        if (auto model = graphModel())
-        {
-            QJsonDocument doc(model->save());
-            QApplication::clipboard()->setText(doc.toJson(QJsonDocument::Indented));
-        }
-    });
-    printGraphAction.setIcon(gt::gui::icon::copy());
-
-    GtObjectUIAction resetScaleAction(tr("Reset scale"), [this](GtObject*){
+    auto resetScaleAction = gt::gui::makeAction(tr("Reset scale"), [this](GtObject*){
         setScale(1);
     });
     resetScaleAction.setIcon(gt::gui::icon::revert());
 
-    new GtCustomActionMenu({resetScaleAction}, nullptr, nullptr, sceneMenu);
-
-    m_sceneMenu->addSeparator();
-
-    new GtCustomActionMenu({saveAction, loadAction, printGraphAction}, nullptr, nullptr, sceneMenu);
+    gt::gui::addToMenu(resetScaleAction, *sceneMenu, nullptr);
 
     /* EDIT MENU */
     QMenu* editMenu = menuBar->addMenu(tr("Edit"));
@@ -165,6 +134,34 @@ GraphView::setScene(GraphScene& scene)
     connect(clearSelection, &QAction::triggered,
             &scene, &QGraphicsScene::clearSelection,
             Qt::UniqueConnection);
+
+    auto* autoEvaluate = m_sceneMenu->addAction(tr("Enable auto evaluation"));
+    autoEvaluate->setIcon(gt::gui::icon::play());
+    auto* stopAutoEvaluate = m_sceneMenu->addAction(tr("Disabled auto evaluation"));
+    stopAutoEvaluate->setIcon(gt::gui::icon::stop());
+
+    addAction(autoEvaluate);
+    addAction(stopAutoEvaluate);
+
+    connect(m_sceneMenu, &QMenu::aboutToShow,
+            this, [&scene, autoEvaluate, stopAutoEvaluate](){
+        bool isAutoEvaluating = scene.isAutoEvaluating();
+        autoEvaluate->setVisible(!isAutoEvaluating);
+        stopAutoEvaluate->setVisible(isAutoEvaluating);
+    });
+
+    connect(autoEvaluate, &QAction::triggered, &scene, [=](){
+        if (auto* scene = nodeScene())
+        {
+            scene->autoEvaluate(true);
+        }
+    });
+    connect(stopAutoEvaluate, &QAction::triggered, &scene, [=](){
+        if (auto* scene = nodeScene())
+        {
+            scene->autoEvaluate(false);
+        }
+    });
 
     addAction(copyAction);
     addAction(pasteAction);
@@ -428,80 +425,3 @@ GraphView::nodeScene()
 {
     return qobject_cast<GraphScene*>(scene());
 }
-
-QtNodes::DataFlowGraphModel*
-GraphView::graphModel()
-{
-    if (auto scene = nodeScene())
-    {
-        return static_cast<QtNodes::DataFlowGraphModel*>(&scene->graphModel());
-    }
-
-    return nullptr;
-}
-
-void
-GraphView::loadFromJson()
-{
-    if (!nodeScene()) return;
-
-    QString filePath = GtFileDialog::getOpenFileName(nullptr, tr("Open Intelli Flow"));
-
-    if (filePath.isEmpty() || !QFileInfo::exists(filePath)) return;
-
-    QFile file(filePath);
-    if (!file.open(QFile::ReadOnly))
-    {
-        gtError() << tr("Failed to open intelli flow from file! (%1)")
-                         .arg(filePath);
-        return;
-    }
-
-    auto scene = QJsonDocument::fromJson(file.readAll()).object();
-
-    loadScene(scene);
-}
-
-void
-GraphView::saveToJson()
-{
-    auto model = graphModel();
-    if (!model) return;
-
-    QString filePath = GtFileDialog::getSaveFileName(nullptr, tr("Save Intelli Flow"));
-
-    if (filePath.isEmpty()) return;
-
-    QFile file(filePath);
-    if (!file.open(QFile::WriteOnly | QFile::Truncate))
-    {
-        gtError() << tr("Failed to save IntelliFlow to file! (%1)")
-                         .arg(filePath);
-        return;
-    }
-
-    QJsonDocument doc(model->save());
-    file.write(doc.toJson(QJsonDocument::Indented));
-}
-
-void
-GraphView::loadScene(const QJsonObject& scene)
-{
-    assert(graphModel()); assert(nodeScene());
-
-    gtDebug().verbose()
-        << "Loading JSON scene:"
-        << QJsonDocument(scene).toJson(QJsonDocument::Indented);
-
-    try
-    {
-        nodeScene()->clearScene();
-        graphModel()->load(scene);
-    }
-    catch (std::exception const& e)
-    {
-        gtError() << tr("Failed to load scene from object tree! Error:")
-                  << gt::quoted(std::string{e.what()});
-    }
-}
-

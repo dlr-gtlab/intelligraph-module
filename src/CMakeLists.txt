@@ -9,22 +9,26 @@ set(PUBLIC_HEADERS
     intelli/globals.h
     intelli/graph.h
     intelli/graphbuilder.h
+    intelli/graphexecmodel.h
     intelli/memory.h
     intelli/node.h
     intelli/nodedata.h
     intelli/nodedatafactory.h
+    intelli/nodedatainterface.h
+    intelli/nodeexecutor.h
     intelli/nodefactory.h
     intelli/data/bool.h
     intelli/data/double.h
     intelli/data/object.h
     intelli/data/stringlist.h
-    intelli/exec/executorfactory.h
     intelli/gui/icons.h
-    intelli/gui/portuiaction.h
     intelli/gui/nodeui.h
+    intelli/gui/portuiaction.h
+    intelli/gui/style.h
     intelli/property/color.h
     intelli/property/objectlink.h
     intelli/property/stringselection.h
+    intelli/property/uint.h
 )
 
 qt5_add_resources (RCC_SOURCES
@@ -36,21 +40,13 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     ${PUBLIC_HEADERS}
     ${RCC_SOURCES}
     intelli/package.h
-    intelli/graph.h
     intelli/connection.h
     intelli/connectiongroup.h
+    intelli/graphadaptermodel.h
     intelli/graphcategory.h
     intelli/module.h
-    intelli/adapter/modeladapter.h
-    intelli/adapter/jsonadapter.h
-    intelli/adapter/objectmodel.h
-    intelli/exec/executor.h
-    intelli/exec/executorfactory.cpp
-    intelli/exec/parallelexecutor.h
-    intelli/exec/sequentialexecutor.h
+    intelli/exec/detachedexecutor.h
     intelli/node/abstractgroupprovider.h
-    intelli/node/conditional.h
-    intelli/node/doubletobool.h
     intelli/node/finddirectchild.h
     intelli/node/groupinputprovider.h
     intelli/node/groupoutputprovider.h
@@ -61,10 +57,9 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/objectsource.h
     intelli/node/sleepy.h
     intelli/node/stringlistinput.h
-    intelli/gui/icons.cpp
+    intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
     intelli/gui/graphview.h
-    intelli/gui/grapheditor.h
     intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
     intelli/gui/connectionui.h
@@ -77,26 +72,23 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/core.cpp
     intelli/dynamicnode.cpp
     intelli/graph.cpp
+    intelli/graphadaptermodel.cpp
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp
+    intelli/graphexecmodel.cpp
     intelli/module.cpp
     intelli/node.cpp
     intelli/nodedata.cpp
     intelli/nodedatafactory.cpp
+    intelli/nodedatainterface.cpp
+    intelli/nodeexecutor.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp
-    intelli/adapter/jsonadapter.cpp
-    intelli/adapter/modeladapter.cpp
-    intelli/adapter/objectmodel.cpp
-    intelli/exec/executor.cpp
-    intelli/exec/parallelexecutor.cpp
-    intelli/exec/sequentialexecutor.cpp
+    intelli/exec/detachedexecutor.cpp
     intelli/data/bool.cpp
     intelli/data/double.cpp
     intelli/data/object.cpp
     intelli/data/stringlist.cpp
-    intelli/node/conditional.cpp
-    intelli/node/doubletobool.cpp
     intelli/node/finddirectchild.cpp
     intelli/node/groupinputprovider.cpp
     intelli/node/groupoutputprovider.cpp
@@ -107,17 +99,20 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/objectsource.cpp
     intelli/node/sleepy.cpp
     intelli/node/stringlistinput.cpp
+    intelli/gui/connectionui.cpp
     intelli/gui/grapheditor.cpp
     intelli/gui/graphscene.cpp
     intelli/gui/graphview.cpp
+    intelli/gui/icons.cpp
     intelli/gui/property_item/objectlink.cpp
     intelli/gui/property_item/stringselection.cpp
-    intelli/gui/connectionui.cpp
     intelli/gui/nodeui.cpp
     intelli/gui/packageui.cpp
+    intelli/gui/style.cpp
     intelli/property/color.cpp
     intelli/property/objectlink.cpp
     intelli/property/stringselection.cpp
+    intelli/property/uint.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

@@ -8,16 +8,32 @@
 
 #include "intelli/node.h"
 
-#include "intelli/exec/executorfactory.h"
+#include "intelli/graphexecmodel.h"
+#include "intelli/nodeexecutor.h"
 #include "intelli/private/node_impl.h"
 #include "intelli/private/utils.h"
 
-#include "gt_qtutilities.h"
+#include <gt_qtutilities.h>
 
 #include <QRegExpValidator>
 #include <QVBoxLayout>
 
 using namespace intelli;
+
+namespace
+{
+
+template <typename N, typename P>
+inline auto* dataInterface(N* node, P& pimpl)
+{
+    NodeDataInterface* model = pimpl->dataInterface;
+
+    if (!model) model = NodeExecutor::accessExecModel(*const_cast<Node*>(node));
+
+    return model;
+}
+
+} // namespace
 
 std::unique_ptr<QWidget>
 intelli::makeWidget()
@@ -62,38 +78,29 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
     connect(&pimpl->isActive, &GtAbstractProperty::changed,
             this, &Node::nodeStateChanged);
+
+    connect(this, &Node::triggerNodeEvaluation, this, [this](){
+        setNodeFlag(NodeFlag::RequiresEvaluation, true);
+        emit nodeStateChanged();
+    });
+
+    connect(this, &Node::computingStarted, this, [this](){
+        setNodeFlag(NodeFlag::Evaluating, true);
+        // reset requires evaluation
+        setNodeFlag(NodeFlag::RequiresEvaluation, false);
+        emit nodeStateChanged();
+    }, Qt::DirectConnection);
+
+    connect(this, &Node::computingFinished, this, [this](){
+        setNodeFlag(NodeFlag::Evaluating, false);
+        emit evaluated();
+        emit nodeStateChanged();
+    }, Qt::DirectConnection);
 }
 
-Node::~Node() = default;
-
-void
-Node::setExecutor(ExecutionMode executorMode)
+Node::~Node()
 {
-    auto executor = ExecutorFactory::makeExecutor(executorMode);
-
-    if (pimpl->executor)
-    {
-        if (!pimpl->executor->isReady())
-        {
-            gtWarning() << tr("Replacing executor of node '%1', which is not ready!")
-                               .arg(objectName());
-        }
-    }
-    emit computingFinished();
-    pimpl->executor = std::move(executor);
-
-    // cleanup node if executor was deleted
-    if (pimpl->executor) return;
-
-    for (auto* data : {&pimpl->inData, &pimpl->outData})
-    {
-        for (auto& d : *data)
-        {
-            d.reset();
-        }
-    }
-
-    pimpl->requiresEvaluation = true;
+    emit nodeAboutToBeDeleted(id());
 }
 
 void
@@ -118,10 +125,10 @@ Node::setId(NodeId id)
 NodeId
 Node::id() const
 {
-    return NodeId{fromInt(pimpl->id)};
+    return NodeId{pimpl->id};
 }
 
-void
+Node&
 Node::setPos(Position pos)
 {
     if (this->pos() != pos)
@@ -130,6 +137,7 @@ Node::setPos(Position pos)
         pimpl->posY = pos.y();
         changed();
     }
+    return *this;
 }
 
 Position
@@ -173,16 +181,29 @@ Node::setNodeFlag(NodeFlag flag, bool enable)
     enable ? pimpl->flags |= flag : pimpl->flags &= ~flag;
 }
 
+void
+Node::setNodeEvalMode(NodeEvalMode mode)
+{
+    pimpl->evalMode = mode;
+}
+
 NodeFlags
 Node::nodeFlags() const
 {
     return pimpl->flags;
 }
 
-void
+NodeEvalMode
+Node::nodeEvalMode() const
+{
+    return pimpl->evalMode;
+}
+
+Node&
 Node::setCaption(QString const& caption)
 {
     gt::setUniqueName(*this, caption);
+    return *this;
 }
 
 QString
@@ -242,16 +263,18 @@ Node::insertOutPort(PortData port, int idx) noexcept(false)
 PortId
 Node::insertPort(PortType type, PortData port, int idx) noexcept(false)
 {
+    auto const makeError = [this, type, idx](){
+        return objectName() + QStringLiteral(": ") +
+               tr("Failed to insert port idx %1 (%2)").arg(idx).arg(toString(type));
+    };
+
     if (port.typeId.isEmpty())
     {
-        gtWarning() << tr("Invalid port typeId specified!");
+        gtWarning() << makeError() << tr("(Invalid typeId specified)");
         return PortId{};
     }
 
     auto& ports = pimpl->ports(type);
-    auto& data  = pimpl->nodeData(type);
-
-    assert(ports.size() == data.size());
 
     auto iter = ports.end();
 
@@ -260,15 +283,23 @@ Node::insertPort(PortType type, PortData port, int idx) noexcept(false)
         iter = std::next(ports.begin(), idx);
     }
 
+    // update port id if necessary
+    PortId id = pimpl->incNextPortId(port.m_id);
+    if (id == invalid<PortId>())
+    {
+        gtWarning() << makeError() << tr("(Port id %1 already exists)").arg(port.m_id);
+        return PortId{};
+    }
+
+    port.m_id = id;
+
     // notify model
     PortIndex pidx = PortIndex::fromValue(std::distance(ports.begin(), iter));
     emit portAboutToBeInserted(type, pidx);
     auto finally = gt::finally([=](){ emit portInserted(type, pidx); });
 
-    PortId id = pimpl->nextPortId++;
-    port.m_id = id;
+    // do the insertion
     ports.insert(iter, std::move(port));
-    data.resize(ports.size());
 
     return id;
 }
@@ -286,24 +317,37 @@ Node::removePort(PortId id)
     });
 
     find.ports->erase(std::next(find.ports->begin(), find.idx));
-    find.data->erase(std::next(find.data->begin(), find.idx));
     return true;
 }
 
-Node::NodeDataPtr const&
+Node::NodeDataPtr
 Node::nodeData(PortId id) const
 {
-    auto find = pimpl->find(id);
-    if (!find)
+    auto* model = dataInterface(this, pimpl);
+    if (!model)
     {
-        gtWarning() << tr("PortId '%1' not found!").arg(id);
-        static const NodeDataPtr dummy{};
-        return dummy;
+        gtWarning().nospace()
+            << objectName() << ": "
+            << tr("Failed to access node data, evaluation model not found!");
+        return {};
     }
 
-    assert (find.idx < find.data->size());
+    return model->nodeData(this->id(), id);
+}
 
-    return find.data->at(find.idx);
+bool
+Node::setNodeData(PortId id, NodeDataPtr data)
+{
+    auto* model = dataInterface(this, pimpl);
+    if (!model)
+    {
+        gtWarning().nospace()
+            << objectName() << ": "
+            << tr("Failed to set node data, evaluation model not found!");
+        return false;
+    }
+
+    return model->setNodeData(this->id(), id, std::move(data));
 }
 
 Node::PortData*
@@ -340,6 +384,15 @@ Node::portIndex(PortType type, PortId id) const noexcept(false)
     return PortIndex{};
 }
 
+Node::PortType
+Node::portType(PortId id) const noexcept(false)
+{
+    auto find = pimpl->find(id);
+    if (!find) return PortType::NoType;
+
+    return find.type;
+}
+
 PortId
 Node::portId(PortType type, PortIndex idx) const noexcept(false)
 {
@@ -350,124 +403,28 @@ Node::portId(PortType type, PortIndex idx) const noexcept(false)
     return ports.at(idx).m_id;
 }
 
-Node::NodeDataPtr
-Node::eval(PortId)
+void
+Node::eval()
 {
     // nothing to do here
-    return {};
 }
 
 bool
-Node::triggerEvaluation(PortIndex idx)
+Node::handleNodeEvaluation(GraphExecutionModel& model)
 {
-    if (!pimpl->executor || !isActive())
+    switch (pimpl->evalMode)
     {
-        return false;
+    case NodeEvalMode::Exclusive:
+    case NodeEvalMode::Detached:
+        return detachedEvaluation(*this, model);
+    case NodeEvalMode::MainThread:
+        return blockingEvaluation(*this, model);
     }
 
-    // if we failed to start the evaluation the node needs to be evaluated
-    // at a later point
-    bool startedEval = idx != invalid<PortIndex>() ?
-                           pimpl->executor->evaluatePort(*this, idx) :
-                           pimpl->executor->evaluateNode(*this);
-    return startedEval;
-}
-
-Node::NodeDataPtr const&
-Node::inData(PortIndex idx)
-{
-    if (idx >= pimpl->inData.size())
-    {
-        static NodeDataPtr const dummy;
-        return dummy;
-    }
-
-    gtTrace().verbose().nospace()
-        << "### Getting in data:  '" << objectName()
-        << "' at input idx  '" << idx << "': " << pimpl->inData.at(idx);
-
-    return pimpl->inData.at(idx);
-}
-
-bool
-Node::setInData(PortIndex idx, NodeDataPtr data)
-{
-    if (idx >= pimpl->inData.size())
-    {
-        gtWarning() << tr("Setting in data failed! Port index %1 out of bounds!").arg(idx)
-                    << gt::brackets(caption());
-        return false;
-    }
-
-    gtTrace().verbose().nospace()
-        << "### Setting in data:  '" << objectName()
-        << "' at input idx  '" << idx << "': " << data;
-
-    pimpl->inData.at(idx) = std::move(data);
-
-    pimpl->requiresEvaluation = true;
-
-    emit inputDataRecieved(idx);
-
-    updateNode();
-
-    return true;
-}
-
-Node::NodeDataPtr const&
-Node::outData(PortIndex idx)
-{
-    if (idx >= pimpl->outData.size())
-    {
-        static NodeDataPtr const dummy;
-        return dummy;
-    }
-
-    gtTrace().verbose().nospace()
-        << "### Getting out data: '" << objectName()
-        << "' at output idx '" << idx << "': " << pimpl->outData.at(idx);
-
-    // trigger node update if no input data is available
-    if (pimpl->requiresEvaluation) updatePort(idx);
-
-    return pimpl->outData.at(idx);
-}
-
-bool
-Node::setOutData(PortIndex idx, NodeDataPtr data)
-{
-    if (idx >= pimpl->outData.size())
-    {
-        gtWarning() << tr("Setting out data failed! Port index %1 out of bounds!").arg(idx)
-                    << gt::brackets(caption());
-        return false;
-    }
-
-    gtTrace().verbose().nospace()
-        << "### Setting out data:  '" << objectName()
-        << "' at output idx  '" << idx << "': " << data;
-
-    auto& out = pimpl->outData.at(idx);
-
-    out = std::move(data);
-
-    out ? emit outDataUpdated(idx) : emit outDataInvalidated(idx);
-
-    return true;
-}
-
-void
-Node::updateNode()
-{
-    pimpl->requiresEvaluation = false;
-    pimpl->requiresEvaluation = !triggerEvaluation();
-}
-
-void
-Node::updatePort(PortIndex idx)
-{
-    pimpl->requiresEvaluation = false;
-    pimpl->requiresEvaluation = !triggerEvaluation(idx);
+    gtError().nospace()
+        << objectName() << ": "
+        << tr("Unkonw eval mode! (%1)").arg((int)pimpl->evalMode);
+    return false;
 }
 
 void

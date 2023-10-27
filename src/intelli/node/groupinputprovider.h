@@ -22,9 +22,6 @@ public:
 
     Q_INVOKABLE GroupInputProvider();
 
-protected:
-
-    NodeDataPtr eval(PortId outId) override;
 };
 
 } // namespace intelli

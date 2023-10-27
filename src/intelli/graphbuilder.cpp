@@ -51,11 +51,11 @@ GraphBuilder::addGraph(std::vector<PortData> const& inPorts,
     auto success = true;
     for (auto& port : inPorts)
     {
-        success &= invalid<PortId>() != input->insertPort(std::move(port));
+        success &= input->insertPort(std::move(port));
     }
     for (auto& port : outPorts)
     {
-        success &= invalid<PortId>() != output->insertPort(std::move(port));
+        success &= output->insertPort(std::move(port));
     }
 
     if (!success)
@@ -78,7 +78,7 @@ GraphBuilder::addGraph(std::vector<PortData> const& inPorts,
 Node&
 GraphBuilder::addNode(QString const& className, Position pos) noexcept(false)
 {
-    auto node = NodeFactory::instance().newNode(className);
+    auto node = NodeFactory::instance().makeNode(className);
 
     return addNodeHelper(std::move(node), pos);
 }
@@ -86,6 +86,8 @@ GraphBuilder::addNode(QString const& className, Position pos) noexcept(false)
 Node&
 GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos)
 {
+    if (node && !pos.isNull()) node->setPos(pos);
+
     auto* ptr = m_graph->appendNode(std::move(node));
 
     if (!ptr)
@@ -98,12 +100,10 @@ GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos)
         };
     }
 
-    if (!pos.isNull()) m_graph->setNodePosition(ptr, pos);
-
     return *ptr;
 }
 
-void
+ConnectionId
 GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) noexcept(false)
 {
     auto const buildError = [&](){
@@ -155,13 +155,13 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
         };
     }
 
-    // TODO check if connection already exists
-
     auto connection = std::make_unique<Connection>();
     connection->setOutNodeId(from.id());
-    connection->setOutPortIdx(outIdx);
+    connection->setOutPort(from.portId(PortType::Out, outIdx));
     connection->setInNodeId(to.id());
-    connection->setInPortIdx(inIdx);
+    connection->setInPort(to.portId(PortType::In, inIdx));
+
+    auto conId = connection->connectionId();
 
     if (!m_graph->appendConnection(std::move(connection)))
     {
@@ -171,6 +171,8 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
             gt::brackets(m_graph->caption().toStdString())
         };
     }
+
+    return conId;
 }
 
 void

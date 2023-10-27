@@ -23,22 +23,9 @@ class AbstractGroupProvider : public DynamicNode
 {
 public:
 
-    static constexpr inline PortType INVERSE_TYPE() noexcept
-    {
-        return Type == PortType::In ? PortType::Out : PortType::In;
-    }
-
-    static constexpr inline PortType TYPE() noexcept
-    {
-        return Type;
-    }
-
     AbstractGroupProvider(QString const& modelName) :
         DynamicNode(modelName, Type == PortType::In ? DynamicOutputOnly : DynamicInputOnly)
     {
-        // default init node id
-        setId(NodeId{static_cast<int>(Type)});
-
         setFlag(UserDeletable, false);
 
         setNodeFlag(Unique, true);
@@ -59,7 +46,7 @@ public:
     bool insertPort(PortData data, int idx = -1)
     {
         PortId id;
-        switch (INVERSE_TYPE())
+        switch (invert(Type))
         {
         case PortType::In:
             id = insertInPort(data, idx);
@@ -79,12 +66,13 @@ private slots:
         auto* graph = findParent<Graph*>();
         if (!graph) return;
 
-        PortId id = portId(INVERSE_TYPE(), idx);
+        PortId id = portId(invert(Type), idx);
         if (auto* port = this->port(id))
         {
+            auto p = port->copy();
             Type == PortType::In ?
-                graph->insertInPort(*port, idx) :
-                graph->insertOutPort(*port, idx);
+                graph->insertInPort( std::move(p), idx) :
+                graph->insertOutPort(std::move(p), idx);
         }
     }
 
@@ -96,12 +84,12 @@ private slots:
         auto* port = this->port(id);
         if (!port) return;
 
-        auto  idx    = portIndex(INVERSE_TYPE(), id);
+        auto idx = portIndex(invert(Type), id);
         auto graphPortId = graph->portId(Type, idx);
-        auto* graphPort   = graph->port(graphPortId);
+        auto* graphPort  = graph->port(graphPortId);
         if (!graphPort) return;
 
-        graphPort->typeId = port->typeId;
+        graphPort->typeId  = port->typeId;
         graphPort->caption = port->caption;
         emit graph->portChanged(graphPortId);
     }
@@ -116,7 +104,8 @@ private slots:
 };
 
 // disbale template class for none type
-template <> class AbstractGroupProvider<NoType>;
+template <>
+class AbstractGroupProvider<PortType::NoType>;
 
 } // namespace intelli
 

@@ -10,7 +10,7 @@
 #ifndef GT_INTELLI_PARALLELEXECUTOR_H
 #define GT_INTELLI_PARALLELEXECUTOR_H
 
-#include "intelli/exec/executor.h"
+#include "intelli/nodeexecutor.h"
 #include "intelli/node.h"
 
 #include <QFutureWatcher>
@@ -19,38 +19,28 @@
 namespace intelli
 {
 
-class ParallelExecutor : public Executor
+class DetachedExecutor : public QObject
 {
     Q_OBJECT
 
 public:
     
-    using NodeDataPtr = Node::NodeDataPtr;
+    DetachedExecutor();
+    ~DetachedExecutor();
 
-    ParallelExecutor();
-    ~ParallelExecutor();
-    
-    bool evaluateNode(Node& node) override;
-    
-    bool evaluatePort(Node& node, PortIndex idx) override;
-
-    bool isReady() const override;
+    bool evaluateNode(Node& node, GraphExecutionModel& model);
 
 protected:
     
-    bool canEvaluateNode(Node& node, PortIndex outIdx = PortIndex{}) override;
+    bool canEvaluateNode(Node& node);
 
 private:
     
     QPointer<Node> m_node;
-
-    QFutureWatcher<std::vector<NodeDataPtr>> m_watcher;
-
-    PortIndex m_port;
+    
+    QFutureWatcher<NodeDataPtrList> m_watcher;
 
     bool m_collected = true;
-    
-    bool evaluateNodeHelper(Node& node);
 
 private slots:
 

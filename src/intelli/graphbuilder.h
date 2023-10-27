@@ -81,10 +81,11 @@ public:
      * @param pos Optional: position in graph
      * @return Pointer to node (never null)
      */
-    template <typename T>
-    Node& addNode(Position pos = {}) noexcept(false)
+    template <typename Derived,
+              gt::trait::enable_if_base_of<Node, Derived> = true>
+    Derived& addNode(Position pos = {}) noexcept(false)
     {
-        return addNode(QString{T::staticMetaObject::className()}, pos);
+        return static_cast<Derived&>(addNode(QString{Derived::staticMetaObject.className()}, pos));
     }
 
     /**
@@ -110,8 +111,9 @@ public:
      * @param outIdx Output port of starting node to begin the connection from
      * @param to Node to end connection at
      * @param inIdx Input port of the end node to end the connection at
+     * @return connectionId
      */
-    void connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) noexcept(false);
+    ConnectionId connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) noexcept(false);
 
 private:
 

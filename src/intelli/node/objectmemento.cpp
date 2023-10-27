@@ -15,6 +15,7 @@ ObjectMementoNode::ObjectMementoNode() :
     Node(tr("Memento Viewer"))
 {
     setNodeFlag(Resizable);
+    setNodeEvalMode(NodeEvalMode::MainThread);
 
     PortId inPort = addInPort(typeId<ObjectData>());
 
@@ -38,7 +39,7 @@ ObjectMementoNode::ObjectMementoNode() :
             }
         };
         
-        connect(this, &Node::evaluated, w, update);
+        connect(this, &Node::inputDataRecieved, w, update);
         update();
 
         return base;

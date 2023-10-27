@@ -19,6 +19,8 @@ using namespace intelli;
 NumberDisplayNode::NumberDisplayNode() :
     Node("Number Display")
 {
+    setNodeEvalMode(NodeEvalMode::MainThread);
+
     PortId in = addInPort(typeId<DoubleData>());
 
     registerWidgetFactory([=](){

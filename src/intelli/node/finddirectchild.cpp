@@ -51,14 +51,12 @@ FindDirectChildNode::FindDirectChildNode() :
     });
 
     connect(&m_childClassName, &GtAbstractProperty::changed,
-            this, &FindDirectChildNode::updateNode);
+            this, &Node::triggerNodeEvaluation);
 }
 
-Node::NodeDataPtr
-FindDirectChildNode::eval(PortId outId)
+void
+FindDirectChildNode::eval()
 {
-    if (m_out != outId) return {};
-    
     if (auto* parent = nodeData<ObjectData*>(m_in))
     {
         auto const children = parent->object()->findDirectChildren();
@@ -68,10 +66,9 @@ FindDirectChildNode::eval(PortId outId)
             return m_childClassName.get() == c->metaObject()->className();
         });
 
-        if (iter == std::end(children)) return {};
-        
-        return std::make_shared<ObjectData>(*iter);
+        if (iter != std::end(children))
+        {
+            setNodeData(m_out, std::make_shared<ObjectData>(*iter));
+        }
     }
-
-    return {};
 }

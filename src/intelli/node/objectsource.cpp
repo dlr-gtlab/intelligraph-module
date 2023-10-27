@@ -37,8 +37,7 @@ ObjectSourceNode::ObjectSourceNode() :
             w_->updateText();
         };
         
-        connect(this, &Node::outDataUpdated, w.get(), update);
-        connect(this, &Node::outDataInvalidated, w.get(), update);
+        connect(this, &Node::evaluated, w.get(), update);
 
         update();
 
@@ -46,7 +45,7 @@ ObjectSourceNode::ObjectSourceNode() :
     });
 
     connect(&m_object, &GtAbstractProperty::changed,
-            this, &ObjectSourceNode::updateNode);
+            this, &ObjectSourceNode::triggerNodeEvaluation);
 
     // connect changed signals of linked object
     connect(this, &Node::evaluated, this, [this](){
@@ -61,18 +60,16 @@ ObjectSourceNode::ObjectSourceNode() :
         if (object)
         {
             connect(object, qOverload<GtObject*>(&GtObject::dataChanged),
-                    this, &Node::updateNode, Qt::UniqueConnection);
+                    this, &Node::triggerNodeEvaluation, Qt::UniqueConnection);
             connect(object, qOverload<GtObject*, GtAbstractProperty*>(&GtObject::dataChanged),
-                    this, &Node::updateNode, Qt::UniqueConnection);
+                    this, &Node::triggerNodeEvaluation, Qt::UniqueConnection);
         }
     });
 }
 
-Node::NodeDataPtr
-ObjectSourceNode::eval(PortId outId)
+void
+ObjectSourceNode::eval()
 {
-    if (m_out != outId) return {};
-
     auto* linkedObject = m_object.linkedObject();
 
     m_object.revert();
@@ -85,10 +82,10 @@ ObjectSourceNode::eval(PortId outId)
 
     if (!linkedObject || !m_object.allowedClasses().contains(linkedObject->metaObject()->className()))
     {
-        return {};
+        return;
     }
 
     m_object.setVal(linkedObject->uuid());
     
-    return std::make_shared<ObjectData>(linkedObject);
+    setNodeData(m_out, std::make_shared<ObjectData>(linkedObject));
 }

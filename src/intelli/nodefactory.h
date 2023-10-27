@@ -30,15 +30,12 @@
 #define GT_INTELLI_REGISTER_NODE(CLASS, CAT) \
     intelli::NodeFactory::registerNode<CLASS>(CAT);
 
-namespace QtNodes { class NodeDelegateModelRegistry; }
-
 namespace intelli
 {
 
 class Node;
 class GT_INTELLI_EXPORT NodeFactory : public GtAbstractObjectFactory
 {
-    using NodeDelegateModelRegistry = QtNodes::NodeDelegateModelRegistry;
 
 public:
 
@@ -48,9 +45,13 @@ public:
      */
     static NodeFactory& instance();
 
-    auto registeredNodes() const { return knownClasses(); };
+    QStringList registeredNodes() const { return knownClasses(); };
+
+    QStringList registeredCategories() const;
 
     QString nodeCategory(QString const& className) const noexcept;
+
+    QString nodeModelName(QString const& className) const noexcept;
 
     /**
      * @brief Regsiters the node so that it can be used in intelli graphs
@@ -78,8 +79,6 @@ public:
      */
     std::unique_ptr<Node> makeNode(QString const& className) const noexcept(false);
 
-    std::unique_ptr<NodeDelegateModelRegistry> makeRegistry() noexcept;
-
 private:
 
     // hide some functions
@@ -88,8 +87,15 @@ private:
 
     using ClassName = QString;
     using NodeCategory = QString;
+    using NodeName = QString;
 
-    QHash<ClassName, NodeCategory> m_categories;
+    struct NodeMetaData
+    {
+        NodeCategory category;
+        NodeName modelName;
+    };
+
+    QHash<ClassName, NodeMetaData> m_data;
 
     NodeFactory();
 };

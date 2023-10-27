@@ -28,12 +28,13 @@ NumberSourceNode::NumberSourceNode() :
     m_out = addOutPort(typeId<DoubleData>());
 
     connect(&m_value, &GtAbstractProperty::changed,
-            this, &Node::updateNode);
+            this, &Node::triggerNodeEvaluation);
 
     registerWidgetFactory([=](){
         auto w = std::make_unique<GtLineEdit>();
         w->setFixedWidth(50);
         w->setValidator(new QRegExpValidator(gt::re::forDoubles()));
+
 
         // react to user inputs
         auto const updateProp = [this, w_ = w.get()](){
@@ -48,7 +49,7 @@ NumberSourceNode::NumberSourceNode() :
         auto const updateText = [this, w_ = w.get()](){
             w_->setText(QString::number(m_value.get()));
         };
-        connect(this, &Node::outDataUpdated, w.get(), updateText);
+        connect(this, &Node::evaluated, w.get(), updateText);
 
         updateText();
 
@@ -56,11 +57,9 @@ NumberSourceNode::NumberSourceNode() :
     });
 }
 
-Node::NodeDataPtr
-NumberSourceNode::eval(PortId outId)
+void
+NumberSourceNode::eval()
 {
-    if (m_out != outId) return {};
-
-    return std::make_shared<DoubleData>(m_value);
+    setNodeData(m_out, std::make_shared<DoubleData>(m_value));
 }
 
