@@ -24,23 +24,33 @@ using namespace intelli;
 
 // we want to skip signals that are speicifc to Node, GtObject and QObject,
 // therefore we will calculate the offset to the "custom" signals once
-static int const s_signal_offset = [](){
-    auto* sourceMetaObject = &Node::staticMetaObject;
+int signal_offset(){
+    static int const o = [](){
+        auto* sourceMetaObject = &Node::staticMetaObject;
 
-    int offset = 0;
+        int offset = 0;
 
-    // Iterate through the slots and signals of the sourceObject's meta object
-    for (int i = 0; i < sourceMetaObject->methodCount(); ++i)
-    {
-        QMetaMethod const& sourceMethod = sourceMetaObject->method(i);
+        // Iterate through the slots and signals of the sourceObject's meta object
+        for (int i = 0; i < sourceMetaObject->methodCount(); ++i)
+        {
+            QMetaMethod const& sourceMethod = sourceMetaObject->method(i);
 
-        // Check if the method is a signal
-        if (sourceMethod.methodType() != QMetaMethod::Signal) continue;
+            // Check if the method is a signal
+            if (sourceMethod.methodType() != QMetaMethod::Signal) continue;
 
-        offset = i;
-    }
-    return offset + 1;
-}();
+            offset = i;
+        }
+
+        offset += 1;
+
+        gtDebug().verbose()
+            << QObject::tr("Signal offset for derived nodes of '%1' is %2")
+                   .arg(sourceMetaObject->className()).arg(offset);
+
+        return offset;
+    }();
+    return o;
+}
 
 using SignalSignature = QByteArray;
 
@@ -54,7 +64,7 @@ findSignalsToConnect(QObject& object)
     QVector<SignalData> sourceSignals;
 
     // Iterate through the slots and signals of the sourceObject's meta object
-    for (int i = s_signal_offset; i < sourceMetaObject->methodCount(); ++i)
+    for (int i = signal_offset(); i < sourceMetaObject->methodCount(); ++i)
     {
         QMetaMethod const& sourceMethod = sourceMetaObject->method(i);
 

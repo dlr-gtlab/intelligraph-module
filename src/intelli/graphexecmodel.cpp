@@ -1280,7 +1280,7 @@ GraphExecutionModel::onNodeEvaluated()
     {
         gtError().nospace()
             << Impl::graphName(*this)
-            << tr("Node %1 has evaluated, but was no longer found in the execution model!");
+            << tr("Node %1 has evaluated, but was no longer found in the execution model!").arg(nodeId);
         return emit internalError();
     }
 
@@ -1290,7 +1290,7 @@ GraphExecutionModel::onNodeEvaluated()
     {
         gtDebug().nospace().verbose()
             << Impl::graphName(*this)
-            << tr("Node %1 is still evaluating!").arg(node->id());
+            << tr("Node %1 is still evaluating!").arg(nodeId);
         return;
     }
 
@@ -1300,7 +1300,7 @@ GraphExecutionModel::onNodeEvaluated()
     {
         gtWarning().nospace().verbose()
             << Impl::graphName(*this)
-            << tr("Node %1 requieres reevaluation!").arg(node->id());
+            << tr("Node %1 requieres reevaluation!").arg(nodeId);
         emit nodeEvaluated(nodeId);
         if (!autoEvaluateNode(nodeId))
         {
