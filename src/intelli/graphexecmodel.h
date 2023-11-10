@@ -72,9 +72,9 @@ public:
     {
         inline void operator()() const noexcept
         {
-            if(model) model->endInsertion();
+            if(model) model->endModification();
         }
-        GraphExecutionModel* model;
+        GraphExecutionModel* model{};
     };
 
     using Modification = gt::Finally<EndModificationFunctor>;
@@ -219,7 +219,7 @@ private:
 
     void endReset();
 
-    void endInsertion();
+    void endModification();
 
     bool invalidatePort(NodeId nodeId, dm::PortEntry& port);
 

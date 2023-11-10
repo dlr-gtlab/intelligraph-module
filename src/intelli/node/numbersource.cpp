@@ -35,7 +35,6 @@ NumberSourceNode::NumberSourceNode() :
         w->setFixedWidth(50);
         w->setValidator(new QRegExpValidator(gt::re::forDoubles()));
 
-
         // react to user inputs
         auto const updateProp = [this, w_ = w.get()](){
             double tmp = w_->text().toDouble();

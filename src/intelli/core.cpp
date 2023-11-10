@@ -35,7 +35,7 @@ intelli::initModule()
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(ObjectData);
 
-        GT_INTELLI_REGISTER_NODE(Graph, "Group")
+        GT_INTELLI_REGISTER_NODE(Graph, "Other")
         GT_INTELLI_REGISTER_NODE(GroupInputProvider, "")
         GT_INTELLI_REGISTER_NODE(GroupOutputProvider, "")
         GT_INTELLI_REGISTER_NODE(NumberDisplayNode, "Number");

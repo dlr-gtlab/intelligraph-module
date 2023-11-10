@@ -36,9 +36,6 @@ dm::Entry::areInputsValid(Graph const& graph, NodeId nodeId) const
 bool
 dm::Entry::canEvaluate(Graph const& graph, Node const& node) const
 {
-    auto const& nodePorts = node.ports(PortType::In);
-    assert((size_t)portsIn.size() == nodePorts.size());
-
     return areInputsValid(graph, node.id()) &&
            std::all_of(portsIn.begin(), portsIn.end(),
                        [&](dm::PortEntry const& port){

@@ -378,15 +378,20 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
 
     reset();
 
-    connect(this, &GraphExecutionModel::nodeEvaluated, this, [&graph](NodeId nodeId){
-        gtDebug() << graph.objectName() + ':'
-                  << tr("Node %1 evaluated!").arg(nodeId);
+    connect(this, &GraphExecutionModel::nodeEvaluated, this, [this](NodeId nodeId){
+        gtDebug().nospace()
+            << Impl::graphName(*this)
+            << tr("Node %1 evaluated!").arg(nodeId);
     });
-    connect(this, &GraphExecutionModel::graphEvaluated, this, [&graph](){
-        gtDebug() << tr("Graph '%1' evaluated!").arg(graph.objectName());
+    connect(this, &GraphExecutionModel::graphEvaluated, this, [this, &graph](){
+        gtDebug().nospace()
+            << Impl::graphName(*this)
+            << tr("Graph '%1' evaluated!").arg(graph.objectName());
     });
-    connect(this, &GraphExecutionModel::graphStalled, this, [&graph](){
-        gtWarning() << tr("Graph '%1' stalled!").arg(graph.objectName());
+    connect(this, &GraphExecutionModel::graphStalled, this, [this, &graph](){
+        gtWarning().nospace()
+            << Impl::graphName(*this)
+            << tr("Graph '%1' stalled!").arg(graph.objectName());
     });
     connect(&graph, &Graph::nodeAppended, this, &GraphExecutionModel::onNodeAppended);
     connect(&graph, &Graph::nodeDeleted, this, &GraphExecutionModel::onNodeDeleted);
@@ -437,14 +442,20 @@ GraphExecutionModel::beginModification()
 {
     if (m_isInserting) return {};
 
+    gtTrace().verbose().nospace()
+        << Impl::graphName(*this) << tr("BEGIN MODIFICIATION...");
+
     m_isInserting = true;
     return gt::finally(EndModificationFunctor{this});
 }
 
 void
-GraphExecutionModel::endInsertion()
+GraphExecutionModel::endModification()
 {
     m_isInserting = false;
+
+    gtTrace().verbose().nospace()
+        << Impl::graphName(*this) << tr("... END MODIFICATION");
 
     evaluateNextInQueue();
 }
@@ -527,12 +538,13 @@ GraphExecutionModel::autoEvaluate()
     auto const& cyclicNodes = intelli::cyclicNodes(graph);
     if (!cyclicNodes.empty())
     {
-        gtError() << graph.objectName() + ':'
-                  << tr("Cannot auto evaluate cyclic graph! The node sequence")
-                  << cyclicNodes << tr("contains a cycle!");
+        gtError().nospace()
+            << Impl::graphName(*this)
+            << tr("Cannot auto evaluate cyclic graph! The node sequence %1 "
+                  "contains a cycle!").arg(toString(cyclicNodes));
 
         m_autoEvaluate = false;
-        return FutureGraphEvaluated{nullptr};
+        return {};
     }
 
     auto const& nodes = graph.nodes();
@@ -550,10 +562,11 @@ GraphExecutionModel::autoEvaluate()
 
     if (!nodes.empty() && rootNodes.empty())
     {
-        gtError() << graph.objectName() + ':'
-                  << tr("Failed to find root nodes to begin graph evaluation!");
+        gtError().nospace()
+            << Impl::graphName(*this).chopped(1)
+            << tr("Failed to find root nodes to begin graph evaluation!");
         m_autoEvaluate = false;
-        return FutureGraphEvaluated{nullptr};
+        return {};
     }
 
     bool success = false;
@@ -590,8 +603,9 @@ GraphExecutionModel::evaluateGraph()
 
     if (targetNodes.empty())
     {
-        gtError() << graph.objectName() + ':'
-                  << tr("Failed to evaluate graph, target nodes not found!");
+        gtError().nospace()
+            << Impl::graphName(*this)
+            << tr("Failed to evaluate graph, target nodes not found!");
         return {};
     }
 
@@ -619,7 +633,7 @@ GraphExecutionModel::evaluateNode(NodeId nodeId)
 
     if (m_targetNodes.contains(nodeId))
     {
-        gtDebug() << makeError() << tr("(Node is already marked for evaluation");
+        gtDebug() << makeError() << tr("(Node is already marked for evaluation)");
         return FutureNodeEvaluated(this, nodeId);
     }
 
@@ -628,6 +642,7 @@ GraphExecutionModel::evaluateNode(NodeId nodeId)
     if (!evaluateNodeDependencies(nodeId))
     {
         m_targetNodes.removeLast();
+        rescheduleTargetNodes();
         return {};
     }
 
@@ -727,11 +742,12 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId)
 
     // node not ready to be queued -> dependencies not fullfilled
 
+    auto const& dependencies = graph().findConnectedNodes(nodeId, PortType::In);
+
     gtDebug().verbose().nospace()
         << Impl::graphName(*this)
-        << tr("Node %1 is not ready for evaluation. Checking dependencies...").arg(nodeId);
-
-    auto const& dependencies = graph().findConnectedNodes(nodeId, PortType::In);
+        << tr("Node %1 is not ready for evaluation. Checking dependencies: %2")
+               .arg(nodeId).arg(toString(dependencies));
 
     if (dependencies.empty())
     {
@@ -741,6 +757,10 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId)
 
     for (NodeId dependency : dependencies)
     {
+        gtDebug().verbose().nospace()
+            << Impl::graphName(*this)
+            << tr("Checking dependency: ") << dependency;
+
         assert (dependency != nodeId);
         if (!evaluateNodeDependencies(dependency)) return false;
     }
@@ -773,7 +793,12 @@ GraphExecutionModel::queueNodeForEvaluation(NodeId nodeId)
 
     if (!find.canEvaluate())
     {
-        gtDebug().verbose() << makeError() << tr("(Node is not ready for evaluation)");
+        gtDebug().verbose()
+            << makeError()
+            << tr("(Node is not ready for evaluation, some inputs are %1)")
+                   .arg(find.areInputsValid() ?
+                            QString("required but null") :
+                            QString("not valid yet"));
         return false;
     }
 
@@ -874,12 +899,13 @@ GraphExecutionModel::rescheduleTargetNodes()
 void
 GraphExecutionModel::debug() const
 {
+    QVector<NodeId> evaluating;
+    std::transform(m_evaluatingNodes.begin(), m_evaluatingNodes.end(), std::back_inserter(evaluating), [](QPointer<Node> const& node){ return node->id(); });
+
     gtDebug() << Impl::graphName(*this) << "#######################";
     gtDebug() << Impl::graphName(*this) << "target nodes:    " << m_targetNodes;
     gtDebug() << Impl::graphName(*this) << "pending nodes:   " << m_pendingNodes;
     gtDebug() << Impl::graphName(*this) << "queued nodes:    " << m_queuedNodes;
-    QVector<NodeId> evaluating;
-    std::transform(m_evaluatingNodes.begin(), m_evaluatingNodes.end(), std::back_inserter(evaluating), [](QPointer<Node> const& node){ return node->id(); });
     gtDebug() << Impl::graphName(*this) << "evaluating nodes:" << evaluating;
     gtDebug() << Impl::graphName(*this) << "#######################";
 }
@@ -1145,15 +1171,18 @@ GraphExecutionModel::onNodeAppended(Node* node)
 
     m_data.insert(node->id(), std::move(entry));
 
+    /// evaluate node if triggered
     connect(node, &Node::triggerNodeEvaluation,
             this, [this, nodeId = node->id()](){
         invalidateOutPorts(nodeId);
         autoEvaluateNode(nodeId);
     });
 
+    /// create new port entry in model
     connect(node, &Node::portInserted,
             this, [this, nodeId = node->id()](PortType type, PortIndex idx){
         assert (type != PortType::NoType);
+
         auto find = Impl::findNode(*this, nodeId);
         if (!find)
         {
@@ -1170,9 +1199,11 @@ GraphExecutionModel::onNodeAppended(Node* node)
             .push_back({portId});
     });
 
+    /// delete port entry from model, pause model execution
     connect(node, &Node::portAboutToBeDeleted,
             this, [this, nodeId = node->id()](PortType type, PortIndex idx){
         assert (type != PortType::NoType);
+
         auto* node = graph().findNode(nodeId);
         if (!node)
         {
@@ -1191,8 +1222,16 @@ GraphExecutionModel::onNodeAppended(Node* node)
             return;
         }
 
+        m_isInserting = true;
+
         (type == PortType::In ? find.entry->portsIn : find.entry->portsOut)
             .removeAt(find.idx);
+    });
+
+    /// when port is deleted -> evaluation can continue
+    connect(node, &Node::portDeleted,
+            this, [this, nodeId = node->id()](PortType, PortIndex){
+                endModification();
     });
 }
 
@@ -1236,9 +1275,17 @@ GraphExecutionModel::onConnectedionAppended(Connection* con)
         gtError() << makeError() << tr("(out node not found)");
         return;
     }
-    
+
+    gtDebug() << Impl::graphName(*this) << "forwarding node data";
+
+    // set node data
     auto data = nodeData(conId.outNodeId, conId.outPort);
     setNodeData(conId.inNodeId, conId.inPort, std::move(data));
+
+    gtDebug() << Impl::graphName(*this) << "scheduling node" << conId.outNodeId;
+
+    // try to auto evaluate node else forward node data
+    if (!isNodeEvaluated(conId.outNodeId)) autoEvaluateNode(conId.outNodeId);
 
     // to be safe
     rescheduleTargetNodes();
@@ -1301,6 +1348,7 @@ GraphExecutionModel::onNodeEvaluated()
         gtWarning().nospace().verbose()
             << Impl::graphName(*this)
             << tr("Node %1 requieres reevaluation!").arg(nodeId);
+
         emit nodeEvaluated(nodeId);
         if (!autoEvaluateNode(nodeId))
         {
@@ -1330,7 +1378,9 @@ GraphExecutionModel::onNodeEvaluated()
     if (debug)
     {
         gtDebug().nospace().verbose()
-            << Impl::graphName(*this) << tr("Queue pending nodes...");
+            << Impl::graphName(*this)
+            << tr("Queue pending nodes...");
+
         this->debug();
     }
 
@@ -1348,15 +1398,18 @@ GraphExecutionModel::onNodeEvaluated()
     if (debug)
     {
         this->debug();
+
         gtDebug().nospace().verbose()
-            << Impl::graphName(*this) << tr("...done");
+            << Impl::graphName(*this)
+            << tr("...done!");
     }
 
     // queue next nodes
     if (m_autoEvaluate)
     {
         gtDebug().nospace().verbose()
-            << Impl::graphName(*this) << tr("Triggering next nodes...");
+            << Impl::graphName(*this)
+            << tr("Triggering next nodes...");
 
         auto const& nextNodes = graph.findConnectedNodes(nodeId, PortType::Out);
 
@@ -1364,6 +1417,10 @@ GraphExecutionModel::onNodeEvaluated()
         {
             autoEvaluateNode(nextNode);
         }
+
+        gtDebug().nospace().verbose()
+            << Impl::graphName(*this)
+            << tr("...done!");
     }
 
     // trigger evaluation
@@ -1379,13 +1436,15 @@ GraphExecutionModel::onNodeEvaluated()
     if (!m_autoEvaluate && m_targetNodes.empty())
     {
         std::for_each(m_data.keyValueBegin(), m_data.keyValueEnd(),
-                      [&graph](std::pair<NodeId, dm::Entry&> const& p){
+                      [&graph, this](std::pair<NodeId, dm::Entry&> const& p){
             auto* node = graph.findNode(p.first);
             assert(node);
-            gtDebug() << node->id()
-                      << !(node->nodeFlags() & NodeFlag::Evaluating)
-                      << !(node->nodeFlags() & NodeFlag::RequiresEvaluation)
-                      << p.second.areInputsValid(graph, p.first);
+            gtDebug()
+                << Impl::graphName(*this)
+                << node->id()
+                << !(node->nodeFlags() & NodeFlag::Evaluating)
+                << !(node->nodeFlags() & NodeFlag::RequiresEvaluation)
+                << p.second.areInputsValid(graph, p.first);
         });
     }
 

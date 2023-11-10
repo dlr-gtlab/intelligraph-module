@@ -100,6 +100,8 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
 Node::~Node()
 {
+    pimpl->widget.reset();
+
     emit nodeAboutToBeDeleted(id());
 }
 

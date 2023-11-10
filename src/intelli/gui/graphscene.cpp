@@ -45,6 +45,7 @@
 #include <QWidgetAction>
 #include <QTreeWidget>
 #include <QHeaderView>
+#include <QTimer>
 
 using namespace intelli;
 
@@ -215,6 +216,9 @@ GraphScene::createSceneMenu(QPointF scenePos)
     txtBox->setPlaceholderText(QStringLiteral(" Filter"));
     txtBox->setClearButtonEnabled(true);
 
+    // set the focus to allow text inputs
+    QTimer::singleShot(0, txtBox, SIGNAL(setFocus()));
+
     auto* txtBoxAction = new QWidgetAction(menu);
     txtBoxAction->setDefaultWidget(txtBox);
 
@@ -233,7 +237,10 @@ GraphScene::createSceneMenu(QPointF scenePos)
 
     auto const& factory = NodeFactory::instance();
 
-    for (QString const& cat : factory.registeredCategories())
+    auto cats = factory.registeredCategories();
+    cats.sort();
+
+    for (QString const& cat : qAsConst(cats))
     {
         if (cat.isEmpty()) continue;
 
@@ -242,7 +249,10 @@ GraphScene::createSceneMenu(QPointF scenePos)
         item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
     }
 
-    for (QString const& node : factory.registeredNodes())
+    auto nodes = factory.registeredNodes();
+    nodes.sort();
+
+    for (QString const& node : qAsConst(nodes))
     {
         auto parents = treeView->findItems(factory.nodeCategory(node), Qt::MatchExactly);
 
@@ -314,6 +324,8 @@ GraphScene::deleteSelectedObjects()
     GtObjectList objects;
     Impl::findConnections(*m_graph, selected.connections, objects);
     Impl::findNodes(*m_graph, selected.nodes, objects, true);
+
+    auto cmd = GraphExecutionModel::modify(m_graph->executionModel());
 
     gtDataModel->deleteFromModel(objects);
 }

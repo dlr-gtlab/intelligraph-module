@@ -82,6 +82,7 @@ ObjectSourceNode::eval()
 
     if (!linkedObject || !m_object.allowedClasses().contains(linkedObject->metaObject()->className()))
     {
+        setNodeData(m_out, nullptr);
         return;
     }
 
