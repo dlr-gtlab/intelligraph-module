@@ -145,7 +145,7 @@ GraphAdapterModel& initGraph(Graph& graph)
     if (!model) model = graph.makeExecutionModel();
     else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
 
-    model->autoEvaluate().detach();
+//    model->autoEvaluate().detach();
 
     return *new GraphAdapterModel(graph);
 }
@@ -324,6 +324,8 @@ GraphScene::deleteSelectedObjects()
     GtObjectList objects;
     Impl::findConnections(*m_graph, selected.connections, objects);
     Impl::findNodes(*m_graph, selected.nodes, objects, true);
+
+    auto cmd = GraphExecutionModel::modify(m_graph->executionModel());
 
     gtDataModel->deleteFromModel(objects);
 }

@@ -39,7 +39,7 @@ bool
 UIntProperty::setValueFromVariant(QVariant const& val, QString const& unit)
 {
     bool ok = true;
-    m_value = val.toUInt(&ok);
+    setVal(val.toUInt(&ok));
     return ok;
 }
 

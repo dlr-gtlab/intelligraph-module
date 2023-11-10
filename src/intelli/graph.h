@@ -414,7 +414,9 @@ private:
 
 private slots:
 
-    void outputProivderEvaluated(NodeId nodeId);
+    void onSubNodeEvaluated(NodeId nodeId);
+
+    void onSubGraphStalled();
 };
 
 } // namespace intelli

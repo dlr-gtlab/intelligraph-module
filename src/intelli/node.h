@@ -113,7 +113,7 @@ public:
                  bool _captionVisible = true,
                  bool _optional = true) :
             typeId(std::move(_typeId)),
-            caption(std::move(_caption)),
+            caption(std::move(_caption) ),
             captionVisible(_captionVisible),
             optional(_optional)
         {}

@@ -61,6 +61,10 @@ public:
 
 private slots:
 
+    /**
+     * @brief Insert port in parent graph node
+     * @param idx Index of inserted port
+     */
     void onPortInserted(PortType, PortIndex idx)
     {
         auto* graph = findParent<Graph*>();
@@ -69,13 +73,24 @@ private slots:
         PortId id = portId(invert(Type), idx);
         if (auto* port = this->port(id))
         {
-            auto p = port->copy();
+            // generate new port id:
+            //  odd port id  -> input port
+            //  even port id -> output port
+            auto graphPortId = id << 1;
+            if (Type == PortType::In) graphPortId |= 1;
+
+            auto p = PortData::customId(PortId(graphPortId), *port);
+
             Type == PortType::In ?
                 graph->insertInPort( std::move(p), idx) :
                 graph->insertOutPort(std::move(p), idx);
         }
     }
 
+    /**
+     * @brief Update port in parent graph node
+     * @param id Id of changed port
+     */
     void onPortChanged(PortId id)
     {
         auto* graph = findParent<Graph*>();
@@ -86,14 +101,20 @@ private slots:
 
         auto idx = portIndex(invert(Type), id);
         auto graphPortId = graph->portId(Type, idx);
+
         auto* graphPort  = graph->port(graphPortId);
         if (!graphPort) return;
 
-        graphPort->typeId  = port->typeId;
-        graphPort->caption = port->caption;
+        // update port but keep port id
+        *graphPort = PortData::customId(graphPortId, *port);
+
         emit graph->portChanged(graphPortId);
     }
 
+    /**
+     * @brief Delete port in parent graph node
+     * @param idx Index of the deleted port
+     */
     void onPortDeleted(PortType, PortIndex idx)
     {
         auto* graph = findParent<Graph*>();

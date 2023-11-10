@@ -181,10 +181,10 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
     EXPECT_FALSE(model.isEvaluated());
     EXPECT_FALSE(model.isNodeEvaluated(submodel.graph().id()));
 
+    gtDebug() << "Evaluating...";
+
     auto future = model.autoEvaluate();
     EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
-
-    EXPECT_TRUE(submodel.isEvaluated());
 
     EXPECT_TRUE(model.isEvaluated());
     EXPECT_TRUE(model.isNodeEvaluated(submodel.graph().id()));

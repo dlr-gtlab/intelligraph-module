@@ -231,8 +231,10 @@ DynamicNode::onPortEntryAdded(int idx)
 
     // get port id from entry ident
     bool ok = true;
-    PortId portId = PortId(entry->ident().toUInt(&ok));
-    ok &= portId != invalid<PortId>();
+    auto ident = entry->ident().toUInt(&ok);
+
+    PortId portId;
+    if (ok) portId = PortId(ident);
 
     // check if port id already exists (entry probably added in constructor)
     if (ok && port(portId))
@@ -247,24 +249,30 @@ DynamicNode::onPortEntryAdded(int idx)
     bool captionVisible = entry->template getMemberVal<bool>(S_PORT_CAPTION_VISIBLE);
     bool optional = entry->template getMemberVal<bool>(S_PORT_OPTIONAL);
 
+    bool updatePortId = true;
     // check if port id saved is valid and use that then
     {
         auto tmpPortId = PortId(entry->template getMemberVal<unsigned>(S_PORT_ID));
-        if (tmpPortId != invalid<PortId>()) portId = tmpPortId;
+        if (tmpPortId != invalid<PortId>())
+        {
+            portId = tmpPortId;
+            updatePortId = false;
+        }
     }
 
     if (auto* p = port(portId))
     {
-        gtWarning() << makeError()
-                    << tr("(Port already exists: %1)").arg(toString(*p));
+        gtInfo().verbose()
+            << makeError()
+            << tr("(Port already exists: %1)").arg(toString(*p));
         return;
     }
 
-    PortData portData = { typeId, caption, captionVisible, optional };
+    auto portData = PortData::customId(portId, typeId, caption, captionVisible, optional);
 
     idx += offset(type) + 1;
 
-    portId = Node::insertPort(type, PortData::customId(portId, portData), idx);
+    portId = Node::insertPort(type, portData, idx);
     if (portId == invalid<PortId>())
     {
         gtWarning() << makeError()
@@ -273,11 +281,16 @@ DynamicNode::onPortEntryAdded(int idx)
         return;
     }
 
+    if (updatePortId)
+    {
+        entry->setMemberVal(S_PORT_ID, QVariant::fromValue(portId.value()));
+    }
+
     emit portChanged(portId);
 }
 
 void
-DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty*)
+DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
 {
     auto* dynamicPorts = toDynamicPorts(sender());
     if (!dynamicPorts) return;
@@ -290,6 +303,7 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty*)
     idx += offset(type);
 
     PortId portId = this->portId(type, PortIndex::fromValue(idx));
+
     auto* port = this->port(portId);
     if (!port)
     {
@@ -302,13 +316,30 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty*)
     QString caption = entry->template getMemberVal<QString>(S_PORT_CAPTION);
     bool captionVisible = entry->template getMemberVal<bool>(S_PORT_CAPTION_VISIBLE);
     bool optional = entry->template getMemberVal<bool>(S_PORT_OPTIONAL);
+    PortId newPortId(entry->template getMemberVal<unsigned>(S_PORT_ID));
 
     port->typeId = std::move(typeId);
     port->caption = std::move(caption);
     port->captionVisible = captionVisible;
     port->optional = optional;
 
-    emit portChanged(portId);
+    if (portId != newPortId && newPortId != invalid<PortId>())
+    {
+        auto portData = PortData::customId(newPortId, *port);
+
+        // hacky solution -> remove port and insert new port with new id
+        auto ignoreRemoved = ignoreSignal(
+            this, &Node::portAboutToBeDeleted,
+            this, &DynamicNode::onPortDeleted
+        );
+        Q_UNUSED(ignoreRemoved);
+
+        removePort(portId);
+        insertPort(type, std::move(portData), idx);
+        return;
+    }
+
+    emit portChanged(port->id());
 }
 
 void
@@ -391,7 +422,7 @@ DynamicNode::propertyAt(GtPropertyStructContainer* container, int idx)
     }
     catch (std::out_of_range const& e)
     {
-        gtError().nospace() << __FUNCTION__ << ":" << e.what();
+        gtError().nospace() << __FUNCTION__ << ": " << e.what();
     }
     return nullptr;
 }

@@ -462,7 +462,7 @@ Node::PortId
 Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
 {
     static auto const makeError = [=](){
-        return  tr("Failed to get port id for node %1!").arg(nodeId);
+        return tr("Failed to get port id for node %1!").arg(nodeId);
     };
 
     auto* node = findNode(nodeId);
@@ -523,9 +523,9 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 {
     if (!node) return {};
 
-    auto makeError = [n = node.get()](){
-        return  tr("Failed to append node '%1' to intelli graph!")
-            .arg(n->objectName());
+    auto makeError = [n = node.get(), this](){
+        return  tr("Failed to append node '%1' to intelli graph '%2'!")
+            .arg(n->objectName(), objectName());
     };
 
     // check if node exists and update node id if necessary
@@ -595,9 +595,9 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
 
     auto conId = connection->connectionId();
 
-    auto makeError = [conId](){
-        return tr("Failed to append connection '%1' to intelli graph!")
-            .arg(toString(conId));
+    auto makeError = [conId, this](){
+        return tr("Failed to append connection '%1' to intelli graph '%2'!")
+            .arg(toString(conId), objectName());
     };
 
     // connection may already exist
@@ -643,6 +643,14 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     {
         gtWarning() << makeError()
                     << tr("(connection in-port or out-port not found)");
+        return {};
+    }
+
+    if (targetNode->node->portType(inPort->id())  ==
+        sourceNode->node->portType(outPort->id()))
+    {
+        gtWarning() << makeError()
+                    << tr("(cannot connect ports of same type)");
         return {};
     }
 
@@ -744,6 +752,9 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model)
     auto* input = inputProvider();
     if (!input) return false;
 
+    auto* output = outputProvider();
+    if (!output) return false;
+
     auto* submodel = makeDummyExecutionModel();
 
     gtDebug().verbose().nospace()
@@ -756,7 +767,9 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model)
     submodel->setNodeData(input->id(), PortType::Out, model.nodeData(id(), PortType::In));
 
     connect(submodel, &GraphExecutionModel::nodeEvaluated,
-            this, &Graph::outputProivderEvaluated, Qt::UniqueConnection);
+            this, &Graph::onSubNodeEvaluated, Qt::UniqueConnection);
+    connect(submodel, &GraphExecutionModel::graphStalled,
+            this, &Graph::onSubGraphStalled, Qt::UniqueConnection);
 
     emit input->computingFinished();
 
@@ -764,9 +777,7 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model)
         emit computingFinished();
     });
 
-    if (!submodel->autoEvaluate().detach()) return false;
-
-    finally.clear();
+    if (submodel->evaluateNode(output->id()).detach()) finally.clear();
 
     return true;
 }
@@ -855,7 +866,7 @@ Graph::initInputOutputProviders()
 }
 
 void
-Graph::outputProivderEvaluated(NodeId nodeId)
+Graph::onSubNodeEvaluated(NodeId nodeId)
 {
     auto* output = outputProvider();
     if (!output) return;
@@ -865,6 +876,25 @@ Graph::outputProivderEvaluated(NodeId nodeId)
     auto finally = gt::finally([this](){
         emit computingFinished();
     });
+
+    auto* submodel = NodeExecutor::accessExecModel(*output);
+    if (!submodel) return;
+
+    auto* model = NodeExecutor::accessExecModel(*this);
+    if (!model) return;
+
+    model->setNodeData(id(), PortType::Out, submodel->nodeData(output->id(), PortType::In));
+}
+
+void
+Graph::onSubGraphStalled()
+{
+    auto finally = gt::finally([this](){
+        emit computingFinished();
+    });
+
+    auto* output = outputProvider();
+    if (!output) return;
 
     auto* submodel = NodeExecutor::accessExecModel(*output);
     if (!submodel) return;
@@ -970,8 +1000,8 @@ bool isAcyclicHelper(Graph const& graph,
         auto* tmp = graph.findNode(conId.inNodeId);
         if (!tmp)
         {
-            gtError() << QObject::tr("Failed to check if graph is acyclic, node %1 not found!")
-                             .arg(conId.inNodeId);
+            gtError() << QObject::tr("Failed to check if graph '%1' is acyclic, node %2 not found!")
+                             .arg(graph.objectName(), conId.inNodeId);
             return false;
         }
         if (!isAcyclicHelper(graph, *tmp, visited, pending))

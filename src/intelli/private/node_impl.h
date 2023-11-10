@@ -148,8 +148,8 @@ struct NodeImpl
             // port already exists
             if (find(id)) return PortId{};
 
-            id = std::max(nextPortId, id);
-            nextPortId = PortId(id + 1);
+            if (id >= nextPortId) nextPortId = PortId(id + 1);
+
             return id;
         }
         return nextPortId++;
