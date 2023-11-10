@@ -25,7 +25,7 @@ FindDirectChildNode::FindDirectChildNode() :
 {
     registerProperty(m_childClassName);
     
-    m_in = addInPort(typeId<ObjectData>(), PortPolicy::Required);
+    m_in = addInPort(typeId<ObjectData>());
     
     m_out = addOutPort(typeId<ObjectData>());
 
@@ -57,18 +57,22 @@ FindDirectChildNode::FindDirectChildNode() :
 void
 FindDirectChildNode::eval()
 {
-    if (auto* parent = nodeData<ObjectData*>(m_in))
+    auto* parent = nodeData<ObjectData*>(m_in);
+    if (!parent)
     {
-        auto const children = parent->object()->findDirectChildren();
+        setNodeData(m_out, nullptr);
+        return;
+    }
 
-        auto iter = std::find_if(std::begin(children), std::end(children),
-                                 [this](GtObject const* c){
-            return m_childClassName.get() == c->metaObject()->className();
-        });
+    auto const children = parent->object()->findDirectChildren();
 
-        if (iter != std::end(children))
-        {
-            setNodeData(m_out, std::make_shared<ObjectData>(*iter));
-        }
+    auto iter = std::find_if(std::begin(children), std::end(children),
+                             [this](GtObject const* c){
+        return m_childClassName.get() == c->metaObject()->className();
+    });
+
+    if (iter != std::end(children))
+    {
+        setNodeData(m_out, std::make_shared<ObjectData>(*iter));
     }
 }

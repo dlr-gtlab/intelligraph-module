@@ -145,7 +145,7 @@ GraphAdapterModel& initGraph(Graph& graph)
     if (!model) model = graph.makeExecutionModel();
     else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
 
-//    model->autoEvaluate().detach();
+    model->autoEvaluate().detach();
 
     return *new GraphAdapterModel(graph);
 }

@@ -634,7 +634,6 @@ GraphExecutionModel::evaluateNode(NodeId nodeId)
     if (m_targetNodes.contains(nodeId))
     {
         gtDebug() << makeError() << tr("(Node is already marked for evaluation)");
-        debug();
         return FutureNodeEvaluated(this, nodeId);
     }
 
@@ -644,7 +643,6 @@ GraphExecutionModel::evaluateNode(NodeId nodeId)
     {
         m_targetNodes.removeLast();
         rescheduleTargetNodes();
-        debug();
         return {};
     }
 
@@ -732,7 +730,7 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId)
     if (find.isEvaluated())
     {
         gtDebug().verbose() << makeError() << tr("(Node was already evaluated)");
-        return false;
+        return true;
     }
 
     m_pendingNodes.push_back(nodeId);
@@ -744,13 +742,12 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId)
 
     // node not ready to be queued -> dependencies not fullfilled
 
+    auto const& dependencies = graph().findConnectedNodes(nodeId, PortType::In);
+
     gtDebug().verbose().nospace()
         << Impl::graphName(*this)
-        << tr("Node %1 is not ready for evaluation. Checking dependencies...").arg(nodeId);
-
-    debug();
-
-    auto const& dependencies = graph().findConnectedNodes(nodeId, PortType::In);
+        << tr("Node %1 is not ready for evaluation. Checking dependencies: %2")
+               .arg(nodeId).arg(toString(dependencies));
 
     if (dependencies.empty())
     {
@@ -760,6 +757,10 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId)
 
     for (NodeId dependency : dependencies)
     {
+        gtDebug().verbose().nospace()
+            << Impl::graphName(*this)
+            << tr("Checking dependency: ") << dependency;
+
         assert (dependency != nodeId);
         if (!evaluateNodeDependencies(dependency)) return false;
     }
@@ -1275,15 +1276,16 @@ GraphExecutionModel::onConnectedionAppended(Connection* con)
         return;
     }
 
-    gtDebug() << "scheduling node" << conId.outNodeId;
-    autoEvaluateNode(conId.outNodeId);
+    gtDebug() << Impl::graphName(*this) << "forwarding node data";
+
+    // set node data
+    auto data = nodeData(conId.outNodeId, conId.outPort);
+    setNodeData(conId.inNodeId, conId.inPort, std::move(data));
+
+    gtDebug() << Impl::graphName(*this) << "scheduling node" << conId.outNodeId;
 
     // try to auto evaluate node else forward node data
-    if (1)
-    {
-        auto data = nodeData(conId.outNodeId, conId.outPort);
-        setNodeData(conId.inNodeId, conId.inPort, std::move(data));
-    }
+    if (!isNodeEvaluated(conId.outNodeId)) autoEvaluateNode(conId.outNodeId);
 
     // to be safe
     rescheduleTargetNodes();
