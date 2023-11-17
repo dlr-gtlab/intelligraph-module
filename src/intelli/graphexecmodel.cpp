@@ -15,7 +15,6 @@
 #include "intelli/connection.h"
 
 #include "intelli/private/utils.h"
-#include "intelli/private/node_impl.h"
 
 #include <gt_exceptions.h>
 #include <gt_eventloop.h>

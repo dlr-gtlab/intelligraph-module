@@ -42,6 +42,10 @@ protected:
      * @return Returns true if data was successfully read.
      */
     bool saveData(QDomElement& root, QDomDocument& doc);
+
+private:
+
+    struct Impl;
 };
 
 } // namespace intelli
