@@ -252,6 +252,10 @@ private slots:
     void onNodeEvaluated();
 };
 
+/**
+ * @brief The FutureGraphEvaluated class.
+ * Helper class to await evaluation of a complete graph
+ */
 class FutureGraphEvaluated
 {
     friend class GraphExecutionModel;
@@ -275,6 +279,10 @@ private:
     GraphExecutionModel* m_model;
 };
 
+/**
+ * @brief The FutureNodeEvaluated class.
+ * Helper class to await evaluation of a node
+ */
 class FutureNodeEvaluated
 {
     friend class GraphExecutionModel;
