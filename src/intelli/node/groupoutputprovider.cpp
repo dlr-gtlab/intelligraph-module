@@ -8,8 +8,6 @@
 
 #include "intelli/node/groupoutputprovider.h"
 
-#include "intelli/nodeexecutor.h"
-
 using namespace intelli;
 
 GroupOutputProvider::GroupOutputProvider() :
