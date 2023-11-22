@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.1] - 2023-11-22
+
+First official release
+
 ### Added
 - Caption may be renamed using the properties dock widget
 - Added group nodes, that allows for nested intelli graphs. Group nodes can be created using the context menu of a node selection and may be opened using a double click. - #5
@@ -14,11 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Node UI actions may be triggered using the registered shortcuts inside the graph view - #24
 - `intelli::DynamicNode` that allows the user to add/remove ports at runtime and store added ports persistently - #21
 - Nodes can be toggled between automatic and manual evaluation - #27
+- Nodes will be saved in separate project files (`<project_dir>/intelli`) - # 22
 
 ### Changed
 - Lots of internal refactoring, better stability and ease of use - #8
 - By default each node will be executed in parallel - #21
 - The widgets of nodes can now recieve mouse wheel events - #13
+- Sorted entries in node scene menu - #46
+- Implemented own execution model to handle evaluations of nodes. Nodes will now only be evaluated once all inputs are valid, reduces redundant/multiple evaluations of a single node - #28
 
 ### Deprecated
 ### Removed
