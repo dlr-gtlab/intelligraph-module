@@ -83,7 +83,11 @@ struct Package::Impl
 
             Impl::deleteGraphFiles(catDir);
 
-            dir.rmdir(catName);
+            if (!dir.rmdir(catName))
+            {
+                gtWarning() << tr("Failed to remove category '%1'! "
+                                  "(Directory is not empty)").arg(catName);
+            }
         }
     }
 
@@ -457,14 +461,6 @@ Package::saveData(QDomElement& root, QDomDocument& doc)
         return false;
     }
 
-    auto const& categories = findDirectChildren<GraphCategory*>();
-    if (categories.empty())
-    {
-        gtInfo().verbose()
-            << tr("Not saving module '%1', no data to save!").arg(GT_MODULENAME());
-        return true;
-    }
-
     QDir dir = project->path();
 
     dir.mkdir(MODULE_DIR);
@@ -475,6 +471,8 @@ Package::saveData(QDomElement& root, QDomDocument& doc)
         GtPackage::saveData(root, doc);
         return false;
     }
+
+    auto const& categories = findDirectChildren<GraphCategory*>();
 
     Impl::deleteCategoryDirs(dir, gt::objectNames(categories));
 
