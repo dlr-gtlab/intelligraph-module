@@ -1,6 +1,6 @@
 set(CMAKE_DEBUG_POSTFIX -d)
 
-set(INTELLIGRAPH_VERSION 0.7.1)
+set(INTELLIGRAPH_VERSION 0.7.2)
 
 set(PUBLIC_HEADERS
     intelli/core.h
@@ -134,19 +134,19 @@ target_include_directories(GTlabIntelliGraph PUBLIC
 
      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
      # we install a flat file hierachy, so we include only this folder
-     PUBLIC $<INSTALL_INTERFACE:include/intelligraph/intelli>
+     PUBLIC $<INSTALL_INTERFACE:include>
 )
 
 install (TARGETS GTlabIntelliGraph
     EXPORT GTlabIntelliGraph-targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/intelligraph
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/intelligraph
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
 # copy public headers but keep file hierarchy
 foreach ( file ${PUBLIC_HEADERS} )
     get_filename_component( dir ${file} DIRECTORY )
-    install( FILES ${file} DESTINATION include/intelligraph/${dir} )
+    install( FILES ${file} DESTINATION include/${dir} )
 endforeach()
 
 # cmake configuration export
