@@ -777,7 +777,11 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model)
         emit computingFinished();
     });
 
-    if (submodel->evaluateNode(output->id()).detach()) finally.clear();
+    if (submodel->evaluateNode(output->id()).detach() &&
+        !submodel->isNodeEvaluated(output->id()))
+    {
+        finally.clear();
+    }
 
     return true;
 }

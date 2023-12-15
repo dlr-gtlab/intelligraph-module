@@ -192,7 +192,7 @@ Node::setNodeEvalMode(NodeEvalMode mode)
 NodeFlags
 Node::nodeFlags() const
 {
-    // remove resizeable if no widgets exists
+    // remove Resizable flag if no widgets exists
     return pimpl->widget ? pimpl->flags : pimpl->flags & ~Resizable;
 }
 

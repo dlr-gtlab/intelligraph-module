@@ -491,6 +491,7 @@ GraphScene::pasteObjects()
 void
 GraphScene::keyPressEvent(QKeyEvent* event)
 {
+    // perform keyevent on node
     QVector<Node*> nodes;
     Impl::findNodes(*m_graph, selectedNodes(), nodes);
 
