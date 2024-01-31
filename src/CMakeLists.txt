@@ -21,6 +21,7 @@ set(PUBLIC_HEADERS
     intelli/data/double.h
     intelli/data/object.h
     intelli/data/stringlist.h
+    intelli/data/string.h
     intelli/gui/icons.h
     intelli/gui/nodeui.h
     intelli/gui/portuiaction.h
@@ -57,6 +58,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/objectsource.h
     intelli/node/sleepy.h
     intelli/node/stringlistinput.h
+    intelli/node/existingdirectorysource.h
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
     intelli/gui/graphview.h
@@ -89,6 +91,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/double.cpp
     intelli/data/object.cpp
     intelli/data/stringlist.cpp
+    intelli/data/string.cpp
     intelli/node/finddirectchild.cpp
     intelli/node/groupinputprovider.cpp
     intelli/node/groupoutputprovider.cpp
@@ -99,6 +102,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/objectsource.cpp
     intelli/node/sleepy.cpp
     intelli/node/stringlistinput.cpp
+    intelli/node/existingdirectorysource.cpp
     intelli/gui/connectionui.cpp
     intelli/gui/grapheditor.cpp
     intelli/gui/graphscene.cpp

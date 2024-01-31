@@ -4,6 +4,7 @@
 #include "intelli/data/double.h"
 #include "intelli/data/object.h"
 #include "intelli/data/stringlist.h"
+#include "intelli/data/string.h"
 
 #include "intelli/graph.h"
 #include "intelli/node/groupinputprovider.h"
@@ -18,6 +19,7 @@
 #include "intelli/node/objectsource.h"
 #include "intelli/node/stringlistinput.h"
 #include "intelli/node/finddirectchild.h"
+#include "intelli/node/existingdirectorysource.h"
 
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodefactory.h"
@@ -34,6 +36,7 @@ intelli::initModule()
         GT_INTELLI_REGISTER_DATA(BoolData);
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(ObjectData);
+        GT_INTELLI_REGISTER_DATA(StringData);
 
         GT_INTELLI_REGISTER_NODE(Graph, "Other")
         GT_INTELLI_REGISTER_NODE(GroupInputProvider, "")
@@ -48,6 +51,7 @@ intelli::initModule()
         GT_INTELLI_REGISTER_NODE(FindDirectChildNode, "Object")
 
         GT_INTELLI_REGISTER_NODE(StringListInputNode, "Input");
+        GT_INTELLI_REGISTER_NODE(ExistingDirectorySourceNode, "Input");
 
         return true;
     }();
