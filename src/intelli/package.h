@@ -26,6 +26,10 @@ class Package : public GtPackage
 
 public:
 
+    static QString const& MODULE_DIR;
+    static QString const& FILE_SUFFIX;
+    static QString const& INDEX_FILE;
+
     Q_INVOKABLE Package();
 
 protected:

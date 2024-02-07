@@ -14,6 +14,8 @@
 
 #include <gt_propertystructcontainer.h>
 
+#include <QStringList>
+
 namespace intelli
 {
 
@@ -137,8 +139,14 @@ protected:
      * @param parent Parent object
      */
     DynamicNode(QString const& modelName,
-                              Option option = {},
-                              GtObject* parent = nullptr);
+                Option option = {},
+                GtObject* parent = nullptr);
+
+    DynamicNode(QString const& modelName,
+                QStringList inputWhiteList,
+                QStringList outputWhiteList,
+                Option option = {},
+                GtObject* parent = nullptr);
 
 private slots:
 

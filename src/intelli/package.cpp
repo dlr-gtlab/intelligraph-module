@@ -31,11 +31,11 @@
 
 using namespace intelli;
 
-QString const& MODULE_DIR = QStringLiteral("intelli");
+QString const& Package::MODULE_DIR = QStringLiteral("intelli");
 
-QString const& FILE_SUFFIX = QStringLiteral(".gtflow");
+QString const& Package::FILE_SUFFIX = QStringLiteral(".gtflow");
 
-QString const& INDEX_FILE = QStringLiteral(".gtflow.index");
+QString const& Package::INDEX_FILE = QStringLiteral(".gtflow.index");
 
 struct Package::Impl
 {

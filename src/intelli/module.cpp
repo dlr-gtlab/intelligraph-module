@@ -33,6 +33,9 @@
 #include "gt_coreapplication.h"
 
 #include <QThread>
+#include <QFileInfo>
+#include <QDir>
+#include <QDirIterator>
 #include <QDomDocument>
 
 using namespace intelli;
@@ -68,7 +71,7 @@ static const int ns_meta_port_type = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber{0, 7, 2};
+    return GtVersionNumber{0, 8, 0};
 }
 
 QString
@@ -104,6 +107,7 @@ GtIntelliGraphModule::metaInformation() const
 bool upgrade_to_0_3_0(QDomElement& root, QString const& file);
 bool upgrade_to_0_3_1(QDomElement& root, QString const& file);
 bool upgrade_to_0_5_0(QDomElement& root, QString const& file);
+bool upgrade_to_0_8_0(QDomElement& root, QString const& file);
 
 QList<gt::VersionUpgradeRoutine>
 GtIntelliGraphModule::upgradeRoutines() const
@@ -124,6 +128,11 @@ GtIntelliGraphModule::upgradeRoutines() const
     to_0_5_0.target = GtVersionNumber{0, 5, 0};
     to_0_5_0.f = upgrade_to_0_5_0;
     routines << to_0_5_0;
+
+    gt::VersionUpgradeRoutine to_0_8_0;
+    to_0_8_0.target = GtVersionNumber{0, 8, 0};
+    to_0_8_0.f = upgrade_to_0_8_0;
+    routines << to_0_8_0;
 
     return routines;
 }
@@ -313,6 +322,69 @@ remove_objects(QDomElement& root,
     }
 
     return true;
+}
+
+// update dynamic input/output container types
+bool upgrade_to_0_8_0(QDomElement& root, QString const& file)
+{
+    if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseSensitive)) return true;
+
+    auto const makeError = [](){
+        return QObject::tr("Failed to update intelligraph module data!");
+    };
+
+    QFileInfo info{file};
+    QDir dir = info.absoluteDir();
+    if (!dir.cd(Package::MODULE_DIR))
+    {
+        gtError() << makeError()
+                  << QObject::tr("(Project directory '%1' does not exist)")
+                         .arg(Package::MODULE_DIR);
+        return false;
+    }
+
+    QDirIterator iter{
+        dir.path(),
+        QStringList{QStringLiteral("*")},
+        QDir::Dirs | QDir::NoDotAndDotDot,
+        QDirIterator::NoIteratorFlags
+    };
+
+    bool success = true;
+
+    while (iter.hasNext())
+    {
+        dir.cd(iter.next());
+
+        QDirIterator fileIter{
+            dir.path(),
+            QStringList{'*' + Package::FILE_SUFFIX},
+            QDir::Files,
+            QDirIterator::NoIteratorFlags
+        };
+
+        while (fileIter.hasNext())
+        {
+            QFile file{dir.absoluteFilePath(fileIter.next())};
+
+            if (!file.open(QIODevice::ReadOnly))
+            {
+                gtError() << makeError()
+                          << QObject::tr("(graph flow '%1' could not be opend!)")
+                                 .arg(file.fileName());
+                return false;
+            }
+
+            gtDebug() << "HERE" << file.fileName();
+
+            // TODO: read file and open dom
+            // TODO: update PortData type of DynamicNodes
+        }
+
+        dir.cdUp();
+    }
+
+    return success;
 }
 
 // connections no longer store indicies but port ids -> remove connections
