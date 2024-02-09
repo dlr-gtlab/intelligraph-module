@@ -26,3 +26,19 @@ TestDynamicNode::TestDynamicNode() :
 
 }
 
+void
+TestDynamicWhiteListNode::registerOnce()
+{
+    static auto _ = []{
+        return GT_INTELLI_REGISTER_NODE(TestDynamicWhiteListNode, "Test");
+    }();
+    Q_UNUSED(_);
+}
+
+TestDynamicWhiteListNode::TestDynamicWhiteListNode(QStringList inputWhiteList,
+                                                   QStringList outputWhiteList) :
+    intelli::DynamicNode("MyDynamicWhiteListNode", inputWhiteList, outputWhiteList)
+{
+
+}
+

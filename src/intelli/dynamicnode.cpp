@@ -59,7 +59,7 @@ DynamicNode::DynamicNode(QString const& modelName,
         QStringList inputTypes = inputWhiteList.empty() ?
                                      NodeDataFactory::instance().registeredTypeIds() :
                                      std::move(inputWhiteList);
-        QStringList outputTypes = inputWhiteList.empty() ?
+        QStringList outputTypes = outputWhiteList.empty() ?
                                      NodeDataFactory::instance().registeredTypeIds() :
                                      std::move(outputWhiteList);
 
@@ -70,7 +70,7 @@ DynamicNode::DynamicNode(QString const& modelName,
         portDataIn.defineMember(S_PORT_OPTIONAL, gt::makeBoolProperty(true));
         portDataIn.defineMember(S_PORT_ID, makeReadOnly(makeUIntProperty(invalid<PortId>())));
 
-        GtPropertyStructDefinition portDataOut{S_PORT_DATA_IN};
+        GtPropertyStructDefinition portDataOut{S_PORT_DATA_OUT};
         portDataOut.defineMember(S_PORT_TYPE, makeStringSelectionProperty(std::move(outputTypes)));
         portDataOut.defineMember(S_PORT_CAPTION, gt::makeStringProperty());
         portDataOut.defineMember(S_PORT_CAPTION_VISIBLE, gt::makeBoolProperty(true));
@@ -203,6 +203,13 @@ DynamicNode::insertPort(PortOption option, PortType type, PortData port, int idx
     entry.setMemberVal(S_PORT_CAPTION, port.caption);
     entry.setMemberVal(S_PORT_CAPTION_VISIBLE, port.captionVisible);
     entry.setMemberVal(S_PORT_OPTIONAL, port.optional);
+
+    // update port typeId to a valid value (due to whitelists)
+    if (auto* p = this->port(portId))
+    {
+        p->typeId = entry.getMemberVal<QString>(S_PORT_TYPE);
+        emit portChanged(portId);
+    }
 
     return portId;
 }

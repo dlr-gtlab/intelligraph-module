@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+- DynamicNodes can now be assigned whitelists, allowing to add ports of certain types - #59
+
 ## [0.7.2] - 2023-11-23
 ### Changed
 - Update of the cmake configuration to use code in other projects - #50

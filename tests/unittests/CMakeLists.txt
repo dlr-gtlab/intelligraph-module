@@ -20,6 +20,7 @@ add_executable(IntelliGraphUnitTests
     test_helper.h
 
     main.cpp
+    dynamicnode.cpp
     graph.cpp
     graphbuilder.cpp
     graphexecmodel.cpp

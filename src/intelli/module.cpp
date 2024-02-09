@@ -29,6 +29,7 @@
 #include "intelli/gui/property_item/stringselection.h"
 #include "intelli/gui/style.h"
 
+#include "gt_xmlexpr.h"
 #include "gt_xmlutilities.h"
 #include "gt_coreapplication.h"
 
@@ -37,8 +38,20 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QDomDocument>
+#include <QDomNodeList>
 
 using namespace intelli;
+
+namespace intelli
+{
+gt::log::Stream& nospace(gt::log::Stream& s) { return s.nospace(); }
+gt::log::Stream& space(gt::log::Stream& s) { return s.space(); }
+
+gt::log::Stream& noquote(gt::log::Stream& s) { return s.noquote(); }
+gt::log::Stream& quote(gt::log::Stream& s) { return s.quote(); }
+
+gt::log::Stream& operator<<(gt::log::Stream& s, gt::log::Stream&(*f)(gt::log::Stream&)) { return f(s); }
+}
 
 // non namespace variants
 static const int meta_port_index = [](){
@@ -257,6 +270,42 @@ GtIntelliGraphModule::propertyItems()
     return map;
 }
 
+bool upgradeModuleFiles(QDomElement& root,
+                        QString const& file,
+                        gt::ConverterFunction f);
+
+// stolen from xml utilities
+template <typename Predicate>
+void
+findElements(QDomElement const& elem,
+             Predicate&& func,
+             QList<QDomElement>& foundElements)
+{
+    if (func(elem))
+    {
+        foundElements.append(elem);
+    }
+
+    QDomElement child = elem.firstChildElement();
+    while(!child.isNull())
+    {
+        findElements(child, func, foundElements);
+        child = child.nextSiblingElement();
+    }
+}
+
+// stolen from xml utilities
+QList<QDomElement>
+propertyContainerElements(QDomElement const& root)
+{
+    QList<QDomElement> result;
+    findElements(root, [&](const QDomElement& elem) {
+            return elem.tagName() == gt::xml::S_PROPERTYCONT_TAG;
+        }, result);
+
+    return result;
+}
+
 bool
 rename_class_from_to(QDomElement& root,
                      QString const& from,
@@ -325,66 +374,42 @@ remove_objects(QDomElement& root,
 }
 
 // update dynamic input/output container types
-bool upgrade_to_0_8_0(QDomElement& root, QString const& file)
+bool upgrade_to_0_8_0_impl(QDomElement& root, QString const& file)
 {
-    if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseSensitive)) return true;
+    auto objects = propertyContainerElements(root);
 
-    auto const makeError = [](){
-        return QObject::tr("Failed to update intelligraph module data!");
-    };
+    if (objects.empty()) return true;
 
-    QFileInfo info{file};
-    QDir dir = info.absoluteDir();
-    if (!dir.cd(Package::MODULE_DIR))
+    for (auto& object : objects)
     {
-        gtError() << makeError()
-                  << QObject::tr("(Project directory '%1' does not exist)")
-                         .arg(Package::MODULE_DIR);
-        return false;
-    }
+        QString newType = QStringLiteral("PortDataIn");
 
-    QDirIterator iter{
-        dir.path(),
-        QStringList{QStringLiteral("*")},
-        QDir::Dirs | QDir::NoDotAndDotDot,
-        QDirIterator::NoIteratorFlags
-    };
-
-    bool success = true;
-
-    while (iter.hasNext())
-    {
-        dir.cd(iter.next());
-
-        QDirIterator fileIter{
-            dir.path(),
-            QStringList{'*' + Package::FILE_SUFFIX},
-            QDir::Files,
-            QDirIterator::NoIteratorFlags
-        };
-
-        while (fileIter.hasNext())
+        // check for dynamic node containers
+        auto const& name = object.attribute(gt::xml::S_NAME_TAG);
+        if (name == QStringLiteral("dynamicOutPorts"))
         {
-            QFile file{dir.absoluteFilePath(fileIter.next())};
-
-            if (!file.open(QIODevice::ReadOnly))
-            {
-                gtError() << makeError()
-                          << QObject::tr("(graph flow '%1' could not be opend!)")
-                                 .arg(file.fileName());
-                return false;
-            }
-
-            gtDebug() << "HERE" << file.fileName();
-
-            // TODO: read file and open dom
-            // TODO: update PortData type of DynamicNodes
+            newType = QStringLiteral("PortDataOut");
+        }
+        else if (name != QStringLiteral("dynamicInPorts"))
+        {
+            continue;
         }
 
-        dir.cdUp();
+        QDomNodeList childs = object.childNodes();
+        int size = childs.size();
+        for (int i = 0; i < size; ++i)
+        {
+            auto child = childs.at(i).toElement();
+            child.setAttribute(gt::xml::S_TYPE_TAG, newType);
+        }
     }
 
-    return success;
+    return true;
+}
+
+bool upgrade_to_0_8_0(QDomElement& root, QString const& file)
+{
+    return upgradeModuleFiles(root, file, upgrade_to_0_8_0_impl);
 }
 
 // connections no longer store indicies but port ids -> remove connections
@@ -441,4 +466,97 @@ bool upgrade_to_0_3_0(QDomElement& root, QString const& file)
     });
 
     return true;
+}
+
+bool upgradeModuleFiles(QDomElement& root, QString const& file, gt::ConverterFunction f)
+{
+    if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseSensitive)) return true;
+
+    auto const makeError = [](){
+        return QObject::tr("Failed to update intelligraph module data!");
+    };
+
+    QFileInfo info{file};
+    QDir dir = info.absoluteDir();
+    if (!dir.cd(Package::MODULE_DIR))
+    {
+        gtError() << makeError()
+                  << QObject::tr("(Project directory '%1' does not exist)")
+                         .arg(Package::MODULE_DIR);
+        return false;
+    }
+
+    QDirIterator iter{
+        dir.path(),
+        QStringList{QStringLiteral("*")},
+        QDir::Dirs | QDir::NoDotAndDotDot,
+        QDirIterator::NoIteratorFlags
+    };
+
+    bool success = true;
+
+    while (iter.hasNext())
+    {
+        dir.cd(iter.next());
+
+        QDirIterator fileIter{
+            dir.path(),
+            QStringList{'*' + Package::FILE_SUFFIX},
+            QDir::Files,
+            QDirIterator::NoIteratorFlags
+        };
+
+        while (fileIter.hasNext())
+        {
+            QString filePath = dir.absoluteFilePath(fileIter.next());
+            QFile file{filePath};
+
+            // stolen from Module Upgrader implementation
+            QDomDocument document;
+            QString errorStr;
+            int errorLine;
+            int errorColumn;
+
+            if (!gt::xml::readDomDocumentFromFile(file, document, true,
+                                                  &errorStr,
+                                                  &errorLine,
+                                                  &errorColumn))
+            {
+                gtError()
+                    << makeError()
+                    << "(XML ERROR: line:" << errorLine << intelli::nospace
+                    << ", column: " << errorColumn << " -> " << errorStr;
+                success = false;
+                continue;
+            }
+
+            QDomElement root = document.documentElement();
+
+            if (!f(root, filePath))
+            {
+                success = false;
+                gtError()
+                    << makeError()
+                    << "(XML ERROR: line:" << errorLine << intelli::nospace
+                    << ", column: " << errorColumn << " -> " << errorStr;
+                continue;
+            }
+
+            // save file
+            // new ordered attribute stream writer algorithm
+            if (!gt::xml::writeDomDocumentToFile(filePath, document, true))
+            {
+                gtError()
+                    << makeError()
+                    << QObject::tr("(Failed to save graph flow '%1'!)")
+                           .arg(file.fileName());
+                success = false;
+                continue;
+            }
+        }
+
+        dir.cdUp();
+    }
+
+    return success;
 }
