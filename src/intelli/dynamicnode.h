@@ -14,6 +14,8 @@
 
 #include <gt_propertystructcontainer.h>
 
+#include <QStringList>
+
 namespace intelli
 {
 
@@ -63,27 +65,6 @@ public:
      * @return Is port dynamic
      */
     bool isDynamicPort(PortType type, PortIndex idx) const;
-
-    /**
-     * @brief Appends a static input port. Static ports are like the regular
-     * ports and are not saved persistently. They should only be created within
-     * the constructor scope. The port will always be inserted
-     * before any dynamic port.
-     * @param port Port to append
-     * @param policy Port policy
-     * @return Port id
-     */
-    PortId addStaticInPort(PortData port, PortPolicy policy = DefaultPortPolicy);
-
-    /**
-     * @brief Appends a static output port. Static ports are like the regular
-     * ports and are not saved persistently. They should only be created within
-     * the constructor scope. The port will always be inserted
-     * before any dynamic port.
-     * @param port Port to append
-     * @return Port id
-     */
-    PortId addStaticOutPort(PortData port);
 
     /**
      * @brief Appends a dynamic/user input port. User ports are saved
@@ -137,8 +118,35 @@ protected:
      * @param parent Parent object
      */
     DynamicNode(QString const& modelName,
-                              Option option = {},
-                              GtObject* parent = nullptr);
+                Option option = {},
+                GtObject* parent = nullptr);
+
+    DynamicNode(QString const& modelName,
+                QStringList inputWhiteList,
+                QStringList outputWhiteList,
+                Option option = {},
+                GtObject* parent = nullptr);
+
+    /**
+     * @brief Appends a static input port. Static ports are like the regular
+     * ports and are not saved persistently. They should only be created within
+     * the constructor scope. The port will always be inserted
+     * before any dynamic port.
+     * @param port Port to append
+     * @param policy Port policy
+     * @return Port id
+     */
+    PortId addStaticInPort(PortData port, PortPolicy policy = DefaultPortPolicy);
+
+    /**
+     * @brief Appends a static output port. Static ports are like the regular
+     * ports and are not saved persistently. They should only be created within
+     * the constructor scope. The port will always be inserted
+     * before any dynamic port.
+     * @param port Port to append
+     * @return Port id
+     */
+    PortId addStaticOutPort(PortData port);
 
 private slots:
 

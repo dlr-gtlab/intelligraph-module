@@ -23,8 +23,11 @@ class AbstractGroupProvider : public DynamicNode
 {
 public:
 
-    AbstractGroupProvider(QString const& modelName) :
-        DynamicNode(modelName, Type == PortType::In ? DynamicOutputOnly : DynamicInputOnly)
+    AbstractGroupProvider(QString const& modelName,
+                          QStringList iwl = {},
+                          QStringList owl = {}) :
+        DynamicNode(modelName, std::move(iwl), std::move(owl),
+                    Type == PortType::In ? DynamicOutputOnly : DynamicInputOnly)
     {
         setFlag(UserDeletable, false);
 

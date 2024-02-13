@@ -23,4 +23,16 @@ public:
     Q_INVOKABLE TestDynamicNode();
 };
 
+class TestDynamicWhiteListNode : public intelli::DynamicNode
+{
+    Q_OBJECT
+
+public:
+
+    static void registerOnce();
+
+    Q_INVOKABLE TestDynamicWhiteListNode(QStringList inputWhiteList = {},
+                                         QStringList outputWhiteList = {});
+};
+
 #endif // TESTDYNAMICNODE_H
