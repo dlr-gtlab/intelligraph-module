@@ -14,13 +14,18 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT DoubleData : public TemplateData<double>
+class GT_INTELLI_EXPORT DoubleData : public NodeData
 {
     Q_OBJECT
 
 public:
 
     Q_INVOKABLE DoubleData(double val = {});
+
+    Q_INVOKABLE double value() const;
+
+private:
+    double m_data;
 };
 
 } // namespace intelli

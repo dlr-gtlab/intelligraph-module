@@ -15,13 +15,18 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT BoolData : public TemplateData<bool>
+class GT_INTELLI_EXPORT BoolData : public NodeData
 {
     Q_OBJECT
 
 public:
 
     Q_INVOKABLE BoolData(bool val = {});
+
+    Q_INVOKABLE bool value() const;
+
+private:
+    bool m_data;
 };
 
 } // namespace intelli

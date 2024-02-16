@@ -12,7 +12,14 @@
 using namespace intelli;
 
 StringData::StringData(QString val):
-    TemplateData("string", std::move(val))
+    NodeData("string"),
+    m_data(std::move(val))
 {
 
+}
+
+QString
+StringData::value() const
+{
+    return m_data;
 }

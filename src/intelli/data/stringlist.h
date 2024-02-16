@@ -15,13 +15,17 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT StringListData : public TemplateData<QStringList>
+class GT_INTELLI_EXPORT StringListData : public NodeData
 {
     Q_OBJECT
 
 public:
 
     Q_INVOKABLE StringListData(QStringList list = {});
+
+    Q_INVOKABLE QStringList value() const;
+private:
+    QStringList m_data;
 };
 
 } // namespace intelli

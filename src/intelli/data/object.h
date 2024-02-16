@@ -34,7 +34,7 @@ public:
      * @brief getter
      * @return object
      */
-    GtObject const* object() const { return m_obj.get(); }
+    Q_INVOKABLE GtObject const* object() const { return m_obj.get(); }
 
 private:
 
