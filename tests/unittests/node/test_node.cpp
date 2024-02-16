@@ -8,7 +8,7 @@
 
 #include "test_node.h"
 
-#include "intelli/nodefactory.h"
+#include <intelli/nodefactory.h>
 
 void
 TestNode::registerOnce()

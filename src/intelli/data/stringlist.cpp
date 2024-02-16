@@ -9,13 +9,18 @@
 
 #include "intelli/data/stringlist.h"
 
-#include "intelli/nodedatafactory.h"
-
 using namespace intelli;
 
 
 StringListData::StringListData(QStringList list) :
-    TemplateData("stringlist", std::move(list))
+    NodeData("stringlist"),
+    m_data(std::move(list))
 {
 
+}
+
+QStringList
+StringListData::value() const
+{
+    return m_data;
 }

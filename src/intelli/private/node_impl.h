@@ -57,15 +57,13 @@ struct NodeImpl
     GtIntProperty sizeWidth{
         "sizeWidth",
         QObject::tr("Size width"),
-        QObject::tr("Size width"),
-        GtUnit::None, -1
+        QObject::tr("Size width"), -1
     };
     /// height of node widget
     GtIntProperty sizeHeight{
          "sizeHeight",
          QObject::tr("Size height"),
-         QObject::tr("Size height"),
-         GtUnit::None, -1
+         QObject::tr("Size height"), -1
     };
     /// whether node is active
     GtBoolProperty isActive{

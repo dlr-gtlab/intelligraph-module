@@ -12,7 +12,14 @@
 using namespace intelli;
 
 DoubleData::DoubleData(double val) :
-    TemplateData("double", val)
+    intelli::NodeData("double"),
+    m_data(std::move(val))
 {
 
+}
+
+double
+DoubleData::value() const
+{
+    return m_data;
 }

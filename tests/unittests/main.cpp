@@ -9,8 +9,10 @@
 
 #include "node/test_dynamic.h"
 #include "node/test_node.h"
-#include "intelli/connection.h"
-#include "intelli/core.h"
+#include "data/test_nodedata.h"
+
+#include <intelli/connection.h>
+#include <intelli/core.h>
 
 #include <gt_objectfactory.h>
 
@@ -33,6 +35,7 @@ main(int argc, char** argv)
         TestDynamicNode::registerOnce();
         TestDynamicWhiteListNode::registerOnce();
         TestNode::registerOnce();
+        TestNodeData::registerOnce();
         gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
     }();
 

@@ -9,14 +9,18 @@
 
 #include "intelli/data/bool.h"
 
-#include "gt_logging.h"
-#include "intelli/nodedatafactory.h"
-
 using namespace intelli;
 
 BoolData::BoolData(bool val) :
-    TemplateData("boolean", val)
+    NodeData("boolean"),
+    m_data(std::move(val))
 {
 
+}
+
+bool
+BoolData::value() const
+{
+    return m_data;
 }
 

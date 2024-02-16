@@ -13,13 +13,18 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT StringData : public TemplateData<QString>
+class GT_INTELLI_EXPORT StringData : public NodeData
 {
     Q_OBJECT
 
 public:
 
     Q_INVOKABLE StringData(QString val = {});
+
+    Q_INVOKABLE QString value() const;
+
+private:
+    QString m_data;
 };
 
 } // namespace intelli

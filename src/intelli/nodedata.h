@@ -10,9 +10,13 @@
 #ifndef GT_INTELLI_NODEDATA_H
 #define GT_INTELLI_NODEDATA_H
 
+#include <gt_logging.h>
 #include <intelli/exports.h>
 
 #include <gt_object.h>
+#include <thirdparty/tl/optional.hpp>
+
+#include <QMetaMethod>
 
 namespace intelli
 {
@@ -37,6 +41,61 @@ public:
      * @return
      */
     QString typeId() const;
+
+    /**
+     * @brief value
+     * @param methodName - Name of an invokable method to call
+     * @return pair of success and value of the call of an invokable function
+     * of the node data object
+     */
+
+    /**
+     * @brief Attempts to invoke the (Q_INVOKABLE) member method `methodName`.
+     * @param methodName Name of an invokable method to call
+     * @param val0 Additional optional argument 0 (use `Q_ARG(type, value)`)
+     * @param val1 Additional optional argument 1 (use `Q_ARG(type, value)`)
+     * @param val2 Additional optional argument 2 (use `Q_ARG(type, value)`)
+     * @param val3 Additional optional argument 3 (use `Q_ARG(type, value)`)
+     * @param val4 Additional optional argument 4 (use `Q_ARG(type, value)`)
+     * @param val5 Additional optional argument 5 (use `Q_ARG(type, value)`)
+     * @param val6 Additional optional argument 6 (use `Q_ARG(type, value)`)
+     * @param val7 Additional optional argument 7 (use `Q_ARG(type, value)`)
+     * @param val8 Additional optional argument 8 (use `Q_ARG(type, value)`)
+     * @param val9 Additional optional argument 9 (use `Q_ARG(type, value)`)
+     * @return `tl::optional` of T
+     */
+    template <typename T>
+    tl::optional<T> invoke(QString const& methodName,
+                           QGenericArgument val0 = {},
+                           QGenericArgument val1 = {},
+                           QGenericArgument val2 = {},
+                           QGenericArgument val3 = {},
+                           QGenericArgument val4 = {},
+                           QGenericArgument val5 = {},
+                           QGenericArgument val6 = {},
+                           QGenericArgument val7 = {},
+                           QGenericArgument val8 = {},
+                           QGenericArgument val9 = {}) const
+    {
+        T var;
+
+        auto* helper = const_cast<intelli::NodeData*>(this);
+
+        auto retarg = QReturnArgument<T>(typeid(T).name(), var);
+
+        if (!QMetaObject::invokeMethod(helper,
+                                       methodName.toLatin1(),
+                                       Qt::DirectConnection,
+                                       retarg, val0, val1, val2, val3,
+                                       val4, val5, val6, val7, val8, val9))
+        {
+            gtTraceId("IntelliGraph")
+                << tr("invoking meber function '%1' failed!").arg(methodName);
+            return {};
+        }
+
+        return {var};
+    }
 
 protected:
 
@@ -64,8 +123,9 @@ inline QString typeId()
 /**
  * @brief The TemplateData class. Helper class to allow for simple extension
  */
+
 template <typename T>
-class TemplateData : public NodeData
+class [[deprecated]] TemplateData : public NodeData
 {
 public:
 
@@ -82,6 +142,9 @@ protected:
      * @param name Type name
      * @param data Data
      */
+    [[deprecated("This template class is no longer supported and will be removed"
+                 "in a future release. Use 'NodeData' instead and implement the"
+                 "'value' function on your own.")]]
     TemplateData(QString typeName, T data = {}) :
         NodeData(std::move(typeName)),
         m_data(std::move(data))
