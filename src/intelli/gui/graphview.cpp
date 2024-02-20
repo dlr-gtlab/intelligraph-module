@@ -15,6 +15,8 @@
 #include "gt_guiutilities.h"
 #include "gt_application.h"
 #include "gt_grid.h"
+#include "gt_filedialog.h"
+
 
 #include <gt_logging.h>
 
@@ -27,6 +29,8 @@
 #include <QGraphicsSceneWheelEvent>
 #include <QMenuBar>
 #include <QVBoxLayout>
+#include <QPrinter>
+
 
 #include <cmath>
 
@@ -74,8 +78,14 @@ GraphView::GraphView(QWidget* parent) :
     });
     changeGrid.setIcon(gt::gui::icon::grid());
 
+    auto print = gt::gui::makeAction(tr("Print to pdf"), [this](GtObject*){
+        printPDF();
+    });
+    print.setIcon(gt::gui::icon::pdf());
+
     gt::gui::addToMenu(resetScaleAction, *sceneMenu, nullptr);
     gt::gui::addToMenu(changeGrid, *sceneMenu, nullptr);
+    gt::gui::addToMenu(print, *sceneMenu, nullptr);
 
     /* EDIT MENU */
     QMenu* editMenu = menuBar->addMenu(tr("Edit"));
@@ -249,6 +259,40 @@ GraphView::setScale(double scale)
     setTransform(matrix, false);
 
     emit scaleChanged(scale);
+}
+
+void
+GraphView::printPDF()
+{
+    gtTrace() << __FUNCTION__;
+    QString filePath =
+        GtFileDialog::getSaveFileName(parentWidget(),
+                                      tr("Choose File"),
+                                      QString(),
+                                      tr("PDF files (*.pdf)"),
+                                      QStringLiteral("snapshot.pdf"));
+
+    if (filePath.isEmpty())
+    {
+        return;
+    }
+
+    QPrinter printer(QPrinter::HighResolution);
+    printer.setPageSize(QPrinter::A4);
+    printer.setPageOrientation(QPageLayout::Landscape);
+    printer.setOutputFormat(QPrinter::PdfFormat);
+    printer.setOutputFileName(filePath);
+
+    QPainter p;
+
+    if (!p.begin(&printer))
+    {
+        gtError() << tr("Error while initialize print!");
+        return;
+    }
+
+    scene()->render(&p);
+    p.end();
 }
 
 void

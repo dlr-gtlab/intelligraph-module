@@ -54,6 +54,10 @@ public slots:
     void scaleDown();
 
     void setScale(double scale);
+
+private slots:
+    void printPDF();
+
 signals:
 
     void scaleChanged(double scale);
