@@ -37,12 +37,26 @@ public:
 
     void setData(GtObject* obj) override;
 
+protected:
+    /**
+     * @brief initialized
+     */
+    void initialized() override;
+
 private:
 
     /// scene
     volatile_ptr<GraphScene> m_scene = nullptr;
     /// view
     GraphView* m_view = nullptr;
+
+    /// Show grid state
+    GtState* m_showGridState;
+
+private slots:
+    void onShowGridStateChange();
+
+    void toggleGridChange();
 };
 
 } // namespace intelli
