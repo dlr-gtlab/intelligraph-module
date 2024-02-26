@@ -287,7 +287,7 @@ GraphView::printPDF()
 
     if (!p.begin(&printer))
     {
-        gtError() << tr("Error while initialize print!");
+        gtError() << tr("Error while initializing print!");
         return;
     }
 
