@@ -5,6 +5,7 @@
 #include "intelli/data/object.h"
 #include "intelli/data/stringlist.h"
 #include "intelli/data/string.h"
+#include "intelli/data/integer.h"
 
 #include "intelli/graph.h"
 #include "intelli/node/groupinputprovider.h"
@@ -37,6 +38,7 @@ intelli::initModule()
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(ObjectData);
         GT_INTELLI_REGISTER_DATA(StringData);
+        GT_INTELLI_REGISTER_DATA(IntegerData);
 
         GT_INTELLI_REGISTER_NODE(Graph, "Other")
         GT_INTELLI_REGISTER_NODE(GroupInputProvider, "")
