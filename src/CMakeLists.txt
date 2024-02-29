@@ -22,6 +22,7 @@ set(PUBLIC_HEADERS
     intelli/data/object.h
     intelli/data/stringlist.h
     intelli/data/string.h
+    intelli/data/integer.h
     intelli/gui/icons.h
     intelli/gui/nodeui.h
     intelli/gui/portuiaction.h
@@ -92,6 +93,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/object.cpp
     intelli/data/stringlist.cpp
     intelli/data/string.cpp
+    intelli/data/integer.cpp
     intelli/node/finddirectchild.cpp
     intelli/node/groupinputprovider.cpp
     intelli/node/groupoutputprovider.cpp
