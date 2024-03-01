@@ -10,16 +10,17 @@
 #ifndef GT_INTELLI_VIEW_H
 #define GT_INTELLI_VIEW_H
 
-#include <QGraphicsView>
+#include <gt_graphicsview.h>
 
 class QMenu;
+class GtGrid;
 
 namespace intelli
 {
 
 class GraphScene;
 
-class GraphView : public QGraphicsView
+class GraphView : public GtGraphicsView
 {
     Q_OBJECT
 
@@ -54,9 +55,14 @@ public slots:
 
     void setScale(double scale);
 
+private slots:
+    void printPDF();
+
 signals:
 
     void scaleChanged(double scale);
+
+    void changeGridTriggered();
 
 protected:
 
@@ -72,10 +78,7 @@ protected:
 
     void mouseMoveEvent(QMouseEvent* event) override;
 
-    void drawBackground(QPainter* painter, const QRectF &r) override;
-
 private:
-
     ScaleRange m_scaleRange;
     QPointF m_panPosition;
 
