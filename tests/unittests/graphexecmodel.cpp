@@ -32,7 +32,7 @@ TEST(GraphExecutionModel, evaluate_node)
     
     EXPECT_TRUE(model.isNodeEvaluated(C_id));
 
-    auto C_data = future.get(PortType::Out, PortIndex(0)).value<DoubleData>();
+    auto C_data = future.get(PortType::Out, PortIndex(0), std::chrono::seconds(0)).value<DoubleData>();
     ASSERT_TRUE(C_data);
     EXPECT_EQ(C_data->value(), 84);
 
@@ -290,6 +290,8 @@ TEST(GraphExecutionModel, auto_evaluate_subgraph_only)
     auto future = submodel.evaluateNode(group_D_id);
     EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
 
+    submodel.debug();
+
 }
 
 TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
@@ -327,25 +329,25 @@ TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
 
     // node C an subsequent nodes were not evaluated
     EXPECT_FALSE(model.isNodeEvaluated(C_id));
-    EXPECT_TRUE(C->nodeFlags() & NodeFlag::RequiresEvaluation);
+//    EXPECT_TRUE(C->nodeFlags() & NodeFlag::RequiresEvaluation);
     EXPECT_FALSE(C->nodeFlags() & NodeFlag::Evaluating);
 
     auto C_data = model.nodeData(C_id, PortType::Out, PortIndex(0));
     EXPECT_EQ(C_data.state, PortDataState::Outdated);
-    EXPECT_EQ(C_data.data, nullptr);
+    EXPECT_EQ(C_data.ptr, nullptr);
 
     EXPECT_FALSE(model.isNodeEvaluated(D_id));
-    EXPECT_TRUE(D->nodeFlags() & NodeFlag::RequiresEvaluation);
+//    EXPECT_TRUE(D->nodeFlags() & NodeFlag::RequiresEvaluation);
     EXPECT_FALSE(D->nodeFlags() & NodeFlag::Evaluating);
 
     auto D_data = model.nodeData(D_id, PortType::Out, PortIndex(0));
     EXPECT_EQ(D_data.state, PortDataState::Outdated);
-    EXPECT_EQ(D_data.data, nullptr);
+    EXPECT_EQ(D_data.ptr, nullptr);
 
     // Node A, B, E were evaluated
-    EXPECT_FALSE(A->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
-    EXPECT_FALSE(B->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
-    EXPECT_FALSE(E->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
+    EXPECT_FALSE(A->nodeFlags() & NodeFlag::Evaluating);
+    EXPECT_FALSE(B->nodeFlags() & NodeFlag::Evaluating);
+    EXPECT_FALSE(E->nodeFlags() & NodeFlag::Evaluating);
 
     EXPECT_TRUE(model.isNodeEvaluated(A_id));
     EXPECT_TRUE(model.isNodeEvaluated(B_id));
@@ -353,15 +355,15 @@ TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
 
     auto A_data = model.nodeData(A_id, PortType::Out, PortIndex(0));
     EXPECT_EQ(A_data.state, PortDataState::Valid);
-    EXPECT_NE(A_data.data, nullptr);
+    EXPECT_NE(A_data.ptr, nullptr);
 
     auto B_data = model.nodeData(B_id, PortType::Out, PortIndex(0));
     EXPECT_EQ(B_data.state, PortDataState::Valid);
-    EXPECT_NE(B_data.data, nullptr);
+    EXPECT_NE(B_data.ptr, nullptr);
 
     auto E_data = model.nodeData(E_id, PortType::In, PortIndex(0));
     EXPECT_EQ(E_data.state, PortDataState::Valid);
-    EXPECT_NE(E_data.data, nullptr);
+    EXPECT_NE(E_data.ptr, nullptr);
 
     // set C as active -> the whole graph should be evaluated
     C->setActive();
@@ -370,8 +372,8 @@ TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
 
     EXPECT_TRUE(model.isEvaluated());
 
-    EXPECT_FALSE(C->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
-    EXPECT_FALSE(D->nodeFlags() & (NodeFlag::RequiresEvaluation | NodeFlag::Evaluating));
+    EXPECT_FALSE(C->nodeFlags() & NodeFlag::Evaluating);
+    EXPECT_FALSE(D->nodeFlags() & NodeFlag::Evaluating);
 
     EXPECT_TRUE(model.isNodeEvaluated(C_id));
     EXPECT_TRUE(model.isNodeEvaluated(D_id));

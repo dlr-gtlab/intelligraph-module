@@ -14,6 +14,4 @@ GroupOutputProvider::GroupOutputProvider() :
     AbstractGroupProvider("Output Provider")
 {
     setPos({250, 0});
-
-    setNodeEvalMode(NodeEvalMode::MainThread);
 }

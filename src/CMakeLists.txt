@@ -52,6 +52,9 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/finddirectchild.h
     intelli/node/groupinputprovider.h
     intelli/node/groupoutputprovider.h
+    intelli/node/logicdisplay.h
+    intelli/node/logicoperation.h
+    intelli/node/logicsource.h
     intelli/node/numberdisplay.h
     intelli/node/numbermath.h
     intelli/node/numbersource.h
@@ -63,6 +66,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
     intelli/gui/graphview.h
+    intelli/gui/property_item/logic.h
     intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
     intelli/gui/connectionui.h
@@ -97,6 +101,9 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/finddirectchild.cpp
     intelli/node/groupinputprovider.cpp
     intelli/node/groupoutputprovider.cpp
+    intelli/node/logicdisplay.cpp
+    intelli/node/logicoperation.cpp
+    intelli/node/logicsource.cpp
     intelli/node/numberdisplay.cpp
     intelli/node/numbermath.cpp
     intelli/node/numbersource.cpp
@@ -110,6 +117,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphscene.cpp
     intelli/gui/graphview.cpp
     intelli/gui/icons.cpp
+    intelli/gui/property_item/logic.cpp
     intelli/gui/property_item/objectlink.cpp
     intelli/gui/property_item/stringselection.cpp
     intelli/gui/nodeui.cpp

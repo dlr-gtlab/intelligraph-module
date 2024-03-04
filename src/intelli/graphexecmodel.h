@@ -13,41 +13,12 @@
 #include <intelli/graph.h>
 #include <intelli/nodedatainterface.h>
 
-#include <gt_finally.h>
-#include <gt_platform.h>
-
 namespace intelli
 {
 
 class Connection;
 class Graph;
 class Node;
-
-/**
- * @brief The DummyDataModel class.
- * Helper method to set and access node data of a single node
- */
-class DummyDataModel : public NodeDataInterface
-{
-public:
-
-    DummyDataModel(Node& node);
-
-    dm::NodeDataSet nodeData(PortId portId, dm::NodeDataSet data);
-    NodeDataPtrList nodeData(PortType type) const;
-
-    bool setNodeData(PortId portId, dm::NodeDataSet data);
-    bool setNodeData(PortType type, NodeDataPtrList const& data);
-
-private:
-
-    dm::NodeDataSet nodeData(NodeId nodeId, PortId portId) const override;
-    bool setNodeData(NodeId nodeId, PortId portId, dm::NodeDataSet data) override;
-
-    Node* m_node = nullptr;
-    dm::Entry m_data;
-};
-
 class FutureGraphEvaluated;
 class FutureNodeEvaluated;
 
@@ -68,17 +39,6 @@ public:
         ActiveModel = 2
     };
 
-    struct EndModificationFunctor
-    {
-        inline void operator()() const noexcept
-        {
-            if(model) model->endModification();
-        }
-        GraphExecutionModel* model{};
-    };
-
-    using Modification = gt::Finally<EndModificationFunctor>;
-
     GraphExecutionModel(Graph& graph, Mode mode = ActiveModel);
     ~GraphExecutionModel();
 
@@ -90,26 +50,7 @@ public:
 
     void reset();
 
-    /**
-     * @brief Static wrapper around `beginModification`. Will check if model is
-     * a valid object and start the modification.
-     * @param model
-     * @return Scoped object which tells the model to begin reevaluating the
-     * graph.
-     */
-    GT_NO_DISCARD
-    static Modification modify(GraphExecutionModel* model);
-
-    /**
-     * @brief Will tell the model that new nodes and connections are about to be
-     * inserted and pause the auto evaluation to avoid redundand evaluation of
-     * nodes. Should be called when bulk inserting multiple objects.
-     * Once the helper object is destroyed the model resumes evaluation.
-     * @return Scoped object which tells the model to begin reevaluating the
-     * graph.
-     */
-    GT_NO_DISCARD
-    Modification beginModification();
+    NodeEvalState nodeState(NodeId nodeId) const;
 
     /**
      * @brief Returns whether the underlying graph has been evaluated completly,
@@ -171,15 +112,15 @@ public:
     bool invalidateOutPorts(NodeId nodeId);
     bool invalidatePort(NodeId nodeId, PortId portId);
 
-    dm::NodeDataSet nodeData(NodeId nodeId, PortId portId) const override;
-    dm::NodeDataSet nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;
+    NodeDataSet nodeData(NodeId nodeId, PortId portId) const override;
+    NodeDataSet nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;
     NodeDataPtrList nodeData(NodeId nodeId, PortType type) const;
 
-    bool setNodeData(NodeId nodeId, PortId portId, dm::NodeDataSet data) override;
-    bool setNodeData(NodeId nodeId, PortType type, PortIndex idx, dm::NodeDataSet data);
+    bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data) override;
+    bool setNodeData(NodeId nodeId, PortType type, PortIndex idx, NodeDataSet data);
     bool setNodeData(NodeId nodeId, PortType type, NodeDataPtrList const& data);
 
-    void debug() const;
+    void debug(NodeId nodeId = invalid<NodeId>()) const;
 
 signals:
 
@@ -195,7 +136,7 @@ private:
 
     struct Impl; // helper struct to "hide" implementation details
 
-    dm::DataModel m_data;
+    GraphData m_data;
 
     QPointer<Graph> m_graph;
 
@@ -210,18 +151,26 @@ private:
     QVector<QPointer<Node>> m_evaluatingNodes;
 
     // evaluation attributes
+    int m_modificationCount = 0;
 
     bool m_autoEvaluate = false;
-
-    bool m_isInserting = false;
 
     void beginReset();
 
     void endReset();
 
+    /**
+     * @brief Will tell the model that new nodes and connections are about to be
+     * inserted and pause the auto evaluation to avoid redundand evaluation of
+     * nodes. Should be called when bulk inserting multiple objects.
+     * Once `endModification` is called and the internal ref count reaches zero,
+     * the model resumes evaluation.
+     */
+    void beginModification();
+
     void endModification();
 
-    bool invalidatePort(NodeId nodeId, dm::PortEntry& port);
+    bool invalidatePortEntry(NodeId nodeId, graph_data::PortEntry& port);
 
     bool autoEvaluateNode(NodeId nodeId);
 
@@ -239,11 +188,23 @@ private:
 
     void rescheduleTargetNodes();
 
+    QVector<NodeId> findRootNodes(QList<Node*> const& nodes) const;
+
+    QVector<NodeId> findLeafNodes(QList<Node*> const& nodes) const;
+
 private slots:
 
     void onNodeAppended(Node* node);
 
     void onNodeDeleted(NodeId nodeId);
+
+    void onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx);
+
+    void onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, PortIndex idx);
+
+    void onBeginGraphModification();
+
+    void onEndGraphModification();
 
     void onConnectedionAppended(Connection* con);
 
@@ -294,10 +255,10 @@ public:
     bool wait(std::chrono::milliseconds timeout = max_timeout);
 
     GT_INTELLI_EXPORT
-    dm::NodeDataSet get(PortId port, std::chrono::milliseconds timeout = max_timeout);
+    NodeDataSet get(PortId port, std::chrono::milliseconds timeout = max_timeout);
 
     GT_INTELLI_EXPORT
-    dm::NodeDataSet get(PortType type, PortIndex idx, std::chrono::milliseconds timeout = max_timeout);
+    NodeDataSet get(PortType type, PortIndex idx, std::chrono::milliseconds timeout = max_timeout);
 
     bool detach() { return hasStarted(); }
 

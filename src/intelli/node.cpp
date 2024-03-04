@@ -79,15 +79,8 @@ Node::Node(QString const& modelName, GtObject* parent) :
     connect(&pimpl->isActive, &GtAbstractProperty::changed,
             this, &Node::nodeStateChanged);
 
-    connect(this, &Node::triggerNodeEvaluation, this, [this](){
-        setNodeFlag(NodeFlag::RequiresEvaluation, true);
-        emit nodeStateChanged();
-    });
-
     connect(this, &Node::computingStarted, this, [this](){
         setNodeFlag(NodeFlag::Evaluating, true);
-        // reset requires evaluation
-        setNodeFlag(NodeFlag::RequiresEvaluation, false);
         emit nodeStateChanged();
     }, Qt::DirectConnection);
 
@@ -320,6 +313,7 @@ Node::removePort(PortId id)
     });
 
     find.ports->erase(std::next(find.ports->begin(), find.idx));
+
     return true;
 }
 

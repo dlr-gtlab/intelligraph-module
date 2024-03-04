@@ -325,7 +325,8 @@ GraphScene::deleteSelectedObjects()
     Impl::findConnections(*m_graph, selected.connections, objects);
     Impl::findNodes(*m_graph, selected.nodes, objects, true);
 
-    auto cmd = GraphExecutionModel::modify(m_graph->executionModel());
+    auto modifyCmd = m_graph->modify();
+    Q_UNUSED(modifyCmd);
 
     gtDataModel->deleteFromModel(objects);
 }
@@ -896,7 +897,7 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
 
     // move group to graph
     auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'").arg(groupNodeName));
-    auto modifyCmd = GraphExecutionModel::modify(m_graph->executionModel());
+    auto modifyCmd = m_graph->modify();
 
     Q_UNUSED(appCmd);
     Q_UNUSED(modifyCmd);

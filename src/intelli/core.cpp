@@ -22,6 +22,10 @@
 #include "intelli/node/finddirectchild.h"
 #include "intelli/node/existingdirectorysource.h"
 
+#include "intelli/node/logicdisplay.h"
+#include "intelli/node/logicoperation.h"
+#include "intelli/node/logicsource.h"
+
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodefactory.h"
 
@@ -47,6 +51,10 @@ intelli::initModule()
         GT_INTELLI_REGISTER_NODE(NumberMathNode, "Number");
         GT_INTELLI_REGISTER_NODE(NumberSourceNode, "Number")
         GT_INTELLI_REGISTER_NODE(SleepyNode, "Number");
+
+        GT_INTELLI_REGISTER_NODE(LogicDisplayNode, "Logic");
+        GT_INTELLI_REGISTER_NODE(LogicNode, "Logic");
+        GT_INTELLI_REGISTER_NODE(LogicSourceNode, "Logic");
 
         GT_INTELLI_REGISTER_NODE(ObjectMementoNode, "Object");
         GT_INTELLI_REGISTER_NODE(ObjectSourceNode, "Object");

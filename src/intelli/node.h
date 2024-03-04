@@ -28,14 +28,14 @@ enum NodeFlag
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
     Unique      = 1 << 2,
-    /// Indicates that the node requires evaluation (will be updated automatically)
-    RequiresEvaluation = 1 << 3,
     /// Indicates that the node is evaluating (will be set automatically)
     Evaluating = 1 << 4,
 
     /// default node flags
-    DefaultNodeFlags = RequiresEvaluation
+    DefaultNodeFlags = NoFlag
 };
+
+using NodeFlags = int;
 
 enum class NodeEvalMode
 {
@@ -51,8 +51,6 @@ enum class NodeEvalMode
     /// Default behaviour
     Default = Detached,
 };
-
-using NodeFlags  = int;
 
 class NodeExecutor;
 class NodeData;
@@ -221,10 +219,14 @@ public:
 
     /**
      * @brief Returns the node flags
-     * @return node flags
+     * @return Node flags
      */
     NodeFlags nodeFlags() const;
 
+    /**
+     * @brief Return the node eval mode
+     * @return Node eval mode
+     */
     NodeEvalMode nodeEvalMode() const;
 
     /**
