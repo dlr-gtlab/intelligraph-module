@@ -14,6 +14,8 @@
 #include "intelli/nodedatafactory.h"
 #include "intelli/graph.h"
 #include "intelli/private/utils.h"
+#include "intelli/gui/style.h"
+#include "intelli/graphexecmodel.h"
 
 #include <gt_coreapplication.h>
 
@@ -67,7 +69,7 @@ GraphAdapterModel::GraphAdapterModel(Graph& graph)
                          .arg(graph.objectName());
     }
 
-    setObjectName("__adapter_model");
+    setObjectName(QStringLiteral("__adapter_model"));
     setParent(&graph);
 
     m_graph = &graph;
@@ -335,6 +337,10 @@ GraphAdapterModel::nodeData(QtNodes::NodeId nodeId, QtNodes::NodeRole role) cons
         return node->caption();
     case QtNodes::NodeRole::CaptionVisible:
         return !(node->nodeFlags() & NodeFlag::HideCaption);
+    case QtNodes::NodeRole::ColorVariation:
+        if (node->nodeFlags() & NodeFlag::Unique) return style::colorVariaton(ColorVariation::Unique);
+        if (qobject_cast<Graph const*>(node))     return style::colorVariaton(ColorVariation::Graph);
+        return style::colorVariaton(ColorVariation::Default);
     case QtNodes::NodeRole::InternalData:
         return {};
     case QtNodes::NodeRole::InPortCount:
@@ -345,7 +351,7 @@ GraphAdapterModel::nodeData(QtNodes::NodeId nodeId, QtNodes::NodeRole role) cons
         return QVariant::fromValue(const_cast<Node*>(node)->embeddedWidget());
     }
 
-    gtError() << tr("Invalid node role!") << role;
+    gtLogOnce(Error) << tr("Invalid node role!") << role;
     return {};
 }
 
@@ -359,6 +365,7 @@ GraphAdapterModel::setNodeData(QtNodes::NodeId nodeId, QtNodes::NodeRole role, Q
     case QtNodes::NodeRole::InternalData:
     case QtNodes::NodeRole::InPortCount:
     case QtNodes::NodeRole::OutPortCount:
+    case QtNodes::NodeRole::ColorVariation:
     case QtNodes::NodeRole::Widget:
         NOT_IMPLEMENTED;
         return false;
@@ -395,7 +402,7 @@ GraphAdapterModel::setNodeData(QtNodes::NodeId nodeId, QtNodes::NodeRole role, Q
     }
     }
 
-    gtError() << tr("Invalid node role!") << role;
+    gtLogOnce(Error) << tr("Invalid node role!") << role;
     return {};
 }
 
@@ -414,10 +421,6 @@ GraphAdapterModel::nodeFlags(QtNodes::NodeId nodeId) const
     {
         flags.setFlag(QtNodes::NodeFlag::Resizable);
     }
-    if (sourceFlags & NodeFlag::Unique)
-    {
-        flags.setFlag(QtNodes::NodeFlag::Unique);
-    }
     if (node->objectFlags() & GtObject::UserDeletable)
     {
         flags.setFlag(QtNodes::NodeFlag::Deletable);
@@ -429,7 +432,9 @@ GraphAdapterModel::nodeFlags(QtNodes::NodeId nodeId) const
 QtNodes::NodeEvalState
 GraphAdapterModel::nodeEvalState(QtNodes::NodeId nodeId) const
 {
-    auto* node = graph().findNode(NodeId(nodeId));
+    auto& graph = this->graph();
+
+    auto* node = graph.findNode(NodeId(nodeId));
     if (!node)
     {
         return QtNodes::NodeEvalState::NoState;
@@ -439,9 +444,18 @@ GraphAdapterModel::nodeEvalState(QtNodes::NodeId nodeId) const
     {
         return QtNodes::NodeEvalState::Evaluating;
     }
+    if (!node->isActive())
+    {
+        return QtNodes::NodeEvalState::Paused;
+    }
 
-    return node->isActive() ? QtNodes::NodeEvalState::NoState :
-                              QtNodes::NodeEvalState::Paused;
+    auto* model = graph.executionModel();
+    if (model)
+    {
+        return static_cast<QtNodes::NodeEvalState>((int)model->nodeState(NodeId(nodeId)) + 1);
+    }
+
+    return QtNodes::NodeEvalState::NoState;
 }
 
 QVariant
@@ -482,7 +496,7 @@ GraphAdapterModel::portData(QtNodes::NodeId nodeId, QtNodes::PortType portType, 
     }
     }
 
-    gtError() << tr("Invalid port role!") << role;
+    gtLogOnce(Error) << tr("Invalid port role!") << role;
     return {};
 }
 
@@ -500,7 +514,7 @@ GraphAdapterModel::setPortData(QtNodes::NodeId nodeId, QtNodes::PortType portTyp
         return false;
     }
 
-    gtError() << tr("Invalid port role!") << role;
+    gtLogOnce(Error) << tr("Invalid port role!") << role;
     return false;
 }
 

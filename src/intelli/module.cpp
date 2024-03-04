@@ -150,6 +150,14 @@ GtIntelliGraphModule::upgradeRoutines() const
     return routines;
 }
 
+QList<gt::SharedFunction>
+GtIntelliGraphModule::sharedFunctions() const
+{
+    QList<gt::SharedFunction> list;
+
+    return list;
+}
+
 QMetaObject
 GtIntelliGraphModule::package()
 {

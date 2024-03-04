@@ -44,7 +44,6 @@ static void setStyleDark()
       "GradientColor1": [36, 49, 63],
       "GradientColor2": [36, 49, 63],
       "GradientColor3": [36, 49, 63],
-      "GradientColorVariation": 30,
       "ShadowColor": [20, 20, 20],
       "FontColor": "white",
       "FontColorFaded": "gray",
@@ -94,7 +93,6 @@ static void setStyleBright()
       "GradientColor1": [245, 245, 245],
       "GradientColor2": [245, 245, 245],
       "GradientColor3": [245, 245, 245],
-      "GradientColorVariation": -10,
       "ShadowColor": [200, 200, 200],
       "FontColor": [10, 10, 10],
       "FontColorFaded": [100, 100, 100],
@@ -157,3 +155,19 @@ intelli::applyTheme(Theme newTheme)
 
     gtError() << QObject::tr("Invalid theme!");
 }
+
+float
+intelli::style::colorVariaton(ColorVariation variation)
+{
+    switch (variation)
+    {
+    case intelli::ColorVariation::Unique:
+        return (gtApp->inDarkMode() ? 30 : -10);
+    case intelli::ColorVariation::Graph:
+        return (gtApp->inDarkMode() ? 20 : -7.5);
+    case intelli::ColorVariation::Default:
+    default:
+        return 0.0;
+    }
+}
+

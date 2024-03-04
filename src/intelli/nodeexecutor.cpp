@@ -30,7 +30,7 @@ intelli::blockingEvaluation(Node& node, GraphExecutionModel& model)
 
     emit node.computingStarted();
 
-    NodeExecutor::doEvaluate(node);
+    NodeExecutor::evaluate(node);
 
     return true;
 }
@@ -51,7 +51,7 @@ intelli::detachedEvaluation(Node& node, GraphExecutionModel& model)
 }
 
 void
-NodeExecutor::doEvaluate(Node& node)
+NodeExecutor::evaluate(Node& node)
 {
     gtDebug().verbose().nospace()
         << "### Evaluating node: '" << node.objectName() << "'";

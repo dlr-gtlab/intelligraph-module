@@ -28,12 +28,28 @@ enum class Theme
     System
 };
 
+enum class ColorVariation
+{
+    Default,
+    Unique,
+    Graph,
+
+};
+
 /**
  * @brief Applies the node style base on the current theme. System will adapt
  * the bright or dark mode. The system theme will be upated automatically.
  * @param theme
  */
 GT_INTELLI_EXPORT void applyTheme(Theme theme = Theme::System);
+
+
+namespace style
+{
+
+GT_INTELLI_EXPORT float colorVariaton(ColorVariation variation);
+
+}
 
 } // namespace intelli
 

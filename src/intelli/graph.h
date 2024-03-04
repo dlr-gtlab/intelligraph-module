@@ -11,6 +11,9 @@
 
 #include <intelli/node.h>
 
+#include <gt_finally.h>
+#include <gt_platform.h>
+
 #include <QPointer>
 
 class GtMdiItem;
@@ -50,14 +53,14 @@ GtMdiItem* show(std::unique_ptr<Graph> graph);
  * @return Returns true if graph is acyclic otherwise returns false
  */
 GT_INTELLI_EXPORT
-QVector<NodeId> cyclicNodes(Graph& graph);
+QVector<NodeId> cyclicNodes(Graph const& graph);
 
 /**
  * @brief Returns whether a graph is acyclic (i.e. does not contain loops/cylces)
  * @param graph Graph to check for cycles
  * @return Returns true if graph is acyclic otherwise returns false
  */
-inline bool isAcyclic(Graph& graph) { return cyclicNodes(graph).empty(); }
+inline bool isAcyclic(Graph const& graph) { return cyclicNodes(graph).empty(); }
 
 /**
  * @brief Policy for handling node id collisions, when appending a node to a graph
@@ -70,7 +73,7 @@ enum class NodeIdPolicy
     Keep = 1
 };
 
-/// directed acyclic graph
+/// directed acyclic graph representing connections and nodes
 namespace dag
 {
 
@@ -209,7 +212,7 @@ public:
      * @brief Finds all connections associated with the node specified by node id.
      * The connections can be narrowed down to ingoing and outgoing connection
      * @param nodeId Node id
-     * @param type Connection filter (in/out going onyl or both)
+     * @param type Connection filter (in/out going only or both)
      * @return Connections
      */
     QVector<ConnectionId> findConnections(NodeId nodeId, PortType type = PortType::NoType) const;
@@ -347,7 +350,35 @@ public:
      */
     void initInputOutputProviders();
 
+    struct EndModificationFunctor
+    {
+        inline void operator()() const noexcept
+        {
+            if (graph) graph->emitEndModification();
+        }
+        Graph* graph{};
+    };
+
+    using Modification = gt::Finally<EndModificationFunctor>;
+
+    /**
+     * @brief Scropped wrapper around `beginModification` and `endModification`
+     * @return Scoped object which emits the begin and end modification signals
+     * resprectively, usd to signal that evaluation and similar processes should
+     * be halted.
+     */
+    GT_NO_DISCARD
+    Modification modify();
+
+    void emitBeginModification();
+
+    void emitEndModification();
+
 signals:
+
+    void beginModification(QPrivateSignal);
+
+    void endModification(QPrivateSignal);
 
     /**
      * @brief Emitted once a connection was appended
@@ -360,6 +391,33 @@ signals:
      * @param Connection id of the deleted connection
      */
     void connectionDeleted(ConnectionId connectionId);
+
+    /**
+     * @brief Forwards the `portInserted` signal of node, so that
+     * other components can react before the graph does.
+     * @param nodeId Affected Node
+     * @param type Type of the deleted port
+     * @param idx Index of the deleted port
+     */
+    void nodePortInserted(NodeId nodeId, PortType type, PortIndex idx);
+
+    /**
+     * @brief Forwards the `portAboutToBeDeleted` signal of node, so that
+     * other components can react before the graph does.
+     * @param nodeId Affected Node
+     * @param type Type of the deleted port
+     * @param idx Index of the deleted port
+     */
+    void nodePortAboutToBeDeleted(NodeId nodeId, PortType type, PortIndex idx);
+
+    /**
+     * @brief Forwards the `portDeleted` signal of node, so that
+     * other components can react before the graph does.
+     * @param nodeId Affected Node
+     * @param type Type of the deleted port
+     * @param idx Index of the deleted port
+     */
+    void nodePortDeleted(NodeId nodeId, PortType type, PortIndex idx);
     
     /**
      * @brief Emitted once a node was appended
@@ -392,6 +450,8 @@ private:
     struct Impl;
 
     DirectedAcyclicGraph m_nodes;
+
+    int m_modificationCount = 0;
 
     /**
      * @brief Returns the group object in which all connections are stored

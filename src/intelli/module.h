@@ -68,6 +68,12 @@ public:
     QList<gt::VersionUpgradeRoutine> upgradeRoutines() const override;
 
     /**
+     * @brief Shared functions
+     * @return List of all shared functions of the module.
+     */
+    QList<gt::SharedFunction> sharedFunctions() const override;
+
+    /**
      * @brief Returns static meta objects of datamodel package.
      * @return package meta object
      */

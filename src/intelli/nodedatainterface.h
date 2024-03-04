@@ -27,64 +27,77 @@ enum class PortDataState
     Valid,
 };
 
-namespace dm
+enum class NodeEvalState
 {
-
-struct PortEntry
-{
-    /// referenced port
-    PortId id;
-    /// port data state
-    PortDataState state = PortDataState::Outdated;
-    /// actual data at port
-    NodeDataPtr data = nullptr;
+    Invalid = 0,
+    Outdated,
+    Evaluating,
+    Paused,
+    Valid
 };
 
-struct Entry
+enum class NodeState
 {
-    /// in and out ports
-    QVector<PortEntry> portsIn = {}, portsOut = {};
-
-    bool isEvaluated(Node const& node) const;
-
-    bool areInputsValid(Graph const& graph, NodeId nodeId) const;
-
-    bool canEvaluate(Graph const& graph, Node const& node) const;
+    Evaluated,
+    RequiresReevaluation
 };
 
-using DataModel = QHash<NodeId, Entry>;
+namespace graph_data
+{
+
+struct PortEntry;
 
 /// helper struct representing node data and its validity state
 struct NodeDataSet
 {
     NodeDataSet(std::nullptr_t) :
-        data(nullptr)
+        ptr(nullptr), state(PortDataState::Outdated)
     {}
     NodeDataSet(NodeDataPtr _data = {}) :
-        data(std::move(_data))
+        ptr(std::move(_data)), state(PortDataState::Valid)
     {}
     template <typename T>
     NodeDataSet(std::shared_ptr<T> _data) :
-        data(std::move(_data))
-    {}
-    NodeDataSet(PortEntry const& port) :
-        data(port.data), state(port.state)
+        ptr(std::move(_data)), state(PortDataState::Valid)
     {}
 
     /// actual node data
-    NodeDataPtr data{nullptr};
+    NodeDataPtr ptr;
     /// data state
-    PortDataState state{PortDataState::Valid};
+    PortDataState state;
 
-    operator NodeDataPtr&() & { return data; }
-    operator NodeDataPtr() && { return std::move(data); }
-    operator NodeDataPtr const&() const& { return data; }
+    operator NodeDataPtr&() & { return ptr; }
+    operator NodeDataPtr() && { return std::move(ptr); }
+    operator NodeDataPtr const&() const& { return ptr; }
 
     template <typename T>
-    inline auto value() const noexcept { return qobject_pointer_cast<T const>(data); }
+    inline auto value() const noexcept { return qobject_pointer_cast<T const>(ptr); }
 };
 
-} // namesace dm
+struct PortEntry
+{
+    /// referenced port
+    PortId id;
+    /// actual data at port
+    NodeDataSet data{nullptr};
+};
+
+struct Entry
+{
+    /// in and out ports
+    QVector<PortEntry> portsIn{}, portsOut{};
+
+    NodeState state = NodeState::RequiresReevaluation;
+};
+
+using DataModel [[deprecated("Use 'GraphData' instead")]] = QHash<NodeId, Entry>;
+using GraphData = QHash<NodeId, Entry>;
+
+
+} // namesace graph_data
+
+using graph_data::GraphData;
+using graph_data::NodeDataSet;
 
 /**
  * @brief The NodeDataInterface class.
@@ -96,9 +109,9 @@ public:
 
     virtual ~NodeDataInterface() = default;
 
-    virtual dm::NodeDataSet nodeData(NodeId nodeId, PortId portId) const = 0;
+    virtual NodeDataSet nodeData(NodeId nodeId, PortId portId) const = 0;
 
-    virtual bool setNodeData(NodeId nodeId, PortId portId, dm::NodeDataSet data) = 0;
+    virtual bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data) = 0;
 };
 
 } // namespace intelli

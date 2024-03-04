@@ -14,6 +14,14 @@ GroupInputProvider::GroupInputProvider() :
     AbstractGroupProvider("Input Provider")
 {
     setPos({-250, 0});
+}
 
-    setNodeEvalMode(NodeEvalMode::MainThread);
+void
+GroupInputProvider::eval()
+{
+    // forward input data to output
+    for (auto const& p : ports(PortType::Out))
+    {
+        setNodeData(p.id(), nodeData(p.id()));
+    }
 }

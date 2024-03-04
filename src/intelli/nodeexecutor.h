@@ -38,7 +38,7 @@ class NodeExecutor
 
 public:
 
-    static void doEvaluate(Node& node);
+    static void evaluate(Node& node);
 
     static GraphExecutionModel* accessExecModel(Node& node);
 

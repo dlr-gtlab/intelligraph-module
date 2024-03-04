@@ -22,6 +22,9 @@ public:
 
     Q_INVOKABLE GroupInputProvider();
 
+protected:
+
+    void eval() override;
 };
 
 } // namespace intelli

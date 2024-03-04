@@ -73,6 +73,9 @@ struct PortDeleted
             return;
         }
 
+        auto cmd = graph->modify();
+        emit graph->nodePortAboutToBeDeleted(node->id(), type, idx);
+
         auto const& connections = graph->findConnections(node->id(), port);
         for (auto conId : connections)
         {
@@ -106,7 +109,7 @@ struct NodeDeleted
             return;
         }
 
-        auto cmd = GraphExecutionModel::modify(graph->executionModel());
+        auto cmd = graph->modify();
 
         auto const& connections = graph->findConnections(nodeId);
         for (auto conId : connections)
@@ -575,8 +578,18 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     m_nodes.insert(nodeId, dag::Entry{ node.get() });
 
     // setup connections
+    connect(node.get(), &Node::portInserted,
+            this, [this, nodeId = node->id()](PortType type, PortIndex idx){
+        emit nodePortInserted(nodeId, type, idx);
+    });
+
     connect(node.get(), &Node::portAboutToBeDeleted,
             this, Impl::PortDeleted(this, node.get()));
+
+    connect(node.get(), &Node::portDeleted,
+            this, [this, nodeId = node->id()](PortType type, PortIndex idx){
+        emit nodePortDeleted(nodeId, type, idx);
+    });
 
     connect(node.get(), &Node::nodeAboutToBeDeleted,
             this, Impl::NodeDeleted(this));
@@ -590,7 +603,6 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 Connection*
 Graph::appendConnection(std::unique_ptr<Connection> connection)
 {
-
     if (!connection) return {};
 
     auto conId = connection->connectionId();
@@ -680,7 +692,8 @@ QVector<NodeId>
 Graph::appendObjects(std::vector<std::unique_ptr<Node>>& nodes,
                      std::vector<std::unique_ptr<Connection>>& connections)
 {
-    auto cmd = GraphExecutionModel::modify(executionModel());
+    auto cmd = modify();
+    Q_UNUSED(cmd);
 
     QVector<NodeId> nodeIds;
 
@@ -824,7 +837,8 @@ Graph::restoreConnection(Connection* connection)
 void
 Graph::restoreConnections()
 {
-    auto cmd = GraphExecutionModel::modify(executionModel());
+    auto cmd = modify();
+    Q_UNUSED(cmd);
 
     auto const& connections = this->connections();
 
@@ -840,7 +854,8 @@ Graph::restoreConnections()
 void
 Graph::restoreNodesAndConnections()
 {
-    auto cmd = GraphExecutionModel::modify(executionModel());
+    auto cmd = modify();
+    Q_UNUSED(cmd);
 
     auto const& nodes = this->nodes();
     auto const& connections = this->connections();
@@ -867,6 +882,35 @@ Graph::initInputOutputProviders()
 
     if (input) appendNode(std::move(input));
     if (output) appendNode(std::move(output));
+}
+
+Graph::Modification
+Graph::modify()
+{
+    emitBeginModification();
+    return gt::finally(EndModificationFunctor{this});
+}
+
+void
+Graph::emitBeginModification()
+{
+    assert(m_modificationCount >= 0);
+
+    m_modificationCount++;
+    if (m_modificationCount == 1) emit beginModification(QPrivateSignal());
+}
+
+void
+Graph::emitEndModification()
+{
+    m_modificationCount--;
+
+    assert(m_modificationCount >= 0);
+
+    if (m_modificationCount == 0)
+    {
+        emit endModification(QPrivateSignal());
+    }
 }
 
 void
@@ -1020,7 +1064,7 @@ bool isAcyclicHelper(Graph const& graph,
 }
 
 QVector<NodeId>
-intelli::cyclicNodes(Graph& graph)
+intelli::cyclicNodes(Graph const& graph)
 {
     auto const& nodes = graph.nodes();
 

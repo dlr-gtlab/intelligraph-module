@@ -1,0 +1,55 @@
+/* GTlab - Gas Turbine laboratory
+ * copyright 2009-2023 by DLR
+ *
+ *  Created on: 20.10.2023
+ *  Author: Marius Bröcker (AT-TWK)
+ *  E-Mail: marius.broecker@dlr.de
+ */
+
+
+#include "intelli/node/logicsource.h"
+#include "intelli/gui/property_item/logic.h"
+
+#include <intelli/data/bool.h>
+
+#include <QLayout>
+
+using namespace intelli;
+
+LogicSourceNode::LogicSourceNode() :
+    intelli::Node(QStringLiteral("Logic Source")),
+    m_value(QStringLiteral("value"), QStringLiteral("Value"), QStringLiteral("value"), false)
+{
+    registerProperty(m_value);
+
+    setNodeEvalMode(intelli::NodeEvalMode::MainThread);
+
+    m_out = addOutPort(intelli::typeId<intelli::BoolData>());
+
+    registerWidgetFactory([this](){
+        auto base = intelli::makeWidget();
+
+        auto* w = new LogicDisplayWidget(m_value);
+        base->layout()->addWidget(w);
+
+        connect(w, &LogicDisplayWidget::valueChanged, this, [this](bool newVal){
+            if (m_value != newVal) m_value = newVal;
+        });
+
+        connect(&m_value, &GtAbstractProperty::changed, w, [this, w](){
+            w->setValue(m_value);
+        });
+
+        return base;
+    });
+
+    connect(&m_value, &GtAbstractProperty::changed,
+            this, &Node::triggerNodeEvaluation);
+}
+
+void
+LogicSourceNode::eval()
+{
+    setNodeData(m_out, std::make_shared<intelli::BoolData>(m_value));
+}
+

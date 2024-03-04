@@ -10,6 +10,7 @@
 #include "intelli/exec/detachedexecutor.h"
 
 #include "intelli/node.h"
+#include "intelli/nodedata.h"
 #include "intelli/graphexecmodel.h"
 
 #include "gt_utilities.h"
@@ -21,6 +22,132 @@
 #include <QtConcurrent>
 
 using namespace intelli;
+
+//////////////////////////////////////////////////////
+
+/**
+ * @brief The DummyDataModel class.
+ * Helper method to set and access node data of a single node
+ */
+class DummyDataModel : public NodeDataInterface
+{
+public:
+
+    DummyDataModel(Node& node) :
+        m_node(&node)
+    {
+        NodeExecutor::setNodeDataInterface(node, this);
+
+        auto const& inPorts  = node.ports(PortType::In);
+        auto const& outPorts = node.ports(PortType::Out);
+
+        m_data.portsIn.reserve(inPorts.size());
+        m_data.portsOut.reserve(outPorts.size());
+
+        for (auto& port : inPorts)
+        {
+            m_data.portsIn.push_back({port.id()});
+        }
+
+        for (auto& port : outPorts)
+        {
+            m_data.portsOut.push_back({port.id()});
+        }
+    }
+
+    NodeDataPtrList nodeData(PortType type) const
+    {
+        assert(m_node);
+        NodeDataPtrList data;
+
+        auto const& ports = type == PortType::In ? &m_data.portsIn : &m_data.portsOut;
+        for (auto& port : *ports)
+        {
+            data.push_back({m_node->portIndex(type, port.id), port.data});
+        }
+        return data;
+    }
+
+    bool setNodeData(PortId portId, NodeDataSet data)
+    {
+        assert(m_node);
+        return setNodeData(m_node->id(), portId, std::move(data));
+    }
+
+    bool setNodeData(PortType type, NodeDataPtrList const& data)
+    {
+        assert(m_node);
+        for (auto& d : data)
+        {
+            if (!setNodeData(m_node->portId(type, d.first), std::move(d.second)))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+private:
+
+    NodeDataSet nodeData(NodeId nodeId, PortId portId) const override
+    {
+        assert(m_node);
+        if (nodeId != m_node->id())
+        {
+            gtError() << QObject::tr("DummyDataModel: Failed to access node %1! "
+                                     "(Was expecting node %2)")
+                             .arg(nodeId).arg(nodeId);
+            return {};
+        }
+
+        for (auto const* ports : {&m_data.portsIn, &m_data.portsOut})
+        {
+            for (auto const& p : *ports)
+            {
+                if (p.id == portId) return p.data;
+            }
+        }
+
+        gtWarning() << QObject::tr("DummyExecModel: Failed to access data of node %1! "
+                                   "(Port id %2 not found)")
+                           .arg(nodeId).arg(portId);
+        return {};
+    }
+
+    bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data) override
+    {
+        assert(m_node);
+        if (nodeId != m_node->id())
+        {
+            gtError() << QObject::tr("DummyDataModel: Failed to access node %1! "
+                                     "(Was expecting node %2)")
+                             .arg(nodeId).arg(nodeId);
+            return false;
+        }
+
+        for (auto* ports : {&m_data.portsIn, &m_data.portsOut})
+        {
+            for (auto& p : *ports)
+            {
+                if (p.id == portId)
+                {
+                    p.data = std::move(data);
+                    return true;
+                }
+            }
+        }
+
+        gtWarning() << QObject::tr("DummyDataModel: Failed to set data of node %1! "
+                                   "(Port id %2 not found)")
+                           .arg(nodeId).arg(portId);
+        return {};
+    }
+
+    Node* m_node = nullptr;
+    graph_data::Entry m_data;
+};
+
+//////////////////////////////////////////////////////
 
 // we want to skip signals that are speicifc to Node, GtObject and QObject,
 // therefore we will calculate the offset to the "custom" signals once
@@ -149,6 +276,8 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
     return success;
 }
 
+//////////////////////////////////////////////////////
+
 DetachedExecutor::DetachedExecutor()
 {
     using Watcher= decltype(m_watcher);
@@ -241,6 +370,9 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
     m_collected = false;
     emit m_node->computingStarted();
 
+    auto inData  = model.nodeData(node.id(), PortType::In);
+    auto outData = model.nodeData(node.id(), PortType::Out);
+
     auto run = [nodeId = node.id(),
                 inData  = model.nodeData(node.id(), PortType::In),
                 outData = model.nodeData(node.id(), PortType::Out),
@@ -295,7 +427,7 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
             }
 
             // evaluate node
-            NodeExecutor::doEvaluate(*node);
+            NodeExecutor::evaluate(*node);
 
             return model.nodeData(PortType::Out);
         }

@@ -33,6 +33,8 @@ public:
 
         setNodeFlag(Unique, true);
 
+        setNodeEvalMode(NodeEvalMode::MainThread);
+
         if (!gtApp || !gtApp->devMode()) setFlag(UserHidden, true);
 
         connect(this, &Node::portInserted,
