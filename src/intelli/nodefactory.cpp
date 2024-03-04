@@ -116,5 +116,7 @@ NodeFactory::makeNode(QString const& className) const noexcept(false)
         throw e;
     }
 
+    node->setActive(true);
+
     return node;
 }

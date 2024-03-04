@@ -76,8 +76,11 @@ Node::Node(QString const& modelName, GtObject* parent) :
     connect(this, &QObject::objectNameChanged,
             this, &Node::nodeChanged);
 
-    connect(&pimpl->isActive, &GtAbstractProperty::changed,
-            this, &Node::nodeStateChanged);
+    connect(&pimpl->isActive, &GtAbstractProperty::changed, this, [this](){
+        emit nodeStateChanged();
+        if (pimpl->isActive) emit triggerNodeEvaluation();
+        emit isActiveChanged();
+    });
 
     connect(this, &Node::computingStarted, this, [this](){
         setNodeFlag(NodeFlag::Evaluating, true);
@@ -101,7 +104,10 @@ Node::~Node()
 void
 Node::setActive(bool active)
 {
+    if (pimpl->isActive == active) return;
+
     pimpl->isActive = active;
+    emit isActiveChanged();
     emit nodeStateChanged();
 }
 

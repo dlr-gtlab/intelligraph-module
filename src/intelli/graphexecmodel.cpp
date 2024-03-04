@@ -655,9 +655,9 @@ GraphExecutionModel::evaluateGraph()
         return FutureGraphEvaluated(this);
     }
 
-    // find target nodes (nodes with not output connections)
-    auto const& targetNodes = findLeafNodes(nodes);
-    if (targetNodes.empty())
+    // find target nodes (nodes with no output connections)
+    auto const& leafNodes = findLeafNodes(nodes);
+    if (leafNodes.empty())
     {
         gtError().nospace()
             << Impl::graphName(*this)
@@ -665,8 +665,8 @@ GraphExecutionModel::evaluateGraph()
         return {};
     }
 
-    // evaluate until target nodes
-    for (NodeId target : qAsConst(targetNodes))
+    // evaluate until all leaf nodes
+    for (NodeId target : qAsConst(leafNodes))
     {
         if (!evaluateNode(target).detach())
         {

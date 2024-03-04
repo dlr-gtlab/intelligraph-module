@@ -203,8 +203,18 @@ Graph::Graph() :
     auto* group = new ConnectionGroup(this);
     group->setDefault(true);
 
+    setActive(false);
+
     connect(group, &ConnectionGroup::mergeConnections, this, [this](){
         restoreConnections();
+    });
+    connect(this, &Node::isActiveChanged, this, [this](){
+        if (this->findParent<Graph*>()) return;
+        if (auto* exec = executionModel())
+        {
+            isActive() ? (void)exec->autoEvaluate().detach() :
+                               exec->disableAutoEvaluation();
+        }
     });
 }
 
