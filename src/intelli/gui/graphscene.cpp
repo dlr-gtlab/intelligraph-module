@@ -189,13 +189,21 @@ GraphScene::~GraphScene()
     model->disableAutoEvaluation();
 }
 
+Graph*
+GraphScene::graph()
+{
+    return m_graph;
+}
+Graph const*
+GraphScene::graph() const
+{
+    return m_graph;
+}
+
 void
 GraphScene::autoEvaluate(bool enable)
 {
-    auto* model = m_graph->makeExecutionModel();
-
-    enable ? (void)model->autoEvaluate().detach() :
-                   model->disableAutoEvaluation();
+    m_graph->setActive(enable);
 }
 
 bool
@@ -826,6 +834,7 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
 
     groupNode->setCaption(groupNodeName);
     groupNode->setPos(center);
+    groupNode->setActive(true);
 
     // setup input/output provider
     groupNode->initInputOutputProviders();

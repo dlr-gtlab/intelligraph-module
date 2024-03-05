@@ -472,8 +472,6 @@ GraphExecutionModel::endReset()
 NodeEvalState
 GraphExecutionModel::nodeState(NodeId nodeId) const
 {
-    auto& graph = this->graph();
-
     auto find = Impl::findNode(*this, nodeId);
     if (!find) return NodeEvalState::Invalid;
 
@@ -488,19 +486,6 @@ GraphExecutionModel::nodeState(NodeId nodeId) const
     {
         return NodeEvalState::Evaluating;
     }
-
-//    // check parent nodes if they are invalid
-//    auto const& dependencies = graph.findConnectedNodes(nodeId, PortType::In);
-//    if (cyclicNodes(graph).empty())
-//    {
-//        for (NodeId dependency : dependencies)
-//        {
-//            if (nodeState(dependency) == NodeEvalState::Invalid)
-//            {
-//                return NodeEvalState::Invalid;
-//            }
-//        }
-//    }
 
     if (find.isEvaluated())
     {
@@ -655,9 +640,9 @@ GraphExecutionModel::evaluateGraph()
         return FutureGraphEvaluated(this);
     }
 
-    // find target nodes (nodes with not output connections)
-    auto const& targetNodes = findLeafNodes(nodes);
-    if (targetNodes.empty())
+    // find target nodes (nodes with no output connections)
+    auto const& leafNodes = findLeafNodes(nodes);
+    if (leafNodes.empty())
     {
         gtError().nospace()
             << Impl::graphName(*this)
@@ -665,8 +650,8 @@ GraphExecutionModel::evaluateGraph()
         return {};
     }
 
-    // evaluate until target nodes
-    for (NodeId target : qAsConst(targetNodes))
+    // evaluate until all leaf nodes
+    for (NodeId target : qAsConst(leafNodes))
     {
         if (!evaluateNode(target).detach())
         {

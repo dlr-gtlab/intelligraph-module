@@ -13,6 +13,7 @@
 #include <gt_graphicsview.h>
 
 class QMenu;
+class QPushButton;
 class GtGrid;
 
 namespace intelli
@@ -84,6 +85,9 @@ private:
 
     QMenu* m_sceneMenu = nullptr;
     QMenu* m_editMenu = nullptr;
+
+    QPushButton* m_startAutoEvalBtn = nullptr;
+    QPushButton* m_stopAutoEvalBtn = nullptr;
 };
 
 } // namespace intelli

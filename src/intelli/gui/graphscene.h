@@ -29,6 +29,9 @@ public:
     GraphScene(Graph& graph);
     ~GraphScene();
 
+    Graph* graph();
+    Graph const* graph() const;
+
     void autoEvaluate(bool enable = true);
 
     bool isAutoEvaluating();

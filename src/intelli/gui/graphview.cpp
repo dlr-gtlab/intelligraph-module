@@ -9,14 +9,14 @@
 
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
+#include "intelli/graph.h"
+#include "intelli/graphexecmodel.h"
 
-#include "gt_objectuiaction.h"
-#include "gt_icons.h"
-#include "gt_guiutilities.h"
-#include "gt_application.h"
-#include "gt_grid.h"
-#include "gt_filedialog.h"
-
+#include <gt_objectuiaction.h>
+#include <gt_icons.h>
+#include <gt_guiutilities.h>
+#include <gt_application.h>
+#include <gt_filedialog.h>
 
 #include <gt_logging.h>
 
@@ -29,6 +29,7 @@
 #include <QGraphicsSceneWheelEvent>
 #include <QMenuBar>
 #include <QVBoxLayout>
+#include <QPushButton>
 #include <QPrinter>
 
 
@@ -64,38 +65,55 @@ GraphView::GraphView(QWidget* parent) :
     auto* menuBar = new QMenuBar;
 
     /* SCENE MENU */
-    QMenu* sceneMenu = menuBar->addMenu(tr("Scene"));
-    m_sceneMenu = sceneMenu;
+    m_sceneMenu = menuBar->addMenu(tr("Scene"));
     m_sceneMenu->setEnabled(false);
 
-    auto resetScaleAction = gt::gui::makeAction(tr("Reset scale"), [this](GtObject*){
-        setScale(1);
-    });
-    resetScaleAction.setIcon(gt::gui::icon::revert());
+    auto resetScaleAction =
+        gt::gui::makeAction(tr("Reset scale"), std::bind(&GraphView::setScale, this, 1))
+              .setIcon(gt::gui::icon::revert());
 
-    auto changeGrid = gt::gui::makeAction(tr("Change Grid"), [this](GtObject*){   
-        emit changeGridTriggered();
-    });
-    changeGrid.setIcon(gt::gui::icon::grid());
+    auto changeGrid =
+        gt::gui::makeAction(tr("Change Grid"), std::bind(&GraphView::changeGridTriggered, this))
+            .setIcon(gt::gui::icon::grid());
 
-    auto print = gt::gui::makeAction(tr("Print to pdf"), [this](GtObject*){
-        printPDF();
-    });
-    print.setIcon(gt::gui::icon::pdf());
+    auto print =
+        gt::gui::makeAction(tr("Print to PDF"), std::bind(&GraphView::printPDF, this))
+              .setIcon(gt::gui::icon::pdf());
 
-    gt::gui::addToMenu(resetScaleAction, *sceneMenu, nullptr);
-    gt::gui::addToMenu(changeGrid, *sceneMenu, nullptr);
-    gt::gui::addToMenu(print, *sceneMenu, nullptr);
+    gt::gui::addToMenu(resetScaleAction, *m_sceneMenu, nullptr);
+    gt::gui::addToMenu(changeGrid, *m_sceneMenu, nullptr);
+    gt::gui::addToMenu(print, *m_sceneMenu, nullptr);
 
     /* EDIT MENU */
-    QMenu* editMenu = menuBar->addMenu(tr("Edit"));
-    m_editMenu = editMenu;
+    m_editMenu = menuBar->addMenu(tr("Edit"));
     m_editMenu->setEnabled(false);
 
+    /* AUTO EVAL */
+    auto setupEvalBtn = [](){
+        auto* btn = new QPushButton();
+        btn->setVisible(false);
+        btn->setEnabled(false);
+        auto height = btn->sizeHint().height();
+        btn->setFixedSize(QSize(height * 1.5, height));
+        return btn;
+    };
+
+    m_startAutoEvalBtn = setupEvalBtn();
+    m_startAutoEvalBtn->setVisible(true);
+    m_startAutoEvalBtn->setToolTip(tr("Enable automatic graph evaluation"));
+    m_startAutoEvalBtn->setIcon(gt::gui::icon::play());
+
+    m_stopAutoEvalBtn = setupEvalBtn();
+    m_stopAutoEvalBtn->setToolTip(tr("Stop automatic graph evaluation"));
+    m_stopAutoEvalBtn->setIcon(gt::gui::icon::stop());
+
     /* OVERLAY */
-    auto* overlay = new QVBoxLayout(this);
+    auto* overlay = new QHBoxLayout(this);
     overlay->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     overlay->addWidget(menuBar);
+    overlay->addWidget(m_startAutoEvalBtn);
+    overlay->addWidget(m_stopAutoEvalBtn);
+    overlay->addStretch();
 
     auto size = menuBar->sizeHint();
     size.setWidth(size.width() + 10);
@@ -152,32 +170,29 @@ GraphView::setScene(GraphScene& scene)
             &scene, &QGraphicsScene::clearSelection,
             Qt::UniqueConnection);
 
-    auto* autoEvaluate = m_sceneMenu->addAction(tr("Enable auto evaluation"));
-    autoEvaluate->setIcon(gt::gui::icon::play());
-    auto* stopAutoEvaluate = m_sceneMenu->addAction(tr("Disabled auto evaluation"));
-    stopAutoEvaluate->setIcon(gt::gui::icon::stop());
+    auto* graph = nodeScene()->graph();
+    assert(graph);
 
-    addAction(autoEvaluate);
-    addAction(stopAutoEvaluate);
+    auto updateAutoEvalBtns = [this, graph](){
+        auto* exec = graph->executionModel();
+        bool isAutoEvaluating = exec && exec->isAutoEvaluating();
 
-    connect(m_sceneMenu, &QMenu::aboutToShow,
-            this, [&scene, autoEvaluate, stopAutoEvaluate](){
-        bool isAutoEvaluating = scene.isAutoEvaluating();
-        autoEvaluate->setVisible(!isAutoEvaluating);
-        stopAutoEvaluate->setVisible(isAutoEvaluating);
+        m_startAutoEvalBtn->setVisible(!isAutoEvaluating);
+        m_stopAutoEvalBtn->setVisible(isAutoEvaluating);
+    };
+
+    m_startAutoEvalBtn->setEnabled(true);
+    m_stopAutoEvalBtn->setEnabled(true);
+
+    updateAutoEvalBtns();
+
+    connect(graph, &Graph::isActiveChanged, this, updateAutoEvalBtns);
+
+    connect(m_startAutoEvalBtn, &QPushButton::clicked, &scene, [=](){
+        if (auto* scene = nodeScene()) scene->autoEvaluate(true);
     });
-
-    connect(autoEvaluate, &QAction::triggered, &scene, [=](){
-        if (auto* scene = nodeScene())
-        {
-            scene->autoEvaluate(true);
-        }
-    });
-    connect(stopAutoEvaluate, &QAction::triggered, &scene, [=](){
-        if (auto* scene = nodeScene())
-        {
-            scene->autoEvaluate(false);
-        }
+    connect(m_stopAutoEvalBtn, &QPushButton::clicked, &scene, [=](){
+        if (auto* scene = nodeScene()) scene->autoEvaluate(false);
     });
 
     addAction(copyAction);

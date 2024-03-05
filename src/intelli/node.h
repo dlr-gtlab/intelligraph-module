@@ -406,6 +406,8 @@ signals:
      */
     void portDisconnected(PortId id);
 
+    void isActiveChanged();
+
 protected:
 
     /// prefer Graph::appendNode
