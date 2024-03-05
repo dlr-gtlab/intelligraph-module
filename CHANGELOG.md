@@ -5,8 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Position and Size Properties are now hidden for Nodes in non-dev-mode - #54
+- Graphs are no longer auto-evaluating by default and will remember the last state they where in. The property `Is Node Active` of the Graph can be used to enable/disable auto-evaluation. #61
+
 ### Added 
-- Integrated a traffic light system, to denote the state of the node: Green = Evaluated and Valid Outputs; Yellow = Not Evaluated; Red = Invalid data at output (Execution not successful) - #56
+- Integrated a traffic light system, to denote the state of the node: Green = Evaluated and Valid Outputs; Yellow = Not Evaluated; Red = Invalid data at output (Execution not successful). - #56
+- A dedicated button has been added to Graph View, which can be used to enable/disable auto-evaluation. - #61
 
 ## [0.8.0] - 2024-02-19
 ### Added

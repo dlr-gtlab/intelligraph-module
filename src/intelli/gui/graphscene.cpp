@@ -189,6 +189,17 @@ GraphScene::~GraphScene()
     model->disableAutoEvaluation();
 }
 
+Graph*
+GraphScene::graph()
+{
+    return m_graph;
+}
+Graph const*
+GraphScene::graph() const
+{
+    return m_graph;
+}
+
 void
 GraphScene::autoEvaluate(bool enable)
 {

@@ -472,8 +472,6 @@ GraphExecutionModel::endReset()
 NodeEvalState
 GraphExecutionModel::nodeState(NodeId nodeId) const
 {
-    auto& graph = this->graph();
-
     auto find = Impl::findNode(*this, nodeId);
     if (!find) return NodeEvalState::Invalid;
 
@@ -488,19 +486,6 @@ GraphExecutionModel::nodeState(NodeId nodeId) const
     {
         return NodeEvalState::Evaluating;
     }
-
-//    // check parent nodes if they are invalid
-//    auto const& dependencies = graph.findConnectedNodes(nodeId, PortType::In);
-//    if (cyclicNodes(graph).empty())
-//    {
-//        for (NodeId dependency : dependencies)
-//        {
-//            if (nodeState(dependency) == NodeEvalState::Invalid)
-//            {
-//                return NodeEvalState::Invalid;
-//            }
-//        }
-//    }
 
     if (find.isEvaluated())
     {

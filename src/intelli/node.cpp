@@ -14,6 +14,7 @@
 #include "intelli/private/utils.h"
 
 #include <gt_qtutilities.h>
+#include <gt_coreapplication.h>
 
 #include <QRegExpValidator>
 #include <QVBoxLayout>
@@ -62,10 +63,12 @@ Node::Node(QString const& modelName, GtObject* parent) :
     registerProperty(pimpl->isActive, catEval);
 
     pimpl->id.setReadOnly(true);
-    pimpl->posX.setReadOnly(true);
-    pimpl->posY.setReadOnly(true);
-    pimpl->sizeWidth.setReadOnly(true);
-    pimpl->sizeHeight.setReadOnly(true);
+    bool hide = !gtApp || !gtApp->devMode();
+
+    pimpl->posX.setReadOnly(hide);
+    pimpl->posY.setReadOnly(hide);
+    pimpl->sizeWidth.setReadOnly(hide);
+    pimpl->sizeHeight.setReadOnly(hide);
 
     setCaption(modelName);
     
