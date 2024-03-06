@@ -26,6 +26,12 @@
 #include "intelli/node/logicoperation.h"
 #include "intelli/node/logicsource.h"
 
+#include "intelli/node/propertyinput/boolinputnode.h"
+#include "intelli/node/propertyinput/doubleinputnode.h"
+#include "intelli/node/propertyinput/intinputnode.h"
+#include "intelli/node/propertyinput/objectinputnode.h"
+#include "intelli/node/propertyinput/stringinputnode.h"
+
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodefactory.h"
 
@@ -62,6 +68,14 @@ intelli::initModule()
 
         GT_INTELLI_REGISTER_NODE(StringListInputNode, "Input");
         GT_INTELLI_REGISTER_NODE(ExistingDirectorySourceNode, "Input");
+
+
+        GT_INTELLI_REGISTER_NODE(BoolInputNode, "Input");
+        GT_INTELLI_REGISTER_NODE(DoubleInputNode, "Input");
+        GT_INTELLI_REGISTER_NODE(StringInputNode, "Input");
+        GT_INTELLI_REGISTER_NODE(ObjectInputNode, "Input");
+        GT_INTELLI_REGISTER_NODE(IntInputNode, "Input");
+
 
         return true;
     }();
