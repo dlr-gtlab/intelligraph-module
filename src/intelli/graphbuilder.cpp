@@ -34,6 +34,7 @@ GraphBuilder::addGraph(std::vector<PortData> const& inPorts,
 {
     auto graph = std::make_unique<Graph>();
     graph->initInputOutputProviders();
+    graph->setActive(true);
 
     auto* input = graph->inputProvider();
     auto* output = graph->outputProvider();

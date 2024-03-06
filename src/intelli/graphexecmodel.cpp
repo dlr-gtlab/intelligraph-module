@@ -692,7 +692,7 @@ GraphExecutionModel::evaluateNode(NodeId nodeId)
 }
 
 bool
-GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId)
+GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId, bool reevaluate)
 {
     assert(nodeId != invalid<NodeId>());
 
@@ -701,8 +701,8 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId)
                tr("Failed to schedule node %1!").arg(nodeId);
     };
 
-    // inode is already pending
-    if (m_pendingNodes.contains(nodeId))
+    // node is already pending
+    if (!reevaluate && m_pendingNodes.contains(nodeId))
     {
         gtDebug().verbose() << makeError() << tr("(Node is already pending)");
         return true;
@@ -731,7 +731,7 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId)
     }
 
     // add node to pending nodes
-    m_pendingNodes.push_back(nodeId);
+    if (!reevaluate) m_pendingNodes.push_back(nodeId);
 
     // try queueing
     if (queueNodeForEvaluation(nodeId))
@@ -1092,9 +1092,10 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, NodeDataSet data)
         return false;
     }
 
-#if 0
     // data is same, nothing to do
-    if (port->data.ptr && port->data.ptr == data.ptr)
+    if (port->data.ptr == data.ptr &&
+        port->data.state == data.state &&
+        data.state == PortDataState::Valid)
     {
         gtDebug().verbose()
             << Impl::graphName(*this)
@@ -1103,7 +1104,6 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, NodeDataSet data)
                    .arg(nodeId).arg(portId);
         return true;
     }
-#endif
 
     port->data = std::move(data);
 
@@ -1427,38 +1427,6 @@ GraphExecutionModel::onNodeEvaluated()
 
     emit nodeEvaluated(nodeId);
 
-    constexpr bool debug = false;
-    if (debug)
-    {
-        gtDebug().nospace().verbose()
-            << Impl::graphName(*this)
-            << tr("Queue pending nodes...");
-
-        this->debug();
-    }
-
-    // dependencies of pending nodes may have been resolved
-    // -> attempt to reschedule pending nodes
-    for (int idx = m_pendingNodes.size() - 1; idx >= 0; --idx)
-    {
-        NodeId pending = m_pendingNodes.at(idx);
-        m_pendingNodes.removeAt(idx);
-
-        if (!evaluateNodeDependencies(pending))
-        {
-            m_pendingNodes.append(pending);
-        }
-    }
-
-    if (debug)
-    {
-        this->debug();
-
-        gtDebug().nospace().verbose()
-            << Impl::graphName(*this)
-            << tr("...done!");
-    }
-
     // queue next nodes
     if (m_autoEvaluate)
     {
@@ -1478,34 +1446,34 @@ GraphExecutionModel::onNodeEvaluated()
             << tr("...done!");
     }
 
-    // trigger evaluation
-    if (!evaluateNextInQueue() &&
-        m_evaluatingNodes.empty() &&
-        m_queuedNodes.empty() &&
-        !m_pendingNodes.empty())
+    // nodes may evaluate blockingly, and mess with pending nodes list
+    // -> prevent modifications
+    if (!m_evaluatingPendingNodes)
     {
-        m_targetNodes.clear();
-        m_pendingNodes.clear();
-        emit graphStalled();
-    }
-
-#if 0
-    // DEBUG
-    if (!m_autoEvaluate && m_targetNodes.empty())
-    {
-        std::for_each(m_data.keyValueBegin(), m_data.keyValueEnd(),
-                      [this](std::pair<NodeId, graph_data::Entry&> const& p){
-            auto* node = this->graph().findNode(p.first);
-            assert(node);
-            gtDebug()
-                << Impl::graphName(*this)
-                << node->id()
-                << !(node->nodeFlags() & NodeFlag::Evaluating)
-                << !(node->nodeFlags() & NodeFlag::RequiresEvaluation)
-                << p.second.areInputsValid(this->graph(), p.first);
+        m_evaluatingPendingNodes = true;
+        auto finally = gt::finally([this](){
+            m_evaluatingPendingNodes = false;
         });
+
+        // dependencies of pending nodes may have been resolved
+        // -> attempt to reschedule pending nodes
+        for (int idx = m_pendingNodes.size() - 1; idx >= 0; --idx)
+        {
+            NodeId pending = m_pendingNodes.at(idx);
+            evaluateNodeDependencies(pending, true);
+        }
+
+        // trigger evaluation
+        if (!evaluateNextInQueue() &&
+            m_evaluatingNodes.empty() &&
+            m_queuedNodes.empty() &&
+            !m_pendingNodes.empty())
+        {
+            m_targetNodes.clear();
+            m_pendingNodes.clear();
+            emit graphStalled();
+        }
     }
-#endif
 
     if (isEvaluated()) emit graphEvaluated();
 }

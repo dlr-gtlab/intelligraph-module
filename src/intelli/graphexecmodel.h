@@ -150,10 +150,10 @@ private:
 
     QVector<QPointer<Node>> m_evaluatingNodes;
 
-    // evaluation attributes
+    // evaluation properties & flags
     int m_modificationCount = 0;
-
     bool m_autoEvaluate = false;
+    bool m_evaluatingPendingNodes = false;
 
     void beginReset();
 
@@ -174,7 +174,7 @@ private:
 
     bool autoEvaluateNode(NodeId nodeId);
 
-    bool evaluateNodeDependencies(NodeId nodeId);
+    bool evaluateNodeDependencies(NodeId nodeId, bool reevaluate = false);
 
     /**
      * @brief Attempts to queue the node. Can only queue nodes that are ready

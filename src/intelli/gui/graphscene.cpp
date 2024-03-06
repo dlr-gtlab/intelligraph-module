@@ -388,7 +388,6 @@ GraphScene::copySelectedObjects()
         iter++;
     }
 
-
     // at least one node should be selected
     if (nodes.empty()) return false;
 
@@ -419,6 +418,7 @@ GraphScene::pasteObjects()
     auto dummy = gt::unique_qobject_cast<Graph>(mem.toObject(*gtObjectFactory));
     if (!dummy) return;
 
+    dummy->newUuid(true);
     auto const& srcNodes = dummy->nodes();
     auto const& srcConnections = dummy->connections();
 
