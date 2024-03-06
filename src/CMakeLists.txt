@@ -31,6 +31,17 @@ set(PUBLIC_HEADERS
     intelli/property/objectlink.h
     intelli/property/stringselection.h
     intelli/property/uint.h
+    intelli/gui/property_item/doubleinputwidget.h
+    intelli/gui/property_item/editabledoublelabel.h
+    intelli/gui/property_item/editableintegerlabel.h
+    intelli/gui/property_item/integerinputwidget.h
+    intelli/node/propertyinput/abstractinputnode.h
+    intelli/node/propertyinput/boolinputnode.h
+    intelli/node/propertyinput/doubleinputnode.h
+    intelli/node/propertyinput/intinputnode.h
+    intelli/node/propertyinput/objectinputnode.h
+    intelli/node/propertyinput/stringinputnode.h
+
 )
 
 qt5_add_resources (RCC_SOURCES
@@ -73,6 +84,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/packageui.h
     intelli/private/node_impl.h
     intelli/private/utils.h
+    intelli/gui/property_item/abstractnumberinputwidget.h
 
     intelli/connection.cpp
     intelli/connectiongroup.cpp
@@ -127,6 +139,16 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/objectlink.cpp
     intelli/property/stringselection.cpp
     intelli/property/uint.cpp
+    intelli/gui/property_item/editabledoublelabel.cpp
+    intelli/gui/property_item/doubleinputwidget.cpp
+    intelli/gui/property_item/editableintegerlabel.cpp
+    intelli/gui/property_item/integerinputwidget.cpp
+    intelli/node/propertyinput/boolinputnode.cpp
+    intelli/node/propertyinput/doubleinputnode.cpp
+    intelli/node/propertyinput/intinputnode.cpp
+    intelli/node/propertyinput/objectinputnode.cpp
+    intelli/node/propertyinput/stringinputnode.cpp
+    intelli/gui/property_item/abstractnumberinputwidget.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

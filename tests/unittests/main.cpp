@@ -13,6 +13,7 @@
 
 #include <intelli/connection.h>
 #include <intelli/core.h>
+#include <intelli/nodefactory.h>
 
 #include <gt_objectfactory.h>
 
