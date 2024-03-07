@@ -16,7 +16,7 @@
 namespace intelli
 {
 
-class ByteArrayData : public NodeData
+class GT_INTELLI_EXPORT ByteArrayData : public NodeData
 {
     Q_OBJECT
 public:
