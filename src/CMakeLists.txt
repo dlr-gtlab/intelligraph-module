@@ -41,7 +41,7 @@ set(PUBLIC_HEADERS
     intelli/node/propertyinput/intinputnode.h
     intelli/node/propertyinput/objectinputnode.h
     intelli/node/propertyinput/stringinputnode.h
-
+    intelli/data/bytearraydata.h
 )
 
 qt5_add_resources (RCC_SOURCES
