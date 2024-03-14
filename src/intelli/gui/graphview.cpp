@@ -170,11 +170,10 @@ GraphView::setScene(GraphScene& scene)
             &scene, &QGraphicsScene::clearSelection,
             Qt::UniqueConnection);
 
-    auto* graph = nodeScene()->graph();
-    assert(graph);
+    auto& graph = nodeScene()->graph();
 
-    auto updateAutoEvalBtns = [this, graph](){
-        auto* exec = graph->executionModel();
+    auto updateAutoEvalBtns = [this, &graph](){
+        auto* exec = graph.executionModel();
         bool isAutoEvaluating = exec && exec->isAutoEvaluating();
 
         m_startAutoEvalBtn->setVisible(!isAutoEvaluating);
@@ -186,7 +185,7 @@ GraphView::setScene(GraphScene& scene)
 
     updateAutoEvalBtns();
 
-    connect(graph, &Graph::isActiveChanged, this, updateAutoEvalBtns);
+    connect(&graph, &Graph::isActiveChanged, this, updateAutoEvalBtns);
 
     connect(m_startAutoEvalBtn, &QPushButton::clicked, &scene, [=](){
         if (auto* scene = nodeScene()) scene->autoEvaluate(true);

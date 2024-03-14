@@ -7,15 +7,12 @@
  */
 
 
-#include "style.h"
+#include <intelli/gui/style.h>
 
 #include "gt_application.h"
-
 #include "gt_logging.h"
 
 #include <QtNodes/StyleCollection>
-
-#include <stdexcept>
 
 static void setStyleDark()
 {
@@ -171,3 +168,40 @@ intelli::style::colorVariaton(ColorVariation variation)
     }
 }
 
+
+QColor
+intelli::style::nodeBackground()
+{
+    return gtApp->inDarkMode() ? QColor{36, 49, 63} : QColor{245, 245, 245};
+
+}
+
+double
+intelli::style::nodeOpacity()
+{
+    return 1;
+}
+
+QColor
+intelli::style::boundarySelected()
+{
+    return gtApp->inDarkMode() ? QColor{255, 165, 0} : QColor{"deepskyblue"};
+}
+
+QColor
+intelli::style::boundaryDefault()
+{
+    return gtApp->inDarkMode() ? QColor{63, 73, 86} : QColor{"darkgray"};
+}
+
+double
+intelli::style::borderWidthHovered()
+{
+    return 1.5;
+}
+
+double
+intelli::style::borderWidthDefault()
+{
+    return 1.0;
+}

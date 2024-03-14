@@ -10,17 +10,21 @@
 #ifndef GT_INTELLI_SCENE_H
 #define GT_INTELLI_SCENE_H
 
-#include "intelli/graph.h"
+#include <intelli/memory.h>
+#include <intelli/graph.h>
+#include <intelli/gui/graphics/nodeobject.h>
 
 #include <QtNodes/BasicGraphicsScene>
 #include <QtNodes/Definitions>
+
+#include <map>
 
 namespace intelli
 {
 
 class GraphAdapterModel;
 
-class GraphScene : public QtNodes::BasicGraphicsScene
+class GraphScene : public QGraphicsScene//QtNodes::BasicGraphicsScene
 {
     Q_OBJECT
 
@@ -29,14 +33,19 @@ public:
     GraphScene(Graph& graph);
     ~GraphScene();
 
-    Graph* graph();
-    Graph const* graph() const;
+    void reset();
+
+    Graph& graph();
+    Graph const& graph() const;
 
     void autoEvaluate(bool enable = true);
 
     bool isAutoEvaluating();
 
-    QMenu* createSceneMenu(QPointF scenePos) override;
+    QVector<Node*> selectedNodes();
+    QVector<Node const*> selectedNodes() const;
+
+    QMenu* createSceneMenu(QPointF scenePos) /*override*/;
 
 public slots:
 
@@ -58,26 +67,27 @@ private:
     
     QPointer<Graph> m_graph = nullptr;
 
-    void deleteNodes(std::vector<QtNodes::NodeId> const& nodeIds);
+    std::map<NodeId, volatile_ptr<NodeGraphicsObject>> m_nodes;
+
+    void beginReset();
+
+    void endReset();
 
     void makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds);
 
-    GraphAdapterModel& adapterModel();
+//    GraphAdapterModel& adapterModel();
 
 private slots:
 
-    void onNodeSelected(QtNodes::NodeId nodeId);
+    void onNodeAppended(Node* node);
 
-    void onNodeDoubleClicked(QtNodes::NodeId nodeId);
+    void onNodeDeleted(NodeId nodeId);
 
-    void onWidgetResized(QtNodes::NodeId nodeId, QSize size);
+    void onNodeEvalStateChanged(NodeId nodeId);
 
-    void onNodeContextMenu(QtNodes::NodeId nodeId, QPointF pos);
+    void onNodeContextMenu(Node* node, QPointF pos);
 
-    void onPortContextMenu(QtNodes::NodeId nodeId,
-                           QtNodes::PortType type,
-                           QtNodes::PortIndex idx,
-                           QPointF pos);
+    void onPortContextMenu(Node* node, PortId portId, QPointF pos);
 };
 
 } // namespace intelli

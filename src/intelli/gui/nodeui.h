@@ -13,6 +13,8 @@
 #include <intelli/gui/portuiaction.h>
 #include <intelli/exports.h>
 
+
+
 #include <gt_objectui.h>
 
 
@@ -21,7 +23,65 @@ namespace intelli
 
 class Graph;
 class Node;
+class NodeGraphicsObject;
 class DynamicNode;
+
+struct Geometry
+{
+    Geometry(Node& node);
+
+    struct PortHit
+    {
+        PortType type{PortType::NoType};
+        PortId id{};
+
+        operator bool() const
+        {
+            return type != PortType::NoType && id != invalid<PortId>();
+        }
+    };
+
+    double hspacing() const;
+    double vspacing() const;
+
+    QRectF innerRect() const;
+
+    QRectF boundingRect() const;
+
+    QRectF captionRect() const;
+
+    QPointF evalStateVisualizerPosition() const;
+
+    QRectF portRect(PortType type, PortIndex idx) const;
+
+    QRectF portCaptionRect(PortType type, PortIndex idx) const;
+
+    QRectF resizeHandleRect() const;
+
+    QPointF widgetPosition() const;
+
+    PortHit portHit(QPointF coord) const;
+
+    void recomputeGeomtry();
+
+    Node* m_node;
+};
+
+struct Painter
+{
+    Painter(NodeGraphicsObject& obj, QPainter& painter, Geometry geometry);
+
+    void drawRect();
+    void drawPorts();
+    void drawCaption();
+    void drawResizeRect();
+
+    void paint();
+
+    NodeGraphicsObject* m_object;
+    QPainter* m_painter;
+    Geometry m_geometry;
+};
 
 class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
 {
@@ -42,6 +102,12 @@ public:
     using PortActionFunction = typename PortUIAction::ActionMethod;
 
     Q_INVOKABLE NodeUI(Option option = NoOption);
+
+    virtual QColor backgroundColor(Node& node) const;
+
+    virtual Painter painter(NodeGraphicsObject& object, QPainter& painter) const;
+
+    virtual Geometry geometry(Node& node) const;
 
     /**
      * @brief Icon for the object
@@ -140,7 +206,7 @@ protected:
      * @return Reference to port action
      */
     PortUIAction& addPortAction(QString const& actionText,
-                                    PortActionFunction actionMethod);
+                                PortActionFunction actionMethod);
 
 private:
 

@@ -44,7 +44,7 @@ IntInputNode::IntInputNode() :
     m_out = addOutPort(intelli::typeId<intelli::IntegerData>());
     port(m_out)->captionVisible = false;
 
-    setNodeFlag(intelli::Resizable);
+    setNodeFlag(Resizable);
 
     registerWidgetFactory([this]() {
         IntegerInputWidget::InputType t = IntegerInputWidget::Dial;

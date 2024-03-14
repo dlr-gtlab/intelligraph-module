@@ -139,6 +139,8 @@ public:
         QString caption;
         // whether port caption should be visible
         bool captionVisible = true;
+        // whether the port is visible at all
+        bool visible = true;
         // whether the port is required for the node evaluation
         bool optional = true;
 
@@ -340,11 +342,6 @@ signals:
      * node flag `Evaluating` automatically.
      */
     void computingFinished();
-
-    /**
-     * @brief stateChanged
-     */
-    void nodeStateChanged();
 
     /**
      * @brief Emitted if node specific data has changed (cpation, number of

@@ -42,7 +42,7 @@ DoubleInputNode::DoubleInputNode() :
     m_out = addOutPort(intelli::typeId<intelli::DoubleData>());
     port(m_out)->captionVisible = false;
 
-    setNodeFlag(intelli::Resizable);
+    setNodeFlag(Resizable);
 
     registerWidgetFactory([this]() {
         DoubleInputWidget::InputType t = DoubleInputWidget::Dial;

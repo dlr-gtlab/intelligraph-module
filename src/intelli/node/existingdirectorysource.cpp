@@ -22,7 +22,7 @@ ExistingDirectorySourceNode::ExistingDirectorySourceNode():
     registerProperty(m_value);
 
     setFlag(GtObject::UserRenamable);
-    setNodeFlag(intelli::Resizable);
+    setNodeFlag(Resizable);
 
     m_out = addOutPort(typeId<StringData>());
 

@@ -10,7 +10,6 @@
 #include "intelli/gui/graphscene.h"
 
 #include "intelli/connection.h"
-#include "intelli/graphadaptermodel.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/nodefactory.h"
 #include "intelli/nodedatafactory.h"
@@ -104,7 +103,7 @@ static SelectedItems findSelectedItems(GraphScene& scene)
     if (selected.empty()) return {};
 
     SelectedItems items;
-
+#if 0
     for (auto* item : selected)
     {
         if (auto* node = qgraphicsitem_cast<QtNodes::NodeGraphicsObject*>(item))
@@ -118,6 +117,7 @@ static SelectedItems findSelectedItems(GraphScene& scene)
             continue;
         }
     }
+#endif
     return items;
 }
 
@@ -138,43 +138,31 @@ static QList<T> findItems(GraphScene& scene)
 
 }; // struct Impl
 
-GraphAdapterModel& initGraph(Graph& graph)
-{
-    auto* model = graph.executionModel();
-
-    if (!model) model = graph.makeExecutionModel();
-    else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
-
-    if (graph.isActive()) model->autoEvaluate().detach();
-
-    return *new GraphAdapterModel(graph);
-}
-
 GraphScene::GraphScene(Graph& graph) :
-    QtNodes::BasicGraphicsScene(initGraph(graph), &graph),
     m_graph(&graph)
 {
-    adapterModel().setParent(this);
+    reset();
+//    adapterModel().setParent(this);
 
-    connect(this, &QtNodes::BasicGraphicsScene::nodeSelected,
-            this, &GraphScene::onNodeSelected);
-    connect(this, &QtNodes::BasicGraphicsScene::nodeDoubleClicked,
-            this, &GraphScene::onNodeDoubleClicked);
-    connect(this, &QtNodes::BasicGraphicsScene::nodeContextMenu,
-            this, &GraphScene::onNodeContextMenu);
-    connect(this, &QtNodes::BasicGraphicsScene::portContextMenu,
-            this, &GraphScene::onPortContextMenu);
-    connect(this, &QtNodes::BasicGraphicsScene::widgetResized,
-            this, &GraphScene::onWidgetResized);
-    connect(this, &QtNodes::BasicGraphicsScene::nodeClicked,
-            this, [this](QtNodes::NodeId qnodeId){
-        auto& model = adapterModel();
-        model.commitPosition(NodeId(qnodeId));
-        for (QtNodes::NodeId nodeId : selectedNodes())
-        {
-            model.commitPosition(NodeId(nodeId));
-        }
-    });
+//    connect(this, &QtNodes::BasicGraphicsScene::nodeSelected,
+//            this, &GraphScene::onNodeSelected);
+//    connect(this, &QtNodes::BasicGraphicsScene::nodeDoubleClicked,
+//            this, &GraphScene::onNodeDoubleClicked);
+//    connect(this, &QtNodes::BasicGraphicsScene::nodeContextMenu,
+//            this, &GraphScene::onNodeContextMenu);
+//    connect(this, &QtNodes::BasicGraphicsScene::portContextMenu,
+//            this, &GraphScene::onPortContextMenu);
+//    connect(this, &QtNodes::BasicGraphicsScene::widgetResized,
+//            this, &GraphScene::onWidgetResized);
+//    connect(this, &QtNodes::BasicGraphicsScene::nodeClicked,
+//            this, [this](QtNodes::NodeId qnodeId){
+//        auto& model = adapterModel();
+//        model.commitPosition(NodeId(qnodeId));
+//        for (QtNodes::NodeId nodeId : selectedNodes())
+//        {
+//            model.commitPosition(NodeId(nodeId));
+//        }
+//    });
 }
 
 GraphScene::~GraphScene()
@@ -189,15 +177,53 @@ GraphScene::~GraphScene()
     model->disableAutoEvaluation();
 }
 
-Graph*
+void
+GraphScene::reset()
+{
+    beginReset();
+    endReset();
+}
+
+void
+GraphScene::beginReset()
+{
+    disconnect(m_graph);
+}
+
+void
+GraphScene::endReset()
+{
+    m_nodes.clear();
+
+    auto const& nodes = graph().nodes();
+    for (auto* node : nodes)
+    {
+        onNodeAppended(node);
+    }
+
+    connect(m_graph, &Graph::nodeAppended, this, &GraphScene::onNodeAppended);
+    connect(m_graph, &Graph::nodeDeleted, this, &GraphScene::onNodeDeleted);
+
+    auto* model = m_graph->executionModel();
+    if (!model) model = m_graph->makeExecutionModel();
+    else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
+
+    connect(model, &GraphExecutionModel::nodeEvalStateChanged,
+            this, &GraphScene::onNodeEvalStateChanged);
+
+    if ( m_graph->isActive()) model->autoEvaluate().detach();
+}
+
+Graph&
 GraphScene::graph()
 {
-    return m_graph;
+    assert(m_graph);
+    return *m_graph;
 }
-Graph const*
+Graph const&
 GraphScene::graph() const
 {
-    return m_graph;
+    return const_cast<GraphScene*>(this)->graph();
 }
 
 void
@@ -212,6 +238,23 @@ GraphScene::isAutoEvaluating()
     auto* model = m_graph->makeExecutionModel();
 
     return model->isAutoEvaluating();
+}
+
+QVector<Node*>
+GraphScene::selectedNodes()
+{
+    QVector<Node*> nodes;
+    for (auto& entity : m_nodes)
+    {
+        if (entity.second->isSelected()) nodes << entity.second->node();
+    }
+    return nodes;
+}
+
+QVector<Node const*>
+GraphScene::selectedNodes() const
+{
+    return gt::container_const_cast(const_cast<GraphScene*>(this)->selectedNodes());
 }
 
 QMenu*
@@ -500,6 +543,7 @@ GraphScene::pasteObjects()
 void
 GraphScene::keyPressEvent(QKeyEvent* event)
 {
+#if 0
     // perform keyevent on node
     QVector<Node*> nodes;
     Impl::findNodes(*m_graph, selectedNodes(), nodes);
@@ -515,52 +559,23 @@ GraphScene::keyPressEvent(QKeyEvent* event)
     gt::gui::handleObjectKeyEvent(*event, *nodes.front());
 
     if (!event->isAccepted()) QtNodes::BasicGraphicsScene::keyPressEvent(event);
+#endif
 }
 
 void
-GraphScene::onNodeSelected(QtNodes::NodeId nodeId)
-{
-    if (auto* node = m_graph->findNode(NodeId::fromValue(nodeId)))
-    {
-        emit gtApp->objectSelected(node);
-    }
-}
-
-void
-GraphScene::onNodeDoubleClicked(QtNodes::NodeId nodeId)
-{
-    if (auto* node = m_graph->findNode(NodeId::fromValue(nodeId)))
-    {
-        gt::gui::handleObjectDoubleClick(*node);
-    }
-}
-
-void
-GraphScene::onWidgetResized(QtNodes::NodeId nodeId, QSize size)
-{
-    if (auto* node = m_graph->findNode(NodeId::fromValue(nodeId)))
-    {
-        node->setSize(size);
-    }
-}
-
-void
-GraphScene::onPortContextMenu(QtNodes::NodeId qnodeId,
-                              QtNodes::PortType qtype,
-                              QtNodes::PortIndex qidx,
-                              QPointF pos)
+GraphScene::onPortContextMenu(Node* node, PortId port, QPointF pos)
 {
     using PortType  = PortType;
     using PortIndex = PortIndex;
 
-    NodeId nodeId(qnodeId);
-    PortType type(::convert(qtype));
-    PortIndex idx(qidx);
-
-    auto* node = m_graph->findNode(NodeId::fromValue(nodeId));
     if (!node) return;
 
     clearSelection();
+
+    PortType type = node->portType(port);
+    PortIndex idx = node->portIndex(type, port);
+
+    if (idx == invalid<PortIndex>()) return;
 
     // create menu
     QMenu menu;
@@ -590,7 +605,7 @@ GraphScene::onPortContextMenu(QtNodes::NodeId qnodeId,
             }
 
             if (actionData.visibilityMethod() &&
-                !actionData.visibilityMethod()(node, static_cast<PortType>(type), PortIndex::fromValue(idx)))
+                !actionData.visibilityMethod()(node, type, idx))
             {
                 continue;
             }
@@ -599,7 +614,7 @@ GraphScene::onPortContextMenu(QtNodes::NodeId qnodeId,
             action->setIcon(actionData.icon());
 
             if (actionData.verificationMethod() &&
-                !actionData.verificationMethod()(node, static_cast<PortType>(type), PortIndex::fromValue(idx)))
+                !actionData.verificationMethod()(node, type, idx))
             {
                 action->setEnabled(false);
             }
@@ -610,10 +625,8 @@ GraphScene::onPortContextMenu(QtNodes::NodeId qnodeId,
 
     menu.addSeparator();
 
-    PortId portId = m_graph->portId(nodeId, type, idx);
-
     QList<GtObject*> connections;
-    Impl::findConnections(*m_graph, m_graph->findConnections(nodeId, portId), connections);
+    Impl::findConnections(*m_graph, m_graph->findConnections(node->id(), port), connections);
 
     QAction* deleteAct = menu.addAction(tr("Remove all connections"));
     deleteAct->setEnabled(!connections.empty());
@@ -635,23 +648,23 @@ GraphScene::onPortContextMenu(QtNodes::NodeId qnodeId,
 }
 
 void
-GraphScene::onNodeContextMenu(QtNodes::NodeId qnodeId, QPointF pos)
+GraphScene::onNodeContextMenu(Node* node, QPointF pos)
 {
-    NodeId nodeId(qnodeId);
+    if (!node) return;
 
-    auto nodeItem = nodeGraphicsObject(nodeId);
+    auto* nodeItem = qobject_cast<NodeGraphicsObject*>(sender());
     if (!nodeItem) return;
 
     if (!nodeItem->isSelected()) clearSelection();
     nodeItem->setSelected(true);
 
     // retrieve selected nodes
-    auto selectedNodeIds = selectedNodes();
+    QVector<Node*> selectedNodes = this->selectedNodes();
 
-    bool allDeletable = std::all_of(selectedNodeIds.begin(),
-                                    selectedNodeIds.end(),
-                                    [this](QtNodes::NodeId id){
-        return adapterModel().nodeFlags(id) & QtNodes::Deletable;
+    bool allDeletable = std::all_of(selectedNodes.begin(),
+                                    selectedNodes.end(),
+                                    [](Node* node){
+        return node->objectFlags() & GtObject::ObjectFlag::UserDeletable;
     });
 
     // create menu
@@ -660,7 +673,7 @@ GraphScene::onNodeContextMenu(QtNodes::NodeId qnodeId, QPointF pos)
     QAction* groupAct = menu.addAction(tr("Group selected Nodes"));
     groupAct->setIcon(gt::gui::icon::select());
     groupAct->setEnabled(allDeletable);
-    groupAct->setVisible(!selectedNodeIds.empty());
+    groupAct->setVisible(!selectedNodes.empty());
 
     menu.addSeparator();
 
@@ -669,21 +682,17 @@ GraphScene::onNodeContextMenu(QtNodes::NodeId qnodeId, QPointF pos)
     deleteAct->setEnabled(allDeletable);
 
     // add node to selected nodes
-    if (selectedNodeIds.empty())
+    if (selectedNodes.empty())
     {
-        selectedNodeIds.push_back(nodeId);
+        gtWarning() << "FUNCTION IS TRIGGERED";
+        selectedNodes.push_back(node);
     }
 
     // add custom object menu
-    if (selectedNodeIds.size() == 1)
+    if (selectedNodes.size() == 1)
     {
-        auto id = NodeId::fromValue(selectedNodeIds.front());
-        if (Node* node = m_graph->findNode(id))
-        {
-            menu.addSeparator();
-
-            gt::gui::makeObjectContextMenu(menu, *node);
-        }
+        menu.addSeparator();
+        gt::gui::makeObjectContextMenu(menu, *node);
         deleteAct->setVisible(false);
     }
 
@@ -691,21 +700,22 @@ GraphScene::onNodeContextMenu(QtNodes::NodeId qnodeId, QPointF pos)
 
     if (triggered == groupAct)
     {
+        std::vector<QtNodes::NodeId> selectedNodeIds;
+        std::transform(selectedNodes.begin(), selectedNodes.end(),
+                       std::back_inserter(selectedNodeIds), [](Node* node) {
+            return node->id();
+        });
         return makeGroupNode(selectedNodeIds);
     }
     if (triggered == deleteAct)
     {
-        return deleteNodes(selectedNodeIds);
+        GtObjectList list;
+        std::transform(selectedNodes.begin(), selectedNodes.end(),
+                       std::back_inserter(list), [](Node* node) {
+             return node;
+         });
+        return (void)gtDataModel->deleteFromModel(list);
     }
-}
-
-void
-GraphScene::deleteNodes(const std::vector<QtNodes::NodeId>& nodeIds)
-{
-    QList<GtObject*> nodes;
-    Impl::findNodes(*m_graph, nodeIds, nodes);
-
-    gtDataModel->deleteFromModel(nodes);
 }
 
 void
@@ -961,10 +971,51 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
     }
 }
 
-GraphAdapterModel&
-GraphScene::adapterModel()
+//GraphAdapterModel&
+//GraphScene::adapterModel()
+//{
+//    auto* tmp = static_cast<GraphAdapterModel*>(&graphModel());
+//    assert(qobject_cast<GraphAdapterModel*>(&graphModel()));
+//    return *tmp;
+//}
+
+void
+GraphScene::onNodeAppended(Node* node)
 {
-    auto* tmp = static_cast<GraphAdapterModel*>(&graphModel());
-    assert(qobject_cast<GraphAdapterModel*>(&graphModel()));
-    return *tmp;
+    static NodeUI defaultUI;
+    assert(node);
+
+    NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
+    if (!ui) ui = &defaultUI;
+
+    auto entity = make_volatile<NodeGraphicsObject>(*m_graph, *node, *ui);
+    addItem(entity);
+
+    connect(entity, &NodeGraphicsObject::portContextMenuRequested,
+            this, &GraphScene::onPortContextMenu);
+    connect(entity, &NodeGraphicsObject::contextMenuRequested,
+            this, &GraphScene::onNodeContextMenu);
+
+    m_nodes.insert({node->id(), std::move(entity)});
+}
+
+void
+GraphScene::onNodeDeleted(NodeId nodeId)
+{
+    auto iter = m_nodes.find(nodeId);
+    if (iter != m_nodes.end())
+    {
+        m_nodes.erase(iter);
+    }
+}
+
+void
+GraphScene::onNodeEvalStateChanged(NodeId nodeId)
+{
+    auto entry = m_nodes.find(nodeId);
+    if (entry != m_nodes.end())
+    {
+        auto exec = m_graph->executionModel();
+        entry->second->setNodeEvalState(exec->nodeEvalState(nodeId));
+    }
 }

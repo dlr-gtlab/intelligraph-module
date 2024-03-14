@@ -18,6 +18,7 @@ set(PUBLIC_HEADERS
     intelli/nodeexecutor.h
     intelli/nodefactory.h
     intelli/data/bool.h
+    intelli/data/bytearraydata.h
     intelli/data/double.h
     intelli/data/object.h
     intelli/data/stringlist.h
@@ -28,20 +29,16 @@ set(PUBLIC_HEADERS
     intelli/gui/portuiaction.h
     intelli/gui/style.h
     intelli/property/color.h
+    intelli/property/uint.h
     intelli/property/objectlink.h
     intelli/property/stringselection.h
-    intelli/property/uint.h
-    intelli/gui/property_item/doubleinputwidget.h
-    intelli/gui/property_item/editabledoublelabel.h
-    intelli/gui/property_item/editableintegerlabel.h
-    intelli/gui/property_item/integerinputwidget.h
+
     intelli/node/propertyinput/abstractinputnode.h
     intelli/node/propertyinput/boolinputnode.h
     intelli/node/propertyinput/doubleinputnode.h
     intelli/node/propertyinput/intinputnode.h
     intelli/node/propertyinput/objectinputnode.h
     intelli/node/propertyinput/stringinputnode.h
-    intelli/data/bytearraydata.h
 )
 
 qt5_add_resources (RCC_SOURCES
@@ -58,6 +55,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/graphadaptermodel.h
     intelli/graphcategory.h
     intelli/module.h
+    intelli/calculators/graphexeccalculator.h
     intelli/exec/detachedexecutor.h
     intelli/node/abstractgroupprovider.h
     intelli/node/finddirectchild.h
@@ -74,18 +72,25 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/sleepy.h
     intelli/node/stringlistinput.h
     intelli/node/existingdirectorysource.h
+    intelli/gui/connectionui.h
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
     intelli/gui/graphview.h
+    intelli/gui/packageui.h
+    intelli/gui/graphics/abstractobject.h
+    intelli/gui/graphics/connectionobject.h
+    intelli/gui/graphics/nodeobject.h
+    intelli/gui/graphics/nodeevalstateobject.h
+    intelli/gui/property_item/abstractnumberinputwidget.h
+    intelli/gui/property_item/doubleinputwidget.h
+    intelli/gui/property_item/editabledoublelabel.h
+    intelli/gui/property_item/editableintegerlabel.h
+    intelli/gui/property_item/integerinputwidget.h
     intelli/gui/property_item/logic.h
     intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
-    intelli/gui/connectionui.h
-    intelli/gui/packageui.h
     intelli/private/node_impl.h
     intelli/private/utils.h
-    intelli/gui/property_item/abstractnumberinputwidget.h
-    intelli/calculators/graphexeccalculator.h
 
     intelli/connection.cpp
     intelli/connectiongroup.cpp
@@ -104,6 +109,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/nodeexecutor.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp
+    intelli/calculators/graphexeccalculator.cpp
     intelli/exec/detachedexecutor.cpp
     intelli/data/bool.cpp
     intelli/data/double.cpp
@@ -125,32 +131,35 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/sleepy.cpp
     intelli/node/stringlistinput.cpp
     intelli/node/existingdirectorysource.cpp
-    intelli/gui/connectionui.cpp
-    intelli/gui/grapheditor.cpp
-    intelli/gui/graphscene.cpp
-    intelli/gui/graphview.cpp
-    intelli/gui/icons.cpp
-    intelli/gui/property_item/logic.cpp
-    intelli/gui/property_item/objectlink.cpp
-    intelli/gui/property_item/stringselection.cpp
-    intelli/gui/nodeui.cpp
-    intelli/gui/packageui.cpp
-    intelli/gui/style.cpp
-    intelli/property/color.cpp
-    intelli/property/objectlink.cpp
-    intelli/property/stringselection.cpp
-    intelli/property/uint.cpp
-    intelli/gui/property_item/editabledoublelabel.cpp
-    intelli/gui/property_item/doubleinputwidget.cpp
-    intelli/gui/property_item/editableintegerlabel.cpp
-    intelli/gui/property_item/integerinputwidget.cpp
     intelli/node/propertyinput/boolinputnode.cpp
     intelli/node/propertyinput/doubleinputnode.cpp
     intelli/node/propertyinput/intinputnode.cpp
     intelli/node/propertyinput/objectinputnode.cpp
     intelli/node/propertyinput/stringinputnode.cpp
+    intelli/gui/connectionui.cpp
+    intelli/gui/nodeui.cpp
+    intelli/gui/grapheditor.cpp
+    intelli/gui/graphscene.cpp
+    intelli/gui/graphview.cpp
+    intelli/gui/icons.cpp
+    intelli/gui/packageui.cpp
+    intelli/gui/style.cpp
+    intelli/gui/graphics/abstractobject.cpp
+    intelli/gui/graphics/connectionobject.cpp
+    intelli/gui/graphics/nodeobject.cpp
+    intelli/gui/graphics/nodeevalstateobject.cpp
     intelli/gui/property_item/abstractnumberinputwidget.cpp
-    intelli/calculators/graphexeccalculator.cpp
+    intelli/gui/property_item/doubleinputwidget.cpp
+    intelli/gui/property_item/editabledoublelabel.cpp
+    intelli/gui/property_item/editableintegerlabel.cpp
+    intelli/gui/property_item/integerinputwidget.cpp
+    intelli/gui/property_item/logic.cpp
+    intelli/gui/property_item/objectlink.cpp
+    intelli/gui/property_item/stringselection.cpp
+    intelli/property/color.cpp
+    intelli/property/objectlink.cpp
+    intelli/property/stringselection.cpp
+    intelli/property/uint.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

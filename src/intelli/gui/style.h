@@ -12,8 +12,17 @@
 
 #include <intelli/exports.h>
 
+#include <QColor>
+
+class QPainter;
+
 namespace intelli
 {
+
+class Graph;
+class NodeUI;
+class Node;
+class NodeGraphicsObject;
 
 /**
  * @brief The Theme enum
@@ -43,11 +52,22 @@ enum class ColorVariation
  */
 GT_INTELLI_EXPORT void applyTheme(Theme theme = Theme::System);
 
-
 namespace style
 {
 
 GT_INTELLI_EXPORT float colorVariaton(ColorVariation variation);
+
+GT_INTELLI_EXPORT QColor nodeBackground();
+
+GT_INTELLI_EXPORT double nodeOpacity();
+
+GT_INTELLI_EXPORT QColor boundarySelected();
+
+GT_INTELLI_EXPORT QColor boundaryDefault();
+
+GT_INTELLI_EXPORT double borderWidthHovered();
+
+GT_INTELLI_EXPORT double borderWidthDefault();
 
 }
 

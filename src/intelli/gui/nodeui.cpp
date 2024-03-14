@@ -16,16 +16,16 @@
 #include "intelli/data/double.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/icons.h"
+#include "intelli/gui/style.h"
 
 #include <gt_logging.h>
+#include <gt_colors.h>
 
 #include <gt_command.h>
 #include <gt_inputdialog.h>
 #include <gt_application.h>
 
-#include <QJsonObject>
-#include <QJsonDocument>
-#include <QRegExpValidator>
+#include <QPainter>
 #include <QFileInfo>
 #include <QFile>
 
@@ -128,11 +128,11 @@ NodeUI::NodeUI(Option option)
         model->debug(node->id());
     }).setIcon(gt::gui::icon::bug());
 
-    addSingleAction(tr("Update Node"), [](GtObject* obj){
-        auto* node = toNode(obj);
-        if (!node) return;
-        emit node->nodeStateChanged();
-    }).setIcon(gt::gui::icon::bug());
+//    addSingleAction(tr("Update Node"), [](GtObject* obj){
+//        auto* node = toNode(obj);
+//        if (!node) return;
+//        emit node->nodeStateChanged();
+//    }).setIcon(gt::gui::icon::bug());
 
     addPortAction(tr("Port Info"), [](Node* obj, PortType type, PortIndex idx){
         if (!obj) return;
@@ -141,6 +141,35 @@ NodeUI::NodeUI(Option option)
                         .arg(obj->id())
                         .arg(obj->portId(type, idx));
     }).setIcon(gt::gui::icon::bug());
+}
+
+QColor
+NodeUI::backgroundColor(Node& node) const
+{
+    QColor const& bg = style::nodeBackground();
+
+    if (node.nodeFlags() & NodeFlag::Unique)
+    {
+        return gt::gui::color::lighten(bg, 20);
+    }
+    if (toGraph(&node))
+    {
+        return gt::gui::color::lighten(bg, 10);
+    }
+
+    return bg;
+}
+
+Painter
+NodeUI::painter(NodeGraphicsObject& object, QPainter& painter) const
+{
+    return {object, painter, geometry(*object.node())};
+}
+
+Geometry
+NodeUI::geometry(Node& node) const
+{
+    return {node};
 }
 
 QIcon
@@ -318,4 +347,227 @@ NodeUI::setActive(GtObject* obj, bool state)
     {
         emit node->triggerNodeEvaluation();
     }
+}
+
+constexpr double s_port_diameter = 8.0;
+constexpr double s_rounded_rect_radius = 2.0;
+
+Geometry::Geometry(Node& node) :
+    m_node(&node)
+{
+
+}
+
+double
+Geometry::hspacing() const
+{
+    return 10;
+}
+
+double
+Geometry::vspacing() const
+{
+    return hspacing();
+}
+
+QRectF
+Geometry::innerRect() const
+{
+    auto rect = boundingRect();
+
+    return QRectF(rect.topLeft() + QPointF{s_port_diameter * 0.5, 0},
+                  QSizeF{rect.width() - s_port_diameter, rect.height()});
+}
+
+QRectF
+Geometry::boundingRect() const
+{
+    return QRectF(QPoint{0, 0}, QSize{200, 200});
+}
+
+QRectF
+Geometry::captionRect() const
+{
+    QFont f;
+    f.setBold(true);
+    QFontMetrics boldFontMetrics(f);
+
+    return boldFontMetrics.boundingRect(m_node->caption());
+}
+
+QPointF
+Geometry::evalStateVisualizerPosition() const
+{
+    return boundingRect().topLeft() + QPointF{s_port_diameter * 0.5, 0};
+}
+
+QRectF
+Geometry::portRect(PortType type, PortIndex idx) const
+{
+    assert(type != PortType::NoType && idx != invalid<PortIndex>());
+
+    double height = 0.0;
+
+    height += captionRect().height();
+    height += 1.0 * vspacing(); // below caption
+
+    for (PortIndex i{0}; i < idx; ++i)
+    {
+        auto* port = m_node->port(m_node->portId(type, i));
+        assert(port);
+
+        height += vspacing() * (0.5 + 1 + port->caption.count('\n'));
+    }
+
+    height += vspacing();
+
+    double width = type == PortType::Out ? innerRect().width() : 0.0;
+
+    return {QPointF(width, height), QSizeF{s_port_diameter, s_port_diameter}};
+}
+
+QRectF
+Geometry::resizeHandleRect() const
+{
+    constexpr QSize size{10, 10};
+
+    QRectF rect = innerRect();
+    return QRectF(rect.bottomRight() - QPoint{size.width(), size.height()}, size);
+}
+
+QPointF
+Geometry::widgetPosition() const
+{
+    return {};
+}
+
+Geometry::PortHit
+Geometry::portHit(QPointF coord) const
+{
+    return {};
+}
+
+void
+Geometry::recomputeGeomtry()
+{
+
+}
+
+Painter::Painter(NodeGraphicsObject& obj, QPainter& painter, Geometry geometry) :
+    m_object(&obj), m_painter(&painter), m_geometry(geometry)
+{
+    paint();
+}
+
+void
+Painter::drawRect()
+{
+
+    auto color = m_object->isSelected() ? style::boundarySelected() : style::boundaryDefault();
+
+    QPen pen(color, m_object->isHovered() ? style::borderWidthHovered() : style::borderWidthDefault());
+    m_painter->setPen(pen);
+    m_painter->setBrush(style::nodeBackground());
+
+    m_painter->drawRoundedRect(m_geometry.innerRect(),
+                               s_rounded_rect_radius,
+                               s_rounded_rect_radius);
+}
+
+void
+Painter::drawPorts()
+{
+    auto* node = m_object->node();
+    assert(node);
+
+    for (PortType portType : {PortType::Out, PortType::In})
+    {
+        size_t const n = node->ports(portType).size();
+
+        for (PortIndex portIndex{0}; portIndex < n; ++portIndex)
+        {
+            QRectF p = m_geometry.portRect(portType, portIndex);
+
+//            double r = 1.0;
+
+//            if (auto const *cgo = state.connectionForReaction())
+//            {
+//                PortType requiredPort = cgo->connectionState().requiredPort();
+
+//                if (requiredPort == portType) {
+//                    ConnectionId possibleConnectionId = makeCompleteConnectionId(cgo->connectionId(),
+//                                                                                 nodeId,
+//                                                                                 portIndex);
+
+//                    bool const possible = model.connectionPossible(possibleConnectionId);
+
+//                    auto cp = cgo->sceneTransform().map(cgo->endPoint(requiredPort));
+//                    cp = ngo.sceneTransform().inverted().map(cp);
+
+//                    auto diff = cp - p;
+//                    double dist = std::sqrt(QPointF::dotProduct(diff, diff));
+
+//                    if (possible) {
+//                        double const thres = 40.0;
+//                        r = (dist < thres) ? (2.0 - dist / thres) : 1.0;
+//                    } else {
+//                        double const thres = 80.0;
+//                        r = (dist < thres) ? (dist / thres) : 1.0;
+//                    }
+//                }
+//            }
+
+            m_painter->setBrush(Qt::red);
+            m_painter->drawEllipse(p);
+        }
+    }
+
+//    if (ngo.nodeState().connectionForReaction())
+//    {
+//        ngo.nodeState().resetConnectionForReaction();
+//    }
+}
+
+void
+Painter::drawCaption()
+{
+    auto* node = m_object->node();
+    assert(node);
+
+    if (node->nodeFlags() & NodeFlag::HideCaption) return;
+
+    m_painter->save();
+
+    QFont f = m_painter->font();
+    f.setBold(true);
+
+    QPointF pos = m_geometry.captionRect().topLeft();
+
+    m_painter->setFont(f);
+    m_painter->setPen(gt::gui::color::text());
+    m_painter->drawText(pos, node->caption());
+
+    m_painter->restore();
+}
+
+void
+Painter::drawResizeRect()
+{
+    auto* node = m_object->node();
+    assert(node);
+
+    if (node->nodeFlags() & NodeFlag::Resizable)
+    {
+        m_painter->setBrush(Qt::gray);
+        m_painter->drawEllipse(m_geometry.resizeHandleRect());
+    }
+}
+
+void
+Painter::paint()
+{
+    drawRect();
+    drawPorts();
+    drawCaption();
+    drawResizeRect();
 }

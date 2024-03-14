@@ -77,9 +77,9 @@ GraphAdapterModel::GraphAdapterModel(Graph& graph)
     auto const onNodeAppended = [this](Node* node){
         assert(node);
 
-        connect(node, &Node::nodeStateChanged,
-                this, &GraphAdapterModel::onNodeEvalStateUpdated,
-                Qt::UniqueConnection);
+//        connect(node, &Node::nodeStateChanged,
+//                this, &GraphAdapterModel::onNodeEvalStateUpdated,
+//                Qt::UniqueConnection);
 
         connect(node, &Node::nodeChanged,
                 this, &GraphAdapterModel::onNodeChanged,
@@ -452,7 +452,7 @@ GraphAdapterModel::nodeEvalState(QtNodes::NodeId nodeId) const
     auto* model = graph.executionModel();
     if (model)
     {
-        return static_cast<QtNodes::NodeEvalState>((int)model->nodeState(NodeId(nodeId)) + 1);
+        return static_cast<QtNodes::NodeEvalState>((int)model->nodeEvalState(NodeId(nodeId)) + 1);
     }
 
     return QtNodes::NodeEvalState::NoState;
