@@ -120,11 +120,11 @@ GraphAdapterModel::GraphAdapterModel(Graph& graph)
     connect(&graph, &Graph::nodeDeleted, this, [this](NodeId nodeId){
         m_geometries.remove(nodeId);
         emit nodeDeleted(nodeId);
-    });
+    }, Qt::DirectConnection);
     connect(&graph, &Graph::connectionAppended, this, onConnectionAppended);
     connect(&graph, &Graph::connectionDeleted, this, [this](ConnectionId conId){
         emit connectionDeleted(convert(conId));
-    });
+    }, Qt::DirectConnection);
 
     // init model
     for (auto* node : graph.nodes())       onNodeAppended(node);
