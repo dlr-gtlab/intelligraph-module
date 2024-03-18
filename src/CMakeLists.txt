@@ -85,6 +85,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/private/node_impl.h
     intelli/private/utils.h
     intelli/gui/property_item/abstractnumberinputwidget.h
+    intelli/calculators/graphexeccalculator.h
 
     intelli/connection.cpp
     intelli/connectiongroup.cpp
@@ -149,6 +150,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/propertyinput/objectinputnode.cpp
     intelli/node/propertyinput/stringinputnode.cpp
     intelli/gui/property_item/abstractnumberinputwidget.cpp
+    intelli/calculators/graphexeccalculator.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph
