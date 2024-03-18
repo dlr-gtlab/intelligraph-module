@@ -29,6 +29,8 @@
 #include "intelli/gui/property_item/stringselection.h"
 #include "intelli/gui/style.h"
 
+#include "intelli/calculators/graphexeccalculator.h"
+
 #include "gt_xmlexpr.h"
 #include "gt_xmlutilities.h"
 #include "gt_coreapplication.h"
@@ -186,6 +188,13 @@ QList<GtCalculatorData>
 GtIntelliGraphModule::calculators()
 {
     QList<GtCalculatorData> list;
+
+    auto graphExec = GT_CALC_DATA(intelli::GraphExecCalculator);
+    graphExec->id = QStringLiteral("intelli graph execution");
+    graphExec->version = GtVersionNumber(0, 1);
+    graphExec->author = QStringLiteral("AT-TWK");
+    graphExec->category = QStringLiteral("Graph");
+    list << graphExec;
 
     return list;
 }
