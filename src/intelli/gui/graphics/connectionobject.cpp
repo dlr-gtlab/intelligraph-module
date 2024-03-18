@@ -32,6 +32,13 @@ ConnectionGraphicsObject::boundingRect() const
     return {};
 }
 
+Connection&
+ConnectionGraphicsObject::connection()
+{
+    assert(m_connection);
+    return *m_connection;
+}
+
 void
 ConnectionGraphicsObject::paint(QPainter* painter,
                                 QStyleOptionGraphicsItem const* option,

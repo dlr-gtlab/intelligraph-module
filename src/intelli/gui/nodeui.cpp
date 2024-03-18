@@ -11,6 +11,7 @@
 
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
+#include "intelli/nodedatafactory.h"
 #include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
@@ -143,33 +144,16 @@ NodeUI::NodeUI(Option option)
     }).setIcon(gt::gui::icon::bug());
 }
 
-QColor
-NodeUI::backgroundColor(Node& node) const
+std::unique_ptr<NodePainter>
+NodeUI::painter(NodeGraphicsObject& object, NodeGeometry& geometry) const
 {
-    QColor const& bg = style::nodeBackground();
-
-    if (node.nodeFlags() & NodeFlag::Unique)
-    {
-        return gt::gui::color::lighten(bg, 20);
-    }
-    if (toGraph(&node))
-    {
-        return gt::gui::color::lighten(bg, 10);
-    }
-
-    return bg;
+    return std::make_unique<NodePainter>(object, geometry);
 }
 
-Painter
-NodeUI::painter(NodeGraphicsObject& object, QPainter& painter) const
-{
-    return {object, painter, geometry(*object.node())};
-}
-
-Geometry
+std::unique_ptr<NodeGeometry>
 NodeUI::geometry(Node& node) const
 {
-    return {node};
+    return std::make_unique<NodeGeometry>(node);
 }
 
 QIcon
@@ -349,85 +333,239 @@ NodeUI::setActive(GtObject* obj, bool state)
     }
 }
 
-constexpr double s_port_diameter = 8.0;
-constexpr double s_rounded_rect_radius = 2.0;
+constexpr int s_port_diameter = 8;
+constexpr int s_rounded_rect_radius = 2;
+constexpr int s_eval_state_width = 20;
 
-Geometry::Geometry(Node& node) :
+NodeGeometry::NodeGeometry(Node& node) :
     m_node(&node)
 {
 
 }
 
-double
-Geometry::hspacing() const
+bool
+NodeGeometry::positionWidgetAtBottom() const
+{
+    return m_node->nodeFlags() & NodeFlag::Resizable && m_node->embeddedWidget();
+}
+
+int
+NodeGeometry::hspacing() const
 {
     return 10;
 }
 
-double
-Geometry::vspacing() const
+int
+NodeGeometry::vspacing() const
 {
     return hspacing();
 }
 
-QRectF
-Geometry::innerRect() const
+int
+NodeGeometry::captionHeightExtend() const
 {
-    auto rect = boundingRect();
+    QRectF caption = captionRect();
+    return caption.height() + 2 * caption.topLeft().y();
+}
 
-    return QRectF(rect.topLeft() + QPointF{s_port_diameter * 0.5, 0},
-                  QSizeF{rect.width() - s_port_diameter, rect.height()});
+int
+NodeGeometry::portHorizontalExtend(PortType type) const
+{
+    int advance = 0;
+
+    auto n = m_node->ports(type).size();
+    for (PortIndex idx{0}; idx < n; ++idx)
+    {
+        advance = std::max(advance, (int)portCaptionRect(type, idx).width() + hspacing());
+    }
+    return advance;
+}
+
+int
+NodeGeometry::portHeightExtend() const
+{
+    QRectF caption = captionRect();
+    int height = caption.height() + caption.topLeft().y();
+
+    for (PortType type : {PortType::In, PortType::Out})
+    {
+        auto n = m_node->ports(type).size();
+        if (n == 0) continue;
+
+        height = std::max(height, (int)(portCaptionRect(type, PortIndex::fromValue(n - 1)).bottomLeft().y() + 0.5 * vspacing()));
+    }
+
+    return height;
 }
 
 QRectF
-Geometry::boundingRect() const
+NodeGeometry::innerRect() const
 {
-    return QRectF(QPoint{0, 0}, QSize{200, 200});
+    // some functions used to calc inner rect may calculate inner rect them selves
+    // -> return empty rect to avoid cyclic calls
+    if (m_isCalculating) return {};
+
+    m_isCalculating = true;
+    auto cleanup = gt::finally([this](){ m_isCalculating = false; });
+
+    QSize wSize{0, 0};
+    if (auto w = m_node->embeddedWidget())
+    {
+        wSize = w->size();
+    }
+    bool positionAtBottom = positionWidgetAtBottom();
+
+    // height
+    int height = 0.5 * vspacing() + portHeightExtend();
+
+    // width
+    int width = 0;
+    for (PortType type : {PortType::In, PortType::Out})
+    {
+        width += portHorizontalExtend(type) + hspacing();
+    }
+
+    if (positionAtBottom)
+    {
+        height += wSize.height() + vspacing() + (m_node->nodeFlags() & NodeFlag::Resizable) * resizeHandleRect().height();
+        width   = std::max(width, (int)wSize.width() + hspacing());
+    }
+    else
+    {
+        height = std::max((double)height, captionHeightExtend() + wSize.height() + 0.5 * vspacing());
+        width += wSize.width();
+    }
+
+    width = std::max(width, (int)(s_eval_state_width + hspacing() + captionRect().width()));
+
+    return QRectF(QPoint{0, 0}, QSize{width, height});
 }
 
 QRectF
-Geometry::captionRect() const
+NodeGeometry::boundingRect() const
+{
+    auto rect = innerRect();
+
+    return QRectF(rect.topLeft() - QPointF{s_port_diameter * 2.5, s_port_diameter * 2.5},
+                  QSizeF{rect.width() + s_port_diameter * 5, rect.height() + s_port_diameter * 5});
+}
+
+QRectF
+NodeGeometry::captionRect() const
 {
     QFont f;
     f.setBold(true);
-    QFontMetrics boldFontMetrics(f);
+    QFontMetrics metrics{f};
 
-    return boldFontMetrics.boundingRect(m_node->caption());
+    // center caption
+    int width = metrics.horizontalAdvance(m_node->caption());
+    width += 2;
+    QRectF rect{innerRect().topLeft(), QSize{width, metrics.height()}};
+    double offset = 0.5 * (innerRect().width() - rect.width()) + 0.5 * s_eval_state_width;
+    rect.translate(offset, 0.5 * vspacing());
+
+    return rect;
 }
 
 QPointF
-Geometry::evalStateVisualizerPosition() const
+NodeGeometry::evalStateVisualizerPosition() const
 {
-    return boundingRect().topLeft() + QPointF{s_port_diameter * 0.5, 0};
+    return innerRect().topLeft();
+}
+
+QPointF
+NodeGeometry::widgetPosition() const
+{
+    auto* w = m_node->embeddedWidget();
+    if (!w) return {};
+
+    if (positionWidgetAtBottom())
+    {
+        double xOffset = 0.5 * (innerRect().width() - w->width());
+        double yOffset = portHeightExtend();
+
+        return QPointF{xOffset, yOffset};
+    }
+
+    double xOffset = hspacing() + portHorizontalExtend(PortType::In);
+    double yOffset = captionHeightExtend();
+
+    if (m_node->ports(PortType::In).empty())
+    {
+        xOffset = innerRect().width() - w->width() - hspacing() - portHorizontalExtend(PortType::Out);
+    }
+
+    return QPointF{xOffset, yOffset};
 }
 
 QRectF
-Geometry::portRect(PortType type, PortIndex idx) const
+NodeGeometry::portRect(PortType type, PortIndex idx) const
 {
     assert(type != PortType::NoType && idx != invalid<PortIndex>());
 
-    double height = 0.0;
+    QFontMetrics metrics{QFont()};
 
-    height += captionRect().height();
-    height += 1.0 * vspacing(); // below caption
+    double height = captionHeightExtend() + 0.5 * vspacing();
 
     for (PortIndex i{0}; i < idx; ++i)
     {
-        auto* port = m_node->port(m_node->portId(type, i));
-        assert(port);
-
-        height += vspacing() * (0.5 + 1 + port->caption.count('\n'));
+        height += 0.5 * vspacing() + metrics.height();
     }
 
-    height += vspacing();
-
     double width = type == PortType::Out ? innerRect().width() : 0.0;
+    width -= 0.5 * s_port_diameter;
 
     return {QPointF(width, height), QSizeF{s_port_diameter, s_port_diameter}};
 }
 
 QRectF
-Geometry::resizeHandleRect() const
+NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
+{
+    assert(type != PortType::NoType && idx != invalid<PortIndex>());
+
+    QFontMetrics metrics{QFont()};
+
+    auto& factory = NodeDataFactory::instance();
+
+    auto* port = m_node->port(m_node->portId(type, idx));
+    assert(port);
+
+    int lineHeight = metrics.height();
+    int width = metrics.horizontalAdvance(port->caption.isEmpty() ? factory.typeName(port->typeId) : port->caption);
+    width += (width & 1);
+
+    QPointF pos = portRect(type, idx).center();
+    pos.setY(pos.y() - lineHeight * 0.5);
+    pos.setX(type == PortType::In ?
+                 pos.x() + hspacing() :
+                 pos.x() - hspacing() - width);
+
+    return QRectF{pos, QSize{width, lineHeight}};
+}
+
+NodeGeometry::PortHit
+NodeGeometry::portHit(QPointF coord) const
+{
+    auto rect = innerRect();
+
+    // estimate whether its a input or output port
+    PortType type = (coord.x() < rect.x() + 0.5 * rect.width()) ? PortType::In : PortType::Out;
+
+    // check each port
+    for (auto& port : m_node->ports(type))
+    {
+        auto pRect = this->portRect(type, m_node->portIndex(type, port.id()));
+        if (pRect.contains(coord))
+        {
+            return PortHit{type, port.id()};
+        }
+    }
+
+    return {};
+}
+
+QRectF
+NodeGeometry::resizeHandleRect() const
 {
     constexpr QSize size{10, 10};
 
@@ -435,58 +573,72 @@ Geometry::resizeHandleRect() const
     return QRectF(rect.bottomRight() - QPoint{size.width(), size.height()}, size);
 }
 
-QPointF
-Geometry::widgetPosition() const
-{
-    return {};
-}
-
-Geometry::PortHit
-Geometry::portHit(QPointF coord) const
-{
-    return {};
-}
-
 void
-Geometry::recomputeGeomtry()
+NodeGeometry::recomputeGeomtry()
 {
 
 }
 
-Painter::Painter(NodeGraphicsObject& obj, QPainter& painter, Geometry geometry) :
-    m_object(&obj), m_painter(&painter), m_geometry(geometry)
+//////////////////////////////////////////////////
+
+NodePainter::NodePainter(NodeGraphicsObject& obj, NodeGeometry& geometry) :
+    m_object(&obj), m_geometry(&geometry)
 {
-    paint();
+
 }
 
-void
-Painter::drawRect()
+QColor
+NodePainter::backgroundColor() const
 {
+    auto& node = m_object->node();
 
-    auto color = m_object->isSelected() ? style::boundarySelected() : style::boundaryDefault();
+    QColor const& bg = style::nodeBackground();
 
-    QPen pen(color, m_object->isHovered() ? style::borderWidthHovered() : style::borderWidthDefault());
-    m_painter->setPen(pen);
-    m_painter->setBrush(style::nodeBackground());
-
-    m_painter->drawRoundedRect(m_geometry.innerRect(),
-                               s_rounded_rect_radius,
-                               s_rounded_rect_radius);
-}
-
-void
-Painter::drawPorts()
-{
-    auto* node = m_object->node();
-    assert(node);
-
-    for (PortType portType : {PortType::Out, PortType::In})
+    if (node.nodeFlags() & NodeFlag::Unique)
     {
-        size_t const n = node->ports(portType).size();
+        return gt::gui::color::lighten(bg, 20);
+    }
+    if (NodeUI::toGraph(&node))
+    {
+        return gt::gui::color::lighten(bg, 10);
+    }
 
-        for (PortIndex portIndex{0}; portIndex < n; ++portIndex)
+    return bg;
+}
+
+void
+NodePainter::drawRect(QPainter& painter)
+{
+    QColor color = m_object->isSelected() ? style::boundarySelected() : style::boundaryDefault();
+    QPen pen(color, m_object->isHovered() ? style::borderWidthHovered() : style::borderWidthDefault());
+    painter.setPen(pen);
+    painter.setBrush(style::nodeBackground());
+
+    painter.drawRoundedRect(m_geometry->innerRect(),
+                            s_rounded_rect_radius,
+                            s_rounded_rect_radius);
+}
+
+void
+NodePainter::drawPorts(QPainter& painter)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    auto& node = m_object->node();
+    auto& graph = m_object->graph();
+
+    for (PortType type : {PortType::Out, PortType::In})
+    {
+        size_t const n = node.ports(type).size();
+
+        for (PortIndex idx{0}; idx < n; ++idx)
         {
-            QRectF p = m_geometry.portRect(portType, portIndex);
+            auto* port = node.port(node.portId(type, idx));
+            assert(port);
+
+            if (!port->visible) continue;
+
+            QRectF p = m_geometry->portRect(type, idx);
 
 //            double r = 1.0;
 
@@ -517,8 +669,27 @@ Painter::drawPorts()
 //                }
 //            }
 
-            m_painter->setBrush(Qt::red);
-            m_painter->drawEllipse(p);
+            QColor color = m_object->isSelected() ? style::boundarySelected() : style::boundaryDefault();
+            QPen pen(color, m_object->isHovered() ? style::borderWidthHovered() : style::borderWidthDefault());
+            painter.setPen(pen);
+            painter.setBrush(gt::gui::color::disabled());
+            painter.drawEllipse(p);
+
+            if (!port->captionVisible) continue;
+
+            bool connected = !graph.findConnections(node.id(), port->id()).empty();
+
+            painter.setPen(connected ? gt::gui::color::text() : gt::gui::color::disabled());
+
+            painter.drawText(m_geometry->portCaptionRect(type, idx),
+                                port->caption.isEmpty() ? factory.typeName(port->typeId) : port->caption,
+                                type == PortType::In ? QTextOption{Qt::AlignLeft} : QTextOption{Qt::AlignRight});
+
+            continue;
+            painter.setPen(Qt::yellow);
+            painter.setBrush(Qt::NoBrush);
+            painter.drawRect(m_geometry->portRect(type, idx));
+            painter.drawRect(m_geometry->portCaptionRect(type, idx));
         }
     }
 
@@ -529,45 +700,50 @@ Painter::drawPorts()
 }
 
 void
-Painter::drawCaption()
+NodePainter::drawCaption(QPainter& painter)
 {
-    auto* node = m_object->node();
-    assert(node);
+    auto& node = m_object->node();
 
-    if (node->nodeFlags() & NodeFlag::HideCaption) return;
+    if (node.nodeFlags() & NodeFlag::HideCaption) return;
 
-    m_painter->save();
-
-    QFont f = m_painter->font();
+    QFont f = painter.font();
+    bool isBold = f.bold();
     f.setBold(true);
 
-    QPointF pos = m_geometry.captionRect().topLeft();
+    QRectF rect = m_geometry->captionRect();
 
-    m_painter->setFont(f);
-    m_painter->setPen(gt::gui::color::text());
-    m_painter->drawText(pos, node->caption());
+    painter.setFont(f);
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(gt::gui::color::text());
+    painter.drawText(rect, node.caption(), QTextOption{Qt::AlignHCenter});
 
-    m_painter->restore();
+    if (false)
+    {
+        painter.setPen(Qt::white);
+        painter.drawRect(m_geometry->captionRect());
+    }
+
+    f.setBold(isBold);
+    painter.setFont(f);
 }
 
 void
-Painter::drawResizeRect()
+NodePainter::drawResizeRect(QPainter& painter)
 {
-    auto* node = m_object->node();
-    assert(node);
+    auto& node = m_object->node();
 
-    if (node->nodeFlags() & NodeFlag::Resizable)
+    if (node.nodeFlags() & NodeFlag::Resizable && node.embeddedWidget())
     {
-        m_painter->setBrush(Qt::gray);
-        m_painter->drawEllipse(m_geometry.resizeHandleRect());
+        painter.setBrush(Qt::gray);
+        painter.drawEllipse(m_geometry->resizeHandleRect());
     }
 }
 
 void
-Painter::paint()
+NodePainter::paint(QPainter& painter)
 {
-    drawRect();
-    drawPorts();
-    drawCaption();
-    drawResizeRect();
+    drawRect(painter);
+    drawPorts(painter);
+    drawCaption(painter);
+    drawResizeRect(painter);
 }

@@ -17,17 +17,17 @@
 using namespace intelli;
 
 LogicSourceNode::LogicSourceNode() :
-    intelli::Node(QStringLiteral("Logic Source")),
+    Node(QStringLiteral("Logic Source")),
     m_value(QStringLiteral("value"), QStringLiteral("Value"), QStringLiteral("value"), false)
 {
     registerProperty(m_value);
 
-    setNodeEvalMode(intelli::NodeEvalMode::MainThread);
+    setNodeEvalMode(NodeEvalMode::MainThread);
 
-    m_out = addOutPort(intelli::typeId<intelli::BoolData>());
+    m_out = addOutPort(typeId<BoolData>());
 
     registerWidgetFactory([this](){
-        auto base = intelli::makeWidget();
+        auto base = makeBaseWidget();
 
         auto* w = new LogicDisplayWidget(m_value);
         base->layout()->addWidget(w);
@@ -50,6 +50,6 @@ LogicSourceNode::LogicSourceNode() :
 void
 LogicSourceNode::eval()
 {
-    setNodeData(m_out, std::make_shared<intelli::BoolData>(m_value));
+    setNodeData(m_out, std::make_shared<BoolData>(m_value));
 }
 

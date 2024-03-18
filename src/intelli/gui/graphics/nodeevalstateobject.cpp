@@ -21,11 +21,11 @@ using namespace intelli;
 
 NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent,
                                                          Node& node,
-                                                         NodeUI& ui) :
+                                                         NodePainter& painter) :
     QGraphicsObject(&parent),
     m_node(&node),
-    m_ui(&ui),
-    m_timeLine(1000)
+    m_timeLine(1000),
+    m_painter(&painter)
 {
     setZValue(10);
     m_timeLine.setEasingCurve(QEasingCurve::Linear);
@@ -112,7 +112,7 @@ NodeEvalStateGraphicsObject::paintIdleState(QPainter& painter)
         break;
     }
 
-    QColor const& backgroundColor = m_ui->backgroundColor(*m_node);
+    QColor const& backgroundColor = m_painter->backgroundColor();
     bool lighter = backgroundColor.lightnessF() <= 0.5;
     *color = color->lighter(100 + (lighter ? 50 : 0));
 
@@ -162,7 +162,7 @@ NodeEvalStateGraphicsObject::paintRunningState(QPainter& painter)
     // store colors for each circle
     std::array<QColor, N> colors;
 
-    QColor const& backgroundColor = m_ui->backgroundColor(*m_node);
+    QColor const& backgroundColor = m_painter->backgroundColor();
     bool lighter = backgroundColor.lightnessF() <= 0.5;
 
     // color gradient

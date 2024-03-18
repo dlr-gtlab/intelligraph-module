@@ -23,6 +23,7 @@ set(PUBLIC_HEADERS
     intelli/data/object.h
     intelli/data/stringlist.h
     intelli/data/string.h
+    intelli/data/int.h
     intelli/data/integer.h
     intelli/gui/icons.h
     intelli/gui/nodeui.h
@@ -52,7 +53,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/package.h
     intelli/connection.h
     intelli/connectiongroup.h
-    intelli/graphadaptermodel.h
     intelli/graphcategory.h
     intelli/module.h
     intelli/calculators/graphexeccalculator.h
@@ -77,7 +77,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphscene.h
     intelli/gui/graphview.h
     intelli/gui/packageui.h
-    intelli/gui/graphics/abstractobject.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/nodeobject.h
     intelli/gui/graphics/nodeevalstateobject.h
@@ -97,7 +96,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/core.cpp
     intelli/dynamicnode.cpp
     intelli/graph.cpp
-    intelli/graphadaptermodel.cpp
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp
     intelli/graphexecmodel.cpp
@@ -116,7 +114,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/object.cpp
     intelli/data/stringlist.cpp
     intelli/data/string.cpp
-    intelli/data/integer.cpp
+    intelli/data/int.cpp
     intelli/node/finddirectchild.cpp
     intelli/node/groupinputprovider.cpp
     intelli/node/groupoutputprovider.cpp
@@ -144,7 +142,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/icons.cpp
     intelli/gui/packageui.cpp
     intelli/gui/style.cpp
-    intelli/gui/graphics/abstractobject.cpp
     intelli/gui/graphics/connectionobject.cpp
     intelli/gui/graphics/nodeobject.cpp
     intelli/gui/graphics/nodeevalstateobject.cpp

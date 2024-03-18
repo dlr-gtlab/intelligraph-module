@@ -168,6 +168,11 @@ intelli::style::colorVariaton(ColorVariation variation)
     }
 }
 
+QColor
+intelli::style::viewBackground()
+{
+    return gtApp->inDarkMode() ? QColor{21, 38, 53} : QColor{255, 255, 255};
+}
 
 QColor
 intelli::style::nodeBackground()

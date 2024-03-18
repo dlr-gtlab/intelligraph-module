@@ -26,9 +26,16 @@ class Node;
 class NodeGraphicsObject;
 class DynamicNode;
 
-struct Geometry
+class NodeGeometry
 {
-    Geometry(Node& node);
+public:
+
+    NodeGeometry(Node& node);
+    NodeGeometry(NodeGeometry const&) = delete;
+    NodeGeometry(NodeGeometry&&) = delete;
+    NodeGeometry& operator=(NodeGeometry const&) = delete;
+    NodeGeometry& operator=(NodeGeometry&&) = delete;
+    virtual ~NodeGeometry() = default;
 
     struct PortHit
     {
@@ -41,8 +48,10 @@ struct Geometry
         }
     };
 
-    double hspacing() const;
-    double vspacing() const;
+    bool positionWidgetAtBottom() const;
+
+    int hspacing() const;
+    int vspacing() const;
 
     QRectF innerRect() const;
 
@@ -52,35 +61,52 @@ struct Geometry
 
     QPointF evalStateVisualizerPosition() const;
 
+    QPointF widgetPosition() const;
+
     QRectF portRect(PortType type, PortIndex idx) const;
 
     QRectF portCaptionRect(PortType type, PortIndex idx) const;
 
-    QRectF resizeHandleRect() const;
-
-    QPointF widgetPosition() const;
-
     PortHit portHit(QPointF coord) const;
+
+    QRectF resizeHandleRect() const;
 
     void recomputeGeomtry();
 
+private:
     Node* m_node;
+    mutable bool m_isCalculating = false;
+
+    int captionHeightExtend() const;
+
+    int portHorizontalExtend(PortType type) const;
+
+    int portHeightExtend() const;
 };
 
-struct Painter
+class NodePainter
 {
-    Painter(NodeGraphicsObject& obj, QPainter& painter, Geometry geometry);
+public:
 
-    void drawRect();
-    void drawPorts();
-    void drawCaption();
-    void drawResizeRect();
+    NodePainter(NodeGraphicsObject& obj, NodeGeometry& geometry);
+    NodePainter(NodePainter const&) = delete;
+    NodePainter(NodePainter&&) = delete;
+    NodePainter& operator=(NodePainter const&) = delete;
+    NodePainter& operator=(NodePainter&&) = delete;
+    virtual ~NodePainter() = default;
 
-    void paint();
+    QColor backgroundColor() const;
 
+    void drawRect(QPainter& painter);
+    void drawPorts(QPainter& painter);
+    void drawCaption(QPainter& painter);
+    void drawResizeRect(QPainter& painter);
+
+    void paint(QPainter& painter);
+
+private:
     NodeGraphicsObject* m_object;
-    QPainter* m_painter;
-    Geometry m_geometry;
+    NodeGeometry* m_geometry;
 };
 
 class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
@@ -102,12 +128,10 @@ public:
     using PortActionFunction = typename PortUIAction::ActionMethod;
 
     Q_INVOKABLE NodeUI(Option option = NoOption);
-
-    virtual QColor backgroundColor(Node& node) const;
-
-    virtual Painter painter(NodeGraphicsObject& object, QPainter& painter) const;
-
-    virtual Geometry geometry(Node& node) const;
+    
+    virtual std::unique_ptr<NodePainter> painter(NodeGraphicsObject& object, NodeGeometry& geometry) const;
+    
+    virtual std::unique_ptr<NodeGeometry> geometry(Node& node) const;
 
     /**
      * @brief Icon for the object

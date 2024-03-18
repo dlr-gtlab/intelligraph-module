@@ -31,9 +31,6 @@
 
 #include <gt_logging.h>
 
-#include <QtNodes/internal/NodeGraphicsObject.hpp>
-#include <QtNodes/internal/ConnectionGraphicsObject.hpp>
-
 #include <QGraphicsItem>
 #include <QClipboard>
 #include <QApplication>
@@ -90,41 +87,38 @@ static void findNodes(Graph& graph, In const& in, Out& out, bool onlyDeletable =
 
 struct SelectedItems
 {
-    QVector<NodeId> nodes;
-    QVector<ConnectionId> connections;
+    QVector<NodeGraphicsObject*> nodes;
+    QVector<ConnectionGraphicsObject*> connections;
 
     bool empty() const { return nodes.empty() && connections.empty(); }
 };
 
 static SelectedItems findSelectedItems(GraphScene& scene)
 {
-    auto  const& selected = scene.selectedItems();
-
-    if (selected.empty()) return {};
+    auto const& selected = scene.selectedItems();
 
     SelectedItems items;
-#if 0
     for (auto* item : selected)
     {
-        if (auto* node = qgraphicsitem_cast<QtNodes::NodeGraphicsObject*>(item))
+        if (auto* node = qgraphicsitem_cast<NodeGraphicsObject*>(item))
         {
-            items.nodes << NodeId(node->nodeId());
+            items.nodes << node;
             continue;
         }
-        if (auto* con = qgraphicsitem_cast<QtNodes::ConnectionGraphicsObject*>(item))
+        if (auto* con = qgraphicsitem_cast<ConnectionGraphicsObject*>(item))
         {
-            items.connections << scene.adapterModel().convert(con->connectionId());
+            items.connections << con;
             continue;
         }
     }
-#endif
+
     return items;
 }
 
 template<typename T>
-static QList<T> findItems(GraphScene& scene)
+static QVector<T> findItems(GraphScene& scene)
 {
-    QList<T> items;
+    QVector<T> items;
 
     for (auto* item : scene.items())
     {
@@ -142,27 +136,6 @@ GraphScene::GraphScene(Graph& graph) :
     m_graph(&graph)
 {
     reset();
-//    adapterModel().setParent(this);
-
-//    connect(this, &QtNodes::BasicGraphicsScene::nodeSelected,
-//            this, &GraphScene::onNodeSelected);
-//    connect(this, &QtNodes::BasicGraphicsScene::nodeDoubleClicked,
-//            this, &GraphScene::onNodeDoubleClicked);
-//    connect(this, &QtNodes::BasicGraphicsScene::nodeContextMenu,
-//            this, &GraphScene::onNodeContextMenu);
-//    connect(this, &QtNodes::BasicGraphicsScene::portContextMenu,
-//            this, &GraphScene::onPortContextMenu);
-//    connect(this, &QtNodes::BasicGraphicsScene::widgetResized,
-//            this, &GraphScene::onWidgetResized);
-//    connect(this, &QtNodes::BasicGraphicsScene::nodeClicked,
-//            this, [this](QtNodes::NodeId qnodeId){
-//        auto& model = adapterModel();
-//        model.commitPosition(NodeId(qnodeId));
-//        for (QtNodes::NodeId nodeId : selectedNodes())
-//        {
-//            model.commitPosition(NodeId(nodeId));
-//        }
-//    });
 }
 
 GraphScene::~GraphScene()
@@ -195,18 +168,18 @@ GraphScene::endReset()
 {
     m_nodes.clear();
 
+    auto* model = m_graph->executionModel();
+    if (!model) model = m_graph->makeExecutionModel();
+    else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
+
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
     {
         onNodeAppended(node);
     }
 
-    connect(m_graph, &Graph::nodeAppended, this, &GraphScene::onNodeAppended);
-    connect(m_graph, &Graph::nodeDeleted, this, &GraphScene::onNodeDeleted);
-
-    auto* model = m_graph->executionModel();
-    if (!model) model = m_graph->makeExecutionModel();
-    else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
+    connect(m_graph, &Graph::nodeAppended, this, &GraphScene::onNodeAppended, Qt::DirectConnection);
+    connect(m_graph, &Graph::nodeDeleted, this, &GraphScene::onNodeDeleted, Qt::DirectConnection);
 
     connect(model, &GraphExecutionModel::nodeEvalStateChanged,
             this, &GraphScene::onNodeEvalStateChanged);
@@ -220,6 +193,7 @@ GraphScene::graph()
     assert(m_graph);
     return *m_graph;
 }
+
 Graph const&
 GraphScene::graph() const
 {
@@ -238,23 +212,6 @@ GraphScene::isAutoEvaluating()
     auto* model = m_graph->makeExecutionModel();
 
     return model->isAutoEvaluating();
-}
-
-QVector<Node*>
-GraphScene::selectedNodes()
-{
-    QVector<Node*> nodes;
-    for (auto& entity : m_nodes)
-    {
-        if (entity.second->isSelected()) nodes << entity.second->node();
-    }
-    return nodes;
-}
-
-QVector<Node const*>
-GraphScene::selectedNodes() const
-{
-    return gt::container_const_cast(const_cast<GraphScene*>(this)->selectedNodes());
 }
 
 QMenu*
@@ -373,8 +330,8 @@ GraphScene::deleteSelectedObjects()
     if (selected.empty()) return;
 
     GtObjectList objects;
-    Impl::findConnections(*m_graph, selected.connections, objects);
-    Impl::findNodes(*m_graph, selected.nodes, objects, true);
+    std::transform(selected.connections.begin(), selected.connections.end(), std::back_inserter(objects), [](ConnectionGraphicsObject* o){ return &o->connection(); });
+    std::transform(selected.nodes.begin(), selected.nodes.end(), std::back_inserter(objects), [](NodeGraphicsObject* o){ return &o->node(); });
 
     auto modifyCmd = m_graph->modify();
     Q_UNUSED(modifyCmd);
@@ -402,12 +359,18 @@ GraphScene::copySelectedObjects()
 
     gtTrace().verbose() << __FUNCTION__;
 
+    auto const containsNode = [&selected](NodeId nodeId){
+        return std::find_if(selected.nodes.begin(), selected.nodes.end(), [nodeId](NodeGraphicsObject* o){
+            return o->node().id() == nodeId;
+        }) != selected.nodes.end();
+    };
+
     // only duplicate internal connections
     int iter = 0;
-    foreach (ConnectionId conId, selected.connections)
+    foreach (ConnectionGraphicsObject* o, selected.connections)
     {
-        if (!selected.nodes.contains(conId.inNodeId) ||
-            !selected.nodes.contains(conId.outNodeId))
+        auto& con = o->connection();
+        if (!containsNode(con.inNodeId()) || !containsNode(con.outNodeId()))
         {
             selected.connections.removeAt(iter);
             continue;
@@ -415,29 +378,24 @@ GraphScene::copySelectedObjects()
         iter++;
     }
 
-    QList<Node const*> nodes;
-    QList<Connection const*> connections;
-    Impl::findConnections(*m_graph, selected.connections, connections);
-    Impl::findNodes(*m_graph, selected.nodes, nodes);
-
     iter = 0;
-    foreach (Node const* node, nodes)
+    foreach (NodeGraphicsObject const* node, selected.nodes)
     {
-        if (node->nodeFlags() & NodeFlag::Unique)
+        if (node->node().nodeFlags() & NodeFlag::Unique)
         {
-            nodes.removeAt(iter);
+            selected.nodes.removeAt(iter);
             continue;
         }
         iter++;
     }
 
     // at least one node should be selected
-    if (nodes.empty()) return false;
+    if (selected.nodes.empty()) return false;
 
     // append nodes and connections to dummy graph
     Graph dummy;
-    for (auto* node : qAsConst(nodes))      dummy.appendNode(makeCopy(*node));
-    for (auto* con : qAsConst(connections)) dummy.appendConnection(makeCopy(*con));
+    for (auto* o : qAsConst(selected.nodes)) dummy.appendNode(makeCopy(o->node()));
+    for (auto* o : qAsConst(selected.connections)) dummy.appendConnection(makeCopy(o->connection()));
 
     QApplication::clipboard()->setText(dummy.toMemento().toByteArray());
 
@@ -504,12 +462,12 @@ GraphScene::pasteObjects()
     }
 
     // find affected graphics objects and set selection
-    auto nodes = Impl::findItems<QtNodes::NodeGraphicsObject*>(*this);
+    auto nodes = Impl::findItems<NodeGraphicsObject*>(*this);
     auto iter = 0;
     foreach (auto* node, nodes)
     {
-        auto nodeId = node->nodeId();
-        if (!newNodeIds.contains(NodeId(nodeId)))
+        NodeId nodeId = node->node().id();
+        if (!newNodeIds.contains(nodeId))
         {
             nodes.removeAt(iter);
             continue;
@@ -522,13 +480,13 @@ GraphScene::pasteObjects()
 
     if (!srcConnections.empty())
     {
-        auto connections = Impl::findItems<QtNodes::ConnectionGraphicsObject*>(*this);
+        auto connections = Impl::findItems<ConnectionGraphicsObject*>(*this);
         iter = 0;
         foreach (auto* con, connections)
         {
-            auto conId = con->connectionId();
-            if (!newNodeIds.contains(NodeId(conId.inNodeId)) ||
-                !newNodeIds.contains(NodeId(conId.outNodeId)))
+            auto conId = con->connection().connectionId();
+            if (!newNodeIds.contains(conId.inNodeId) ||
+                !newNodeIds.contains(conId.outNodeId))
             {
                 connections.removeAt(iter);
                 continue;
@@ -543,23 +501,19 @@ GraphScene::pasteObjects()
 void
 GraphScene::keyPressEvent(QKeyEvent* event)
 {
-#if 0
     // perform keyevent on node
-    QVector<Node*> nodes;
-    Impl::findNodes(*m_graph, selectedNodes(), nodes);
+    auto selected = Impl::findSelectedItems(*this);
 
-    if (nodes.size() != 1) return QtNodes::BasicGraphicsScene::keyPressEvent(event);
+    if (selected.nodes.size() != 1) return QGraphicsScene::keyPressEvent(event);
 
-    Node* node = nodes.front();
+    NodeGraphicsObject* o = selected.nodes.front();
+
     assert(event);
-    assert(node);
-
     event->setAccepted(false);
 
-    gt::gui::handleObjectKeyEvent(*event, *nodes.front());
+    gt::gui::handleObjectKeyEvent(*event, o->node());
 
-    if (!event->isAccepted()) QtNodes::BasicGraphicsScene::keyPressEvent(event);
-#endif
+    if (!event->isAccepted()) QGraphicsScene::keyPressEvent(event);
 }
 
 void
@@ -659,12 +613,12 @@ GraphScene::onNodeContextMenu(Node* node, QPointF pos)
     nodeItem->setSelected(true);
 
     // retrieve selected nodes
-    QVector<Node*> selectedNodes = this->selectedNodes();
+    auto selected = Impl::findSelectedItems(*this);
 
-    bool allDeletable = std::all_of(selectedNodes.begin(),
-                                    selectedNodes.end(),
-                                    [](Node* node){
-        return node->objectFlags() & GtObject::ObjectFlag::UserDeletable;
+    bool allDeletable = std::all_of(selected.nodes.begin(),
+                                    selected.nodes.end(),
+                                    [](NodeGraphicsObject* o){
+        return o->node().objectFlags() & GtObject::ObjectFlag::UserDeletable;
     });
 
     // create menu
@@ -673,7 +627,7 @@ GraphScene::onNodeContextMenu(Node* node, QPointF pos)
     QAction* groupAct = menu.addAction(tr("Group selected Nodes"));
     groupAct->setIcon(gt::gui::icon::select());
     groupAct->setEnabled(allDeletable);
-    groupAct->setVisible(!selectedNodes.empty());
+    groupAct->setVisible(!selected.nodes.empty());
 
     menu.addSeparator();
 
@@ -682,14 +636,13 @@ GraphScene::onNodeContextMenu(Node* node, QPointF pos)
     deleteAct->setEnabled(allDeletable);
 
     // add node to selected nodes
-    if (selectedNodes.empty())
+    if (selected.nodes.empty())
     {
         gtWarning() << "FUNCTION IS TRIGGERED";
-        selectedNodes.push_back(node);
     }
 
     // add custom object menu
-    if (selectedNodes.size() == 1)
+    if (selected.nodes.size() == 1)
     {
         menu.addSeparator();
         gt::gui::makeObjectContextMenu(menu, *node);
@@ -700,24 +653,26 @@ GraphScene::onNodeContextMenu(Node* node, QPointF pos)
 
     if (triggered == groupAct)
     {
-        std::vector<QtNodes::NodeId> selectedNodeIds;
-        std::transform(selectedNodes.begin(), selectedNodes.end(),
-                       std::back_inserter(selectedNodeIds), [](Node* node) {
-            return node->id();
-        });
-        return makeGroupNode(selectedNodeIds);
+//        std::vector<QtNodes::NodeId> selectedNodeIds;
+//        std::transform(selectedNodes.begin(), selectedNodes.end(),
+//                       std::back_inserter(selectedNodeIds), [](Node* node) {
+//            return node->id();
+//        });
+//        return makeGroupNode(selectedNodeIds);
+        return;
     }
     if (triggered == deleteAct)
     {
         GtObjectList list;
-        std::transform(selectedNodes.begin(), selectedNodes.end(),
-                       std::back_inserter(list), [](Node* node) {
-             return node;
+        std::transform(selected.nodes.begin(), selected.nodes.end(),
+                       std::back_inserter(list), [](NodeGraphicsObject* o) {
+             return &o->node();
          });
         return (void)gtDataModel->deleteFromModel(list);
     }
 }
 
+/*
 void
 GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
 {
@@ -970,14 +925,7 @@ GraphScene::makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds)
         groupNode->appendConnection(std::make_unique<Connection>(conId));
     }
 }
-
-//GraphAdapterModel&
-//GraphScene::adapterModel()
-//{
-//    auto* tmp = static_cast<GraphAdapterModel*>(&graphModel());
-//    assert(qobject_cast<GraphAdapterModel*>(&graphModel()));
-//    return *tmp;
-//}
+*/
 
 void
 GraphScene::onNodeAppended(Node* node)
@@ -989,13 +937,37 @@ GraphScene::onNodeAppended(Node* node)
     if (!ui) ui = &defaultUI;
 
     auto entity = make_volatile<NodeGraphicsObject>(*m_graph, *node, *ui);
+    // add to scene
     addItem(entity);
+
+    // connect signals
+    connect(node, &Node::nodeChanged,
+            entity, &NodeGraphicsObject::onNodeChanged);
+    connect(node, &Node::portChanged,
+            entity, &NodeGraphicsObject::onNodeChanged);
 
     connect(entity, &NodeGraphicsObject::portContextMenuRequested,
             this, &GraphScene::onPortContextMenu);
     connect(entity, &NodeGraphicsObject::contextMenuRequested,
             this, &GraphScene::onNodeContextMenu);
 
+    connect(entity, &NodeGraphicsObject::nodeShifted, this, [this](QPointF diff){
+        auto* sender = this->sender();
+            for (auto* object : Impl::findSelectedItems(*this).nodes)
+        {
+            if (sender != object && object->isSelected()) object->moveBy(diff.x(), diff.y());
+        }
+    }, Qt::DirectConnection);
+
+    connect(entity, &NodeGraphicsObject::nodeMoved, this, [this](){
+        auto* sender = this->sender();
+        for (auto* object : Impl::findSelectedItems(*this).nodes)
+        {
+            if (sender != object && object->isSelected()) object->commitPosition();
+        }
+    }, Qt::DirectConnection);
+
+    // append to map
     m_nodes.insert({node->id(), std::move(entity)});
 }
 

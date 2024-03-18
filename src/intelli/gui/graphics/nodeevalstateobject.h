@@ -27,7 +27,11 @@ class NodeEvalStateGraphicsObject : public QGraphicsObject
 
 public:
 
-    NodeEvalStateGraphicsObject(QGraphicsObject& parent, Node& node, NodeUI& ui);
+    // Needed for qgraphicsitem_cast
+    enum { Type = UserType + (int)GraphicsItemType::NodeEvalState };
+    int type() const override { return Type; }
+
+    NodeEvalStateGraphicsObject(QGraphicsObject& parent, Node& node, NodePainter& painter);
 
     QRectF boundingRect() const override;
 
@@ -42,8 +46,8 @@ protected:
 private:
 
     QPointer<Node> m_node;
-    QPointer<NodeUI> m_ui;
     QTimeLine m_timeLine;
+    NodePainter* m_painter;
     NodeEvalState m_state = NodeEvalState::Invalid;
 
     void paintRunningState(QPainter& painter);

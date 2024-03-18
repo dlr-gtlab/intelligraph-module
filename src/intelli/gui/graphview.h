@@ -57,6 +57,7 @@ public slots:
     void setScale(double scale);
 
 private slots:
+
     void printPDF();
 
 signals:
@@ -80,6 +81,8 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
+    struct Impl;
+
     ScaleRange m_scaleRange;
     QPointF m_panPosition;
 

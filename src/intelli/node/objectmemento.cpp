@@ -20,7 +20,7 @@ ObjectMementoNode::ObjectMementoNode() :
     PortId inPort = addInPort(typeId<ObjectData>());
 
     registerWidgetFactory([this, inPort]() {
-        auto base = makeWidget();
+        auto base = makeBaseWidget();
         auto* w = new GtCodeEditor();
         base->layout()->addWidget(w);
 
@@ -38,7 +38,7 @@ ObjectMementoNode::ObjectMementoNode() :
                 }
             }
         };
-        
+
         connect(this, &Node::inputDataRecieved, w, update);
         update();
 

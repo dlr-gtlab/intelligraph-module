@@ -9,6 +9,7 @@
 
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
+#include "intelli/gui/style.h"
 #include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
 
@@ -20,22 +21,38 @@
 
 #include <gt_logging.h>
 
-#include <QtNodes/DataFlowGraphModel>
-#include <QtNodes/internal/locateNode.hpp>
-#include <QtNodes/internal/NodeGraphicsObject.hpp>
-
 #include <QCoreApplication>
 #include <QWheelEvent>
 #include <QGraphicsSceneWheelEvent>
+#include <QGraphicsWidget>
 #include <QMenuBar>
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QPrinter>
 
-
 #include <cmath>
 
 using namespace intelli;
+
+struct GraphView::Impl
+{
+    static NodeGraphicsObject* locateNode(QPointF scenePoint,
+                                          QGraphicsScene& scene,
+                                          QTransform const& viewTransform)
+    {
+        for (auto* item : scene.items(scenePoint,
+                                      Qt::IntersectsItemShape,
+                                      Qt::DescendingOrder,
+                                      viewTransform))
+        {
+            if (auto* node = qgraphicsitem_cast<NodeGraphicsObject*>(item))
+            {
+                return node;
+            }
+        }
+        return nullptr;
+    }
+};
 
 GraphView::GraphView(QWidget* parent) :
     GtGraphicsView(nullptr, parent)
@@ -43,8 +60,7 @@ GraphView::GraphView(QWidget* parent) :
     setDragMode(QGraphicsView::ScrollHandDrag);
     setRenderHint(QPainter::Antialiasing);
 
-    auto const &flowViewStyle = QtNodes::StyleCollection::flowViewStyle();
-    setBackgroundBrush(flowViewStyle.BackgroundColor);
+    setBackgroundBrush(style::viewBackground());
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -349,13 +365,12 @@ GraphView::wheelEvent(QWheelEvent* event)
     if (auto* s = scene())
     {
         auto pos = event->position().toPoint();
-        auto* node = QtNodes::locateNodeAt(mapToScene(pos), *s, transform());
+        auto* node = Impl::locateNode(mapToScene(pos), *s, transform());
 
-        if (node && node->centralWidget())
+        if (node)
+        if (auto* w = node->centralWidget())
         {
-            auto* w = node->centralWidget();
-
-            auto bounding = mapFromScene(w->sceneBoundingRect());
+            QPolygon bounding = mapFromScene(w->sceneBoundingRect());
 
             // forward event to widget
             if (bounding.containsPoint(pos, Qt::OddEvenFill))
@@ -377,9 +392,9 @@ GraphView::wheelEvent(QWheelEvent* event)
 
     QPoint delta = event->angleDelta();
 
-    if (delta.y() == 0) {
-        event->ignore();
-        return;
+    if (delta.y() == 0)
+    {
+        return event->ignore();
     }
 
     double const d = delta.y() / std::abs(delta.y());

@@ -12,7 +12,7 @@
 using namespace intelli;
 
 BoolData::BoolData(bool val) :
-    NodeData("boolean"),
+    NodeData("bool"),
     m_data(std::move(val))
 {
 

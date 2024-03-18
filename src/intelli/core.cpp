@@ -49,7 +49,7 @@ intelli::initModule()
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(ObjectData);
         GT_INTELLI_REGISTER_DATA(StringData);
-        GT_INTELLI_REGISTER_DATA(IntegerData);
+        GT_INTELLI_REGISTER_DATA(IntData);
         GT_INTELLI_REGISTER_DATA(ByteArrayData);
 
         GT_INTELLI_REGISTER_NODE(Graph, "Other")

@@ -17,20 +17,20 @@
 using namespace intelli;
 
 LogicNode::LogicNode() :
-    intelli::Node("Logic Operation"),
+    Node("Logic Operation"),
     m_operation("operation", tr("Logic Operation"), tr("Logic Operation"), LogicOperation::AND)
 {
     registerProperty(m_operation);
 
     // in ports
-    m_inA = addInPort(intelli::typeId<intelli::BoolData>());
-    m_inB = addInPort(intelli::typeId<intelli::BoolData>());
+    m_inA = addInPort(typeId<BoolData>());
+    m_inB = addInPort(typeId<BoolData>());
 
     // out ports
-    m_out = addOutPort(intelli::typeId<intelli::BoolData>());
+    m_out = addOutPort(typeId<BoolData>());
 
     registerWidgetFactory([=](){
-        auto base = intelli::makeWidget();
+        auto base = makeBaseWidget();
         auto w = new QComboBox();
         base->layout()->addWidget(w);
         w->addItems(QStringList{"NOT", "AND", "OR", "XOR", "NAND", "NOR"});
@@ -43,11 +43,11 @@ LogicNode::LogicNode() :
 
         connect(w, &QComboBox::currentTextChanged,
                 this, [this, w](){
-                    auto tmp = toLogicOperation(w->currentText());
-                    if (tmp == m_operation) return;
+            auto tmp = toLogicOperation(w->currentText());
+            if (tmp == m_operation) return;
 
-                    m_operation = tmp;
-                });
+            m_operation = tmp;
+        });
 
         update();
 
@@ -61,7 +61,7 @@ LogicNode::LogicNode() :
         }
         else if (!port(m_inB))
         {
-            addInPort(PortData::customId(m_inB, intelli::typeId<intelli::BoolData>()));
+            addInPort(PortData::customId(m_inB, typeId<BoolData>()));
         }
         emit triggerNodeEvaluation();
     });
@@ -72,11 +72,11 @@ LogicNode::eval()
 {
     bool a = false, b = false, c = false;
 
-    if (auto tmp = nodeData<intelli::BoolData>(m_inA)) a = tmp->value();
+    if (auto tmp = nodeData<BoolData>(m_inA)) a = tmp->value();
 
     if (m_operation != NOT)
     {
-        if (auto tmp = nodeData<intelli::BoolData>(m_inB)) b = tmp->value();
+        if (auto tmp = nodeData<BoolData>(m_inB)) b = tmp->value();
     }
 
     switch (m_operation)
@@ -95,7 +95,7 @@ LogicNode::eval()
         c = !(a | b); break;
     }
 
-    setNodeData(m_out, std::make_shared<intelli::BoolData>(c));
+    setNodeData(m_out, std::make_shared<BoolData>(c));
 }
 
 QString

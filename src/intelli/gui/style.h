@@ -57,6 +57,8 @@ namespace style
 
 GT_INTELLI_EXPORT float colorVariaton(ColorVariation variation);
 
+GT_INTELLI_EXPORT QColor viewBackground();
+
 GT_INTELLI_EXPORT QColor nodeBackground();
 
 GT_INTELLI_EXPORT double nodeOpacity();

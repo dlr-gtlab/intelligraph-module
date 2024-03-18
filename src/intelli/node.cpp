@@ -37,7 +37,7 @@ inline auto* dataInterface(N* node, P& pimpl)
 } // namespace
 
 std::unique_ptr<QWidget>
-intelli::makeWidget()
+intelli::makeBaseWidget()
 {
     auto base = std::make_unique<QWidget>();
     auto* layout = new QVBoxLayout(base.get());
@@ -190,8 +190,7 @@ Node::setNodeEvalMode(NodeEvalMode mode)
 NodeFlags
 Node::nodeFlags() const
 {
-    // remove Resizable flag if no widgets exists
-    return pimpl->widget ? pimpl->flags : pimpl->flags & ~Resizable;
+    return pimpl->flags;
 }
 
 NodeEvalMode
@@ -444,11 +443,23 @@ Node::registerWidgetFactory(WidgetFactoryNoArgs factory)
 }
 
 QWidget*
-Node::embeddedWidget()
+Node::makeWidget()
 {
     if (!pimpl->widget) initWidget();
 
     return pimpl->widget;
+}
+
+QWidget*
+Node::embeddedWidget()
+{
+    return pimpl->widget;
+}
+
+QWidget const*
+Node::embeddedWidget() const
+{
+    return const_cast<Node*>(this)->embeddedWidget();
 }
 
 void

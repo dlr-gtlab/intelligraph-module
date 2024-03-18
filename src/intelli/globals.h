@@ -100,7 +100,6 @@ using NodeDataPtr  = std::shared_ptr<const NodeData>;
 
 using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
 
-
 namespace detail
 {
 
@@ -182,6 +181,15 @@ inline constexpr PortType invert(PortType type) noexcept
         return type;
     }
 }
+
+//! Enum for GraphicsObject::Type value
+enum class GraphicsItemType
+{
+    None = 0,
+    Node,
+    NodeEvalState,
+    Connection
+};
 
 namespace detail
 {

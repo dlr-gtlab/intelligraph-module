@@ -13,18 +13,18 @@
 #include <intelli/memory.h>
 #include <intelli/graph.h>
 #include <intelli/gui/graphics/nodeobject.h>
-
-#include <QtNodes/BasicGraphicsScene>
-#include <QtNodes/Definitions>
+#include <intelli/gui/graphics/connectionobject.h>
 
 #include <map>
+
+#include <QGraphicsScene>
 
 namespace intelli
 {
 
 class GraphAdapterModel;
 
-class GraphScene : public QGraphicsScene//QtNodes::BasicGraphicsScene
+class GraphScene : public QGraphicsScene
 {
     Q_OBJECT
 
@@ -42,10 +42,7 @@ public:
 
     bool isAutoEvaluating();
 
-    QVector<Node*> selectedNodes();
-    QVector<Node const*> selectedNodes() const;
-
-    QMenu* createSceneMenu(QPointF scenePos) /*override*/;
+    QMenu* createSceneMenu(QPointF scenePos);
 
 public slots:
 
@@ -73,7 +70,7 @@ private:
 
     void endReset();
 
-    void makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds);
+//    void makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds);
 
 //    GraphAdapterModel& adapterModel();
 

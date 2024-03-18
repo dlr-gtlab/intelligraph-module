@@ -594,7 +594,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     });
 
     connect(node.get(), &Node::portAboutToBeDeleted,
-            this, Impl::PortDeleted(this, node.get()));
+            this, Impl::PortDeleted(this, node.get()), Qt::DirectConnection);
 
     connect(node.get(), &Node::portDeleted,
             this, [this, nodeId = node->id()](PortType type, PortIndex idx){
@@ -602,7 +602,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     });
 
     connect(node.get(), &Node::nodeAboutToBeDeleted,
-            this, Impl::NodeDeleted(this));
+            this, Impl::NodeDeleted(this), Qt::DirectConnection);
 
     // update graph model
     emit nodeAppended(node.get());
@@ -690,7 +690,7 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
 
     // setup connections
     connect(connection.get(), &QObject::destroyed,
-            this, Impl::ConnectionDeleted(this, conId));
+            this, Impl::ConnectionDeleted(this, conId), Qt::DirectConnection);
 
     // update graph model
     emit connectionAppended(connection.get());

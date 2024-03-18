@@ -17,25 +17,25 @@
 using namespace intelli;
 
 LogicDisplayNode::LogicDisplayNode() :
-    intelli::Node(QStringLiteral("Logic Display"))
+    Node(QStringLiteral("Logic Display"))
 {
-    setNodeEvalMode(intelli::NodeEvalMode::MainThread);
+    setNodeEvalMode(NodeEvalMode::MainThread);
 
-    m_in = addInPort(intelli::typeId<intelli::BoolData>());
+    m_in = addInPort(typeId<BoolData>());
 
     registerWidgetFactory([this](){
-        auto base = intelli::makeWidget();
+        auto base = makeBaseWidget();
 
         auto* w = new LogicDisplayWidget();
         w->setReadOnly(true);
         base->layout()->addWidget(w);
 
         auto update = [this, w](){
-            auto* data = nodeData<intelli::BoolData>(m_in);
+            auto* data = nodeData<BoolData>(m_in);
             w->setValue(data ? data->value() : false);
         };
 
-        connect(this, &intelli::Node::inputDataRecieved, w, update);
+        connect(this, &Node::inputDataRecieved, w, update);
 
         update();
 

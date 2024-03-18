@@ -17,21 +17,6 @@
 
 #include <gt_intproperty.h>
 
-#include <QtNodes/Definitions>
-
-inline gt::log::Stream&
-operator<<(gt::log::Stream& s, QtNodes::ConnectionId const& con)
-{
-    {
-        gt::log::StreamStateSaver saver(s);
-        s.nospace()
-            << "NodeConnection["
-            << con.outNodeId << ":" << con.outPortIndex << "/"
-            << con.inNodeId  << ":" << con.inPortIndex  << "]";
-    }
-    return s;
-}
-
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& data)
 {
@@ -47,16 +32,6 @@ operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& d
 
 namespace intelli
 {
-
-inline constexpr static PortType convert(QtNodes::PortType type) noexcept
-{
-    return static_cast<PortType>(type);
-}
-
-inline constexpr static QtNodes::PortType convert(PortType type) noexcept
-{
-    return static_cast<QtNodes::PortType>(type);
-}
 
 template <typename Sender, typename SignalSender,
          typename Reciever, typename SignalReciever>

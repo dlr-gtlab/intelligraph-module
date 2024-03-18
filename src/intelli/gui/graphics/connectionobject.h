@@ -23,10 +23,15 @@ class ConnectionGraphicsObject : public QGraphicsObject
     Q_OBJECT
 
 public:
+    // Needed for qgraphicsitem_cast
+    enum { Type = UserType + (int)GraphicsItemType::Connection };
+    int type() const override { return Type; }
 
     ConnectionGraphicsObject(Connection& connection);
 
     QRectF boundingRect() const override;
+
+    Connection& connection();
 
 protected:
 

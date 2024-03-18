@@ -63,7 +63,7 @@ struct NodeImpl;
  * for widgets, that have trouble resizing correctly.
  * @return Widget pointer (never null)
  */
-GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeWidget();
+GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeBaseWidget();
 
 class GT_INTELLI_EXPORT Node : public GtObject
 {
@@ -303,12 +303,19 @@ public:
     PortId portId(PortType type, PortIndex idx) const noexcept(false);
 
     /**
+     * @brief Returns the embedded widget to use in the graph. Will instantiate
+     * the widget if it does not yet exists. Ownership may be transfered safely.
+     * @return Embedded widget
+     */
+    QWidget* makeWidget();
+
+    /**
      * @brief Returns the embedded widget used in the intelli graph. Ownership
-     * may be transfered safely. Note: Will instantiate the widget if it does
-     * not yet exists
+     * may be transfered safely.
      * @return Embedded widget
      */
     QWidget* embeddedWidget();
+    QWidget const* embeddedWidget() const;
 
 signals:
 
