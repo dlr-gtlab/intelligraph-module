@@ -9,8 +9,12 @@
 
 #include <intelli/gui/graphics/connectionobject.h>
 
+#include <intelli/gui/graphics/nodeobject.h>
+#include <intelli/gui/style.h>
+
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
+#include <QGraphicsSceneHoverEvent>
 
 using namespace intelli;
 
@@ -29,7 +33,24 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(Connection& connection) :
 QRectF
 ConnectionGraphicsObject::boundingRect() const
 {
-    return {};
+    auto points = pointsC1C2();
+
+    // `normalized()` fixes inverted rects.
+    QRectF basicRect = QRectF{m_out, m_in}.normalized();
+
+    QRectF c1c2Rect = QRectF(points.first, points.second).normalized();
+
+    QRectF commonRect = basicRect.united(c1c2Rect);
+
+    // TODO: define in style
+    constexpr float const diam = 8;
+    QPointF const cornerOffset(diam, diam);
+
+    // Expand rect by port circle diameter
+    commonRect.setTopLeft(commonRect.topLeft() - cornerOffset);
+    commonRect.setBottomRight(commonRect.bottomRight() + 2 * cornerOffset);
+
+    return commonRect;
 }
 
 Connection&
@@ -39,11 +60,202 @@ ConnectionGraphicsObject::connection()
     return *m_connection;
 }
 
+Connection const&
+ConnectionGraphicsObject::connection() const
+{
+    return const_cast<ConnectionGraphicsObject*>(this)->connection();
+}
+
+ConnectionId
+ConnectionGraphicsObject::connectionId() const
+{
+    return m_connection->connectionId();
+}
+
+QPointF
+ConnectionGraphicsObject::endPoint(PortType type) const
+{
+    switch (type)
+    {
+    case PortType::In:
+        return m_in;
+    case PortType::Out:
+        return m_out;
+    case PortType::NoType:
+        break;
+    }
+    throw GTlabException(__FUNCTION__, "invalid port type!");
+}
+
+void
+ConnectionGraphicsObject::setEndPoint(PortType type, QPointF pos)
+{
+    prepareGeometryChange();
+
+    switch (type)
+    {
+    case PortType::In:
+        m_in = pos;
+        return;
+    case PortType::Out:
+        m_out = pos;
+        return;
+    case PortType::NoType:
+        break;
+    }
+    throw GTlabException(__FUNCTION__, "invalid port type!");
+}
+
+ConnectionGraphicsObject::ControlPoints
+ConnectionGraphicsObject::pointsC1C2() const
+{
+    double const defaultOffset = 200;
+
+    double xDistance = m_in.x() - m_out.x();
+
+    double horizontalOffset = qMin(defaultOffset, std::abs(xDistance));
+
+    double verticalOffset = 0;
+
+    double ratioX = 0.5;
+
+    if (xDistance <= 0)
+    {
+        double yDistance = m_in.y() - m_out.y() + 20;
+
+        double vector = yDistance < 0 ? -1.0 : 1.0;
+
+        verticalOffset = qMin(defaultOffset, std::abs(yDistance)) * vector;
+
+        ratioX = 1.0;
+    }
+
+    horizontalOffset *= ratioX;
+
+    QPointF c1(m_out.x() + horizontalOffset, m_out.y() + verticalOffset);
+
+    QPointF c2(m_in.x() - horizontalOffset, m_in.y() - verticalOffset);
+
+    return std::make_pair(c1, c2);
+}
+
 void
 ConnectionGraphicsObject::paint(QPainter* painter,
                                 QStyleOptionGraphicsItem const* option,
                                 QWidget* widget)
 {
     painter->setClipRect(option->exposedRect);
+
+    bool const hovered  = m_hovered;
+    bool const selected = isSelected();
+    bool const isDraft = false;
+
+    // TODO: line width
+    double lineWidth = 3.0;
+
+    if (hovered || selected) lineWidth *= 2;
+    else if (isDraft) lineWidth = 2.0;
+
+    // TODO: color
+    QColor color = Qt::darkCyan;
+    if (hovered) color = Qt::lightGray;
+    else if (selected) color = style::boundarySelected();
+    else if (isDraft) color = Qt::gray;
+
+    QPen pen;
+    pen.setWidth(lineWidth);
+    pen.setColor(color);
+
+    painter->setPen(pen);
+    painter->setBrush(Qt::NoBrush);
+
+    // cubic spline
+    auto const cubic = cubicPath();
+    painter->drawPath(cubic);
+
+    // draw end points
+    painter->setPen(Qt::gray);
+    painter->setBrush(Qt::gray);
+    // TODO: point radius
+    double const pointRadius = 10.0 / 2.0;
+    painter->drawEllipse(m_out, pointRadius, pointRadius);
+    painter->drawEllipse(m_in,  pointRadius, pointRadius);
+
+    constexpr bool debug = false;
+    if (debug)
+    {
+        QPointF const &in = endPoint(PortType::In);
+        QPointF const &out = endPoint(PortType::Out);
+
+        auto const points = pointsC1C2();
+
+        painter->setPen(Qt::red);
+        painter->setBrush(Qt::red);
+
+        painter->drawLine(QLineF(out, points.first));
+        painter->drawLine(QLineF(points.first, points.second));
+        painter->drawLine(QLineF(points.second, in));
+        painter->drawEllipse(points.first, 3, 3);
+        painter->drawEllipse(points.second, 3, 3);
+
+        painter->setBrush(Qt::NoBrush);
+        painter->drawPath(cubicPath());
+
+        painter->setPen(Qt::yellow);
+        painter->drawRect(boundingRect());
+    }
+}
+
+QPainterPath
+ConnectionGraphicsObject::shape() const
+{
+    constexpr size_t segments = 20;
+
+    auto cubic = cubicPath();
+
+    QPainterPath result(endPoint(PortType::Out));
+
+    for (size_t i = 0; i < segments; ++i)
+    {
+        double ratio = double(i + 1) / segments;
+        result.lineTo(cubic.pointAtPercent(ratio));
+    };
+
+    QPainterPathStroker stroker;
+    stroker.setWidth(10.0);
+
+    return stroker.createStroke(result);
+}
+
+void
+ConnectionGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
+{
+    m_hovered = true;
+    update();
+    event->accept();
+}
+
+void
+ConnectionGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
+{
+    m_hovered = false;
+    update();
+    event->accept();
+}
+
+QPainterPath
+ConnectionGraphicsObject::cubicPath() const
+{
+    QPointF const &in = endPoint(PortType::In);
+    QPointF const &out = endPoint(PortType::Out);
+
+    auto const c1c2 = pointsC1C2();
+
+    // cubic spline
+    QPainterPath cubic(out);
+
+    cubic.cubicTo(c1c2.first, c1c2.second, in);
+
+    return cubic;
 }
 

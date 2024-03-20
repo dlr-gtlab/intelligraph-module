@@ -14,6 +14,7 @@
 #include <intelli/data/double.h>
 
 #include <gt_logstream.h>
+#include <gt_platform.h>
 
 #include <gt_intproperty.h>
 
@@ -57,8 +58,9 @@ struct IgnoreSignal
 
 template <typename Sender, typename SignalSender,
          typename Reciever, typename SignalReciever>
-auto ignoreSignal(Sender sender, SignalSender signalSender,
-                  Reciever reciever, SignalReciever signalReciever)
+GT_NO_DISCARD auto
+ignoreSignal(Sender sender, SignalSender signalSender,
+             Reciever reciever, SignalReciever signalReciever)
 {
     return IgnoreSignal<Sender, SignalSender, Reciever, SignalReciever>{
         sender, signalSender, reciever, signalReciever

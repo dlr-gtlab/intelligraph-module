@@ -37,6 +37,8 @@ public:
     Node& node();
     Node const& node() const;
 
+    NodeId nodeId() const;
+
     Graph& graph();
     Graph const& graph() const;
 
@@ -44,8 +46,14 @@ public:
 
     QRectF boundingRect() const override;
 
+    QPainterPath shape() const override;
+
     QGraphicsWidget* centralWidget();
     QGraphicsWidget const* centralWidget() const;
+
+    NodeGeometry const& geometry() const;
+
+    void moveConnections();
 
     void embedCentralWidget();
 
@@ -83,15 +91,19 @@ public slots:
 
 signals:
 
-    void nodeShifted(QPointF diff);
+    void nodeShifted(NodeGraphicsObject* object, QPointF diff);
 
-    void nodeMoved();
+    void nodeMoved(NodeGraphicsObject* object);
+
+    void nodeGeometryChanged(NodeGraphicsObject* object);
 
     void portContextMenuRequested(Node* node, PortId port, QPointF pos);
 
     void contextMenuRequested(Node* node, QPointF pos);
 
 private:
+
+    struct Impl;
 
     enum State
     {

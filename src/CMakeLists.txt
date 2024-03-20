@@ -166,7 +166,6 @@ target_link_libraries(GTlabIntelliGraph
   GTlab::Gui
   PRIVATE
   Qt5::Concurrent
-  QtNodes::QtNodes
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 

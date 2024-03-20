@@ -10,8 +10,10 @@
 #define GT_INTELLI_GLOBALS_H
 
 #include <gt_logging.h>
+#include <gt_exceptions.h>
 
 #include <chrono>
+#include <utility>
 
 #include <QPointF>
 #include <QRegExp>
@@ -22,6 +24,32 @@ namespace intelli
 class NodeData;
 
 constexpr auto max_timeout = std::chrono::milliseconds::max();
+
+/**
+ * @brief Denotes the possible port types
+ */
+enum class PortType
+{
+    /// Input port
+    In = 0,
+    /// Output port
+    Out,
+    /// Undefined port type (most uses are invalid!)
+    NoType
+};
+
+inline constexpr PortType invert(PortType type) noexcept
+{
+    switch (type)
+    {
+    case PortType::In:
+        return PortType::Out;
+    case PortType::Out:
+        return PortType::In;
+    default:
+        return type;
+    }
+}
 
 // Base class for typesafe type aliases
 template <typename T, typename Tag, T InitValue = 0>
@@ -147,6 +175,32 @@ struct ConnectionId
         return { inNodeId, inPort, outNodeId, outPort };
     }
 
+    constexpr NodeId node(PortType type) const
+    {
+        switch (type)
+        {
+        case PortType::In:
+            return inNodeId;
+        case PortType::Out:
+            return outNodeId;
+        case PortType::NoType:
+            throw GTlabException(__FUNCTION__, "invalid port type!");
+        }
+    }
+
+    constexpr PortId port(PortType type) const
+    {
+        switch (type)
+        {
+        case PortType::In:
+            return inPort;
+        case PortType::Out:
+            return outPort;
+        case PortType::NoType:
+            throw GTlabException(__FUNCTION__, "invalid port type!");
+        }
+    }
+
     constexpr bool isValid() const noexcept
     {
         return inNodeId  != invalid<NodeId>() ||
@@ -154,33 +208,17 @@ struct ConnectionId
                inPort    != invalid<PortId>() ||
                outPort   != invalid<PortId>();
     }
-};
-
-/**
- * @brief Denotes the possible port types
- */
-enum class PortType
-{
-    /// Input port
-    In = 0,
-    /// Output port
-    Out,
-    /// Undefined port type (most uses are invalid!)
-    NoType
-};
-
-inline constexpr PortType invert(PortType type) noexcept
-{
-    switch (type)
-    {
-    case PortType::In:
-        return PortType::Out;
-    case PortType::Out:
-        return PortType::In;
-    default:
-        return type;
+    // Overload comparison operators as needed
+    constexpr inline bool operator==(ConnectionId const& o) const noexcept {
+        return inNodeId == o.inNodeId &&
+               inPort == o.inPort &&
+               outNodeId == o.outNodeId &&
+               outPort == o.outPort;
     }
-}
+    constexpr inline bool operator!=(ConnectionId const& o) const noexcept {
+        return !(*this == o);
+    }
+};
 
 //! Enum for GraphicsObject::Type value
 enum class GraphicsItemType
@@ -224,15 +262,30 @@ constexpr inline bool
 operator/=(StrongType<T, Tag, InitVal> const& a,
            StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
 
-inline bool
-operator==(ConnectionId const& a, ConnectionId const& b)
+#if 0
+struct ConnectionIdHasher
 {
-    return a.outNodeId == b.outNodeId && a.outPort == b.outPort &&
-           a.inNodeId  == b.inNodeId  && a.inPort  == b.inPort;
-}
+    size_t operator()(ConnectionId const& c) const noexcept
+    {
+        using T = typename NodeId::value_type;
+        static_assert(2 * sizeof(T) == sizeof(uint64_t), "was expecting 32bit uint");
 
-inline bool
-operator!=(ConnectionId const& a, ConnectionId const& b) { return !(a == b); }
+        size_t hash = 0;
+        hash  = (size_t)(c.outNodeId ^ c.outPort) << 32;
+        hash += c.inNodeId ^ c.inPort;
+        return hash;
+    }
+};
+
+struct NodeIdHasher
+{
+    size_t operator()(NodeId nodeId) const noexcept
+    {
+        using T = typename NodeId::value_type;
+        return std::hash<T>{}(nodeId.value());
+    }
+};
+#endif
 
 } // namespace intelli
 
@@ -298,14 +351,5 @@ operator<<(gt::log::Stream& s, intelli::PortType type)
 
 } // namespace gt
 
-namespace gt
-{
-
-namespace [[deprecated]] ig
-{
-using namespace ::intelli;
-}
-
-}
 
 #endif // GT_INTELLI_GLOBALS_H

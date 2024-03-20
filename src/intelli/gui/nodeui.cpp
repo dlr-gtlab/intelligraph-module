@@ -398,10 +398,23 @@ NodeGeometry::portHeightExtend() const
     return height;
 }
 
+QPainterPath
+NodeGeometry::shape() const
+{
+    auto rect = innerRect();
+
+    rect = QRectF(rect.topLeft() - QPointF{s_port_diameter * 0.5, 0},
+                  QSizeF{rect.width() + s_port_diameter, rect.height()});
+
+    QPainterPath path;
+    path.addRect(rect);
+    return path;
+}
+
 QRectF
 NodeGeometry::innerRect() const
 {
-    // some functions used to calc inner rect may calculate inner rect them selves
+    // some functions may require inner rect to calculate their actual position
     // -> return empty rect to avoid cyclic calls
     if (m_isCalculating) return {};
 
@@ -427,7 +440,7 @@ NodeGeometry::innerRect() const
 
     if (positionAtBottom)
     {
-        height += wSize.height() + vspacing() + (m_node->nodeFlags() & NodeFlag::Resizable) * resizeHandleRect().height();
+        height += wSize.height(); //+ (m_node->nodeFlags() & NodeFlag::Resizable) * resizeHandleRect().height();
         width   = std::max(width, (int)wSize.width() + hspacing());
     }
     else
@@ -567,7 +580,7 @@ NodeGeometry::portHit(QPointF coord) const
 QRectF
 NodeGeometry::resizeHandleRect() const
 {
-    constexpr QSize size{10, 10};
+    constexpr QSize size{8, 8};
 
     QRectF rect = innerRect();
     return QRectF(rect.bottomRight() - QPoint{size.width(), size.height()}, size);
@@ -609,12 +622,38 @@ NodePainter::backgroundColor() const
 void
 NodePainter::drawRect(QPainter& painter)
 {
+    // draw backgrond
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(style::nodeBackground());
+
+    auto rect = m_geometry->innerRect();
+
+    painter.drawRoundedRect(rect,
+                            s_rounded_rect_radius,
+                            s_rounded_rect_radius);
+
+    // draw resize rect
+    auto& node = m_object->node();
+    if (node.nodeFlags() & NodeFlag::Resizable && node.embeddedWidget())
+    {
+        QRectF rect = m_geometry->resizeHandleRect();
+        QPolygonF poly;
+        poly.append(rect.bottomLeft());
+        poly.append(rect.bottomRight());
+        poly.append(rect.topRight());
+
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(gt::gui::color::lighten(style::boundaryDefault(), -30));
+        painter.drawPolygon(poly);
+    }
+
+    // draw border
     QColor color = m_object->isSelected() ? style::boundarySelected() : style::boundaryDefault();
     QPen pen(color, m_object->isHovered() ? style::borderWidthHovered() : style::borderWidthDefault());
     painter.setPen(pen);
-    painter.setBrush(style::nodeBackground());
+    painter.setBrush(Qt::NoBrush);
 
-    painter.drawRoundedRect(m_geometry->innerRect(),
+    painter.drawRoundedRect(rect,
                             s_rounded_rect_radius,
                             s_rounded_rect_radius);
 }
@@ -728,22 +767,9 @@ NodePainter::drawCaption(QPainter& painter)
 }
 
 void
-NodePainter::drawResizeRect(QPainter& painter)
-{
-    auto& node = m_object->node();
-
-    if (node.nodeFlags() & NodeFlag::Resizable && node.embeddedWidget())
-    {
-        painter.setBrush(Qt::gray);
-        painter.drawEllipse(m_geometry->resizeHandleRect());
-    }
-}
-
-void
 NodePainter::paint(QPainter& painter)
 {
     drawRect(painter);
     drawPorts(painter);
     drawCaption(painter);
-    drawResizeRect(painter);
 }

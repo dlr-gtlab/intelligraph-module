@@ -12,8 +12,7 @@
 #include "gt_application.h"
 #include "gt_logging.h"
 
-#include <QtNodes/StyleCollection>
-
+/*
 static void setStyleDark()
 {
     using QtNodes::GraphicsViewStyle;
@@ -111,6 +110,7 @@ static void setStyleBright()
   }
   )");
 }
+*/
 
 struct ApplyThemeFunctor
 {
@@ -140,17 +140,17 @@ intelli::applyTheme(Theme newTheme)
         theme = gtApp->inDarkMode() ? Theme::Dark : Theme::Bright;
     }
 
-    switch (theme)
-    {
-    case Theme::Bright:
-        return setStyleBright();
-    case Theme::Dark:
-        return setStyleDark();
-    case Theme::System:
-        throw std::logic_error("path is unreachable!");
-    }
+//    switch (theme)
+//    {
+//    case Theme::Bright:
+//        return setStyleBright();
+//    case Theme::Dark:
+//        return setStyleDark();
+//    case Theme::System:
+//        throw std::logic_error("path is unreachable!");
+//    }
 
-    gtError() << QObject::tr("Invalid theme!");
+//    gtError() << QObject::tr("Invalid theme!");
 }
 
 float
@@ -178,7 +178,6 @@ QColor
 intelli::style::nodeBackground()
 {
     return gtApp->inDarkMode() ? QColor{36, 49, 63} : QColor{245, 245, 245};
-
 }
 
 double

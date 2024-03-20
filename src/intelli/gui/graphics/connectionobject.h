@@ -23,6 +23,9 @@ class ConnectionGraphicsObject : public QGraphicsObject
     Q_OBJECT
 
 public:
+
+    using ControlPoints = std::pair<QPointF, QPointF>;
+
     // Needed for qgraphicsitem_cast
     enum { Type = UserType + (int)GraphicsItemType::Connection };
     int type() const override { return Type; }
@@ -32,6 +35,14 @@ public:
     QRectF boundingRect() const override;
 
     Connection& connection();
+    Connection const& connection() const;
+
+    ConnectionId connectionId() const;
+
+    QPointF endPoint(PortType type) const;
+    void setEndPoint(PortType type, QPointF pos);
+
+    ControlPoints pointsC1C2() const;
 
 protected:
 
@@ -39,9 +50,21 @@ protected:
                QStyleOptionGraphicsItem const* option,
                QWidget* widget = nullptr) override;
 
+    QPainterPath shape() const override;
+
+    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
+
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
+
 private:
 
     QPointer<Connection> m_connection;
+    mutable QPointF m_out;
+    mutable QPointF m_in;
+
+    bool m_hovered = false;
+
+    QPainterPath cubicPath() const;
 };
 
 } // namespace intelli

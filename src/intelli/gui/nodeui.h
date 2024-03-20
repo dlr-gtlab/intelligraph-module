@@ -53,6 +53,8 @@ public:
     int hspacing() const;
     int vspacing() const;
 
+    QPainterPath shape() const;
+
     QRectF innerRect() const;
 
     QRectF boundingRect() const;
@@ -100,7 +102,6 @@ public:
     void drawRect(QPainter& painter);
     void drawPorts(QPainter& painter);
     void drawCaption(QPainter& painter);
-    void drawResizeRect(QPainter& painter);
 
     void paint(QPainter& painter);
 

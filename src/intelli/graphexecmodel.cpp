@@ -1505,3 +1505,14 @@ GraphExecutionModel::onNodeEvaluated()
 
     if (isEvaluated()) emit graphEvaluated();
 }
+
+void
+GraphExecutionModel::onGraphIsActiveChanged()
+{
+    if (graph().isActive())
+    {
+        autoEvaluate().detach();
+        return;
+    }
+    disableAutoEvaluation();
+}

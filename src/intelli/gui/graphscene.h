@@ -38,9 +38,11 @@ public:
     Graph& graph();
     Graph const& graph() const;
 
-    void autoEvaluate(bool enable = true);
+    NodeGraphicsObject* nodeObject(NodeId nodeId);
+    NodeGraphicsObject const* nodeObject(NodeId nodeId) const;
 
-    bool isAutoEvaluating();
+    ConnectionGraphicsObject* connectionObject(ConnectionId conId);
+    ConnectionGraphicsObject const* connectionObject(ConnectionId conId) const;
 
     QMenu* createSceneMenu(QPointF scenePos);
 
@@ -64,7 +66,20 @@ private:
     
     QPointer<Graph> m_graph = nullptr;
 
-    std::map<NodeId, volatile_ptr<NodeGraphicsObject>> m_nodes;
+    struct NodeEntry
+    {
+        NodeId nodeId;
+        volatile_ptr<NodeGraphicsObject> object;
+    };
+
+    struct ConnectionEntry
+    {
+        ConnectionId conId;
+        volatile_ptr<ConnectionGraphicsObject> object;
+    };
+
+    std::vector<NodeEntry> m_nodes;
+    std::vector<ConnectionEntry> m_connections;
 
     void beginReset();
 
@@ -82,10 +97,30 @@ private slots:
 
     void onNodeEvalStateChanged(NodeId nodeId);
 
+    void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
+
+    void onNodeMoved(NodeGraphicsObject* sender);
+
+    void onConnectionAppended(Connection* con);
+
+    void onConnectionDeleted(ConnectionId conId);
+
+    void moveConnection(ConnectionGraphicsObject* object, NodeGraphicsObject* node = nullptr);
+
+    void moveConnectionPoint(ConnectionGraphicsObject* object, PortType type);
+
+    void moveConnections(NodeGraphicsObject* object);
+
     void onNodeContextMenu(Node* node, QPointF pos);
 
     void onPortContextMenu(Node* node, PortId portId, QPointF pos);
 };
+
+inline GraphScene*
+nodeScene(QGraphicsObject& o)
+{
+    return qobject_cast<GraphScene*>(o.scene());
+}
 
 } // namespace intelli
 

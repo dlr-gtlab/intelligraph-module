@@ -18,6 +18,8 @@
 #include <gt_guiutilities.h>
 #include <gt_application.h>
 #include <gt_filedialog.h>
+#include <gt_grid.h>
+#include <gt_state.h>
 
 #include <gt_logging.h>
 
@@ -77,6 +79,13 @@ GraphView::GraphView(QWidget* parent) :
     int maxSize = 32767;
     setSceneRect(-maxSize, -maxSize, (maxSize * 2), (maxSize * 2));
 
+    /* GRID */
+    auto* grid = new GtGrid(*this);
+    setGrid(grid);
+    grid->setShowAxis(false);
+    grid->setGridHeight(15);
+    grid->setGridWidth(15);
+
     /* MENU BAR */
     auto* menuBar = new QMenuBar;
 
@@ -89,7 +98,7 @@ GraphView::GraphView(QWidget* parent) :
               .setIcon(gt::gui::icon::revert());
 
     auto changeGrid =
-        gt::gui::makeAction(tr("Change Grid"), std::bind(&GraphView::changeGridTriggered, this))
+        gt::gui::makeAction(tr("Change Grid"), std::bind(&GraphView::gridChanged, this))
             .setIcon(gt::gui::icon::grid());
 
     auto print =
@@ -203,11 +212,11 @@ GraphView::setScene(GraphScene& scene)
 
     connect(&graph, &Graph::isActiveChanged, this, updateAutoEvalBtns);
 
-    connect(m_startAutoEvalBtn, &QPushButton::clicked, &scene, [=](){
-        if (auto* scene = nodeScene()) scene->autoEvaluate(true);
+    connect(m_startAutoEvalBtn, &QPushButton::clicked, &graph, [&graph](){
+        graph.setActive(true);
     });
-    connect(m_stopAutoEvalBtn, &QPushButton::clicked, &scene, [=](){
-        if (auto* scene = nodeScene()) scene->autoEvaluate(false);
+    connect(m_stopAutoEvalBtn, &QPushButton::clicked, &graph, [&graph](){
+        graph.setActive(false);
     });
 
     addAction(copyAction);

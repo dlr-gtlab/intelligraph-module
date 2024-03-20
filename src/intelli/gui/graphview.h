@@ -64,7 +64,7 @@ signals:
 
     void scaleChanged(double scale);
 
-    void changeGridTriggered();
+    void gridChanged();
 
 protected:
 
