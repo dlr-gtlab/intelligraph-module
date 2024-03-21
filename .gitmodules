@@ -1,0 +1,3 @@
+[submodule "thirdparty/gtnodes"]
+	path = thirdparty/gtnodes
+	url = https://gitlab.dlr.de/gtlab-coredev/sandbox/gt-nodes

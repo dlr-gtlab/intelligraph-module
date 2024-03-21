@@ -40,11 +40,11 @@ public:
     struct PortHit
     {
         PortType type{PortType::NoType};
-        PortId id{};
+        PortId port{};
 
         operator bool() const
         {
-            return type != PortType::NoType && id != invalid<PortId>();
+            return type != PortType::NoType && port != invalid<PortId>();
         }
     };
 
@@ -70,6 +70,7 @@ public:
     QRectF portCaptionRect(PortType type, PortIndex idx) const;
 
     PortHit portHit(QPointF coord) const;
+    PortHit portHit(QRectF coord) const;
 
     QRectF resizeHandleRect() const;
 

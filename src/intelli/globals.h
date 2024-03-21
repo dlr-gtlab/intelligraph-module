@@ -71,6 +71,8 @@ public:
     template<typename U>
     constexpr static StrongType fromValue(U value) { return StrongType{static_cast<T>(value)}; }
 
+    constexpr bool isValid() const noexcept;
+
     // Overload comparison operators as needed
     constexpr inline bool
     operator==(StrongType const& other) const noexcept { return m_value == other.m_value; }
@@ -169,7 +171,12 @@ struct ConnectionId
     PortId outPort;
     NodeId inNodeId;
     PortId inPort;
-    
+
+    constexpr void reverse() noexcept
+    {
+        *this = reversed();
+    }
+
     constexpr ConnectionId reversed() const noexcept
     {
         return { inNodeId, inPort, outNodeId, outPort };
@@ -203,11 +210,12 @@ struct ConnectionId
 
     constexpr bool isValid() const noexcept
     {
-        return inNodeId  != invalid<NodeId>() ||
-               outNodeId != invalid<NodeId>() ||
-               inPort    != invalid<PortId>() ||
+        return inNodeId  != invalid<NodeId>() &&
+               outNodeId != invalid<NodeId>() &&
+               inPort    != invalid<PortId>() &&
                outPort   != invalid<PortId>();
     }
+
     // Overload comparison operators as needed
     constexpr inline bool operator==(ConnectionId const& o) const noexcept {
         return inNodeId == o.inNodeId &&
@@ -261,6 +269,12 @@ template <typename T, typename Tag, T InitVal>
 constexpr inline bool
 operator/=(StrongType<T, Tag, InitVal> const& a,
            StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
+
+template <typename T, typename Tag, T InitValue>
+constexpr inline bool StrongType<T, Tag, InitValue>::isValid() const noexcept
+{
+    return *this != invalid<StrongType<T, Tag, InitValue>>();
+}
 
 #if 0
 struct ConnectionIdHasher

@@ -84,6 +84,12 @@ NodeEvalStateGraphicsObject::paint(QPainter* painter,
 }
 
 void
+NodeEvalStateGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
+{
+    return QGraphicsObject::mousePressEvent(event);
+}
+
+void
 NodeEvalStateGraphicsObject::paintIdleState(QPainter& painter)
 {
     QRectF rect = boundingRect();

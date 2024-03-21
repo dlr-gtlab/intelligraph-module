@@ -25,6 +25,30 @@
 
 using namespace intelli;
 
+class intelli::NodeProxyWidget : public QGraphicsProxyWidget
+{
+public:
+
+    using QGraphicsProxyWidget::QGraphicsProxyWidget;
+
+protected:
+
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override
+    {
+        if (!isSelected() && !event->modifiers().testFlag(Qt::ControlModifier))
+        {
+            auto* scene = this->scene();
+            assert(scene);
+            scene->clearSelection();
+        }
+
+        parentItem()->setSelected(true);
+
+        return QGraphicsProxyWidget::mousePressEvent(event);
+    }
+
+};
+
 struct NodeGraphicsObject::Impl
 {
 
@@ -160,7 +184,7 @@ NodeGraphicsObject::embedCentralWidget()
         p.setColor(QPalette::Window, m_painter->backgroundColor());
         w->setPalette(p);
 
-        m_proxyWidget = new QGraphicsProxyWidget(this);
+        m_proxyWidget = new NodeProxyWidget(this);
 
         m_proxyWidget->setWidget(w);
         m_proxyWidget->setPreferredWidth(5);
@@ -229,18 +253,18 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
     if (hit)
     {
-        auto const& connections = m_graph->findConnections(m_node->id(), hit.id);
+        auto const& connections = m_graph->findConnections(m_node->id(), hit.port);
 
         if (!connections.empty() && hit.type == PortType::In)
         {
             assert(connections.size() == 1);
-            auto const &conId = connections.first();
+            auto const& conId = connections.first();
 
-            // TODO: disconnect connection and make draft
-            m_graph->deleteConnection(conId);
+            emit makeDraftConnection(this, conId);
+            return;
         }
-
-        // TODO: make draft connection
+        
+        emit makeDraftConnection(this, hit.type, hit.port);
         return;
     }
 
@@ -257,7 +281,9 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
     if (!isSelected() && !event->modifiers().testFlag(Qt::ControlModifier))
     {
-        scene()->clearSelection();
+        auto* scene = this->scene();
+        assert(scene);
+        scene->clearSelection();
     }
 
     setSelected(true);
@@ -392,11 +418,11 @@ NodeGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 
     if (!hit)
     {
-        emit contextMenuRequested(m_node, pos);
+        emit contextMenuRequested(this, pos);
     }
     else
     {
-        emit portContextMenuRequested(m_node, hit.id, pos);
+        emit portContextMenuRequested(this, hit.port, pos);
     }
 
     event->accept();

@@ -303,7 +303,6 @@ GraphView::setScale(double scale)
 void
 GraphView::printPDF()
 {
-    gtTrace() << __FUNCTION__;
     QString filePath =
         GtFileDialog::getSaveFileName(parentWidget(),
                                       tr("Choose File"),

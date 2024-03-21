@@ -43,6 +43,8 @@ protected:
                QStyleOptionGraphicsItem const* option,
                QWidget* widget = nullptr) override;
 
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+
 private:
 
     QPointer<Node> m_node;

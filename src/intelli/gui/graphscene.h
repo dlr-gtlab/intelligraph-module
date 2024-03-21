@@ -60,11 +60,15 @@ protected:
 
     void keyPressEvent(QKeyEvent* event) override;
 
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+
 private:
 
     struct Impl;
-    
-    QPointer<Graph> m_graph = nullptr;
 
     struct NodeEntry
     {
@@ -78,8 +82,10 @@ private:
         volatile_ptr<ConnectionGraphicsObject> object;
     };
 
+    QPointer<Graph> m_graph = nullptr;
     std::vector<NodeEntry> m_nodes;
     std::vector<ConnectionEntry> m_connections;
+    volatile_ptr<ConnectionGraphicsObject> m_draftConnection;
 
     void beginReset();
 
@@ -87,7 +93,9 @@ private:
 
 //    void makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds);
 
-//    GraphAdapterModel& adapterModel();
+    void moveConnection(ConnectionGraphicsObject* object, NodeGraphicsObject* node = nullptr);
+
+    void moveConnectionPoint(ConnectionGraphicsObject* object, PortType type);
 
 private slots:
 
@@ -105,15 +113,15 @@ private slots:
 
     void onConnectionDeleted(ConnectionId conId);
 
-    void moveConnection(ConnectionGraphicsObject* object, NodeGraphicsObject* node = nullptr);
-
-    void moveConnectionPoint(ConnectionGraphicsObject* object, PortType type);
-
     void moveConnections(NodeGraphicsObject* object);
 
-    void onNodeContextMenu(Node* node, QPointF pos);
+    void onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId);
 
-    void onPortContextMenu(Node* node, PortId portId, QPointF pos);
+    void onMakeDraftConnection(NodeGraphicsObject* object, PortType type, PortId port);
+
+    void onNodeContextMenu(NodeGraphicsObject* object, QPointF pos);
+
+    void onPortContextMenu(NodeGraphicsObject* object, PortId portId, QPointF pos);
 };
 
 inline GraphScene*

@@ -91,7 +91,7 @@ NumberMathNode::eval()
         {
             gtWarning().verbose().nospace()
                 << __FUNCTION__ << ": " << tr("Cannot divide by 0!");
-            break;
+            return;
         }
         c = a / b;
         break;

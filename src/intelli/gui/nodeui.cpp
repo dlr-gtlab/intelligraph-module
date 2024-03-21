@@ -559,16 +559,24 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
 NodeGeometry::PortHit
 NodeGeometry::portHit(QPointF coord) const
 {
-    auto rect = innerRect();
+    constexpr QPointF offset{0.5, 0.5};
+    return portHit(QRectF{coord - offset, coord + offset});
+}
+
+NodeGeometry::PortHit
+NodeGeometry::portHit(QRectF rect) const
+{
+    auto inner = innerRect();
+    auto coord = rect.center();
 
     // estimate whether its a input or output port
-    PortType type = (coord.x() < rect.x() + 0.5 * rect.width()) ? PortType::In : PortType::Out;
+    PortType type = (coord.x() < (inner.x() + 0.5 * inner.width())) ? PortType::In : PortType::Out;
 
     // check each port
     for (auto& port : m_node->ports(type))
     {
         auto pRect = this->portRect(type, m_node->portIndex(type, port.id()));
-        if (pRect.contains(coord))
+        if (pRect.intersects(rect))
         {
             return PortHit{type, port.id()};
         }

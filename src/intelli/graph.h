@@ -287,6 +287,8 @@ public:
      */
     void clearGraph();
 
+    bool canAppendConnections(ConnectionId conId);
+
     /**
      * @brief Appends the node to the intelli graph. Use this function instead
      * of appending the child directly. Node may change its id if its

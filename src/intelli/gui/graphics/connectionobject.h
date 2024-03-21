@@ -30,12 +30,9 @@ public:
     enum { Type = UserType + (int)GraphicsItemType::Connection };
     int type() const override { return Type; }
 
-    ConnectionGraphicsObject(Connection& connection);
+    ConnectionGraphicsObject(ConnectionId connection);
 
     QRectF boundingRect() const override;
-
-    Connection& connection();
-    Connection const& connection() const;
 
     ConnectionId connectionId() const;
 
@@ -52,13 +49,17 @@ protected:
 
     QPainterPath shape() const override;
 
-    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
 
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+
+    void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
+
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
 
 private:
 
-    QPointer<Connection> m_connection;
+    ConnectionId m_connection;
     mutable QPointF m_out;
     mutable QPointF m_in;
 

@@ -12,16 +12,19 @@
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/style.h>
 
+#include <gt_colors.h>
+
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
 #include <QGraphicsSceneHoverEvent>
+#include <QGraphicsSceneMouseEvent>
 
 using namespace intelli;
 
-ConnectionGraphicsObject::ConnectionGraphicsObject(Connection& connection) :
-    m_connection(&connection)
+ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection) :
+    m_connection(connection)
 {
-    setFlag(QGraphicsItem::ItemIsMovable, true);
+//    setFlag(QGraphicsItem::ItemIsMovable, false);
     setFlag(QGraphicsItem::ItemIsFocusable, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);
 
@@ -53,23 +56,10 @@ ConnectionGraphicsObject::boundingRect() const
     return commonRect;
 }
 
-Connection&
-ConnectionGraphicsObject::connection()
-{
-    assert(m_connection);
-    return *m_connection;
-}
-
-Connection const&
-ConnectionGraphicsObject::connection() const
-{
-    return const_cast<ConnectionGraphicsObject*>(this)->connection();
-}
-
 ConnectionId
 ConnectionGraphicsObject::connectionId() const
 {
-    return m_connection->connectionId();
+    return m_connection;
 }
 
 QPointF
@@ -96,14 +86,16 @@ ConnectionGraphicsObject::setEndPoint(PortType type, QPointF pos)
     {
     case PortType::In:
         m_in = pos;
-        return;
+        break;
     case PortType::Out:
         m_out = pos;
-        return;
-    case PortType::NoType:
         break;
+    case PortType::NoType:
+    default:
+        throw GTlabException(__FUNCTION__, "invalid port type!");
     }
-    throw GTlabException(__FUNCTION__, "invalid port type!");
+
+    update();
 }
 
 ConnectionGraphicsObject::ControlPoints
@@ -148,19 +140,19 @@ ConnectionGraphicsObject::paint(QPainter* painter,
 
     bool const hovered  = m_hovered;
     bool const selected = isSelected();
-    bool const isDraft = false;
+    bool const isDraft  = !m_connection.isValid();
 
     // TODO: line width
     double lineWidth = 3.0;
 
-    if (hovered || selected) lineWidth *= 2;
-    else if (isDraft) lineWidth = 2.0;
+    if (hovered || selected) lineWidth = 4.0;
+    else if (isDraft) lineWidth = 4.0;
 
     // TODO: color
     QColor color = Qt::darkCyan;
     if (hovered) color = Qt::lightGray;
     else if (selected) color = style::boundarySelected();
-    else if (isDraft) color = Qt::gray;
+    else if (isDraft) color = gt::gui::color::disabled();
 
     QPen pen;
     pen.setWidth(lineWidth);
@@ -184,8 +176,8 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     constexpr bool debug = false;
     if (debug)
     {
-        QPointF const &in = endPoint(PortType::In);
-        QPointF const &out = endPoint(PortType::Out);
+        QPointF in  = endPoint(PortType::In);
+        QPointF out = endPoint(PortType::Out);
 
         auto const points = pointsC1C2();
 
@@ -228,6 +220,18 @@ ConnectionGraphicsObject::shape() const
 }
 
 void
+ConnectionGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
+{
+    return QGraphicsObject::mousePressEvent(event);
+}
+
+void
+ConnectionGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
+{
+    return QGraphicsObject::mouseReleaseEvent(event);
+}
+
+void
 ConnectionGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
     m_hovered = true;
@@ -246,8 +250,8 @@ ConnectionGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 QPainterPath
 ConnectionGraphicsObject::cubicPath() const
 {
-    QPointF const &in = endPoint(PortType::In);
-    QPointF const &out = endPoint(PortType::Out);
+    QPointF const& in = endPoint(PortType::In);
+    QPointF const& out = endPoint(PortType::Out);
 
     auto const c1c2 = pointsC1C2();
 

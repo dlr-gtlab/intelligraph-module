@@ -21,6 +21,7 @@ namespace intelli
 {
 
 class NodeEvalStateGraphicsObject;
+class NodeProxyWidget;
 
 class GT_INTELLI_EXPORT NodeGraphicsObject : public QGraphicsObject
 {
@@ -91,15 +92,19 @@ public slots:
 
 signals:
 
+    void makeDraftConnection(NodeGraphicsObject* object, ConnectionId conId);
+
+    void makeDraftConnection(NodeGraphicsObject* object, PortType type, PortId port);
+
     void nodeShifted(NodeGraphicsObject* object, QPointF diff);
 
     void nodeMoved(NodeGraphicsObject* object);
 
     void nodeGeometryChanged(NodeGraphicsObject* object);
 
-    void portContextMenuRequested(Node* node, PortId port, QPointF pos);
+    void portContextMenuRequested(NodeGraphicsObject* object, PortId port, QPointF pos);
 
-    void contextMenuRequested(Node* node, QPointF pos);
+    void contextMenuRequested(NodeGraphicsObject* object, QPointF pos);
 
 private:
 
@@ -114,7 +119,7 @@ private:
 
     QPointer<Graph> m_graph;
     QPointer<Node> m_node;
-    QPointer<QGraphicsProxyWidget> m_proxyWidget;
+    QPointer<NodeProxyWidget> m_proxyWidget;
     std::unique_ptr<NodeGeometry> m_geometry;
     std::unique_ptr<NodePainter> m_painter;
     NodeEvalStateGraphicsObject* m_evalStateObject;

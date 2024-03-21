@@ -29,6 +29,101 @@ using namespace intelli;
 struct Graph::Impl
 {
 
+template<typename MakeError = QString(*)()>
+static bool
+canAppendConnection(Graph& graph, ConnectionId conId, MakeError makeError = {}, bool silent = true)
+{
+    if (!conId.isValid())
+    {
+        if (!silent)
+        {
+            gtWarning() << makeError()
+                        << tr("(invalid connection)");
+        }
+        return {};
+    }
+
+    // check if nodes differ
+    if (conId.inNodeId == conId.outNodeId)
+    {
+        if (!silent)
+        {
+            gtWarning() << makeError()
+                        << tr("(connection in-node and out-node are qeual)");
+        }
+        return {};
+    }
+
+    // connection may already exist
+    if (graph.findConnection(conId))
+    {
+        if (!silent)
+        {
+            gtWarning() << makeError()
+                        << tr("(connection already exists)");
+        }
+        return {};
+    }
+
+    // check if nodes exist
+    auto* targetNode = graph.findNodeEntry(conId.inNodeId);
+    auto* sourceNode = graph.findNodeEntry(conId.outNodeId);
+
+    if (!targetNode || !sourceNode)
+    {
+        if (!silent)
+        {
+            gtWarning() << makeError()
+                        << tr("(connection in-node or out-node was not found)");
+        }
+        return {};
+    }
+
+    assert(targetNode->node->id() == conId.inNodeId &&
+           targetNode->node->parent()  == &graph);
+    assert(sourceNode->node->id() == conId.outNodeId &&
+           sourceNode->node->parent() == &graph);
+
+    // check if ports to connect exist
+    auto inPort  = targetNode->node->port(conId.inPort);
+    auto outPort = sourceNode->node->port(conId.outPort);
+
+    if (!inPort || !outPort)
+    {
+        if (!silent)
+        {
+            gtWarning() << makeError()
+                        << tr("(connection in-port or out-port not found)");
+        }
+        return {};
+    }
+
+    // check if output is connected to input
+    if (targetNode->node->portType(inPort->id())  ==
+        sourceNode->node->portType(outPort->id()))
+    {
+        if (!silent)
+        {
+            gtWarning() << makeError()
+                        << tr("(cannot connect ports of same type)");
+        }
+        return {};
+    }
+
+    // check if types are compatible
+    if (inPort->typeId != outPort->typeId)
+    {
+        if (!silent)
+        {
+            gtWarning() << makeError()
+                        << tr("(cannot connect ports with incomaptible typeId)");
+        }
+        return {};
+    }
+
+    return true;
+}
+
 /// checks and updates the node id of the node depending of the policy specified
 static bool
 updateNodeId(Graph const& graph, Node& node, NodeIdPolicy policy)
@@ -523,6 +618,12 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
     return { outNode->id(), outPort, inNode->id(), inPort };
 }
 
+bool
+Graph::canAppendConnections(ConnectionId conId)
+{
+    return Impl::canAppendConnection(*this, conId);
+}
+
 Node*
 Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 {
@@ -614,11 +715,8 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
             .arg(toString(conId), objectName());
     };
 
-    // connection may already exist
-    if (findConnection(conId))
+    if (!Impl::canAppendConnection(*this, conId, makeError, false))
     {
-        gtWarning() << makeError()
-                    << tr("(connection already exists)");
         return {};
     }
 
@@ -631,44 +729,13 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
 
     connection->updateObjectName();
 
+    gtInfo().verbose() << tr("Appending connection %1 to map").arg(toString(conId));
+
     // check if nodes exist
     auto* targetNode = findNodeEntry(conId.inNodeId);
     auto* sourceNode = findNodeEntry(conId.outNodeId);
-
-    if (!targetNode || !sourceNode)
-    {
-        gtWarning() << makeError()
-                    << tr("(connection in-node or out-node was not found!)");
-        return {};
-    }
-
-    assert(targetNode->node &&
-           targetNode->node->id() == conId.inNodeId &&
-           targetNode->node->parent()  == this);
-    assert(sourceNode->node &&
-           sourceNode->node->id() == conId.outNodeId &&
-           sourceNode->node->parent() == this);
-
-    // check if ports to connect exist
-    auto inPort  = targetNode->node->port(conId.inPort);
-    auto outPort = sourceNode->node->port(conId.outPort);
-
-    if (!inPort || !outPort)
-    {
-        gtWarning() << makeError()
-                    << tr("(connection in-port or out-port not found)");
-        return {};
-    }
-
-    if (targetNode->node->portType(inPort->id())  ==
-        sourceNode->node->portType(outPort->id()))
-    {
-        gtWarning() << makeError()
-                    << tr("(cannot connect ports of same type)");
-        return {};
-    }
-
-    gtInfo().verbose() << tr("Appending connection %1 to map").arg(toString(conId));
+    assert(targetNode);
+    assert(sourceNode);
 
     // append connection to model
     auto ancestorConnection   = dag::ConnectionDetail::fromConnection(conId.reversed());
@@ -677,15 +744,15 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     targetNode->ancestors.append(ancestorConnection);
     sourceNode->descendants.append(descendantConnection);
 
-    emit targetNode->node->portConnected(conId.inPort);
-    emit sourceNode->node->portConnected(conId.outPort);
-
     // setup connections
     connect(connection.get(), &QObject::destroyed,
             this, Impl::ConnectionDeleted(this, conId), Qt::DirectConnection);
 
     // update graph model
     emit connectionAppended(connection.get());
+
+    emit targetNode->node->portConnected(conId.inPort);
+    emit sourceNode->node->portConnected(conId.outPort);
 
     return connection.release();
 }
@@ -805,8 +872,6 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model)
 void
 Graph::onObjectDataMerged()
 {
-    gtTrace().verbose() << __FUNCTION__;
-
     restoreNodesAndConnections();
 }
 
