@@ -13,7 +13,7 @@
 #include <intelli/gui/portuiaction.h>
 #include <intelli/exports.h>
 
-
+#include <thirdparty/tl/optional.hpp>
 
 #include <gt_objectui.h>
 
@@ -74,11 +74,14 @@ public:
 
     QRectF resizeHandleRect() const;
 
+    /// tells the geometry to recompute the geometry
     void recomputeGeomtry();
 
 private:
+
     Node* m_node;
-    mutable bool m_isCalculating = false;
+    // cache for inner rect
+    mutable tl::optional<QRectF> m_innerRect;
 
     int captionHeightExtend() const;
 

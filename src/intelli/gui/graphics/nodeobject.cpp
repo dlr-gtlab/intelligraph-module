@@ -56,9 +56,9 @@ GT_NO_DISCARD
 static inline auto prepareGeometryChange(NodeGraphicsObject* o)
 {
     o->prepareGeometryChange();
-    o->m_geometry->recomputeGeomtry();
 
     return gt::finally([o](){
+        o->m_geometry->recomputeGeomtry();
         o->update();
         emit o->nodeGeometryChanged(o);
     });
@@ -167,6 +167,7 @@ void
 NodeGraphicsObject::embedCentralWidget()
 {
     auto change = Impl::prepareGeometryChange(this);
+    m_geometry->recomputeGeomtry();
 
     // we may have to reembedd the widget
     if (m_proxyWidget)
@@ -303,7 +304,7 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         if (m_proxyWidget)
         if (auto w = m_proxyWidget->widget())
         {
-                auto change = Impl::prepareGeometryChange(this);
+            auto change = Impl::prepareGeometryChange(this);
 
             auto oldSize = w->size();
 
@@ -433,6 +434,7 @@ NodeGraphicsObject::onNodeChanged()
 {
     auto change = Impl::prepareGeometryChange(this);
 
+    m_geometry->recomputeGeomtry();
     m_proxyWidget->setPos(m_geometry->widgetPosition());
 }
 

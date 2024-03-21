@@ -64,7 +64,7 @@ signals:
 
     void scaleChanged(double scale);
 
-    void gridChanged();
+    void gridChanged(QPrivateSignal);
 
 protected:
 

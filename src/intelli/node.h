@@ -28,8 +28,10 @@ enum NodeFlag
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
     Unique      = 1 << 2,
+    /// Indicates that the widget should be placed so that its size can be maximized
+    MaximizeWidget  = 1 << 3,
     /// Indicates that the node is evaluating (will be set automatically)
-    Evaluating = 1 << 4,
+    Evaluating  = 1 << 7,
 
     /// default node flags
     DefaultNodeFlags = NoFlag

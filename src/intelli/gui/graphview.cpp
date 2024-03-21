@@ -20,6 +20,7 @@
 #include <gt_filedialog.h>
 #include <gt_grid.h>
 #include <gt_state.h>
+#include <gt_statehandler.h>
 
 #include <gt_logging.h>
 
@@ -98,7 +99,7 @@ GraphView::GraphView(QWidget* parent) :
               .setIcon(gt::gui::icon::revert());
 
     auto changeGrid =
-        gt::gui::makeAction(tr("Change Grid"), std::bind(&GraphView::gridChanged, this))
+        gt::gui::makeAction(tr("Toogle Grid"), std::bind(&GraphView::gridChanged, this, QPrivateSignal()))
             .setIcon(gt::gui::icon::grid());
 
     auto print =
@@ -150,6 +151,32 @@ GraphView::setScene(GraphScene& scene)
 {
     QGraphicsView::setScene(&scene);
 
+    auto guardian = new GtObject();
+    guardian->setParent(&scene);
+
+    auto& graph = scene.graph();
+
+    auto* state = gtStateHandler->initializeState(GT_CLASSNAME(GraphView),
+                                    tr("Show Grid"),
+                                    graph.uuid() + QStringLiteral(";show_grid"),
+                                    true, guardian);
+
+    connect(state, qOverload<QVariant const&>(&GtState::valueChanged),
+            this, [this](QVariant const& enable){
+        resetCachedContent();
+
+        if (auto* g = grid())
+        {
+            g->showGrid(enable.toBool());
+        }
+    });
+    connect(this, &GraphView::gridChanged, state, [state](){
+        state->setValue(!state->getValue().toBool());
+    });
+
+    // trigger grid update
+    emit state->valueChanged(state->getValue());
+
     m_sceneMenu->setEnabled(true);
 
     m_editMenu->clear();
@@ -194,8 +221,6 @@ GraphView::setScene(GraphScene& scene)
     connect(clearSelection, &QAction::triggered,
             &scene, &QGraphicsScene::clearSelection,
             Qt::UniqueConnection);
-
-    auto& graph = nodeScene()->graph();
 
     auto updateAutoEvalBtns = [this, &graph](){
         auto* exec = graph.executionModel();

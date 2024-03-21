@@ -346,7 +346,7 @@ NodeGeometry::NodeGeometry(Node& node) :
 bool
 NodeGeometry::positionWidgetAtBottom() const
 {
-    return m_node->nodeFlags() & NodeFlag::Resizable && m_node->embeddedWidget();
+    return m_node->nodeFlags() & NodeFlag::MaximizeWidget;
 }
 
 int
@@ -414,12 +414,11 @@ NodeGeometry::shape() const
 QRectF
 NodeGeometry::innerRect() const
 {
-    // some functions may require inner rect to calculate their actual position
-    // -> return empty rect to avoid cyclic calls
-    if (m_isCalculating) return {};
+    if (m_innerRect.has_value()) return *m_innerRect;
 
-    m_isCalculating = true;
-    auto cleanup = gt::finally([this](){ m_isCalculating = false; });
+    // some functions may require inner rect to calculate their actual position
+    // -> set empty rect to avoid cyclic calls
+    m_innerRect = QRectF{};
 
     QSize wSize{0, 0};
     if (auto w = m_node->embeddedWidget())
@@ -451,7 +450,8 @@ NodeGeometry::innerRect() const
 
     width = std::max(width, (int)(s_eval_state_width + hspacing() + captionRect().width()));
 
-    return QRectF(QPoint{0, 0}, QSize{width, height});
+    m_innerRect = QRectF(QPoint{0, 0}, QSize{width, height});
+    return *m_innerRect;
 }
 
 QRectF
@@ -544,8 +544,13 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
     assert(port);
 
     int lineHeight = metrics.height();
-    int width = metrics.horizontalAdvance(port->caption.isEmpty() ? factory.typeName(port->typeId) : port->caption);
-    width += (width & 1);
+    int width = 0;
+
+    if (port->captionVisible)
+    {
+        width += metrics.horizontalAdvance(port->caption.isEmpty() ? factory.typeName(port->typeId) : port->caption);
+        width += (width & 1);
+    }
 
     QPointF pos = portRect(type, idx).center();
     pos.setY(pos.y() - lineHeight * 0.5);
@@ -597,7 +602,7 @@ NodeGeometry::resizeHandleRect() const
 void
 NodeGeometry::recomputeGeomtry()
 {
-
+    m_innerRect.reset();
 }
 
 //////////////////////////////////////////////////
@@ -617,11 +622,11 @@ NodePainter::backgroundColor() const
 
     if (node.nodeFlags() & NodeFlag::Unique)
     {
-        return gt::gui::color::lighten(bg, 20);
+        return gt::gui::color::lighten(bg, -20);
     }
     if (NodeUI::toGraph(&node))
     {
-        return gt::gui::color::lighten(bg, 10);
+        return gt::gui::color::lighten(bg, -12);
     }
 
     return bg;
@@ -632,7 +637,7 @@ NodePainter::drawRect(QPainter& painter)
 {
     // draw backgrond
     painter.setPen(Qt::NoPen);
-    painter.setBrush(style::nodeBackground());
+    painter.setBrush(backgroundColor());
 
     auto rect = m_geometry->innerRect();
 

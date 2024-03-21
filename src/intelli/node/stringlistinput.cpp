@@ -31,6 +31,7 @@ StringListInputNode::StringListInputNode() :
     registerPropertyStructContainer(m_values);
 
     setNodeFlag(Resizable);
+    setNodeFlag(MaximizeWidget);
     
     m_out = addOutPort(typeId<StringListData>());
 

@@ -1217,7 +1217,7 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId
     assert(conId.inNodeId == object->nodeId());
 
     // this function is only called if ingoing connection was disconnected
-    constexpr PortType type = PortType::Out;
+    constexpr PortType type = PortType::In;
 
     QPointF oldEndPoint;
 
@@ -1225,18 +1225,18 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId
     {
         ConnectionGraphicsObject* oldCon = connectionObject(conId);
         assert(oldCon);
-        oldEndPoint = oldCon->endPoint(invert(type));
+        oldEndPoint = oldCon->endPoint(type);
     }
 
     bool success = gtDataModel->deleteFromModel(m_graph->findConnection(conId));
     assert(success);
 
     // make draft connection form outgoing node
-    onMakeDraftConnection(nodeObject(conId.outNodeId), type, conId.outPort);
+    onMakeDraftConnection(nodeObject(conId.outNodeId), invert(type), conId.outPort);
 
     // move initial end position of draft connection
     assert(m_draftConnection);
-    m_draftConnection->setEndPoint(invert(type), oldEndPoint);
+    m_draftConnection->setEndPoint(type, oldEndPoint);
 }
 
 void

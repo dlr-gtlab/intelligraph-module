@@ -15,6 +15,7 @@ ObjectMementoNode::ObjectMementoNode() :
     Node(tr("Memento Viewer"))
 {
     setNodeFlag(Resizable);
+    setNodeFlag(MaximizeWidget);
     setNodeEvalMode(NodeEvalMode::MainThread);
 
     PortId inPort = addInPort(typeId<ObjectData>());

@@ -11,6 +11,7 @@
 #include <intelli/gui/style.h>
 
 #include <gt_colors.h>
+#include <gt_icons.h>
 
 #include <array>
 
@@ -207,20 +208,6 @@ void
 NodeEvalStateGraphicsObject::paintPausedState(QPainter& painter)
 {
     QRectF rect = boundingRect();
-    QPointF center = rect.center();
 
-    double width = rect.width() * 0.15;
-    QRectF beam(QPointF{0,0}, QSizeF{width, rect.height() * 0.7});
-    QPointF offset{(beam.width() + 1.5 * width) * -0.5, beam.height() * -0.5};
-
-    QColor color = gt::gui::color::text();
-    QBrush brush(color, Qt::SolidPattern);
-    QPen pen(color, 1, Qt::SolidLine);
-
-    painter.setPen(pen);
-    painter.setBrush(brush);
-
-    painter.drawRect(beam.translated(center + offset));
-    offset.rx() *= -1;
-    painter.drawRect(beam.translated(center + offset));
+    gt::gui::icon::pause().paint(&painter, rect.toRect());
 }

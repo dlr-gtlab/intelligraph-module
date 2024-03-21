@@ -33,16 +33,6 @@ GraphEditor::GraphEditor() :
     auto* l = new QVBoxLayout(widget());
     l->addWidget(m_view);
     l->setContentsMargins(0, 0, 0, 0);
-
-    // state initialization
-    m_showGridState = initializeState(tr("Show Grid"),
-                                      QStringLiteral("show_grid"),
-                                      true);
-
-    connect(m_view, &GraphView::gridChanged,
-            this, &GraphEditor::toggleGridChange);
-    connect(m_showGridState, qOverload<GtState*>(&GtState::valueChanged),
-            this, &GraphEditor::onShowGridStateChange);
 }
 
 void
@@ -72,29 +62,4 @@ GraphEditor::setData(GtObject* obj)
     m_view->centerScene();
 
     setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + graph->caption());
-}
-
-void
-GraphEditor::initialized()
-{
-    onShowGridStateChange();
-}
-
-void
-GraphEditor::onShowGridStateChange()
-{
-    bool val = m_showGridState->getValue().toBool();
-
-    m_view->resetCachedContent();
-
-    if (auto* g = m_view->grid())
-    {
-        g->showGrid(val);
-    }
-}
-
-void
-GraphEditor::toggleGridChange()
-{
-    m_showGridState->setValue(!m_showGridState->getValue().toBool());
 }
