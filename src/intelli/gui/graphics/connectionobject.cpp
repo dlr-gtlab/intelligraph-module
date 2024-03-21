@@ -162,8 +162,8 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     painter->setBrush(Qt::NoBrush);
 
     // cubic spline
-    auto const cubic = cubicPath();
-    painter->drawPath(cubic);
+    auto const path = this->path();
+    painter->drawPath(path);
 
     // draw end points
     painter->setPen(Qt::gray);
@@ -191,7 +191,7 @@ ConnectionGraphicsObject::paint(QPainter* painter,
         painter->drawEllipse(points.second, 3, 3);
 
         painter->setBrush(Qt::NoBrush);
-        painter->drawPath(cubicPath());
+        painter->drawPath(path);
 
         painter->setPen(Qt::yellow);
         painter->drawRect(boundingRect());
@@ -203,14 +203,14 @@ ConnectionGraphicsObject::shape() const
 {
     constexpr size_t segments = 20;
 
-    auto cubic = cubicPath();
+    auto path = this->path();
 
     QPainterPath result(endPoint(PortType::Out));
 
     for (size_t i = 0; i < segments; ++i)
     {
         double ratio = double(i + 1) / segments;
-        result.lineTo(cubic.pointAtPercent(ratio));
+        result.lineTo(path.pointAtPercent(ratio));
     };
 
     QPainterPathStroker stroker;
@@ -248,18 +248,36 @@ ConnectionGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 }
 
 QPainterPath
-ConnectionGraphicsObject::cubicPath() const
+ConnectionGraphicsObject::path() const
 {
+    enum ConnectionShape
+    {
+        Cubic = 0,
+        Straight,
+        Rectangle
+    } shape = Cubic;
+
     QPointF const& in = endPoint(PortType::In);
     QPointF const& out = endPoint(PortType::Out);
 
     auto const c1c2 = pointsC1C2();
 
     // cubic spline
-    QPainterPath cubic(out);
+    QPainterPath path(out);
 
-    cubic.cubicTo(c1c2.first, c1c2.second, in);
+    switch (shape)
+    {
+    case ConnectionShape::Cubic:
+        path.cubicTo(c1c2.first, c1c2.second, in);
+        break;
+    case ConnectionShape::Rectangle:
+        path.lineTo(c1c2.first);
+        path.lineTo(c1c2.second);
+    case ConnectionShape::Straight:
+        path.lineTo(in);
+        break;
+    }
 
-    return cubic;
+    return path;
 }
 

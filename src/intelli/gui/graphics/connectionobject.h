@@ -65,7 +65,7 @@ private:
 
     bool m_hovered = false;
 
-    QPainterPath cubicPath() const;
+    QPainterPath path() const;
 };
 
 } // namespace intelli

@@ -151,7 +151,7 @@ GraphView::setScene(GraphScene& scene)
 {
     QGraphicsView::setScene(&scene);
 
-    auto guardian = new GtObject();
+    auto* guardian = new GtObject();
     guardian->setParent(&scene);
 
     auto& graph = scene.graph();
