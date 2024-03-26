@@ -11,6 +11,7 @@
 #define GT_INTELLI_DATAFACTORY_H
 
 #include <intelli/exports.h>
+#include <intelli/globals.h>
 
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
@@ -53,28 +54,27 @@ public:
         return instance().registerData(T::staticMetaObject);
     }
 
-    QStringList registeredTypeIds() const { return knownClasses(); };
+    TypeIdList registeredTypeIds() const { return knownClasses(); };
 
-    QString typeName(QString const& typeId) const noexcept;
+    TypeName typeName(TypeId const& typeId) const noexcept;
+
+    bool canConvert(TypeId const& a, TypeId const& b) const;
 
     [[deprecated("use `makeData` instead!")]]
-    std::unique_ptr<NodeData> newData(QString const& typeId) const noexcept;
+    std::unique_ptr<NodeData> newData(TypeId const& typeId) const noexcept;
 
     /**
      * @brief Instantiates a new node of type className.
      * @param className Class to instantiate
      * @return Object pointer (may be null)
      */
-    std::unique_ptr<NodeData> makeData(QString const& typeId) const noexcept;
+    std::unique_ptr<NodeData> makeData(TypeId const& typeId) const noexcept;
 
 private:
 
     // hide some functions
     using GtAbstractObjectFactory::newObject;
     using GtAbstractObjectFactory::registerClass;
-
-    using TypeId   = QString;
-    using TypeName = QString;
 
     QHash<TypeId, TypeName> m_typeNames;
 

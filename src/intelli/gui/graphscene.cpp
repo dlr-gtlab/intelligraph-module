@@ -1122,22 +1122,42 @@ GraphScene::onConnectionAppended(Connection* con)
     assert(con);
 
     auto conId = con->connectionId();
-    auto entity = make_volatile<ConnectionGraphicsObject>(con->connectionId());
+
+    // access nodes and ports
+    auto* inNodeEntity  = nodeObject(conId.inNodeId);
+    assert(inNodeEntity);
+    Node* inNode = &inNodeEntity->node();
+    auto* inPort = inNode->port(conId.inPort);
+    assert(inPort);
+
+    auto* outNodeEntity = nodeObject(conId.outNodeId);
+    assert(outNodeEntity);
+    Node* outNode = &outNodeEntity->node();
+    auto* outPort = outNode->port(conId.outPort);
+    assert(outPort);
+
+    auto entity = make_volatile<ConnectionGraphicsObject>(conId, outPort->typeId, inPort->typeId);
+
     // add to scene
     addItem(entity);
     moveConnection(entity);
+
+    // update type ids if port changes to make sure connections stay updated
+    connect(inNode, &Node::portChanged, entity,
+            [entity = entity.get(), inPort](PortId id){
+        entity->setPortTypeId(PortType::In, inPort->typeId);
+    });
+    connect(outNode, &Node::portChanged, entity,
+            [entity = entity.get(), outPort](PortId id){
+        entity->setPortTypeId(PortType::Out, outPort->typeId);
+    });
 
     // append to map
     m_connections.push_back({conId, std::move(entity)});
 
     // update in and out node
-    auto* inNode  = nodeObject(conId.inNodeId);
-    assert(inNode);
-    inNode->update();
-
-    auto* outNode = nodeObject(conId.outNodeId);
-    assert(outNode);
-    outNode->update();
+    inNodeEntity->update();
+    outNodeEntity->update();
 }
 
 void

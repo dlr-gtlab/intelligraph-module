@@ -18,6 +18,21 @@
 namespace intelli
 {
 
+class ConnectionColorCache
+{
+public:
+
+    static ConnectionColorCache& instance();
+
+    QColor colorOfType(QString const& typeName);
+
+private:
+
+    ConnectionColorCache() = default;
+
+    QHash<QString, QColor> m_colors;
+};
+
 class ConnectionGraphicsObject : public QGraphicsObject
 {
     Q_OBJECT
@@ -29,7 +44,7 @@ public:
         Cubic = 0,
         Straight,
         Rectangle,
-        DefaultShape = Rectangle
+        DefaultShape = Cubic
     };
     Q_ENUM(ConnectionShape);
 
@@ -39,7 +54,9 @@ public:
     enum { Type = UserType + (int)GraphicsItemType::Connection };
     int type() const override { return Type; }
 
-    ConnectionGraphicsObject(ConnectionId connection);
+    ConnectionGraphicsObject(ConnectionId connection,
+                             TypeId inType  = {},
+                             TypeId outType = {});
 
     QRectF boundingRect() const override;
 
@@ -47,6 +64,8 @@ public:
 
     QPointF endPoint(PortType type) const;
     void setEndPoint(PortType type, QPointF pos);
+
+    void setPortTypeId(PortType type, TypeId typeId);
 
     void setConnectionShape(ConnectionShape shape);
 
@@ -71,9 +90,10 @@ protected:
 private:
 
     ConnectionId m_connection;
+    TypeId m_outType, m_inType;
+    ConnectionShape m_shape = ConnectionShape::DefaultShape;
     mutable QPointF m_out;
     mutable QPointF m_in;
-    ConnectionShape m_shape = ConnectionShape::DefaultShape;
 
     bool m_hovered = false;
 

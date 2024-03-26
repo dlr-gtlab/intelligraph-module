@@ -15,6 +15,7 @@
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/private/utils.h"
+#include "intelli/nodedatafactory.h"
 
 #include <gt_qtutilities.h>
 #include <gt_algorithms.h>
@@ -111,7 +112,8 @@ canAppendConnection(Graph& graph, ConnectionId conId, MakeError makeError = {}, 
     }
 
     // check if types are compatible
-    if (inPort->typeId != outPort->typeId)
+    auto& factory = NodeDataFactory::instance();
+    if (!factory.canConvert(inPort->typeId, outPort->typeId))
     {
         if (!silent)
         {

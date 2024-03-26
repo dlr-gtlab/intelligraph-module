@@ -435,6 +435,6 @@ NodeGraphicsObject::onNodeChanged()
     auto change = Impl::prepareGeometryChange(this);
 
     m_geometry->recomputeGeomtry();
-    m_proxyWidget->setPos(m_geometry->widgetPosition());
+    if (m_proxyWidget) m_proxyWidget->setPos(m_geometry->widgetPosition());
 }
 

@@ -126,9 +126,14 @@ using PortId    = StrongType<unsigned, struct PortId_, std::numeric_limits<unsig
 
 using Position = QPointF;
 
-using NodeDataPtr  = std::shared_ptr<const NodeData>;
+using NodeDataPtr = std::shared_ptr<const NodeData>;
 
 using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
+
+using TypeName = QString;
+
+using TypeId = QString;
+using TypeIdList = QStringList;
 
 namespace detail
 {

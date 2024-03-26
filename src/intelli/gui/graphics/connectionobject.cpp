@@ -11,6 +11,7 @@
 
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/style.h>
+#include <intelli/nodedatafactory.h>
 
 #include <gt_colors.h>
 
@@ -19,12 +20,51 @@
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsSceneMouseEvent>
 
+#include <random>
+
 using namespace intelli;
 
-ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection) :
-    m_connection(connection)
+ConnectionColorCache&
+ConnectionColorCache::instance()
 {
-//    setFlag(QGraphicsItem::ItemIsMovable, false);
+    static ConnectionColorCache self;
+    return self;
+}
+
+QColor
+ConnectionColorCache::colorOfType(QString const& typeName)
+{
+    if (typeName.isEmpty()) return Qt::darkCyan;
+
+    auto iter = m_colors.find(typeName);
+    if (iter != m_colors.end())
+    {
+        return *iter;
+    }
+
+    // from QtNodes
+    std::size_t hash = qHash(typeName);
+
+    std::size_t const hue_range = 0xFF;
+
+    std::mt19937 gen(static_cast<unsigned int>(hash));
+    std::uniform_int_distribution<int> distrib(0, hue_range);
+
+    int hue = distrib(gen);
+    int sat = 120 + hash % 129;
+
+    QColor color = QColor::fromHsl(hue, sat, 160);
+    m_colors.insert(typeName, color);
+    return color;
+}
+
+ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection,
+                                                   TypeId outType,
+                                                   TypeId inType) :
+    m_connection(connection),
+    m_outType(std::move(outType)),
+    m_inType(std::move(inType))
+{
     setFlag(QGraphicsItem::ItemIsFocusable, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);
 
@@ -99,6 +139,14 @@ ConnectionGraphicsObject::setEndPoint(PortType type, QPointF pos)
 }
 
 void
+ConnectionGraphicsObject::setPortTypeId(PortType type, TypeId typeId)
+{
+    (type == PortType::In ? m_inType : m_outType) = std::move(typeId);
+
+    update();
+}
+
+void
 ConnectionGraphicsObject::setConnectionShape(ConnectionShape shape)
 {
     if (m_shape == shape) return;
@@ -149,7 +197,7 @@ ConnectionGraphicsObject::controlPoints() const
 
     case ConnectionShape::Rectangle:
     {
-        constexpr double cutoffAngle = 0.025;
+        constexpr double cutoffValue = 0.025;
 
         double xDistance = m_in.x() - m_out.x();
         double yDistance = m_in.y() - m_out.y();
@@ -169,7 +217,8 @@ ConnectionGraphicsObject::controlPoints() const
 
             horizontalOffset = qMin(maxHorizontalOffset, horizontalOffset);
         }
-        else if (std::abs(yDistance / (xDistance + 0.1)) <= cutoffAngle)
+        // dont draw rectangle shaped connections if y distance is small
+        else if (std::abs(yDistance / (xDistance + 0.1)) <= cutoffValue)
         {
             return {m_out, m_in};
         }
@@ -202,8 +251,10 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     if (hovered || selected) lineWidth = 4.0;
     else if (isDraft) lineWidth = 4.0;
 
-    // TODO: color
-    QColor color = Qt::darkCyan;
+    QColor outType = ConnectionColorCache::instance().colorOfType(m_outType);
+    QColor inType = ConnectionColorCache::instance().colorOfType(m_inType);
+
+    QColor color = outType;
     if (hovered) color = Qt::lightGray;
     else if (selected) color = style::boundarySelected();
     else if (isDraft) color = gt::gui::color::disabled();
@@ -212,6 +263,22 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     pen.setWidth(lineWidth);
     pen.setColor(color);
 
+    // show that connection is invalid
+    if (isDraft)
+    {
+        pen.setStyle(Qt::DashLine);
+    }
+    // invalid color
+    else if (!NodeDataFactory::instance().canConvert(m_inType, m_outType))
+    {
+        QLinearGradient gradient(m_out, m_in);
+        gradient.setColorAt(0, outType);
+        gradient.setColorAt(1, inType);
+        QBrush brush(gradient);
+
+        pen.setBrush(brush);
+    }
+
     painter->setPen(pen);
     painter->setBrush(Qt::NoBrush);
 
@@ -219,12 +286,15 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     auto const path = this->path();
     painter->drawPath(path);
 
-    // draw end points
-    painter->setPen(Qt::gray);
-    painter->setBrush(Qt::gray);
     // TODO: point radius
     double const pointRadius = 10.0 / 2.0;
+
+    // draw end points
+    painter->setPen(outType);
+    painter->setBrush(outType);
     painter->drawEllipse(m_out, pointRadius, pointRadius);
+    painter->setPen(inType);
+    painter->setBrush(inType);
     painter->drawEllipse(m_in,  pointRadius, pointRadius);
 
     constexpr bool debug = false;
@@ -328,4 +398,3 @@ ConnectionGraphicsObject::path() const
 
     return path;
 }
-

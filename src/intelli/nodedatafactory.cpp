@@ -57,20 +57,27 @@ NodeDataFactory::registerData(const QMetaObject& meta) noexcept
     return true;
 }
 
-QString
-NodeDataFactory::typeName(const QString& typeId) const noexcept
+TypeName
+NodeDataFactory::typeName(TypeId const& typeId) const noexcept
 {
     return m_typeNames.value(typeId);
 }
 
+bool
+NodeDataFactory::canConvert(TypeId const& a, TypeId const& b) const
+{
+    // for now we check if type ids match
+    return a == b;
+}
+
 std::unique_ptr<NodeData>
-NodeDataFactory::newData(const QString& typeId) const noexcept
+NodeDataFactory::newData(TypeId const& typeId) const noexcept
 {
     return makeData(typeId);
 }
 
 std::unique_ptr<NodeData>
-NodeDataFactory::makeData(const QString& typeId) const noexcept
+NodeDataFactory::makeData(TypeId const& typeId) const noexcept
 {
     std::unique_ptr<GtObject> obj{
         const_cast<NodeDataFactory*>(this)->newObject(typeId)
