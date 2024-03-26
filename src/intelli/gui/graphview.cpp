@@ -115,8 +115,8 @@ GraphView::GraphView(QWidget* parent) :
               .setIcon(gt::gui::icon::pdf());
 
     gt::gui::addToMenu(resetScaleAction, *m_sceneMenu, nullptr);
-    gt::gui::addToMenu(changeGrid, *m_sceneMenu, nullptr);
     gt::gui::addToMenu(changeConShape, *m_sceneMenu, nullptr);
+    gt::gui::addToMenu(changeGrid, *m_sceneMenu, nullptr);
     gt::gui::addToMenu(makeSeparator(), *m_sceneMenu, nullptr);
     gt::gui::addToMenu(print, *m_sceneMenu, nullptr);
 
@@ -168,17 +168,12 @@ GraphView::setScene(GraphScene& scene)
 
     auto& graph = scene.graph();
 
+    /// grid change state
     auto* gridState = gtStateHandler->initializeState(
         GT_CLASSNAME(GraphView),
         tr("Show Grid"),
         graph.uuid() + QStringLiteral(";show_grid"),
         true, guardian);
-
-    auto* conShapeState = gtStateHandler->initializeState(
-        GT_CLASSNAME(GraphView),
-        tr("Connection Shape"),
-        graph.uuid() + QStringLiteral(";connection_shape"),
-        ConnectionShape::DefaultShape, guardian);
 
     connect(gridState, qOverload<QVariant const&>(&GtState::valueChanged),
             this, [this](QVariant const& enable){
@@ -195,6 +190,13 @@ GraphView::setScene(GraphScene& scene)
 
     // trigger grid update
     emit gridState->valueChanged(gridState->getValue());
+
+    /// connection style state
+    auto* conShapeState = gtStateHandler->initializeState(
+        GT_CLASSNAME(GraphView),
+        tr("Connection Shape"),
+        graph.uuid() + QStringLiteral(";connection_shape"),
+        ConnectionShape::DefaultShape, guardian);
 
     connect(conShapeState, qOverload<QVariant const&>(&GtState::valueChanged),
             &scene, [&scene, conShapeState](QVariant const& shape){
@@ -215,6 +217,9 @@ GraphView::setScene(GraphScene& scene)
         }
         conShapeState->setValue(value);
     });
+
+    // trigger connection shape update
+    emit conShapeState->valueChanged(conShapeState->getValue());
 
     m_sceneMenu->setEnabled(true);
 
