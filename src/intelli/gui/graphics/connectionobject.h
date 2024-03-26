@@ -24,6 +24,15 @@ class ConnectionGraphicsObject : public QGraphicsObject
 
 public:
 
+    enum ConnectionShape
+    {
+        Cubic = 0,
+        Straight,
+        Rectangle,
+        DefaultShape = Rectangle
+    };
+    Q_ENUM(ConnectionShape);
+
     using ControlPoints = std::pair<QPointF, QPointF>;
 
     // Needed for qgraphicsitem_cast
@@ -39,7 +48,9 @@ public:
     QPointF endPoint(PortType type) const;
     void setEndPoint(PortType type, QPointF pos);
 
-    ControlPoints pointsC1C2() const;
+    void setConnectionShape(ConnectionShape shape);
+
+    ControlPoints controlPoints() const;
 
 protected:
 
@@ -62,6 +73,7 @@ private:
     ConnectionId m_connection;
     mutable QPointF m_out;
     mutable QPointF m_in;
+    ConnectionShape m_shape = ConnectionShape::DefaultShape;
 
     bool m_hovered = false;
 

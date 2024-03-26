@@ -66,6 +66,8 @@ signals:
 
     void gridChanged(QPrivateSignal);
 
+    void connectionShapeChanged(QPrivateSignal);
+
 protected:
 
     void contextMenuEvent(QContextMenuEvent* event) override;

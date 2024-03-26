@@ -90,6 +90,10 @@ GraphView::GraphView(QWidget* parent) :
     /* MENU BAR */
     auto* menuBar = new QMenuBar;
 
+    auto const makeSeparator = [](){
+        return GtObjectUIAction();
+    };
+
     /* SCENE MENU */
     m_sceneMenu = menuBar->addMenu(tr("Scene"));
     m_sceneMenu->setEnabled(false);
@@ -99,8 +103,12 @@ GraphView::GraphView(QWidget* parent) :
               .setIcon(gt::gui::icon::revert());
 
     auto changeGrid =
-        gt::gui::makeAction(tr("Toogle Grid"), std::bind(&GraphView::gridChanged, this, QPrivateSignal()))
+        gt::gui::makeAction(tr("Toggle Grid"), std::bind(&GraphView::gridChanged, this, QPrivateSignal()))
             .setIcon(gt::gui::icon::grid());
+
+    auto changeConShape =
+        gt::gui::makeAction(tr("Toggle Connection Shape"), std::bind(&GraphView::connectionShapeChanged, this, QPrivateSignal()))
+            .setIcon(gt::gui::icon::vectorBezier2());
 
     auto print =
         gt::gui::makeAction(tr("Print to PDF"), std::bind(&GraphView::printPDF, this))
@@ -108,6 +116,8 @@ GraphView::GraphView(QWidget* parent) :
 
     gt::gui::addToMenu(resetScaleAction, *m_sceneMenu, nullptr);
     gt::gui::addToMenu(changeGrid, *m_sceneMenu, nullptr);
+    gt::gui::addToMenu(changeConShape, *m_sceneMenu, nullptr);
+    gt::gui::addToMenu(makeSeparator(), *m_sceneMenu, nullptr);
     gt::gui::addToMenu(print, *m_sceneMenu, nullptr);
 
     /* EDIT MENU */
@@ -149,6 +159,8 @@ GraphView::GraphView(QWidget* parent) :
 void
 GraphView::setScene(GraphScene& scene)
 {
+    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
+
     QGraphicsView::setScene(&scene);
 
     auto* guardian = new GtObject();
@@ -156,12 +168,19 @@ GraphView::setScene(GraphScene& scene)
 
     auto& graph = scene.graph();
 
-    auto* state = gtStateHandler->initializeState(GT_CLASSNAME(GraphView),
-                                    tr("Show Grid"),
-                                    graph.uuid() + QStringLiteral(";show_grid"),
-                                    true, guardian);
+    auto* gridState = gtStateHandler->initializeState(
+        GT_CLASSNAME(GraphView),
+        tr("Show Grid"),
+        graph.uuid() + QStringLiteral(";show_grid"),
+        true, guardian);
 
-    connect(state, qOverload<QVariant const&>(&GtState::valueChanged),
+    auto* conShapeState = gtStateHandler->initializeState(
+        GT_CLASSNAME(GraphView),
+        tr("Connection Shape"),
+        graph.uuid() + QStringLiteral(";connection_shape"),
+        ConnectionShape::DefaultShape, guardian);
+
+    connect(gridState, qOverload<QVariant const&>(&GtState::valueChanged),
             this, [this](QVariant const& enable){
         resetCachedContent();
 
@@ -170,12 +189,32 @@ GraphView::setScene(GraphScene& scene)
             g->showGrid(enable.toBool());
         }
     });
-    connect(this, &GraphView::gridChanged, state, [state](){
-        state->setValue(!state->getValue().toBool());
+    connect(this, &GraphView::gridChanged, gridState, [gridState](){
+        gridState->setValue(!gridState->getValue().toBool());
     });
 
     // trigger grid update
-    emit state->valueChanged(state->getValue());
+    emit gridState->valueChanged(gridState->getValue());
+
+    connect(conShapeState, qOverload<QVariant const&>(&GtState::valueChanged),
+            &scene, [&scene, conShapeState](QVariant const& shape){
+        scene.setConnectionShape(conShapeState->getValue().value<ConnectionShape>());
+    });
+    connect(this, &GraphView::connectionShapeChanged, conShapeState, [conShapeState](){
+        auto value = conShapeState->getValue().value<ConnectionShape>();
+        switch (value)
+            {
+        case ConnectionShape::Cubic:
+            value = ConnectionShape::Rectangle;
+            break;
+        case ConnectionShape::Rectangle:
+            value = ConnectionShape::Straight;
+            break;
+        case ConnectionShape::Straight:
+            value = ConnectionShape::Cubic;
+        }
+        conShapeState->setValue(value);
+    });
 
     m_sceneMenu->setEnabled(true);
 

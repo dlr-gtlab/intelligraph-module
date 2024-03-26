@@ -46,6 +46,8 @@ public:
 
     QMenu* createSceneMenu(QPointF scenePos);
 
+    void setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape);
+
 public slots:
 
     void deleteSelectedObjects();

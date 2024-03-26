@@ -36,7 +36,7 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection) :
 QRectF
 ConnectionGraphicsObject::boundingRect() const
 {
-    auto points = pointsC1C2();
+    auto points = controlPoints();
 
     // `normalized()` fixes inverted rects.
     QRectF basicRect = QRectF{m_out, m_in}.normalized();
@@ -98,37 +98,91 @@ ConnectionGraphicsObject::setEndPoint(PortType type, QPointF pos)
     update();
 }
 
-ConnectionGraphicsObject::ControlPoints
-ConnectionGraphicsObject::pointsC1C2() const
+void
+ConnectionGraphicsObject::setConnectionShape(ConnectionShape shape)
 {
-    double const defaultOffset = 200;
+    if (m_shape == shape) return;
 
-    double xDistance = m_in.x() - m_out.x();
+    prepareGeometryChange();
+    m_shape = shape;
+    update();
+}
 
-    double horizontalOffset = qMin(defaultOffset, std::abs(xDistance));
-
-    double verticalOffset = 0;
-
-    double ratioX = 0.5;
-
-    if (xDistance <= 0)
+ConnectionGraphicsObject::ControlPoints
+ConnectionGraphicsObject::controlPoints() const
+{
+    switch (m_shape)
     {
-        double yDistance = m_in.y() - m_out.y() + 20;
 
-        double vector = yDistance < 0 ? -1.0 : 1.0;
-
-        verticalOffset = qMin(defaultOffset, std::abs(yDistance)) * vector;
-
-        ratioX = 1.0;
+    case ConnectionShape::Straight:
+    {
+        return {m_out, m_in};
     }
 
-    horizontalOffset *= ratioX;
+    case ConnectionShape::Cubic:
+    {
+        constexpr double maxControlPointExtent = 200;
 
-    QPointF c1(m_out.x() + horizontalOffset, m_out.y() + verticalOffset);
+        double xDistance = m_in.x() - m_out.x();
 
-    QPointF c2(m_in.x() - horizontalOffset, m_in.y() - verticalOffset);
+        double horizontalOffset = qMin(maxControlPointExtent, std::abs(xDistance)) * 0.5;
 
-    return std::make_pair(c1, c2);
+        double verticalOffset = 0;
+
+        if (xDistance < 0)
+        {
+            constexpr double offset = 5;
+
+            double yDistance = m_in.y() - m_out.y() + offset;
+
+            verticalOffset  = qMin(maxControlPointExtent, std::abs(yDistance));
+            verticalOffset *= (yDistance < 0) ? -1.0 : 1.0;
+
+            horizontalOffset *= 2;
+        }
+
+        QPointF c1 = m_out + QPointF{horizontalOffset, verticalOffset};
+        QPointF c2 = m_in  - QPointF{horizontalOffset, verticalOffset};
+
+        return {c1, c2};
+    }
+
+    case ConnectionShape::Rectangle:
+    {
+        constexpr double cutoffAngle = 0.025;
+
+        double xDistance = m_in.x() - m_out.x();
+        double yDistance = m_in.y() - m_out.y();
+
+        double horizontalOffset = std::abs(xDistance) * 0.5;
+
+        double verticalOffset = 0;
+
+        if (xDistance < 0)
+        {
+            constexpr double maxHorizontalOffset = 10;
+
+            double yDistance = m_in.y() - m_out.y();
+
+            verticalOffset  = std::abs(yDistance) * 0.5;
+            verticalOffset *= (yDistance < 0) ? -1.0 : 1.0;
+
+            horizontalOffset = qMin(maxHorizontalOffset, horizontalOffset);
+        }
+        else if (std::abs(yDistance / (xDistance + 0.1)) <= cutoffAngle)
+        {
+            return {m_out, m_in};
+        }
+
+        QPointF c1 = m_out + QPointF{horizontalOffset, verticalOffset};
+        QPointF c2 = m_in  - QPointF{horizontalOffset, verticalOffset};
+
+        return {c1, c2};
+    }
+
+    }
+
+    return {m_out, m_in};
 }
 
 void
@@ -179,7 +233,7 @@ ConnectionGraphicsObject::paint(QPainter* painter,
         QPointF in  = endPoint(PortType::In);
         QPointF out = endPoint(PortType::Out);
 
-        auto const points = pointsC1C2();
+        auto const points = controlPoints();
 
         painter->setPen(Qt::red);
         painter->setBrush(Qt::red);
@@ -250,22 +304,16 @@ ConnectionGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 QPainterPath
 ConnectionGraphicsObject::path() const
 {
-    enum ConnectionShape
-    {
-        Cubic = 0,
-        Straight,
-        Rectangle
-    } shape = Cubic;
 
     QPointF const& in = endPoint(PortType::In);
     QPointF const& out = endPoint(PortType::Out);
 
-    auto const c1c2 = pointsC1C2();
+    auto const c1c2 = controlPoints();
 
     // cubic spline
     QPainterPath path(out);
 
-    switch (shape)
+    switch (m_shape)
     {
     case ConnectionShape::Cubic:
         path.cubicTo(c1c2.first, c1c2.second, in);

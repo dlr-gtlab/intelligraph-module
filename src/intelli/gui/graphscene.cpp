@@ -363,6 +363,15 @@ GraphScene::createSceneMenu(QPointF scenePos)
 }
 
 void
+GraphScene::setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape)
+{
+    for (auto& con : m_connections)
+    {
+        con.object->setConnectionShape(shape);
+    }
+}
+
+void
 GraphScene::deleteSelectedObjects()
 {
     auto const& selected = Impl::findSelectedItems(*this);
