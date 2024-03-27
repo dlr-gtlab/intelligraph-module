@@ -6,12 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
+
+### Added
+
+### Fixed
+
+## [0.8.1] - 2024-03-27
+### Changed
 - Position and Size Properties are now hidden for Nodes in non-dev-mode - #54
 - Graphs are no longer auto-evaluating by default and will remember the last state they where in. The property `Is Node Active` of the Graph can be used to enable/disable auto-evaluation. #61
 
 ### Added 
 - Integrated a traffic light system, to denote the state of the node: Green = Evaluated and Valid Outputs; Yellow = Not Evaluated; Red = Invalid data at output (Execution not successful). - #56
 - A dedicated button has been added to Graph View, which can be used to enable/disable auto-evaluation. - #61
+
+### Fixed
+- Fixed random crashes when deleting a node with widgets - #76
+- Fixed evaluation of graphs when input provider is not connected to output provider - #75
 
 ## [0.8.0] - 2024-02-19
 ### Added
@@ -45,14 +56,10 @@ First official release
 - Sorted entries in node scene menu - #46
 - Implemented own execution model to handle evaluations of nodes. Nodes will now only be evaluated once all inputs are valid, reduces redundant/multiple evaluations of a single node - #28
 
-### Deprecated
-### Removed
 ### Fixed
 - Nodes that are not deletable in the explorer, can no longer be deleted using the editor - #4
 - Adding and editing a port caption at runtime will resize the node properly - #14
 - Undo/Redo will are now merged and no longer devided into many undo/redo commands -16
-
-### Security
 
 ## [0.1.0] - 2023-06-06
 ### Added

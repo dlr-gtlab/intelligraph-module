@@ -258,9 +258,9 @@ TEST(GraphExecutionModel, auto_evaluate_graph_after_node_deletion)
 
     EXPECT_TRUE(model.isNodeEvaluated(D_id));
 
-    auto C_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
-    ASSERT_TRUE(C_data);
-    EXPECT_EQ(C_data->value(), 8);
+    auto D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
+    ASSERT_TRUE(D_data);
+    EXPECT_EQ(D_data->value(), 8);
 }
 
 TEST(GraphExecutionModel, auto_evaluate_subgraph_only)
@@ -292,6 +292,78 @@ TEST(GraphExecutionModel, auto_evaluate_subgraph_only)
 
     submodel.debug();
 
+}
+
+TEST(GraphExecutionModel, auto_evaluate_subgraph_without_connection_between_input_and_output_provider)
+{
+    Graph graph;
+
+    ASSERT_TRUE(test::buildGraphWithGroup(graph));
+
+    bool success = true;
+    success &= graph.deleteConnection(ConnectionId{B_id, PortId(0), E_id, PortId(0)});
+    success &= graph.deleteConnection(ConnectionId{B_id, PortId(0), D_id, PortId(1)});
+    success &= graph.deleteNode(E_id);
+    ASSERT_TRUE(success);
+
+    dag::debugGraph(graph.dag());
+
+    auto subGraphs = graph.graphNodes();
+    ASSERT_EQ(subGraphs.size(), 1);
+
+    Graph& subGraph = *subGraphs.at(0);
+    ASSERT_TRUE(&subGraph);
+
+    success &= subGraph.deleteConnection(ConnectionId{group_input_id, PortId(0), group_B_id, PortId(1)});
+    success &= subGraph.deleteConnection(ConnectionId{group_input_id, PortId(1), group_C_id, PortId(1)});
+    ASSERT_TRUE(success);
+
+    dag::debugGraph(subGraph.dag());
+
+    GraphExecutionModel model(graph);
+
+    EXPECT_FALSE(subGraph.executionModel());
+
+    auto& submodel = *subGraph.makeExecutionModel();
+    ASSERT_TRUE(&submodel);
+
+    EXPECT_FALSE(model.isEvaluated());
+    EXPECT_FALSE(model.isNodeEvaluated(D_id));
+
+    EXPECT_FALSE(submodel.isEvaluated());
+    EXPECT_FALSE(submodel.isNodeEvaluated(group_D_id));
+    EXPECT_FALSE(submodel.isNodeEvaluated(group_output_id));
+
+    auto future = model.autoEvaluate();
+    EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
+
+    EXPECT_FALSE(model.isNodeEvaluated(group_D_id));
+    EXPECT_TRUE(submodel.isNodeEvaluated(group_output_id));
+
+    auto D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
+    ASSERT_TRUE(D_data);
+    EXPECT_EQ(D_data->value(), 8);
+
+    gtDebug() << "";
+
+    model.reset();
+
+    EXPECT_FALSE(model.isEvaluated());
+    EXPECT_FALSE(model.isNodeEvaluated(D_id));
+
+    EXPECT_FALSE(submodel.isEvaluated());
+    EXPECT_FALSE(submodel.isNodeEvaluated(group_D_id));
+    EXPECT_FALSE(submodel.isNodeEvaluated(group_output_id));
+
+    future = model.autoEvaluate();
+    EXPECT_TRUE(future.wait(std::chrono::seconds(1)));
+
+    EXPECT_FALSE(submodel.isNodeEvaluated(group_D_id));
+    EXPECT_TRUE(submodel.isNodeEvaluated(group_output_id));
+
+    D_data = model.nodeData(D_id, PortType::Out, PortIndex(0)).value<DoubleData>();
+    ASSERT_TRUE(D_data);
+    EXPECT_EQ(D_data->value(), 8);
 }
 
 TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
