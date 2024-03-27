@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-## [0.8.1] - 2024-03-27
+## [0.9.0] - 2024-03-27
 ### Changed
 - Position and Size Properties are now hidden for Nodes in non-dev-mode - #54
 - Graphs are no longer auto-evaluating by default and will remember the last state they where in. The property `Is Node Active` of the Graph can be used to enable/disable auto-evaluation. #61
