@@ -111,6 +111,7 @@ public:
 
     bool invalidateOutPorts(NodeId nodeId);
     bool invalidatePort(NodeId nodeId, PortId portId);
+    bool invalidateNode(NodeId nodeId);
 
     NodeDataSet nodeData(NodeId nodeId, PortId portId) const override;
     NodeDataSet nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;

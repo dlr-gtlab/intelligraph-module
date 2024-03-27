@@ -1027,6 +1027,12 @@ GraphExecutionModel::invalidatePort(NodeId nodeId, PortId portId)
     return true;
 }
 
+bool
+GraphExecutionModel::invalidateNode(NodeId nodeId)
+{
+    return invalidateOutPorts(nodeId);
+}
+
 NodeDataSet
 GraphExecutionModel::nodeData(NodeId nodeId, PortId portId) const
 {

@@ -788,6 +788,7 @@ Graph::handleNodeEvaluation(GraphExecutionModel& model)
     emit input->computingStarted();
 
     submodel->setNodeData(input->id(), PortType::Out, model.nodeData(id(), PortType::In));
+    submodel->invalidateNode(output->id());
 
     connect(submodel, &GraphExecutionModel::nodeEvaluated,
             this, &Graph::onSubNodeEvaluated, Qt::UniqueConnection);
