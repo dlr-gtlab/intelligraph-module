@@ -16,9 +16,24 @@
 namespace intelli
 {
 
+/// Helper struct for `volatile_ptr` to schedule the deletion of an object
+struct DeferredDeleter
+{
+    template <typename T>
+    void operator()(T* ptr) const { ptr->deleteLater(); }
+};
+
+/// Helper struct for `volatile_ptr` to directly delete an object
+struct DirectDeleter
+{
+    template <typename T>
+    void operator()(T* ptr) const { delete ptr; }
+};
+
+
 /// if you just dont know whether Qt took the ownership of your object...
 /// (works like unique_ptr but checks if ptr exists using a QPointer under the hood)
-template <typename T>
+template <typename T, typename Deleter = DeferredDeleter>
 class volatile_ptr
 {
 public:
@@ -32,22 +47,19 @@ public:
 
     ~volatile_ptr()
     {
-        if (m_ptr)
-        {
-            delete m_ptr;
-        }
+        if (m_ptr) reset();
     }
 
     volatile_ptr(volatile_ptr const& o) = delete;
     volatile_ptr& operator=(volatile_ptr const& o) = delete;
 
     template <typename U = T, gt::trait::enable_if_base_of<T, U> = true>
-    volatile_ptr(volatile_ptr<U>&& o) :
+    volatile_ptr(volatile_ptr<U, Deleter>&& o) :
         m_ptr(o.release())
     { }
 
     template <typename U = T, gt::trait::enable_if_base_of<T, U> = true>
-    volatile_ptr& operator=(volatile_ptr<U>&& o)
+    volatile_ptr& operator=(volatile_ptr<U, Deleter>&& o)
     {
         volatile_ptr tmp(std::move(o));
         swap(tmp);
@@ -56,7 +68,7 @@ public:
 
     void reset(T* ptr = nullptr)
     {
-        if (m_ptr) delete m_ptr;
+        if (m_ptr) Deleter{}(m_ptr.data());
         m_ptr = ptr;
     }
 
@@ -96,10 +108,10 @@ private:
     QPointer<T> m_ptr;
 };
 
-template <typename T, typename ...Args>
-inline volatile_ptr<T> make_volatile(Args&&... args) noexcept
+template <typename T, typename Deleter = DeferredDeleter, typename ...Args>
+inline volatile_ptr<T, Deleter> make_volatile(Args&&... args) noexcept
 {
-    return volatile_ptr<T>(new T{std::forward<Args>(args)...});
+    return volatile_ptr<T, Deleter>(new T{std::forward<Args>(args)...});
 }
 
 } // namespace intelli
