@@ -461,11 +461,26 @@ void
 GraphExecutionModel::endReset()
 {
     m_data.clear();
+    m_targetNodes.clear();
+    m_pendingNodes.clear();
+    m_queuedNodes.clear();
+    m_evaluatingNodes.clear();
 
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
     {
         onNodeAppended(node);
+    }
+
+    // reset subgraphs
+    auto const& subgraphs = graph().graphNodes();
+    for (auto *subgraph : subgraphs)
+    {
+        assert(subgraph);
+        if (auto* exec = subgraph->executionModel())
+        {
+            exec->reset();
+        }
     }
 }
 
@@ -682,8 +697,8 @@ GraphExecutionModel::evaluateNode(NodeId nodeId)
 
     if (!evaluateNodeDependencies(nodeId))
     {
-        // restore target & pending lists
-        m_targetNodes.removeLast();
+        // restore target and pending lists
+        m_targetNodes.removeOne(nodeId);
         rescheduleTargetNodes();
         return {};
     }

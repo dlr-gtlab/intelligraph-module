@@ -25,6 +25,8 @@ constexpr NodeId C_id{2};
 constexpr NodeId D_id{3};
 constexpr NodeId E_id{4};
 
+constexpr NodeId group_input_id{0};
+constexpr NodeId group_output_id{1};
 constexpr NodeId group_A_id{2};
 constexpr NodeId group_B_id{3};
 constexpr NodeId group_C_id{4};
