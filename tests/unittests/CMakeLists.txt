@@ -20,13 +20,14 @@ add_executable(IntelliGraphUnitTests
     test_helper.h
 
     main.cpp
-    dynamicnode.cpp
-    graph.cpp
-    graphbuilder.cpp
-    graphexecmodel.cpp
-    nodedata.cpp
-    portdata.cpp
-    strongtypes.cpp
+    test_dynamicnode.cpp
+    test_graph.cpp
+    test_graphbuilder.cpp
+    test_graphexecmodel.cpp
+    test_memory.cpp
+    test_nodedata.cpp
+    test_portdata.cpp
+    test_strongtypes.cpp
     test_propertyinputnodes.cpp
 
     data/test_nodedata.h data/test_nodedata.cpp

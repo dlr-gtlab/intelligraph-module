@@ -14,7 +14,7 @@
 #include "node/test_dynamic.h"
 
 
-TEST(DynamicNode, noWhiteList)
+TEST(DynamicNode, no_white_list)
 {
     TestDynamicWhiteListNode n;
 
@@ -36,7 +36,7 @@ TEST(DynamicNode, noWhiteList)
     EXPECT_EQ(n.port(d)->typeId, intelli::typeId<intelli::BoolData>());
 }
 
-TEST(DynamicNode, whiteListInput)
+TEST(DynamicNode, white_list_input_only)
 {
     QStringList inputWhiteList = { intelli::typeId<intelli::DoubleData>() };
     TestDynamicWhiteListNode n{inputWhiteList};
@@ -60,7 +60,7 @@ TEST(DynamicNode, whiteListInput)
     EXPECT_EQ(n.port(d)->typeId, intelli::typeId<intelli::BoolData>());
 }
 
-TEST(DynamicNode, whiteListInputOutput)
+TEST(DynamicNode, white_list_input_and_output)
 {
     QStringList inputWhiteList = { intelli::typeId<intelli::DoubleData>() };
     QStringList outputWhiteList = { intelli::typeId<intelli::BoolData>() };
