@@ -21,98 +21,12 @@
 namespace intelli
 {
 
-class Graph;
 class Node;
+class NodeGeometry;
+class NodePainter;
 class NodeGraphicsObject;
+class Graph;
 class DynamicNode;
-
-class NodeGeometry
-{
-public:
-
-    NodeGeometry(Node& node);
-    NodeGeometry(NodeGeometry const&) = delete;
-    NodeGeometry(NodeGeometry&&) = delete;
-    NodeGeometry& operator=(NodeGeometry const&) = delete;
-    NodeGeometry& operator=(NodeGeometry&&) = delete;
-    virtual ~NodeGeometry() = default;
-
-    struct PortHit
-    {
-        PortType type{PortType::NoType};
-        PortId port{};
-
-        operator bool() const
-        {
-            return type != PortType::NoType && port != invalid<PortId>();
-        }
-    };
-
-    bool positionWidgetAtBottom() const;
-
-    int hspacing() const;
-    int vspacing() const;
-
-    QPainterPath shape() const;
-
-    QRectF innerRect() const;
-
-    QRectF boundingRect() const;
-
-    QRectF captionRect() const;
-
-    QPointF evalStateVisualizerPosition() const;
-
-    QPointF widgetPosition() const;
-
-    QRectF portRect(PortType type, PortIndex idx) const;
-
-    QRectF portCaptionRect(PortType type, PortIndex idx) const;
-
-    PortHit portHit(QPointF coord) const;
-    PortHit portHit(QRectF coord) const;
-
-    QRectF resizeHandleRect() const;
-
-    /// tells the geometry to recompute the geometry
-    void recomputeGeomtry();
-
-private:
-
-    Node* m_node;
-    // cache for inner rect
-    mutable tl::optional<QRectF> m_innerRect;
-
-    int captionHeightExtend() const;
-
-    int portHorizontalExtend(PortType type) const;
-
-    int portHeightExtend() const;
-};
-
-class NodePainter
-{
-public:
-
-    NodePainter(NodeGraphicsObject& obj, NodeGeometry& geometry);
-    NodePainter(NodePainter const&) = delete;
-    NodePainter(NodePainter&&) = delete;
-    NodePainter& operator=(NodePainter const&) = delete;
-    NodePainter& operator=(NodePainter&&) = delete;
-    virtual ~NodePainter() = default;
-
-    QColor backgroundColor() const;
-
-    void drawRect(QPainter& painter);
-    void drawPorts(QPainter& painter);
-    void drawCaption(QPainter& painter);
-
-    void paint(QPainter& painter);
-
-private:
-    NodeGraphicsObject* m_object;
-    NodeGeometry* m_geometry;
-};
 
 class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
 {

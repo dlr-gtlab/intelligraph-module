@@ -9,7 +9,10 @@
 
 #include <intelli/gui/graphics/nodeevalstateobject.h>
 #include <intelli/gui/style.h>
+#include <intelli/gui/nodegeometry.h>
+#include <intelli/gui/nodepainter.h>
 
+#include <gt_application.h>
 #include <gt_colors.h>
 #include <gt_icons.h>
 
@@ -22,13 +25,15 @@ using namespace intelli;
 
 NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent,
                                                          Node& node,
+                                                         NodeGeometry& geometry,
                                                          NodePainter& painter) :
     QGraphicsObject(&parent),
     m_node(&node),
     m_timeLine(1000),
+    m_geometry(&geometry),
     m_painter(&painter)
 {
-    setZValue(10);
+    setZValue(5);
     m_timeLine.setEasingCurve(QEasingCurve::Linear);
     m_timeLine.setLoopCount(0);
     m_timeLine.setFrameRange(0, 24);
@@ -41,7 +46,7 @@ NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent
 QRectF
 NodeEvalStateGraphicsObject::boundingRect() const
 {
-    return QRectF(QPoint{0, 0}, QSize{20, 20});
+    return QRectF{QPoint{0, 0}, m_geometry->evalStateRect().size()};
 }
 
 void
@@ -119,8 +124,7 @@ NodeEvalStateGraphicsObject::paintIdleState(QPainter& painter)
         break;
     }
 
-    QColor const& backgroundColor = m_painter->backgroundColor();
-    bool lighter = backgroundColor.lightnessF() <= 0.5;
+    bool lighter = gtApp && gtApp->inDarkMode();
     *color = color->lighter(100 + (lighter ? 50 : 0));
 
     QBrush brush(*color, Qt::SolidPattern);
@@ -140,8 +144,6 @@ NodeEvalStateGraphicsObject::paintRunningState(QPainter& painter)
 
     QRectF rect = boundingRect();
     QPointF center = rect.center();
-
-
 
     constexpr double sizePercentage = 0.7;
 
@@ -170,7 +172,7 @@ NodeEvalStateGraphicsObject::paintRunningState(QPainter& painter)
     std::array<QColor, N> colors;
 
     QColor const& backgroundColor = m_painter->backgroundColor();
-    bool lighter = backgroundColor.lightnessF() <= 0.5;
+    bool lighter = gtApp && gtApp->inDarkMode();
 
     // color gradient
     constexpr int colorIncrement = 100 / N;

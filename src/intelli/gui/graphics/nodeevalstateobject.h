@@ -31,7 +31,10 @@ public:
     enum { Type = UserType + (int)GraphicsItemType::NodeEvalState };
     int type() const override { return Type; }
 
-    NodeEvalStateGraphicsObject(QGraphicsObject& parent, Node& node, NodePainter& painter);
+    NodeEvalStateGraphicsObject(QGraphicsObject& parent,
+                                Node& node,
+                                NodeGeometry& geometry,
+                                NodePainter& painter);
 
     QRectF boundingRect() const override;
 
@@ -49,6 +52,7 @@ private:
 
     QPointer<Node> m_node;
     QTimeLine m_timeLine;
+    NodeGeometry* m_geometry;
     NodePainter* m_painter;
     NodeEvalState m_state = NodeEvalState::Invalid;
 

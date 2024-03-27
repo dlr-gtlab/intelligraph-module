@@ -30,6 +30,8 @@ class GraphScene : public QGraphicsScene
 
 public:
 
+    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
+
     GraphScene(Graph& graph);
     ~GraphScene();
 
@@ -88,6 +90,7 @@ private:
     std::vector<NodeEntry> m_nodes;
     std::vector<ConnectionEntry> m_connections;
     volatile_ptr<ConnectionGraphicsObject> m_draftConnection;
+    ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
 
     void beginReset();
 

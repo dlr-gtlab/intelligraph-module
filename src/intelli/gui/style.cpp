@@ -10,7 +10,9 @@
 #include <intelli/gui/style.h>
 
 #include "gt_application.h"
-#include "gt_logging.h"
+#include "gt_colors.h"
+
+#include <random>
 
 /*
 static void setStyleDark()
@@ -153,21 +155,6 @@ intelli::applyTheme(Theme newTheme)
 //    gtError() << QObject::tr("Invalid theme!");
 }
 
-float
-intelli::style::colorVariaton(ColorVariation variation)
-{
-    switch (variation)
-    {
-    case intelli::ColorVariation::Unique:
-        return (gtApp->inDarkMode() ? 30 : -10);
-    case intelli::ColorVariation::Graph:
-        return (gtApp->inDarkMode() ? 20 : -7.5);
-    case intelli::ColorVariation::Default:
-    default:
-        return 0.0;
-    }
-}
-
 QColor
 intelli::style::viewBackground()
 {
@@ -180,32 +167,116 @@ intelli::style::nodeBackground()
     return gtApp->inDarkMode() ? QColor{36, 49, 63} : QColor{245, 245, 245};
 }
 
-double
-intelli::style::nodeOpacity()
-{
-    return 1;
-}
-
 QColor
-intelli::style::boundarySelected()
-{
-    return gtApp->inDarkMode() ? QColor{255, 165, 0} : QColor{"deepskyblue"};
-}
-
-QColor
-intelli::style::boundaryDefault()
+intelli::style::nodeOutline()
 {
     return gtApp->inDarkMode() ? QColor{63, 73, 86} : QColor{"darkgray"};
 }
 
 double
-intelli::style::borderWidthHovered()
+intelli::style::nodeOutlineWidth()
+{
+    return 1.0;
+}
+
+QColor
+intelli::style::nodeSelectedOutline()
+{
+    return gtApp->inDarkMode() ? QColor{255, 165, 0} : QColor{"deepskyblue"};
+}
+
+QColor
+intelli::style::nodeHoveredOutline()
+{
+    return nodeOutline();
+}
+
+double
+intelli::style::nodeHoveredOutlineWidth()
 {
     return 1.5;
 }
 
-double
-intelli::style::borderWidthDefault()
+QColor
+intelli::style::connectionOutline(TypeId const& typeId)
 {
-    return 1.0;
+    static QHash<QString, QColor> cache;
+
+    if (typeId.isEmpty()) return Qt::darkCyan;
+
+    auto iter = cache.find(typeId);
+    if (iter != cache.end())
+    {
+        return *iter;
+    }
+
+    // from QtNodes
+    std::size_t hash = qHash(typeId);
+
+    std::size_t const hue_range = 0xFF;
+
+    std::mt19937 gen(static_cast<unsigned int>(hash));
+    std::uniform_int_distribution<int> distrib(0, hue_range);
+
+    int hue = distrib(gen);
+    int sat = 120 + hash % 129;
+
+    QColor color = QColor::fromHsl(hue, sat, 160);
+    cache.insert(typeId, color);
+    return color;
 }
+
+double
+intelli::style::connectionOutlineWidth()
+{
+    return 3.0;
+}
+
+QColor
+intelli::style::connectionSelectedOutline()
+{
+    return nodeSelectedOutline();
+}
+
+QColor
+intelli::style::connectionDraftOutline()
+{
+    return gt::gui::color::disabled();
+}
+
+double
+intelli::style::connectionHoveredOutlineWidth()
+{
+    return 4.0;
+}
+
+QColor
+intelli::style::connectionHoveredOutline()
+{
+    return Qt::lightGray;
+}
+
+double
+intelli::style::nodePortRadius()
+{
+    return 4.0;
+}
+
+double
+intelli::style::nodeRoundingRadius()
+{
+    return 2.0;
+}
+
+double
+intelli::style::nodeEvalStateSize()
+{
+    return 20.0;
+}
+
+double
+intelli::style::connectionEndPointRadius()
+{
+    return 5.0;
+}
+

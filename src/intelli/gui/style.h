@@ -11,23 +11,18 @@
 #define STYLE_H
 
 #include <intelli/exports.h>
+#include <intelli/globals.h>
 
 #include <QColor>
-
-class QPainter;
 
 namespace intelli
 {
 
-class Graph;
-class NodeUI;
-class Node;
-class NodeGraphicsObject;
-
 /**
  * @brief The Theme enum
  */
-enum class Theme
+
+enum class [[deprecated]] Theme
 {
     /// bright mode
     Bright,
@@ -37,39 +32,50 @@ enum class Theme
     System
 };
 
-enum class ColorVariation
-{
-    Default,
-    Unique,
-    Graph,
-
-};
-
 /**
  * @brief Applies the node style base on the current theme. System will adapt
  * the bright or dark mode. The system theme will be upated automatically.
  * @param theme
  */
+[[deprecated]]
 GT_INTELLI_EXPORT void applyTheme(Theme theme = Theme::System);
 
 namespace style
 {
 
-GT_INTELLI_EXPORT float colorVariaton(ColorVariation variation);
-
 GT_INTELLI_EXPORT QColor viewBackground();
 
 GT_INTELLI_EXPORT QColor nodeBackground();
 
-GT_INTELLI_EXPORT double nodeOpacity();
+GT_INTELLI_EXPORT QColor nodeOutline();
 
-GT_INTELLI_EXPORT QColor boundarySelected();
+GT_INTELLI_EXPORT double nodeOutlineWidth();
 
-GT_INTELLI_EXPORT QColor boundaryDefault();
+GT_INTELLI_EXPORT QColor nodeSelectedOutline();
 
-GT_INTELLI_EXPORT double borderWidthHovered();
+GT_INTELLI_EXPORT QColor nodeHoveredOutline();
 
-GT_INTELLI_EXPORT double borderWidthDefault();
+GT_INTELLI_EXPORT double nodeHoveredOutlineWidth();
+
+GT_INTELLI_EXPORT QColor connectionOutline(TypeId const& typeId);
+
+GT_INTELLI_EXPORT double connectionOutlineWidth();
+
+GT_INTELLI_EXPORT QColor connectionSelectedOutline();
+
+GT_INTELLI_EXPORT QColor connectionDraftOutline();
+
+GT_INTELLI_EXPORT QColor connectionHoveredOutline();
+
+GT_INTELLI_EXPORT double connectionHoveredOutlineWidth();
+
+GT_INTELLI_EXPORT double nodePortRadius();
+
+GT_INTELLI_EXPORT double nodeRoundingRadius();
+
+GT_INTELLI_EXPORT double nodeEvalStateSize();
+
+GT_INTELLI_EXPORT double connectionEndPointRadius();
 
 }
 

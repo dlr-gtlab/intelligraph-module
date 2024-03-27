@@ -20,43 +20,7 @@
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsSceneMouseEvent>
 
-#include <random>
-
 using namespace intelli;
-
-ConnectionColorCache&
-ConnectionColorCache::instance()
-{
-    static ConnectionColorCache self;
-    return self;
-}
-
-QColor
-ConnectionColorCache::colorOfType(QString const& typeName)
-{
-    if (typeName.isEmpty()) return Qt::darkCyan;
-
-    auto iter = m_colors.find(typeName);
-    if (iter != m_colors.end())
-    {
-        return *iter;
-    }
-
-    // from QtNodes
-    std::size_t hash = qHash(typeName);
-
-    std::size_t const hue_range = 0xFF;
-
-    std::mt19937 gen(static_cast<unsigned int>(hash));
-    std::uniform_int_distribution<int> distrib(0, hue_range);
-
-    int hue = distrib(gen);
-    int sat = 120 + hash % 129;
-
-    QColor color = QColor::fromHsl(hue, sat, 160);
-    m_colors.insert(typeName, color);
-    return color;
-}
 
 ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection,
                                                    TypeId outType,
@@ -85,8 +49,7 @@ ConnectionGraphicsObject::boundingRect() const
 
     QRectF commonRect = basicRect.united(c1c2Rect);
 
-    // TODO: define in style
-    constexpr float const diam = 8;
+    double const diam = style::connectionEndPointRadius() * 2;
     QPointF const cornerOffset(diam, diam);
 
     // Expand rect by port circle diameter
@@ -239,87 +202,88 @@ ConnectionGraphicsObject::paint(QPainter* painter,
                                 QStyleOptionGraphicsItem const* option,
                                 QWidget* widget)
 {
+    Q_UNUSED(widget);
+
     painter->setClipRect(option->exposedRect);
 
     bool const hovered  = m_hovered;
     bool const selected = isSelected();
     bool const isDraft  = !m_connection.isValid();
 
-    // TODO: line width
-    double lineWidth = 3.0;
+    QColor outColor = style::connectionOutline(m_outType);
+    QColor inColor  = style::connectionOutline(m_inType);
 
-    if (hovered || selected) lineWidth = 4.0;
-    else if (isDraft) lineWidth = 4.0;
+    double penWidth = style::connectionOutlineWidth();
+    Qt::PenStyle penStyle = Qt::SolidLine;
+    QBrush penBrush = outColor;
 
-    QColor outType = ConnectionColorCache::instance().colorOfType(m_outType);
-    QColor inType = ConnectionColorCache::instance().colorOfType(m_inType);
-
-    QColor color = outType;
-    if (hovered) color = Qt::lightGray;
-    else if (selected) color = style::boundarySelected();
-    else if (isDraft) color = gt::gui::color::disabled();
-
-    QPen pen;
-    pen.setWidth(lineWidth);
-    pen.setColor(color);
-
-    // show that connection is invalid
-    if (isDraft)
+    if (hovered)
     {
-        pen.setStyle(Qt::DashLine);
+        penWidth = style::connectionHoveredOutlineWidth();
+        penBrush = style::connectionHoveredOutline();
     }
-    // invalid color
+    else if (selected)
+    {
+        penWidth = style::connectionHoveredOutlineWidth();
+        penBrush = style::connectionSelectedOutline();
+    }
+    else if (isDraft)
+    {
+        penWidth = style::connectionHoveredOutlineWidth();
+        inColor  = style::connectionDraftOutline();
+        outColor = inColor;
+        penBrush = outColor;
+        penStyle = Qt::DashLine;
+    }
+    // apply gradient for potentially invalid connection
     else if (!NodeDataFactory::instance().canConvert(m_inType, m_outType))
     {
         QLinearGradient gradient(m_out, m_in);
-        gradient.setColorAt(0, outType);
-        gradient.setColorAt(1, inType);
-        QBrush brush(gradient);
-
-        pen.setBrush(brush);
+        gradient.setColorAt(0.1, outColor);
+        gradient.setColorAt(0.9, inColor);
+        penBrush = gradient;
     }
+
+    QPen pen{penBrush, penWidth, penStyle};
 
     painter->setPen(pen);
     painter->setBrush(Qt::NoBrush);
 
-    // cubic spline
+    // draw path
     auto const path = this->path();
     painter->drawPath(path);
 
-    // TODO: point radius
-    double const pointRadius = 10.0 / 2.0;
+    double const pointRadius = style::connectionEndPointRadius();
 
     // draw end points
-    painter->setPen(outType);
-    painter->setBrush(outType);
+    painter->setPen(outColor);
+    painter->setBrush(outColor);
     painter->drawEllipse(m_out, pointRadius, pointRadius);
-    painter->setPen(inType);
-    painter->setBrush(inType);
+    painter->setPen(inColor);
+    painter->setBrush(inColor);
     painter->drawEllipse(m_in,  pointRadius, pointRadius);
 
-    constexpr bool debug = false;
-    if (debug)
-    {
-        QPointF in  = endPoint(PortType::In);
-        QPointF out = endPoint(PortType::Out);
+#ifdef GT_INTELLI_DEBUG_GRAPHICS
+    QPointF in  = endPoint(PortType::In);
+    QPointF out = endPoint(PortType::Out);
 
-        auto const points = controlPoints();
+    auto const points = controlPoints();
 
-        painter->setPen(Qt::red);
-        painter->setBrush(Qt::red);
+    painter->setPen(Qt::magenta);
+    painter->setBrush(Qt::magenta);
 
-        painter->drawLine(QLineF(out, points.first));
-        painter->drawLine(QLineF(points.first, points.second));
-        painter->drawLine(QLineF(points.second, in));
-        painter->drawEllipse(points.first, 3, 3);
-        painter->drawEllipse(points.second, 3, 3);
+    painter->drawLine(QLineF(out, points.first));
+    painter->drawLine(QLineF(points.first, points.second));
+    painter->drawLine(QLineF(points.second, in));
+    painter->drawEllipse(points.first, 3, 3);
+    painter->drawEllipse(points.second, 3, 3);
 
-        painter->setBrush(Qt::NoBrush);
-        painter->drawPath(path);
+    painter->setBrush(Qt::NoBrush);
+    painter->drawPath(path);
 
-        painter->setPen(Qt::yellow);
-        painter->drawRect(boundingRect());
-    }
+    painter->setPen(Qt::red);
+    painter->drawRect(boundingRect());
+#endif
 }
 
 QPainterPath

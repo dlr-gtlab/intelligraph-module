@@ -8,6 +8,7 @@
 
 
 #include <intelli/gui/graphics/nodeobject.h>
+#include <intelli/gui/graphics/nodecaptionsobject.h>
 #include <intelli/gui/graphics/nodeevalstateobject.h>
 #include <intelli/gui/style.h>
 #include <intelli/graph.h>
@@ -70,10 +71,10 @@ NodeGraphicsObject::NodeGraphicsObject(Graph& graph, Node& node, NodeUI& ui) :
     QGraphicsObject(nullptr),
     m_graph(&graph),
     m_node(&node),
-    m_proxyWidget(nullptr),
     m_geometry(ui.geometry(node)),
     m_painter(ui.painter(*this, *m_geometry)),
-    m_evalStateObject(new NodeEvalStateGraphicsObject(*this, node, *m_painter))
+    m_evalStateObject(new NodeEvalStateGraphicsObject(*this, node, *m_geometry, *m_painter)),
+    m_captionObject(new NodeCaptionGraphicsObject(*this, *m_geometry, *m_painter))
 {
     setFlag(QGraphicsItem::ItemDoesntPropagateOpacityToChildren, true);
     setFlag(QGraphicsItem::ItemClipsChildrenToShape, true);
@@ -86,12 +87,15 @@ NodeGraphicsObject::NodeGraphicsObject(Graph& graph, Node& node, NodeUI& ui) :
     setAcceptHoverEvents(true);
 
     setZValue(0);
-    setOpacity(style::nodeOpacity());
     setPos(m_node->pos());
 
-    m_evalStateObject->setPos(m_geometry->evalStateVisualizerPosition());
-
     embedCentralWidget();
+
+    connect(this, &NodeGraphicsObject::nodeGeometryChanged,
+            this, &NodeGraphicsObject::updateChildItems,
+            Qt::DirectConnection);
+
+    updateChildItems();
 }
 
 Node&
@@ -141,7 +145,12 @@ NodeGraphicsObject::boundingRect() const
 QPainterPath
 NodeGraphicsObject::shape() const
 {
-    return m_geometry->shape();
+    auto path = m_geometry->shape();
+    for (auto const* item : childItems())
+    {
+        path = path.united(item->shape().translated(item->pos()));
+    }
+    return path;
 }
 
 QGraphicsWidget*
@@ -214,6 +223,9 @@ NodeGraphicsObject::paint(QPainter* painter,
                           QStyleOptionGraphicsItem const* option,
                           QWidget* widget)
 {
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
     assert(painter);
 
     m_painter->paint(*painter);
@@ -246,7 +258,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     auto accept = gt::finally(event, &QEvent::accept);
 
     // bring this node forward
-    setZValue(1.0);
+    setZValue(10.0);
 
     QPointF coord = sceneTransform().inverted().map(event->scenePos());
 
@@ -363,7 +375,7 @@ void
 NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
     // bring this node forward
-    setZValue(1.0);
+    setZValue(10.0);
 
     m_hovered = true;
     update();
@@ -435,6 +447,14 @@ NodeGraphicsObject::onNodeChanged()
     auto change = Impl::prepareGeometryChange(this);
 
     m_geometry->recomputeGeomtry();
+    updateChildItems();
+}
+
+void
+NodeGraphicsObject::updateChildItems()
+{
+    m_evalStateObject->setPos(m_geometry->evalStateRect().topLeft());
+    m_captionObject->setPos(m_geometry->captionRect().topLeft());
     if (m_proxyWidget) m_proxyWidget->setPos(m_geometry->widgetPosition());
 }
 

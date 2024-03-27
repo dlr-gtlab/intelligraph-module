@@ -2,6 +2,11 @@ set(CMAKE_DEBUG_POSTFIX -d)
 
 set(INTELLIGRAPH_VERSION 0.8.0)
 
+option(
+    _DEBUG_NODE_GRAPHICS
+    "Draws debugging information into the scene to show bounds of node and connection objects" OFF
+)
+
 set(PUBLIC_HEADERS
     intelli/core.h
     intelli/dynamicnode.h
@@ -26,6 +31,8 @@ set(PUBLIC_HEADERS
     intelli/data/int.h
     intelli/data/integer.h
     intelli/gui/icons.h
+    intelli/gui/nodegeometry.h
+    intelli/gui/nodepainter.h
     intelli/gui/nodeui.h
     intelli/gui/portuiaction.h
     intelli/gui/style.h
@@ -79,6 +86,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/packageui.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/nodeobject.h
+    intelli/gui/graphics/nodecaptionsobject.h
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/property_item/abstractnumberinputwidget.h
     intelli/gui/property_item/doubleinputwidget.h
@@ -135,6 +143,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/propertyinput/objectinputnode.cpp
     intelli/node/propertyinput/stringinputnode.cpp
     intelli/gui/connectionui.cpp
+    intelli/gui/nodegeometry.cpp
+    intelli/gui/nodepainter.cpp
     intelli/gui/nodeui.cpp
     intelli/gui/grapheditor.cpp
     intelli/gui/graphscene.cpp
@@ -144,6 +154,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/style.cpp
     intelli/gui/graphics/connectionobject.cpp
     intelli/gui/graphics/nodeobject.cpp
+    intelli/gui/graphics/nodecaptionobject.cpp
     intelli/gui/graphics/nodeevalstateobject.cpp
     intelli/gui/property_item/abstractnumberinputwidget.cpp
     intelli/gui/property_item/doubleinputwidget.cpp
@@ -172,6 +183,12 @@ set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 target_compile_definitions(GTlabIntelliGraph PRIVATE
     GT_LOG_USE_QT_BINDINGS # enable Qt operator<< for logging
 )
+
+if (_DEBUG_NODE_GRAPHICS)
+    target_compile_definitions(GTlabIntelliGraph PRIVATE
+        GT_INTELLI_DEBUG_GRAPHICS
+    )
+endif()
 
 target_include_directories(GTlabIntelliGraph PUBLIC
 

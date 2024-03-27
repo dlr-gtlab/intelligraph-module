@@ -18,21 +18,6 @@
 namespace intelli
 {
 
-class ConnectionColorCache
-{
-public:
-
-    static ConnectionColorCache& instance();
-
-    QColor colorOfType(QString const& typeName);
-
-private:
-
-    ConnectionColorCache() = default;
-
-    QHash<QString, QColor> m_colors;
-};
-
 class ConnectionGraphicsObject : public QGraphicsObject
 {
     Q_OBJECT

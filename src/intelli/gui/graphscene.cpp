@@ -365,6 +365,11 @@ GraphScene::createSceneMenu(QPointF scenePos)
 void
 GraphScene::setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape)
 {
+    m_connectionShape = shape;
+    if (m_draftConnection)
+    {
+        m_draftConnection->setConnectionShape(shape);
+    }
     for (auto& con : m_connections)
     {
         con.object->setConnectionShape(shape);
@@ -1137,6 +1142,7 @@ GraphScene::onConnectionAppended(Connection* con)
     assert(outPort);
 
     auto entity = make_volatile<ConnectionGraphicsObject>(conId, outPort->typeId, inPort->typeId);
+    entity->setConnectionShape(m_connectionShape);
 
     // add to scene
     addItem(entity);
@@ -1285,6 +1291,7 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, PortType type, Por
     if (type == PortType::In) conId.reverse();
 
     auto entity = make_volatile<ConnectionGraphicsObject>(conId);
+    entity->setConnectionShape(m_connectionShape);
     addItem(entity);
     moveConnectionPoint(entity, type);
     entity->setEndPoint(invert(type), entity->endPoint(type));

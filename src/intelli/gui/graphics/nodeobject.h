@@ -10,9 +10,10 @@
 #ifndef GT_INTELLI_NODEGRAPHICSOBJECT_H
 #define GT_INTELLI_NODEGRAPHICSOBJECT_H
 
-#include <intelli/nodedatainterface.h>
 #include <intelli/node.h>
-#include <intelli/gui/nodeui.h>
+#include <intelli/nodedatainterface.h>
+#include <intelli/gui/nodegeometry.h>
+#include <intelli/gui/nodepainter.h>
 
 #include <QPointer>
 #include <QGraphicsObject>
@@ -20,7 +21,9 @@
 namespace intelli
 {
 
+class NodeUI;
 class NodeEvalStateGraphicsObject;
+class NodeCaptionGraphicsObject;
 class NodeProxyWidget;
 
 class GT_INTELLI_EXPORT NodeGraphicsObject : public QGraphicsObject
@@ -119,14 +122,19 @@ private:
 
     QPointer<Graph> m_graph;
     QPointer<Node> m_node;
-    QPointer<NodeProxyWidget> m_proxyWidget;
     std::unique_ptr<NodeGeometry> m_geometry;
     std::unique_ptr<NodePainter> m_painter;
-    NodeEvalStateGraphicsObject* m_evalStateObject;
+    QPointer<NodeProxyWidget> m_proxyWidget;
+    NodeEvalStateGraphicsObject* m_evalStateObject = nullptr;
+    NodeCaptionGraphicsObject* m_captionObject = nullptr;
 
     // flags
     State m_state = Normal;
     bool m_hovered = false;
+
+private slots:
+
+    void updateChildItems();
 };
 
 } // namespace intelli
