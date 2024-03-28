@@ -107,9 +107,10 @@ AbstractNumberInputWidget::newSliderVLayout(QWidget* slider,
     layout->addWidget(slider);
 
     auto* textLayout = new QVBoxLayout;
-    textLayout->addWidget(minText, Qt::AlignLeft);
-    textLayout->addWidget(valueText, Qt::AlignLeft);
+    
     textLayout->addWidget(maxText, Qt::AlignLeft);
+    textLayout->addWidget(valueText, Qt::AlignLeft);
+    textLayout->addWidget(minText, Qt::AlignLeft);
 
     layout->addLayout(textLayout);
 
