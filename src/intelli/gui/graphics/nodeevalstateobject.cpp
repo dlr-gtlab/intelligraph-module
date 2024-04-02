@@ -8,9 +8,9 @@
 
 
 #include <intelli/gui/graphics/nodeevalstateobject.h>
-#include <intelli/gui/style.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/nodepainter.h>
+#include <intelli/gui/style.h>
 
 #include <gt_application.h>
 #include <gt_colors.h>
@@ -24,16 +24,17 @@
 using namespace intelli;
 
 NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent,
-                                                         Node& node,
                                                          NodeGeometry& geometry,
-                                                         NodePainter& painter) :
+                                                         NodePainter& painter,
+                                                         Node& node) :
     QGraphicsObject(&parent),
-    m_node(&node),
     m_timeLine(1000),
     m_geometry(&geometry),
-    m_painter(&painter)
+    m_painter(&painter),
+    m_node(&node)
 {
-    setZValue(5);
+    setZValue(style::zValue(ZValue::NodeEvalState));
+
     m_timeLine.setEasingCurve(QEasingCurve::Linear);
     m_timeLine.setLoopCount(0);
     m_timeLine.setFrameRange(0, 24);

@@ -245,9 +245,9 @@ intelli::style::connectionDraftOutline()
 }
 
 double
-intelli::style::connectionHoveredOutlineWidth()
+intelli::style::connectionDraftOutlineWidth()
 {
-    return 4.0;
+    return 3.0;
 }
 
 QColor
@@ -257,9 +257,21 @@ intelli::style::connectionHoveredOutline()
 }
 
 double
-intelli::style::nodePortRadius()
+intelli::style::connectionHoveredOutlineWidth()
 {
     return 4.0;
+}
+
+double
+intelli::style::nodePortSize()
+{
+    return 5.0;
+}
+
+double
+intelli::style::nodePortRadius()
+{
+    return nodePortSize() - 1.0;
 }
 
 double
@@ -279,4 +291,3 @@ intelli::style::connectionEndPointRadius()
 {
     return 5.0;
 }
-

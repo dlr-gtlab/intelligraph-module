@@ -10,6 +10,8 @@
 #ifndef GT_INTELLI_NODEPAINTER_H
 #define GT_INTELLI_NODEPAINTER_H
 
+#include <intelli/node.h>
+
 class QColor;
 class QPainter;
 class QGraphicsItem;
@@ -31,12 +33,21 @@ public:
     NodePainter& operator=(NodePainter&&) = delete;
     virtual ~NodePainter() = default;
 
-    QColor backgroundColor() const;
+    virtual QColor backgroundColor() const;
 
-    void drawRect(QPainter& painter);
+    virtual void drawBackground(QPainter& painter);
+
+    virtual void drawOutline(QPainter& painter);
+
     void drawPorts(QPainter& painter);
 
-    void drawCaption(QPainter& painter, QGraphicsItem& item);
+    virtual void drawPort(QPainter& painter, Node::PortData& port, PortType type, PortIndex idx, bool connected);
+
+    virtual void drawPortCaption(QPainter& painter, Node::PortData& port, PortType type, PortIndex idx, bool connected);
+
+    void drawResizeHandle(QPainter& painter);
+
+    void drawCaption(QPainter& painter);
 
     void paint(QPainter& painter);
 

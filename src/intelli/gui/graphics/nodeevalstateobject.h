@@ -32,9 +32,9 @@ public:
     int type() const override { return Type; }
 
     NodeEvalStateGraphicsObject(QGraphicsObject& parent,
-                                Node& node,
                                 NodeGeometry& geometry,
-                                NodePainter& painter);
+                                NodePainter& painter,
+                                Node& node);
 
     QRectF boundingRect() const override;
 
@@ -50,10 +50,10 @@ protected:
 
 private:
 
-    QPointer<Node> m_node;
     QTimeLine m_timeLine;
-    NodeGeometry* m_geometry;
-    NodePainter* m_painter;
+    NodeGeometry* m_geometry = nullptr;
+    NodePainter* m_painter = nullptr;
+    QPointer<Node> m_node;
     NodeEvalState m_state = NodeEvalState::Invalid;
 
     void paintRunningState(QPainter& painter);

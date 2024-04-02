@@ -23,7 +23,6 @@ namespace intelli
 
 class NodeUI;
 class NodeEvalStateGraphicsObject;
-class NodeCaptionGraphicsObject;
 class NodeProxyWidget;
 
 class GT_INTELLI_EXPORT NodeGraphicsObject : public QGraphicsObject
@@ -116,25 +115,20 @@ private:
     enum State
     {
         Normal = 0,
-        Resizing,
-        Translating
+        Translating,
+        Resizing
     };
 
     QPointer<Graph> m_graph;
     QPointer<Node> m_node;
     std::unique_ptr<NodeGeometry> m_geometry;
     std::unique_ptr<NodePainter> m_painter;
-    QPointer<NodeProxyWidget> m_proxyWidget;
+    QPointer<NodeProxyWidget> m_proxyWidget = nullptr;
     NodeEvalStateGraphicsObject* m_evalStateObject = nullptr;
-    NodeCaptionGraphicsObject* m_captionObject = nullptr;
 
     // flags
     State m_state = Normal;
     bool m_hovered = false;
-
-private slots:
-
-    void updateChildItems();
 };
 
 } // namespace intelli

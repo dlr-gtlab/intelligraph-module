@@ -8,7 +8,6 @@
 
 
 #include <intelli/gui/graphics/nodeobject.h>
-#include <intelli/gui/graphics/nodecaptionsobject.h>
 #include <intelli/gui/graphics/nodeevalstateobject.h>
 #include <intelli/gui/style.h>
 #include <intelli/graph.h>
@@ -73,12 +72,9 @@ NodeGraphicsObject::NodeGraphicsObject(Graph& graph, Node& node, NodeUI& ui) :
     m_node(&node),
     m_geometry(ui.geometry(node)),
     m_painter(ui.painter(*this, *m_geometry)),
-    m_evalStateObject(new NodeEvalStateGraphicsObject(*this, node, *m_geometry, *m_painter)),
-    m_captionObject(new NodeCaptionGraphicsObject(*this, *m_geometry, *m_painter))
+    m_evalStateObject(new NodeEvalStateGraphicsObject(*this, *m_geometry, *m_painter, node))
 {
-    setFlag(QGraphicsItem::ItemDoesntPropagateOpacityToChildren, true);
-    setFlag(QGraphicsItem::ItemClipsChildrenToShape, true);
-    setFlag(QGraphicsItem::ItemIsMovable, true);
+    setFlag(QGraphicsItem::ItemContainsChildrenInShape, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);
     setFlag(QGraphicsItem::ItemIsFocusable, true);
 
@@ -86,16 +82,10 @@ NodeGraphicsObject::NodeGraphicsObject(Graph& graph, Node& node, NodeUI& ui) :
 
     setAcceptHoverEvents(true);
 
-    setZValue(0);
+    setZValue(style::zValue(ZValue::Node));
     setPos(m_node->pos());
 
     embedCentralWidget();
-
-    connect(this, &NodeGraphicsObject::nodeGeometryChanged,
-            this, &NodeGraphicsObject::updateChildItems,
-            Qt::DirectConnection);
-
-    updateChildItems();
 }
 
 Node&
@@ -146,17 +136,13 @@ QPainterPath
 NodeGraphicsObject::shape() const
 {
     auto path = m_geometry->shape();
-    for (auto const* item : childItems())
-    {
-        path = path.united(item->shape().translated(item->pos()));
-    }
     return path;
 }
 
 QGraphicsWidget*
 NodeGraphicsObject::centralWidget()
 {
-    return m_proxyWidget;
+    return m_proxyWidget.data();
 }
 
 QGraphicsWidget const*
@@ -198,9 +184,7 @@ NodeGraphicsObject::embedCentralWidget()
 
         m_proxyWidget->setWidget(w);
         m_proxyWidget->setPreferredWidth(5);
-        m_proxyWidget->setOpacity(1.0);
-        m_proxyWidget->setFlag(QGraphicsItem::ItemIgnoresParentOpacity);
-
+        m_proxyWidget->setZValue(style::zValue(ZValue::NodeWidget));
         m_proxyWidget->setPos(m_geometry->widgetPosition());
     }
 }
@@ -237,8 +221,7 @@ NodeGraphicsObject::itemChange(GraphicsItemChange change, const QVariant& value)
     switch (change)
     {
     case GraphicsItemChange::ItemSelectedChange:
-        // send node back
-        if (!value.toBool()) setZValue(0);
+        if (!value.toBool()) setZValue(style::zValue(ZValue::Node));
         break;
     default:
         break;
@@ -258,7 +241,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     auto accept = gt::finally(event, &QEvent::accept);
 
     // bring this node forward
-    setZValue(10.0);
+    setZValue(style::zValue(ZValue::NodeHovered));
 
     QPointF coord = sceneTransform().inverted().map(event->scenePos());
 
@@ -276,7 +259,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
             emit makeDraftConnection(this, conId);
             return;
         }
-        
+
         emit makeDraftConnection(this, hit.type, hit.port);
         return;
     }
@@ -303,6 +286,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     emit gtApp->objectSelected(m_node);
 
     m_state = Translating;
+
 }
 
 void
@@ -337,6 +321,7 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     }
 }
 
+
 void
 NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
@@ -364,18 +349,19 @@ NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
     if (!isSelected())
     {
-        // send node back
-        setZValue(0);
+        setZValue(style::zValue(ZValue::Node));
     }
 
     event->accept();
+
 }
 
 void
 NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
-    // bring this node forward
-    setZValue(10.0);
+    setZValue(style::zValue(ZValue::NodeHovered));
+
+    setCursor(QCursor());
 
     m_hovered = true;
     update();
@@ -387,15 +373,6 @@ void
 NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 {
     event->accept();
-
-    if (m_node->nodeFlags() & NodeFlag::Resizable &&
-        m_node->embeddedWidget() &&
-        m_geometry->resizeHandleRect().contains(event->pos()))
-    {
-        return setCursor(QCursor(Qt::SizeFDiagCursor));
-    }
-
-    setCursor(QCursor());
 }
 
 void
@@ -403,8 +380,7 @@ NodeGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
     if (!isSelected())
     {
-        // send node back
-        setZValue(0);
+        setZValue(style::zValue(ZValue::Node));
     }
 
     m_hovered = false;
@@ -447,14 +423,7 @@ NodeGraphicsObject::onNodeChanged()
     auto change = Impl::prepareGeometryChange(this);
 
     m_geometry->recomputeGeomtry();
-    updateChildItems();
-}
-
-void
-NodeGraphicsObject::updateChildItems()
-{
     m_evalStateObject->setPos(m_geometry->evalStateRect().topLeft());
-    m_captionObject->setPos(m_geometry->captionRect().topLeft());
     if (m_proxyWidget) m_proxyWidget->setPos(m_geometry->widgetPosition());
 }
 

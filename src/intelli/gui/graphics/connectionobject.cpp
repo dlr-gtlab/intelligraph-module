@@ -8,7 +8,6 @@
 
 
 #include <intelli/gui/graphics/connectionobject.h>
-
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/style.h>
 #include <intelli/nodedatafactory.h>
@@ -34,7 +33,7 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection,
 
     setAcceptHoverEvents(true);
 
-    setZValue(-1.0);
+    setZValue(style::zValue(ZValue::Connection));
 }
 
 QRectF
@@ -225,11 +224,11 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     else if (selected)
     {
         penWidth = style::connectionHoveredOutlineWidth();
-        penBrush = style::connectionSelectedOutline();
+        penBrush = style::connectionSelectedOutline();;
     }
     else if (isDraft)
     {
-        penWidth = style::connectionHoveredOutlineWidth();
+        penWidth = style::connectionDraftOutlineWidth();
         inColor  = style::connectionDraftOutline();
         outColor = inColor;
         penBrush = outColor;
@@ -256,12 +255,21 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     double const pointRadius = style::connectionEndPointRadius();
 
     // draw end points
-    painter->setPen(outColor);
-    painter->setBrush(outColor);
-    painter->drawEllipse(m_out, pointRadius, pointRadius);
-    painter->setPen(inColor);
-    painter->setBrush(inColor);
-    painter->drawEllipse(m_in,  pointRadius, pointRadius);
+    if (isDraft)
+    {
+        if (!m_connection.inNodeId.isValid())
+        {
+            painter->setPen(inColor);
+            painter->setBrush(inColor);
+            painter->drawEllipse(m_in,  pointRadius, pointRadius);
+        }
+        else
+        {
+            painter->setPen(outColor);
+            painter->setBrush(outColor);
+            painter->drawEllipse(m_out, pointRadius, pointRadius);
+        }
+    }
 
 #ifdef GT_INTELLI_DEBUG_GRAPHICS
     QPointF in  = endPoint(PortType::In);

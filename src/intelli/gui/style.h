@@ -40,8 +40,20 @@ enum class [[deprecated]] Theme
 [[deprecated]]
 GT_INTELLI_EXPORT void applyTheme(Theme theme = Theme::System);
 
+/// enum holding the zvalue of the different graphical objects
+enum class ZValue : int
+{
+    Connection       = -1,
+    Node             =  0,
+    NodeHovered      =  1,
+    NodeWidget       = 10,
+    NodeEvalState    =  5,
+};
+
 namespace style
 {
+
+inline double zValue(ZValue type) { return (double)type; }
 
 GT_INTELLI_EXPORT QColor viewBackground();
 
@@ -65,9 +77,13 @@ GT_INTELLI_EXPORT QColor connectionSelectedOutline();
 
 GT_INTELLI_EXPORT QColor connectionDraftOutline();
 
+GT_INTELLI_EXPORT double connectionDraftOutlineWidth();
+
 GT_INTELLI_EXPORT QColor connectionHoveredOutline();
 
 GT_INTELLI_EXPORT double connectionHoveredOutlineWidth();
+
+GT_INTELLI_EXPORT double nodePortSize();
 
 GT_INTELLI_EXPORT double nodePortRadius();
 

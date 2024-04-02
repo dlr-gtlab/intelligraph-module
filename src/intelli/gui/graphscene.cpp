@@ -366,9 +366,9 @@ void
 GraphScene::setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape)
 {
     m_connectionShape = shape;
-    if (m_draftConnection)
+    if (m_draft)
     {
-        m_draftConnection->setConnectionShape(shape);
+        m_draft.connection->setConnectionShape(shape);
     }
     for (auto& con : m_connections)
     {
@@ -574,10 +574,10 @@ GraphScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 void
 GraphScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (m_draftConnection)
+    if (m_draft)
     {
-        PortType type = m_draftConnection->connectionId().inNodeId.isValid() ? PortType::Out : PortType::In;
-        m_draftConnection->setEndPoint(type, event->scenePos());
+        PortType type = m_draft.connection->connectionId().inNodeId.isValid() ? PortType::Out : PortType::In;
+        m_draft.connection->setEndPoint(type, event->scenePos());
         return event->accept();
     }
 
@@ -587,21 +587,27 @@ GraphScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 void
 GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (m_draftConnection)
+    if (m_draft)
     {
         auto pos = event->scenePos();
 
-        ConnectionId conId = m_draftConnection->connectionId();
+        ConnectionId conId = m_draft.connection->connectionId();
         bool reverse = conId.inNodeId.isValid();
         if (reverse) conId.reverse();
 
-        m_draftConnection->ungrabMouse();
-        m_draftConnection.reset();
+        m_draft.connection->ungrabMouse();
+        m_draft.connection.reset();
 
         constexpr QPointF offset{5, 5};
         QRectF rect{pos - offset, pos + offset};
 
-        for (auto* item : items(rect))
+        auto const& items = this->items(rect);
+        for (auto* item : items)
+        {
+            gtDebug() << static_cast<QGraphicsObject*>(item);
+        }
+
+        for (auto* item : items)
         {
             auto* object = qgraphicsitem_cast<NodeGraphicsObject*>(item);
             if (!object) continue;
@@ -1150,12 +1156,14 @@ GraphScene::onConnectionAppended(Connection* con)
 
     // update type ids if port changes to make sure connections stay updated
     connect(inNode, &Node::portChanged, entity,
-            [entity = entity.get(), inPort](PortId id){
-        entity->setPortTypeId(PortType::In, inPort->typeId);
+            [entity = entity.get(), inNode](PortId id){
+        auto* port = inNode->port(id);
+        entity->setPortTypeId(PortType::In, port->typeId);
     });
     connect(outNode, &Node::portChanged, entity,
-            [entity = entity.get(), outPort](PortId id){
-        entity->setPortTypeId(PortType::Out, outPort->typeId);
+            [entity = entity.get(), outNode](PortId id){
+        auto* port = outNode->port(id);
+        entity->setPortTypeId(PortType::Out, port->typeId);
     });
 
     // append to map
@@ -1246,7 +1254,7 @@ GraphScene::moveConnections(NodeGraphicsObject* object)
 void
 GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId)
 {
-    assert(!m_draftConnection);
+    assert(!m_draft);
     assert(object);
     assert(conId.isValid());
     assert(conId.inNodeId == object->nodeId());
@@ -1270,14 +1278,14 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId
     onMakeDraftConnection(nodeObject(conId.outNodeId), invert(type), conId.outPort);
 
     // move initial end position of draft connection
-    assert(m_draftConnection);
-    m_draftConnection->setEndPoint(type, oldEndPoint);
+    assert(m_draft);
+    m_draft.connection->setEndPoint(type, oldEndPoint);
 }
 
 void
 GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, PortType type, PortId port)
 {
-    assert (!m_draftConnection);
+    assert (!m_draft);
     assert(object);
     assert(port.isValid());
 
@@ -1296,5 +1304,5 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, PortType type, Por
     moveConnectionPoint(entity, type);
     entity->setEndPoint(invert(type), entity->endPoint(type));
     entity->grabMouse();
-    m_draftConnection = std::move(entity);
+    m_draft.connection = std::move(entity);
 }

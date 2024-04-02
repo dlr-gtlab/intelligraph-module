@@ -59,7 +59,6 @@ GraphEditor::setData(GtObject* obj)
     m_scene = make_volatile<GraphScene>(*graph);
 
     m_view->setScene(*m_scene);
-    m_view->centerScene();
 
     setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + graph->caption());
 }

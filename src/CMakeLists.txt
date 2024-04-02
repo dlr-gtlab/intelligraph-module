@@ -86,7 +86,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/packageui.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/nodeobject.h
-    intelli/gui/graphics/nodecaptionsobject.h
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/property_item/abstractnumberinputwidget.h
     intelli/gui/property_item/doubleinputwidget.h
@@ -154,7 +153,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/style.cpp
     intelli/gui/graphics/connectionobject.cpp
     intelli/gui/graphics/nodeobject.cpp
-    intelli/gui/graphics/nodecaptionobject.cpp
     intelli/gui/graphics/nodeevalstateobject.cpp
     intelli/gui/property_item/abstractnumberinputwidget.cpp
     intelli/gui/property_item/doubleinputwidget.cpp

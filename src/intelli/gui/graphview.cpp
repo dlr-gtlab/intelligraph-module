@@ -73,7 +73,8 @@ GraphView::GraphView(QWidget* parent) :
     setCacheMode(QGraphicsView::CacheBackground);
     setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
-    setScaleRange(0.3, 2);
+    // disable scale range
+    setScaleRange(0, 0);
 
     // Sets the scene rect to its maximum possible ranges to avoid auto scene range
     // re-calculation when expanding the all QGraphicsItems common rect.
@@ -100,7 +101,11 @@ GraphView::GraphView(QWidget* parent) :
 
     auto resetScaleAction =
         gt::gui::makeAction(tr("Reset scale"), std::bind(&GraphView::setScale, this, 1))
-              .setIcon(gt::gui::icon::revert());
+            .setIcon(gt::gui::icon::revert());
+
+    auto centerSceneAction =
+        gt::gui::makeAction(tr("Center scene"), std::bind(&GraphView::centerScene, this))
+            .setIcon(gt::gui::icon::select());
 
     auto changeGrid =
         gt::gui::makeAction(tr("Toggle Grid"), std::bind(&GraphView::gridChanged, this, QPrivateSignal()))
@@ -115,6 +120,7 @@ GraphView::GraphView(QWidget* parent) :
               .setIcon(gt::gui::icon::pdf());
 
     gt::gui::addToMenu(resetScaleAction, *m_sceneMenu, nullptr);
+    gt::gui::addToMenu(centerSceneAction, *m_sceneMenu, nullptr);
     gt::gui::addToMenu(changeConShape, *m_sceneMenu, nullptr);
     gt::gui::addToMenu(changeGrid, *m_sceneMenu, nullptr);
     gt::gui::addToMenu(makeSeparator(), *m_sceneMenu, nullptr);
@@ -162,6 +168,7 @@ GraphView::setScene(GraphScene& scene)
     using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
 
     QGraphicsView::setScene(&scene);
+    centerScene();
 
     auto* guardian = new GtObject();
     guardian->setParent(&scene);
@@ -356,7 +363,14 @@ GraphView::scaleDown()
 void
 GraphView::setScale(double scale)
 {
-    scale = std::max(m_scaleRange.minimum, std::min(m_scaleRange.maximum, scale));
+    if (m_scaleRange.minimum > 0.0)
+    {
+        scale = std::max(m_scaleRange.minimum, scale);
+    }
+    if (m_scaleRange.maximum > 0.0)
+    {
+        scale = std::min(m_scaleRange.maximum, scale);
+    }
 
     if (scale <= 0) return;
 

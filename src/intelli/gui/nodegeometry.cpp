@@ -79,8 +79,8 @@ NodeGeometry::portHeightExtent() const
 QPainterPath
 NodeGeometry::shape() const
 {
-    double xoffset = 0.5 * style::nodePortRadius() * 2;
-    double yoffset = 0.5 * style::nodePortRadius() * 2;
+    double xoffset = 0.5 * style::nodePortSize() * 2;
+    double yoffset = 0.5 * style::nodePortSize() * 2;
 
     auto rect = innerRect();
 
@@ -140,8 +140,8 @@ NodeGeometry::innerRect() const
 QRectF
 NodeGeometry::boundingRect() const
 {
-    double xoffset = 5 * style::nodePortRadius() * 2;
-    double yoffset = 5 * style::nodePortRadius() * 2;
+    double xoffset = 5 * style::nodePortSize() * 2;
+    double yoffset = 5 * style::nodePortSize() * 2;
 
     auto rect = innerRect();
 
@@ -219,15 +219,15 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
 
     for (PortIndex i{0}; i < idx; ++i)
     {
-        height += 0.5 * vspacing() + metrics.height();
+        height += 1.5 * metrics.height();
     }
 
     double width = type == PortType::Out ? innerRect().width() : 0.0;
-    width -= style::nodePortRadius();
+    width -= style::nodePortSize();
 
     return {
         QPointF(width, height),
-        QSizeF{style::nodePortRadius() * 2, style::nodePortRadius() * 2}
+        QSizeF{style::nodePortSize() * 2, style::nodePortSize() * 2}
     };
 }
 

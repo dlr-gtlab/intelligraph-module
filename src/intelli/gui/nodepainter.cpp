@@ -47,37 +47,28 @@ NodePainter::backgroundColor() const
 }
 
 void
-NodePainter::drawRect(QPainter& painter)
+NodePainter::drawBackground(QPainter& painter)
 {
     // draw backgrond
+    QColor color = backgroundColor();
     painter.setPen(Qt::NoPen);
-    painter.setBrush(backgroundColor());
-
-    bool selected = m_object->isSelected();
-    bool hovered  = m_object->isHovered();
+    painter.setBrush(color);
 
     auto rect = m_geometry->innerRect();
 
     painter.drawRoundedRect(rect,
                             style::nodeRoundingRadius(),
                             style::nodeRoundingRadius());
+}
 
-    // draw resize rect
-    auto& node = m_object->node();
-    if (node.nodeFlags() & NodeFlag::Resizable && node.embeddedWidget())
-    {
-        QRectF rect = m_geometry->resizeHandleRect();
-        QPolygonF poly;
-        poly.append(rect.bottomLeft());
-        poly.append(rect.bottomRight());
-        poly.append(rect.topRight());
+void
+NodePainter::drawOutline(QPainter& painter)
+{
+    auto rect = m_geometry->innerRect();
 
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(gt::gui::color::lighten(style::nodeOutline(), -30));
-        painter.drawPolygon(poly);
-    }
+    bool selected = m_object->isSelected();
+    bool hovered  = m_object->isHovered();
 
-    // draw border
     QColor color = style::nodeOutline();
     double penWidth = style::nodeOutlineWidth();
 
@@ -103,8 +94,6 @@ NodePainter::drawRect(QPainter& painter)
 void
 NodePainter::drawPorts(QPainter& painter)
 {
-    auto& factory = NodeDataFactory::instance();
-
     auto& node = m_object->node();
     auto& graph = m_object->graph();
 
@@ -119,53 +108,13 @@ NodePainter::drawPorts(QPainter& painter)
 
             if (!port->visible) continue;
 
-            QRectF p = m_geometry->portRect(type, idx);
+            bool connected = !graph.findConnections(node.id(), port->id()).empty();
 
-            //            double r = 1.0;
+            drawPort(painter, *port, type, idx, connected);
 
-            //            if (auto const *cgo = state.connectionForReaction())
-            //            {
-            //                PortType requiredPort = cgo->connectionState().requiredPort();
+            if (!port->captionVisible) continue;
 
-            //                if (requiredPort == portType) {
-            //                    ConnectionId possibleConnectionId = makeCompleteConnectionId(cgo->connectionId(),
-            //                                                                                 nodeId,
-            //                                                                                 portIndex);
-
-            //                    bool const possible = model.connectionPossible(possibleConnectionId);
-
-            //                    auto cp = cgo->sceneTransform().map(cgo->endPoint(requiredPort));
-            //                    cp = ngo.sceneTransform().inverted().map(cp);
-
-            //                    auto diff = cp - p;
-            //                    double dist = std::sqrt(QPointF::dotProduct(diff, diff));
-
-            //                    if (possible) {
-            //                        double const thres = 40.0;
-            //                        r = (dist < thres) ? (2.0 - dist / thres) : 1.0;
-            //                    } else {
-            //                        double const thres = 80.0;
-            //                        r = (dist < thres) ? (dist / thres) : 1.0;
-            //                    }
-            //                }
-            //            }
-            
-            QColor color = m_object->isSelected() ? style::nodeSelectedOutline() : style::nodeOutline();
-            QPen pen(color, m_object->isHovered() ? style::nodeHoveredOutlineWidth() : style::nodeOutlineWidth());
-            painter.setPen(pen);
-            painter.setBrush(gt::gui::color::disabled());
-            painter.drawEllipse(p);
-
-            if (port->captionVisible)
-            {
-                bool connected = !graph.findConnections(node.id(), port->id()).empty();
-
-                painter.setPen(connected ? gt::gui::color::text() : gt::gui::color::disabled());
-
-                painter.drawText(m_geometry->portCaptionRect(type, idx),
-                                 port->caption.isEmpty() ? factory.typeName(port->typeId) : port->caption,
-                                 type == PortType::In ? QTextOption{Qt::AlignLeft} : QTextOption{Qt::AlignRight});
-            }
+            drawPortCaption(painter, *port, type, idx, connected);
 
 #ifdef GT_INTELLI_DEBUG_GRAPHICS
             painter.setPen(Qt::yellow);
@@ -178,7 +127,90 @@ NodePainter::drawPorts(QPainter& painter)
 }
 
 void
-NodePainter::drawCaption(QPainter& painter, QGraphicsItem& item)
+NodePainter::drawPort(QPainter& painter, Node::PortData& port, PortType type, PortIndex idx, bool connected)
+{
+    Q_UNUSED(connected);
+
+    QRectF p = m_geometry->portRect(type, idx);
+
+    //            double r = 1.0;
+
+    //            if (auto const *cgo = state.connectionForReaction())
+    //            {
+    //                PortType requiredPort = cgo->connectionState().requiredPort();
+
+    //                if (requiredPort == portType) {
+    //                    ConnectionId possibleConnectionId = makeCompleteConnectionId(cgo->connectionId(),
+    //                                                                                 nodeId,
+    //                                                                                 portIndex);
+
+    //                    bool const possible = model.connectionPossible(possibleConnectionId);
+
+    //                    auto cp = cgo->sceneTransform().map(cgo->endPoint(requiredPort));
+    //                    cp = ngo.sceneTransform().inverted().map(cp);
+
+    //                    auto diff = cp - p;
+    //                    double dist = std::sqrt(QPointF::dotProduct(diff, diff));
+
+    //                    if (possible) {
+    //                        double const thres = 40.0;
+    //                        r = (dist < thres) ? (2.0 - dist / thres) : 1.0;
+    //                    } else {
+    //                        double const thres = 80.0;
+    //                        r = (dist < thres) ? (dist / thres) : 1.0;
+    //                    }
+    //                }
+    //            }
+
+    double penWidth = m_object->isHovered() ?
+                          style::nodeHoveredOutlineWidth() :
+                          style::nodeOutlineWidth();
+
+    QColor penColor = m_object->isSelected() ?
+                          style::nodeSelectedOutline() :
+                          style::nodeOutline();
+
+    QBrush brush = style::connectionOutline(port.typeId);
+
+    QPen pen(penColor, penWidth);
+    painter.setPen(pen);
+    painter.setBrush(brush);
+    painter.drawEllipse(p);
+
+}
+
+void
+NodePainter::drawPortCaption(QPainter& painter, Node::PortData& port, PortType type, PortIndex idx, bool connected)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    painter.setPen(connected ? gt::gui::color::text() : gt::gui::color::disabled());
+
+    painter.drawText(m_geometry->portCaptionRect(type, idx),
+                     port.caption.isEmpty() ? factory.typeName(port.typeId) : port.caption,
+                     type == PortType::In ? QTextOption{Qt::AlignLeft} : QTextOption{Qt::AlignRight});
+}
+
+void
+NodePainter::drawResizeHandle(QPainter& painter)
+{
+    if (!m_object->centralWidget() ||
+        !(m_object->node().nodeFlags() & NodeFlag::Resizable)) return;
+
+    QRectF rect = m_geometry->resizeHandleRect();
+
+    QPolygonF poly;
+    poly.append(rect.bottomLeft());
+    poly.append(rect.bottomRight());
+    poly.append(rect.topRight());
+
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(gt::gui::color::lighten(style::nodeOutline(), -30));
+    painter.drawPolygon(poly);
+}
+
+void
+NodePainter::drawCaption(QPainter& painter)
 {
     auto& node = m_object->node();
 
@@ -188,7 +220,7 @@ NodePainter::drawCaption(QPainter& painter, QGraphicsItem& item)
     bool isBold = f.bold();
     f.setBold(true);
 
-    QRectF rect = item.boundingRect();
+    QRectF rect = m_geometry->captionRect();
 
     painter.setFont(f);
     painter.setBrush(Qt::NoBrush);
@@ -209,7 +241,10 @@ NodePainter::drawCaption(QPainter& painter, QGraphicsItem& item)
 void
 NodePainter::paint(QPainter& painter)
 {
-    drawRect(painter);
+    drawBackground(painter);
+    drawResizeHandle(painter);
+    drawOutline(painter);
+    drawCaption(painter);
     drawPorts(painter);
 
 #ifdef GT_INTELLI_DEBUG_GRAPHICS

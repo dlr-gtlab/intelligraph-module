@@ -86,10 +86,19 @@ private:
         volatile_ptr<ConnectionGraphicsObject> object;
     };
 
+    struct DraftData
+    {
+        volatile_ptr<ConnectionGraphicsObject> connection;
+        QPointer<NodeGraphicsObject> target = nullptr;
+
+        operator bool() const { return connection; }
+    };
+
     QPointer<Graph> m_graph = nullptr;
     std::vector<NodeEntry> m_nodes;
     std::vector<ConnectionEntry> m_connections;
-    volatile_ptr<ConnectionGraphicsObject> m_draftConnection;
+    DraftData m_draft;
+
     ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
 
     void beginReset();
