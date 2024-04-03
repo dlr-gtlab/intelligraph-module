@@ -281,31 +281,6 @@ constexpr inline bool StrongType<T, Tag, InitValue>::isValid() const noexcept
     return *this != invalid<StrongType<T, Tag, InitValue>>();
 }
 
-#if 0
-struct ConnectionIdHasher
-{
-    size_t operator()(ConnectionId const& c) const noexcept
-    {
-        using T = typename NodeId::value_type;
-        static_assert(2 * sizeof(T) == sizeof(uint64_t), "was expecting 32bit uint");
-
-        size_t hash = 0;
-        hash  = (size_t)(c.outNodeId ^ c.outPort) << 32;
-        hash += c.inNodeId ^ c.inPort;
-        return hash;
-    }
-};
-
-struct NodeIdHasher
-{
-    size_t operator()(NodeId nodeId) const noexcept
-    {
-        using T = typename NodeId::value_type;
-        return std::hash<T>{}(nodeId.value());
-    }
-};
-#endif
-
 } // namespace intelli
 
 namespace gt

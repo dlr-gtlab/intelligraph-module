@@ -82,7 +82,7 @@ NodeGeometry::portHeightExtent() const
     return height;
 }
 
-QPainterPath
+QPainterPath const&
 NodeGeometry::shape() const
 {
     if (m_shape.has_value()) return *m_shape;
@@ -163,8 +163,8 @@ NodeGeometry::boundingRect() const
 QRectF
 NodeGeometry::computeBoundingRect() const
 {
-    double xoffset = 0.5 * style::nodePortSize() * 2;
-    double yoffset = 0.5 * style::nodePortSize() * 2;
+    double xoffset = 0.6 * style::nodePortSize() * 2;
+    double yoffset = 0.6 * style::nodePortSize() * 2;
 
     auto rect = innerRect();
 

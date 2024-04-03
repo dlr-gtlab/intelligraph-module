@@ -106,10 +106,13 @@ canAppendConnection(Graph& graph, ConnectionId conId, MakeError makeError = {}, 
         if (!silent)
         {
             gtWarning() << makeError()
-                        << tr("(cannot connect ports of same type)");
+                        << tr("(cannot connect ports of same port type)");
         }
         return {};
     }
+
+    // target node should be an input port
+    assert (targetNode->node->portType(inPort->id()) == PortType::In);
 
     // check if types are compatible
     auto& factory = NodeDataFactory::instance();
@@ -118,7 +121,20 @@ canAppendConnection(Graph& graph, ConnectionId conId, MakeError makeError = {}, 
         if (!silent)
         {
             gtWarning() << makeError()
-                        << tr("(cannot connect ports with incomaptible typeId)");
+                        << tr("(cannot connect ports with incomaptible types)");
+        }
+        return {};
+    }
+
+    // check if input port is already connected
+    auto const& cons = graph.findConnections(conId.inNodeId, conId.inPort);
+    if (!cons.empty())
+    {
+        assert (cons.size() == 1);
+        if (!silent)
+        {
+            gtWarning() << makeError()
+                        << tr("(in-port is already connected to '%1')").arg(toString(cons.first()));
         }
         return {};
     }

@@ -151,8 +151,8 @@ NodePainter::drawPort(QPainter& painter,
     QColor penColor = object().isSelected() ?
                           style::nodeSelectedOutline() :
                           style::nodeOutline();
-
-    QBrush brush = style::connectionOutline(port.typeId);
+    
+    QBrush brush = style::typeIdColor(port.typeId);
 
     QPen pen(penColor, penWidth);
     painter.setPen(pen);

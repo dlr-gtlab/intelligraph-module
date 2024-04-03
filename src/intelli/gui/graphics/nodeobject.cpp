@@ -74,7 +74,7 @@ NodeGraphicsObject::NodeGraphicsObject(Graph& graph, Node& node, NodeUI& ui) :
     m_node(&node),
     m_geometry(ui.geometry(node)),
     m_painter(ui.painter(*this, *m_geometry)),
-    m_evalStateObject(new NodeEvalStateGraphicsObject(*this, *m_geometry, *m_painter, node))
+    m_evalStateObject(new NodeEvalStateGraphicsObject(*this, *m_painter, node))
 {
     setFlag(QGraphicsItem::ItemContainsChildrenInShape, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);
@@ -92,6 +92,12 @@ NodeGraphicsObject::NodeGraphicsObject(Graph& graph, Node& node, NodeUI& ui) :
     connect(this, &NodeGraphicsObject::nodeGeometryChanged,
             this, &NodeGraphicsObject::updateChildItems,
             Qt::DirectConnection);
+
+    connect(&node, &Node::nodeChanged,
+            this, &NodeGraphicsObject::onNodeChanged, Qt::DirectConnection);
+    connect(&node, &Node::portChanged,
+            this, &NodeGraphicsObject::onNodeChanged, Qt::DirectConnection);
+
 
     updateChildItems();
 }
@@ -243,7 +249,7 @@ NodeGraphicsObject::itemChange(GraphicsItemChange change, const QVariant& value)
     switch (change)
     {
     case GraphicsItemChange::ItemSelectedChange:
-        if (!value.toBool()) setZValue(style::zValue(ZValue::Node));
+        setZValue(style::zValue(!value.toBool() ? ZValue::Node : ZValue::NodeHovered));
         break;
     default:
         break;

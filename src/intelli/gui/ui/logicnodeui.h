@@ -53,6 +53,8 @@ public:
 
     LogicNodePainter(NodeGraphicsObject& object, NodeGeometry& geometry);
 
+    QColor backgroundColor() const override;
+
     void drawBackground(QPainter& painter) const override;
 
     void drawOutline(QPainter& painter) const override;
@@ -63,8 +65,6 @@ public:
                          PortIndex idx,
                          bool connected) const override;
 };
-
-
 
 class LogicNodeUI : public NodeUI
 {

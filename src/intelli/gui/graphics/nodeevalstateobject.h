@@ -21,6 +21,10 @@
 namespace intelli
 {
 
+/**
+ * @brief Graphic object used to visualize the eval state of the node in the
+ * graph. Also applies a tooltip for the current eval state.
+ */
 class NodeEvalStateGraphicsObject : public QGraphicsObject
 {
     Q_OBJECT
@@ -32,12 +36,19 @@ public:
     int type() const override { return Type; }
 
     NodeEvalStateGraphicsObject(QGraphicsObject& parent,
-                                NodeGeometry& geometry,
                                 NodePainter& painter,
                                 Node& node);
 
+    /**
+     * @brief Bounding rect of this object
+     * @return Bounding rect
+     */
     QRectF boundingRect() const override;
 
+    /**
+     * @brief Sets the node eval state, used for the visualization
+     * @param state
+     */
     void setNodeEvalState(NodeEvalState state);
 
 protected:
@@ -46,13 +57,13 @@ protected:
                QStyleOptionGraphicsItem const* option,
                QWidget* widget = nullptr) override;
 
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
-
 private:
 
+    /// Timeline for anmation
     QTimeLine m_timeLine;
-    NodeGeometry* m_geometry = nullptr;
+    /// Painter used for rendering
     NodePainter* m_painter = nullptr;
+    /// Node eval state that is displayed currently
     NodeEvalState m_state = NodeEvalState::Invalid;
 
     void paintRunningState(QPainter& painter);

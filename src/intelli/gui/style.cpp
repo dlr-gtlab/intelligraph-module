@@ -77,7 +77,7 @@ intelli::style::nodeHoveredOutlineWidth()
 }
 
 QColor
-intelli::style::connectionOutline(TypeId const& typeId)
+intelli::style::typeIdColor(TypeId const& typeId)
 {
     static QHash<QString, QColor> cache;
 

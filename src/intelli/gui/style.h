@@ -43,11 +43,12 @@ GT_INTELLI_EXPORT void applyTheme(Theme theme = Theme::System);
 /// enum holding the zvalue of the different graphical objects
 enum class ZValue : int
 {
-    Connection       = -1,
-    Node             =  0,
-    NodeHovered      =  1,
-    NodeWidget       = 10,
-    NodeEvalState    =  5,
+    Connection        = -2,
+    ConnectionHovered = -1,
+    Node              =  0,
+    NodeHovered       =  1,
+    NodeWidget        = 10,
+    NodeEvalState     =  5,
 };
 
 namespace style
@@ -69,7 +70,8 @@ GT_INTELLI_EXPORT QColor nodeHoveredOutline();
 
 GT_INTELLI_EXPORT double nodeHoveredOutlineWidth();
 
-GT_INTELLI_EXPORT QColor connectionOutline(TypeId const& typeId);
+///
+GT_INTELLI_EXPORT QColor typeIdColor(TypeId const& typeId);
 
 GT_INTELLI_EXPORT double connectionOutlineWidth();
 

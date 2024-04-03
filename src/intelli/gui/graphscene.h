@@ -105,7 +105,7 @@ private:
 
     void endReset();
 
-//    void makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds);
+    void makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
 
     void moveConnection(ConnectionGraphicsObject* object, NodeGraphicsObject* node = nullptr);
 

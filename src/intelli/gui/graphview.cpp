@@ -135,8 +135,9 @@ GraphView::GraphView(QWidget* parent) :
         auto* btn = new QPushButton();
         btn->setVisible(false);
         btn->setEnabled(false);
+//        btn->setFlat(true);
         auto height = btn->sizeHint().height();
-        btn->setFixedSize(QSize(height * 1.5, height));
+        btn->setFixedSize(QSize(height/* * 1.5*/, height));
         return btn;
     };
 
@@ -151,6 +152,7 @@ GraphView::GraphView(QWidget* parent) :
 
     /* OVERLAY */
     auto* overlay = new QHBoxLayout(this);
+    overlay->setContentsMargins(5, 5, 0, 0);
     overlay->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     overlay->addWidget(menuBar);
     overlay->addWidget(m_startAutoEvalBtn);

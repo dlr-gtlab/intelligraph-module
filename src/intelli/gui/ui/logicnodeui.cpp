@@ -12,6 +12,8 @@
 #include <intelli/gui/style.h>
 #include <intelli/node/logicoperation.h>
 
+#include <gt_colors.h>
+
 #include <QPainter>
 
 using namespace intelli;
@@ -186,6 +188,12 @@ LogicNodePainter::LogicNodePainter(NodeGraphicsObject& object, NodeGeometry& geo
     NodePainter(object, geometry)
 {
 
+}
+
+QColor
+LogicNodePainter::backgroundColor() const
+{
+    return NodePainter::backgroundColor();
 }
 
 void

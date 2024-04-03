@@ -25,8 +25,8 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection,
                                                    TypeId outType,
                                                    TypeId inType) :
     m_connection(connection),
-    m_outType(std::move(outType)),
-    m_inType(std::move(inType))
+    m_startType(std::move(outType)),
+    m_endType(std::move(inType))
 {
     setFlag(QGraphicsItem::ItemIsFocusable, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);
@@ -42,7 +42,7 @@ ConnectionGraphicsObject::boundingRect() const
     auto points = controlPoints();
 
     // `normalized()` fixes inverted rects.
-    QRectF basicRect = QRectF{m_out, m_in}.normalized();
+    QRectF basicRect = QRectF{m_start, m_end}.normalized();
 
     QRectF c1c2Rect = QRectF(points.first, points.second).normalized();
 
@@ -70,9 +70,9 @@ ConnectionGraphicsObject::endPoint(PortType type) const
     switch (type)
     {
     case PortType::In:
-        return m_in;
+        return m_end;
     case PortType::Out:
-        return m_out;
+        return m_start;
     case PortType::NoType:
         break;
     }
@@ -87,10 +87,10 @@ ConnectionGraphicsObject::setEndPoint(PortType type, QPointF pos)
     switch (type)
     {
     case PortType::In:
-        m_in = pos;
+        m_end = pos;
         break;
     case PortType::Out:
-        m_out = pos;
+        m_start = pos;
         break;
     case PortType::NoType:
     default:
@@ -103,7 +103,7 @@ ConnectionGraphicsObject::setEndPoint(PortType type, QPointF pos)
 void
 ConnectionGraphicsObject::setPortTypeId(PortType type, TypeId typeId)
 {
-    (type == PortType::In ? m_inType : m_outType) = std::move(typeId);
+    (type == PortType::In ? m_endType : m_startType) = std::move(typeId);
 
     update();
 }
@@ -126,14 +126,14 @@ ConnectionGraphicsObject::controlPoints() const
 
     case ConnectionShape::Straight:
     {
-        return {m_out, m_in};
+        return {m_start, m_end};
     }
 
     case ConnectionShape::Cubic:
     {
         constexpr double maxControlPointExtent = 200;
 
-        double xDistance = m_in.x() - m_out.x();
+        double xDistance = m_end.x() - m_start.x();
 
         double horizontalOffset = qMin(maxControlPointExtent, std::abs(xDistance)) * 0.5;
 
@@ -143,7 +143,7 @@ ConnectionGraphicsObject::controlPoints() const
         {
             constexpr double offset = 5;
 
-            double yDistance = m_in.y() - m_out.y() + offset;
+            double yDistance = m_end.y() - m_start.y() + offset;
 
             verticalOffset  = qMin(maxControlPointExtent, std::abs(yDistance));
             verticalOffset *= (yDistance < 0) ? -1.0 : 1.0;
@@ -151,8 +151,8 @@ ConnectionGraphicsObject::controlPoints() const
             horizontalOffset *= 2;
         }
 
-        QPointF c1 = m_out + QPointF{horizontalOffset, verticalOffset};
-        QPointF c2 = m_in  - QPointF{horizontalOffset, verticalOffset};
+        QPointF c1 = m_start + QPointF{horizontalOffset, verticalOffset};
+        QPointF c2 = m_end  - QPointF{horizontalOffset, verticalOffset};
 
         return {c1, c2};
     }
@@ -161,8 +161,8 @@ ConnectionGraphicsObject::controlPoints() const
     {
         constexpr double cutoffValue = 0.025;
 
-        double xDistance = m_in.x() - m_out.x();
-        double yDistance = m_in.y() - m_out.y();
+        double xDistance = m_end.x() - m_start.x();
+        double yDistance = m_end.y() - m_start.y();
 
         double horizontalOffset = std::abs(xDistance) * 0.5;
 
@@ -172,7 +172,7 @@ ConnectionGraphicsObject::controlPoints() const
         {
             constexpr double maxHorizontalOffset = 10;
 
-            double yDistance = m_in.y() - m_out.y();
+            double yDistance = m_end.y() - m_start.y();
 
             verticalOffset  = std::abs(yDistance) * 0.5;
             verticalOffset *= (yDistance < 0) ? -1.0 : 1.0;
@@ -182,18 +182,18 @@ ConnectionGraphicsObject::controlPoints() const
         // dont draw rectangle shaped connections if y distance is small
         else if (std::abs(yDistance / (xDistance + 0.1)) <= cutoffValue)
         {
-            return {m_out, m_in};
+            return {m_start, m_end};
         }
 
-        QPointF c1 = m_out + QPointF{horizontalOffset, verticalOffset};
-        QPointF c2 = m_in  - QPointF{horizontalOffset, verticalOffset};
+        QPointF c1 = m_start + QPointF{horizontalOffset, verticalOffset};
+        QPointF c2 = m_end  - QPointF{horizontalOffset, verticalOffset};
 
         return {c1, c2};
     }
 
     }
 
-    return {m_out, m_in};
+    return {m_start, m_end};
 }
 
 void
@@ -209,8 +209,8 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     bool const selected = isSelected();
     bool const isDraft  = !m_connection.isValid();
 
-    QColor outColor = style::connectionOutline(m_outType);
-    QColor inColor  = style::connectionOutline(m_inType);
+    QColor outColor = style::typeIdColor(m_startType);
+    QColor inColor  = style::typeIdColor(m_endType);
 
     double penWidth = style::connectionOutlineWidth();
     Qt::PenStyle penStyle = Qt::SolidLine;
@@ -235,9 +235,9 @@ ConnectionGraphicsObject::paint(QPainter* painter,
         penStyle = Qt::DashLine;
     }
     // apply gradient for potentially invalid connection
-    else if (!NodeDataFactory::instance().canConvert(m_inType, m_outType))
+    else if (!NodeDataFactory::instance().canConvert(m_endType, m_startType))
     {
-        QLinearGradient gradient(m_out, m_in);
+        QLinearGradient gradient(m_start, m_end);
         gradient.setColorAt(0.1, outColor);
         gradient.setColorAt(0.9, inColor);
         penBrush = gradient;
@@ -261,13 +261,13 @@ ConnectionGraphicsObject::paint(QPainter* painter,
         {
             painter->setPen(inColor);
             painter->setBrush(inColor);
-            painter->drawEllipse(m_in,  pointRadius, pointRadius);
+            painter->drawEllipse(m_end,  pointRadius, pointRadius);
         }
         else
         {
             painter->setPen(outColor);
             painter->setBrush(outColor);
-            painter->drawEllipse(m_out, pointRadius, pointRadius);
+            painter->drawEllipse(m_start, pointRadius, pointRadius);
         }
     }
 
@@ -292,6 +292,21 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     painter->setPen(Qt::red);
     painter->drawRect(boundingRect());
 #endif
+}
+
+QVariant
+ConnectionGraphicsObject::itemChange(GraphicsItemChange change, const QVariant& value)
+{
+    switch (change)
+    {
+    case GraphicsItemChange::ItemSelectedChange:
+        setZValue(style::zValue(!value.toBool() ? ZValue::Connection : ZValue::ConnectionHovered));
+        break;
+    default:
+        break;
+    }
+
+    return value;
 }
 
 QPainterPath
@@ -331,6 +346,7 @@ void
 ConnectionGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
     m_hovered = true;
+    setZValue(style::zValue(ZValue::ConnectionHovered));
     update();
     event->accept();
 }
@@ -339,6 +355,7 @@ void
 ConnectionGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
     m_hovered = false;
+    setZValue(style::zValue(ZValue::Connection));
     update();
     event->accept();
 }
@@ -363,6 +380,8 @@ ConnectionGraphicsObject::path() const
     case ConnectionShape::Rectangle:
         path.lineTo(c1c2.first);
         path.lineTo(c1c2.second);
+        path.lineTo(in);
+        break;
     case ConnectionShape::Straight:
         path.lineTo(in);
         break;

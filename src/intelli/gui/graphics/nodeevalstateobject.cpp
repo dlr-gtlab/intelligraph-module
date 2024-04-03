@@ -24,12 +24,10 @@
 using namespace intelli;
 
 NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent,
-                                                         NodeGeometry& geometry,
                                                          NodePainter& painter,
                                                          Node& node) :
     QGraphicsObject(&parent),
     m_timeLine(1000),
-    m_geometry(&geometry),
     m_painter(&painter)
 {
     setZValue(style::zValue(ZValue::NodeEvalState));
@@ -46,7 +44,7 @@ NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent
 QRectF
 NodeEvalStateGraphicsObject::boundingRect() const
 {
-    return QRectF{QPoint{0, 0}, m_geometry->evalStateRect().size()};
+    return QRectF{QPoint{0, 0}, QSizeF{style::nodeEvalStateSize(), style::nodeEvalStateSize()}};
 }
 
 void
@@ -100,12 +98,6 @@ NodeEvalStateGraphicsObject::paint(QPainter* painter,
     case NodeEvalState::Valid:
         return paintIdleState(*painter);
     }
-}
-
-void
-NodeEvalStateGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
-{
-    return QGraphicsObject::mousePressEvent(event);
 }
 
 void

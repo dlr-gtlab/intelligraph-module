@@ -22,12 +22,26 @@ namespace intelli
 class NodeGeometry;
 class NodeGraphicsObject;
 
+/**
+ * @brief The NodePainter class.
+ * Denotes how the node graphic object should be rendered.
+ *
+ * This class implements the default implementation for nodes. It should be
+ * subclassed to override this default implementation. Use `intelli::style` for
+ * predefined sizes and colors of certain graphical components, such as the
+ * port size.
+ */
 class GT_INTELLI_EXPORT NodePainter
 {
 public:
 
     using PortData = Node::PortData;
 
+    /**
+     * @brief Constructor
+     * @param object Graphic object to paint
+     * @param geometry Geometry to use to draw components at the correct position
+     */
     NodePainter(NodeGraphicsObject& object, NodeGeometry& geometry);
     NodePainter(NodePainter const&) = delete;
     NodePainter(NodePainter&&) = delete;
@@ -49,40 +63,106 @@ public:
      */
     void applyOutlineConfig(QPainter& painter) const;
 
+    /**
+     * @brief May be overriden to apply a custom background color similiar
+     * to how input/output provider and graphs have an altered color.
+     * Use the predefined painter config.
+     * @return Background color
+     */
     virtual QColor backgroundColor() const;
 
+    /**
+     * @brief Draws the background of the node.
+     * @param painter Painter to draw with
+     */
     virtual void drawBackground(QPainter& painter) const;
 
+    /**
+     * @brief Draws the outline of the node. Is repsonsible to highlight the
+     * node when selecting or hovering. Use the predefined painter config.
+     * @param painter Painter to draw with
+     */
     virtual void drawOutline(QPainter& painter) const;
 
+    /**
+     * @brief Calls `drawPort` for each port that is visible and
+     * `drawPortCaption` if the port caption is visible.
+     * @param painter Painter to draw with
+     */
     void drawPorts(QPainter& painter) const;
 
+    /**
+     * @brief Draws the connection point of the port
+     * @param painter Painter to draw with
+     * @param port Port info
+     * @param type Port type
+     * @param idx Port index
+     * @param connected Whether the port is connected
+     */
     virtual void drawPort(QPainter& painter,
                           PortData& port,
                           PortType type,
                           PortIndex idx,
                           bool connected) const;
 
+    /**
+     * @brief Draws the caption of the port
+     * @param painter Painter to draw with
+     * @param port Port info
+     * @param type Port type
+     * @param idx Port index
+     * @param connected Whether the port is connected
+     */
     virtual void drawPortCaption(QPainter& painter,
                                  PortData& port,
                                  PortType type,
                                  PortIndex idx,
                                  bool connected) const;
 
+    /**
+     * @brief Draws the resize handle
+     * @param painter Painter to draw with
+     */
     void drawResizeHandle(QPainter& painter) const;
 
+    /**
+     * @brief Draws the caption of the node
+     * @param painter Painter to draw with
+     */
     void drawCaption(QPainter& painter) const;
 
+    /**
+     * @brief Main paint method, used to draw all components in the right
+     * order.
+     * @param painter Painter to draw with
+     */
     void paint(QPainter& painter) const;
 
 protected:
 
+    /**
+     * @brief Returns the associated graphic object.
+     * @return Graphic object
+     */
     NodeGraphicsObject& object() const;
+
+    /**
+     * @brief Returns the associated node.
+     * @return Node
+     */
     Node& node() const;
+
+    /**
+     * @brief Returns the geometry used for the organization of all components
+     * @return Geometry
+     */
     NodeGeometry& geometry() const;
 
 private:
+
+    /// Graphic object
     NodeGraphicsObject* m_object;
+    /// Geometry
     NodeGeometry* m_geometry;
 };
 

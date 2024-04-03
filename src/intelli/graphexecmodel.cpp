@@ -1121,7 +1121,7 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, NodeDataSet data)
         gtDebug().verbose()
             << Impl::graphName(*this)
             << tr("(Not setting port data for node %1:%2, "
-                  "data did not change for port)")
+                  "data did not change)")
                    .arg(nodeId).arg(portId);
         return true;
     }
