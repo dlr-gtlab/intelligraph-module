@@ -30,8 +30,7 @@ NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent
     QGraphicsObject(&parent),
     m_timeLine(1000),
     m_geometry(&geometry),
-    m_painter(&painter),
-    m_node(&node)
+    m_painter(&painter)
 {
     setZValue(style::zValue(ZValue::NodeEvalState));
 
@@ -39,7 +38,7 @@ NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent
     m_timeLine.setLoopCount(0);
     m_timeLine.setFrameRange(0, 24);
 
-    connect(&m_timeLine, &QTimeLine::frameChanged, this, [=](){
+    connect(&m_timeLine, &QTimeLine::frameChanged, &node, [=](){
         this->update();
     });
 }

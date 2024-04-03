@@ -39,9 +39,9 @@ public:
     enum { Type = UserType + (int)GraphicsItemType::Connection };
     int type() const override { return Type; }
 
-    ConnectionGraphicsObject(ConnectionId connection,
-                             TypeId inType  = {},
-                             TypeId outType = {});
+    explicit ConnectionGraphicsObject(ConnectionId connection,
+                                      TypeId inType  = {},
+                                      TypeId outType = {});
 
     QRectF boundingRect() const override;
 

@@ -21,13 +21,14 @@
 #include "intelli/connectiongroup.h"
 #include "intelli/property/objectlink.h"
 #include "intelli/property/stringselection.h"
+#include "intelli/node/logicoperation.h"
+#include "intelli/gui/ui/logicnodeui.h"
 #include "intelli/gui/connectionui.h"
 #include "intelli/gui/packageui.h"
 #include "intelli/gui/nodeui.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/property_item/objectlink.h"
 #include "intelli/gui/property_item/stringselection.h"
-#include "intelli/gui/style.h"
 
 #include "intelli/calculators/graphexeccalculator.h"
 
@@ -86,7 +87,7 @@ static const int ns_meta_port_type = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber{0, 9, 0};
+    return GtVersionNumber{0, 10, 0};
 }
 
 QString
@@ -101,8 +102,6 @@ GtIntelliGraphModule::init()
     intelli::initModule();
 
     if (gtApp->batchMode()) return;
-
-    applyTheme(Theme::System);
 }
 
 GtIntelliGraphModule::MetaInformation
@@ -245,7 +244,12 @@ GtIntelliGraphModule::uiItems()
     map.insert(GT_CLASSNAME(GraphCategory),
                GT_METADATA(PackageUI));
 
+    map.insert(GT_CLASSNAME(LogicNode),
+               GT_METADATA(LogicNodeUI));
+
     QStringList registeredNodes = NodeFactory::instance().registeredNodes();
+    registeredNodes.removeOne(GT_CLASSNAME(LogicNode));
+
     buffer.reserve(registeredNodes.size());
 
     for (QString const& node : qAsConst(registeredNodes))

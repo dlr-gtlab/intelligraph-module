@@ -363,21 +363,21 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
     });
 
     connect(&graph, &Graph::nodeAppended,
-            this, &GraphExecutionModel::onNodeAppended);
+            this, &GraphExecutionModel::onNodeAppended, Qt::DirectConnection);
     connect(&graph, &Graph::nodeDeleted,
-            this, &GraphExecutionModel::onNodeDeleted);
+            this, &GraphExecutionModel::onNodeDeleted, Qt::DirectConnection);
     connect(&graph, &Graph::connectionAppended,
-            this, &GraphExecutionModel::onConnectedionAppended);
+            this, &GraphExecutionModel::onConnectedionAppended, Qt::DirectConnection);
     connect(&graph, &Graph::connectionDeleted,
-            this, &GraphExecutionModel::onConnectionDeleted);
+            this, &GraphExecutionModel::onConnectionDeleted, Qt::DirectConnection);
     connect(&graph, &Graph::nodePortInserted,
-            this, &GraphExecutionModel::onNodePortInserted);
+            this, &GraphExecutionModel::onNodePortInserted, Qt::DirectConnection);
     connect(&graph, &Graph::nodePortAboutToBeDeleted,
-            this, &GraphExecutionModel::onNodePortAboutToBeDeleted);
+            this, &GraphExecutionModel::onNodePortAboutToBeDeleted, Qt::DirectConnection);
     connect(&graph, &Graph::beginModification,
-            this, &GraphExecutionModel::onBeginGraphModification);
+            this, &GraphExecutionModel::onBeginGraphModification, Qt::DirectConnection);
     connect(&graph, &Graph::endModification,
-            this, &GraphExecutionModel::onEndGraphModification);
+            this, &GraphExecutionModel::onEndGraphModification, Qt::DirectConnection);
 }
 
 GraphExecutionModel::~GraphExecutionModel() = default;

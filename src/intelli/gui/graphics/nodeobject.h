@@ -17,13 +17,13 @@
 
 #include <QPointer>
 #include <QGraphicsObject>
+#include <QGraphicsProxyWidget>
 
 namespace intelli
 {
 
 class NodeUI;
 class NodeEvalStateGraphicsObject;
-class NodeProxyWidget;
 
 class GT_INTELLI_EXPORT NodeGraphicsObject : public QGraphicsObject
 {
@@ -123,12 +123,16 @@ private:
     QPointer<Node> m_node;
     std::unique_ptr<NodeGeometry> m_geometry;
     std::unique_ptr<NodePainter> m_painter;
-    QPointer<NodeProxyWidget> m_proxyWidget = nullptr;
+    QPointer<QGraphicsProxyWidget> m_proxyWidget = nullptr;
     NodeEvalStateGraphicsObject* m_evalStateObject = nullptr;
 
     // flags
     State m_state = Normal;
     bool m_hovered = false;
+
+private slots:
+
+    void updateChildItems();
 };
 
 } // namespace intelli

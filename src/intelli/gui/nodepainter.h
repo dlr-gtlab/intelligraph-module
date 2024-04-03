@@ -22,34 +22,64 @@ namespace intelli
 class NodeGeometry;
 class NodeGraphicsObject;
 
-class NodePainter
+class GT_INTELLI_EXPORT NodePainter
 {
 public:
 
-    NodePainter(NodeGraphicsObject& obj, NodeGeometry& geometry);
+    using PortData = Node::PortData;
+
+    NodePainter(NodeGraphicsObject& object, NodeGeometry& geometry);
     NodePainter(NodePainter const&) = delete;
     NodePainter(NodePainter&&) = delete;
     NodePainter& operator=(NodePainter const&) = delete;
     NodePainter& operator=(NodePainter&&) = delete;
     virtual ~NodePainter() = default;
 
+    /**
+     * @brief Applies pen and brush to the painter to render the background
+     * of the node uniformly.
+     * @param painter Painter to configure
+     */
+    void applyBackgroundConfig(QPainter& painter) const;
+
+    /**
+     * @brief Applies pen and brush to the painter to render the outlne
+     * of the node uniformly.
+     * @param painter Painter to configure
+     */
+    void applyOutlineConfig(QPainter& painter) const;
+
     virtual QColor backgroundColor() const;
 
-    virtual void drawBackground(QPainter& painter);
+    virtual void drawBackground(QPainter& painter) const;
 
-    virtual void drawOutline(QPainter& painter);
+    virtual void drawOutline(QPainter& painter) const;
 
-    void drawPorts(QPainter& painter);
+    void drawPorts(QPainter& painter) const;
 
-    virtual void drawPort(QPainter& painter, Node::PortData& port, PortType type, PortIndex idx, bool connected);
+    virtual void drawPort(QPainter& painter,
+                          PortData& port,
+                          PortType type,
+                          PortIndex idx,
+                          bool connected) const;
 
-    virtual void drawPortCaption(QPainter& painter, Node::PortData& port, PortType type, PortIndex idx, bool connected);
+    virtual void drawPortCaption(QPainter& painter,
+                                 PortData& port,
+                                 PortType type,
+                                 PortIndex idx,
+                                 bool connected) const;
 
-    void drawResizeHandle(QPainter& painter);
+    void drawResizeHandle(QPainter& painter) const;
 
-    void drawCaption(QPainter& painter);
+    void drawCaption(QPainter& painter) const;
 
-    void paint(QPainter& painter);
+    void paint(QPainter& painter) const;
+
+protected:
+
+    NodeGraphicsObject& object() const;
+    Node& node() const;
+    NodeGeometry& geometry() const;
 
 private:
     NodeGraphicsObject* m_object;

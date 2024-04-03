@@ -199,7 +199,7 @@ GraphScene::endReset()
     connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
 
     connect(model, &GraphExecutionModel::nodeEvalStateChanged,
-            this, &GraphScene::onNodeEvalStateChanged);
+            this, &GraphScene::onNodeEvalStateChanged, Qt::DirectConnection);
 
     if ( m_graph->isActive()) model->autoEvaluate().detach();
 }
@@ -1054,7 +1054,7 @@ GraphScene::onNodeAppended(Node* node)
     NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
     if (!ui) ui = &defaultUI;
 
-    auto entity = make_volatile<NodeGraphicsObject>(*m_graph, *node, *ui);
+    auto entity = make_volatile<NodeGraphicsObject, DirectDeleter>(*m_graph, *node, *ui);
     // add to scene
     addItem(entity);
 
@@ -1147,7 +1147,7 @@ GraphScene::onConnectionAppended(Connection* con)
     auto* outPort = outNode->port(conId.outPort);
     assert(outPort);
 
-    auto entity = make_volatile<ConnectionGraphicsObject>(conId, outPort->typeId, inPort->typeId);
+    auto entity = make_volatile<ConnectionGraphicsObject, DirectDeleter>(conId, outPort->typeId, inPort->typeId);
     entity->setConnectionShape(m_connectionShape);
 
     // add to scene

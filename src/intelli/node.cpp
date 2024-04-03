@@ -96,8 +96,6 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
 Node::~Node()
 {
-    pimpl->widget.reset();
-
     emit nodeAboutToBeDeleted(id());
 }
 
@@ -440,40 +438,4 @@ Node::registerWidgetFactory(WidgetFactoryNoArgs factory)
     registerWidgetFactory([f = std::move(factory)](Node&){
         return f();
     });
-}
-
-QWidget*
-Node::makeWidget()
-{
-    if (!pimpl->widget) initWidget();
-
-    return pimpl->widget;
-}
-
-QWidget*
-Node::embeddedWidget()
-{
-    return pimpl->widget;
-}
-
-QWidget const*
-Node::embeddedWidget() const
-{
-    return const_cast<Node*>(this)->embeddedWidget();
-}
-
-void
-Node::initWidget()
-{
-    if (pimpl->widgetFactory)
-    {
-        auto tmp = pimpl->widgetFactory(*this);
-        auto* widget = tmp.get();
-        pimpl->widget = volatile_ptr<QWidget>(tmp.release());
-
-        if (!widget || !(nodeFlags() & Resizable)) return;
-
-        auto size = this->size();
-        if (size.isValid()) widget->resize(size);
-    }
 }

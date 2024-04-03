@@ -8,6 +8,7 @@
 
 
 #include "intelli/gui/property_item/logic.h"
+#include "gt_logging.h"
 
 #include <QMouseEvent>
 #include <QPainter>

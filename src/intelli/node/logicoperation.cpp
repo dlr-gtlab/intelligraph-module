@@ -29,6 +29,7 @@ LogicNode::LogicNode() :
     // out ports
     m_out = addOutPort(typeId<BoolData>());
 
+    /*
     registerWidgetFactory([=](){
         auto base = makeBaseWidget();
         auto w = new QComboBox();
@@ -53,6 +54,7 @@ LogicNode::LogicNode() :
 
         return base;
     });
+    */
 
     connect(&m_operation, &GtAbstractProperty::changed, this, [this](){
         if (m_operation == LogicOperation::NOT && port(m_inB))
@@ -63,8 +65,15 @@ LogicNode::LogicNode() :
         {
             addInPort(PortData::customId(m_inB, typeId<BoolData>()));
         }
+        emit nodeChanged();
         emit triggerNodeEvaluation();
     });
+}
+
+LogicNode::LogicOperation
+LogicNode::operation() const
+{
+    return m_operation;
 }
 
 void

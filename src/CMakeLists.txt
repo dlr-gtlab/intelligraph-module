@@ -26,20 +26,21 @@ set(PUBLIC_HEADERS
     intelli/data/bytearraydata.h
     intelli/data/double.h
     intelli/data/object.h
-    intelli/data/stringlist.h
-    intelli/data/string.h
     intelli/data/int.h
     intelli/data/integer.h
+    intelli/data/stringlist.h
+    intelli/data/string.h
     intelli/gui/icons.h
     intelli/gui/nodegeometry.h
     intelli/gui/nodepainter.h
     intelli/gui/nodeui.h
     intelli/gui/portuiaction.h
     intelli/gui/style.h
+    intelli/gui/graphics/nodeobject.h
     intelli/property/color.h
-    intelli/property/uint.h
     intelli/property/objectlink.h
     intelli/property/stringselection.h
+    intelli/property/uint.h
 
     intelli/node/propertyinput/abstractinputnode.h
     intelli/node/propertyinput/boolinputnode.h
@@ -85,7 +86,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphview.h
     intelli/gui/packageui.h
     intelli/gui/graphics/connectionobject.h
-    intelli/gui/graphics/nodeobject.h
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/property_item/abstractnumberinputwidget.h
     intelli/gui/property_item/doubleinputwidget.h
@@ -95,6 +95,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/logic.h
     intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
+    intelli/gui/ui/logicnodeui.h
     intelli/private/node_impl.h
     intelli/private/utils.h
 
@@ -118,10 +119,10 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/exec/detachedexecutor.cpp
     intelli/data/bool.cpp
     intelli/data/double.cpp
+    intelli/data/int.cpp
     intelli/data/object.cpp
     intelli/data/stringlist.cpp
     intelli/data/string.cpp
-    intelli/data/int.cpp
     intelli/node/finddirectchild.cpp
     intelli/node/groupinputprovider.cpp
     intelli/node/groupoutputprovider.cpp
@@ -162,6 +163,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/logic.cpp
     intelli/gui/property_item/objectlink.cpp
     intelli/gui/property_item/stringselection.cpp
+    intelli/gui/ui/logicnodeui.cpp
     intelli/property/color.cpp
     intelli/property/objectlink.cpp
     intelli/property/stringselection.cpp

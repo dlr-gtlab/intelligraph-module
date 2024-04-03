@@ -77,13 +77,13 @@ private:
     struct NodeEntry
     {
         NodeId nodeId;
-        volatile_ptr<NodeGraphicsObject> object;
+        volatile_ptr<NodeGraphicsObject, DirectDeleter> object;
     };
 
     struct ConnectionEntry
     {
         ConnectionId conId;
-        volatile_ptr<ConnectionGraphicsObject> object;
+        volatile_ptr<ConnectionGraphicsObject, DirectDeleter> object;
     };
 
     struct DraftData

@@ -16,16 +16,18 @@
 #include <thirdparty/tl/optional.hpp>
 
 #include <QPainterPath>
+#include <QPointer>
+#include <QWidget>
 
 namespace intelli
 {
 
 class Node;
-class NodeGeometry
+class GT_INTELLI_EXPORT NodeGeometry
 {
 public:
 
-    NodeGeometry(Node& node);
+    explicit NodeGeometry(Node& node);
     NodeGeometry(NodeGeometry const&) = delete;
     NodeGeometry(NodeGeometry&&) = delete;
     NodeGeometry& operator=(NodeGeometry const&) = delete;
@@ -43,7 +45,7 @@ public:
         }
     };
 
-    bool positionWidgetAtBottom() const;
+    void setWidget(QPointer<QWidget> widget);
 
     int hspacing() const;
     int vspacing() const;
@@ -54,29 +56,49 @@ public:
 
     QRectF boundingRect() const;
 
-    QRectF captionRect() const;
+    virtual QRectF captionRect() const;
 
-    QRectF evalStateRect() const;
+    virtual QRectF evalStateRect() const;
 
-    QPointF widgetPosition() const;
+    virtual QPointF widgetPosition() const;
 
-    QRectF portRect(PortType type, PortIndex idx) const;
+    virtual QRectF portRect(PortType type, PortIndex idx) const;
 
-    QRectF portCaptionRect(PortType type, PortIndex idx) const;
+    virtual QRectF portCaptionRect(PortType type, PortIndex idx) const;
 
     PortHit portHit(QPointF coord) const;
     PortHit portHit(QRectF coord) const;
 
-    QRectF resizeHandleRect() const;
+    virtual QRectF resizeHandleRect() const;
 
-    /// tells the geometry to recompute the geometry
+    /// tells the geometry to invalidate the cached geometry
     void recomputeGeomtry();
+
+protected:
+
+    Node& node() const;
+
+    QWidget const* widget() const;
+
+    virtual QPainterPath computeShape() const;
+
+    virtual QRectF computeInnerRect() const;
+
+    virtual QRectF computeBoundingRect() const;
 
 private:
 
     Node* m_node;
+
+    QPointer<QWidget> m_widget;
     // cache for inner rect
     mutable tl::optional<QRectF> m_innerRect;
+    // cache for bounding rect
+    mutable tl::optional<QRectF> m_boundingRect;
+    // cache for shape
+    mutable tl::optional<QPainterPath> m_shape;
+
+    bool positionWidgetAtBottom() const;
 
     int captionHeightExtend() const;
 

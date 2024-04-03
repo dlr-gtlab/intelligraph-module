@@ -77,8 +77,6 @@ struct NodeImpl
     QString modelName;
     /// ports
     std::vector<PortData> inPorts, outPorts{};
-    /// owning pointer to widget, may be deleted earlier
-    volatile_ptr<QWidget> widget{};
     /// factory for creating the widget
     WidgetFactory widgetFactory{};
 

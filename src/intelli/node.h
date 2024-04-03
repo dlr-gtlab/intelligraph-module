@@ -72,6 +72,7 @@ class GT_INTELLI_EXPORT Node : public GtObject
     Q_OBJECT
     
     friend class NodeExecutor;
+    friend class NodeGraphicsObject;
     friend class GraphExecutionModel;
 
 public:
@@ -303,21 +304,6 @@ public:
      * @return Port id. May be invalid, check using `invalid<PortId>()`
      */
     PortId portId(PortType type, PortIndex idx) const noexcept(false);
-
-    /**
-     * @brief Returns the embedded widget to use in the graph. Will instantiate
-     * the widget if it does not yet exists. Ownership may be transfered safely.
-     * @return Embedded widget
-     */
-    QWidget* makeWidget();
-
-    /**
-     * @brief Returns the embedded widget used in the intelli graph. Ownership
-     * may be transfered safely.
-     * @return Embedded widget
-     */
-    QWidget* embeddedWidget();
-    QWidget const* embeddedWidget() const;
 
 signals:
 
@@ -552,9 +538,6 @@ private:
 
     // hide object name setter
     using GtObject::setObjectName;
-
-    /// initializes the widgets
-    void initWidget();
 };
 
 } // namespace intelli

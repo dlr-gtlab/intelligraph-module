@@ -11,13 +11,13 @@
 #include <intelli/gui/graphics/nodeevalstateobject.h>
 #include <intelli/gui/style.h>
 #include <intelli/graph.h>
+#include <intelli/private/node_impl.h>
 
 #include <gt_application.h>
 #include <gt_guiutilities.h>
 #include <gt_colors.h>
 
 #include <QPainter>
-#include <QGraphicsProxyWidget>
 #include <QStyleOptionGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsSceneHoverEvent>
@@ -25,7 +25,8 @@
 
 using namespace intelli;
 
-class intelli::NodeProxyWidget : public QGraphicsProxyWidget
+// proxy widget to select node when clicking widget
+class NodeProxyWidget : public QGraphicsProxyWidget
 {
 public:
 
@@ -86,6 +87,12 @@ NodeGraphicsObject::NodeGraphicsObject(Graph& graph, Node& node, NodeUI& ui) :
     setPos(m_node->pos());
 
     embedCentralWidget();
+
+    connect(this, &NodeGraphicsObject::nodeGeometryChanged,
+            this, &NodeGraphicsObject::updateChildItems,
+            Qt::DirectConnection);
+
+    updateChildItems();
 }
 
 Node&
@@ -161,6 +168,19 @@ NodeGraphicsObject::geometry() const
 void
 NodeGraphicsObject::embedCentralWidget()
 {
+    auto const makeWidget = [this]() -> std::unique_ptr<QWidget> {
+        auto factory = m_node->pimpl->widgetFactory;
+        if (!factory) return nullptr;
+
+        auto widget = factory(*m_node);
+        if (widget && (m_node->nodeFlags() & Resizable))
+        {
+            auto size = m_node->size();
+            if (size.isValid()) widget->resize(size);
+        }
+        return widget;
+    };
+
     auto change = Impl::prepareGeometryChange(this);
     m_geometry->recomputeGeomtry();
 
@@ -171,7 +191,7 @@ NodeGraphicsObject::embedCentralWidget()
         m_proxyWidget = nullptr;
     }
 
-    if (auto w = m_node->makeWidget())
+    if (auto w = makeWidget())
     {
         auto size = m_node->size();
         if (size.isValid()) w->resize(m_node->size());
@@ -180,12 +200,13 @@ NodeGraphicsObject::embedCentralWidget()
         p.setColor(QPalette::Window, m_painter->backgroundColor());
         w->setPalette(p);
 
+        m_geometry->setWidget(w.get());
+
         m_proxyWidget = new NodeProxyWidget(this);
 
-        m_proxyWidget->setWidget(w);
+        m_proxyWidget->setWidget(w.release());
         m_proxyWidget->setPreferredWidth(5);
         m_proxyWidget->setZValue(style::zValue(ZValue::NodeWidget));
-        m_proxyWidget->setPos(m_geometry->widgetPosition());
     }
 }
 
@@ -245,8 +266,8 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
     QPointF coord = sceneTransform().inverted().map(event->scenePos());
 
+    // check for port hit
     NodeGeometry::PortHit hit = m_geometry->portHit(coord);
-
     if (hit)
     {
         auto const& connections = m_graph->findConnections(m_node->id(), hit.port);
@@ -264,7 +285,8 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
         return;
     }
 
-    if (m_node->nodeFlags() & NodeFlag::Resizable && m_node->embeddedWidget())
+    // check for resize handle hit
+    if (m_node->nodeFlags() & NodeFlag::Resizable && m_proxyWidget && m_proxyWidget->widget())
     {
         auto pos = event->pos();
         bool hit = m_geometry->resizeHandleRect().contains(pos);
@@ -275,6 +297,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
         }
     }
 
+    // clear selection
     if (!isSelected() && !event->modifiers().testFlag(Qt::ControlModifier))
     {
         auto* scene = this->scene();
@@ -423,6 +446,12 @@ NodeGraphicsObject::onNodeChanged()
     auto change = Impl::prepareGeometryChange(this);
 
     m_geometry->recomputeGeomtry();
+    updateChildItems();
+}
+
+void
+NodeGraphicsObject::updateChildItems()
+{
     m_evalStateObject->setPos(m_geometry->evalStateRect().topLeft());
     if (m_proxyWidget) m_proxyWidget->setPos(m_geometry->widgetPosition());
 }
