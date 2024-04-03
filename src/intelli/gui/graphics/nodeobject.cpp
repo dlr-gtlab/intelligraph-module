@@ -12,6 +12,7 @@
 #include <intelli/gui/style.h>
 #include <intelli/graph.h>
 #include <intelli/private/node_impl.h>
+#include <intelli/nodedatafactory.h>
 
 #include <gt_application.h>
 #include <gt_guiutilities.h>
@@ -384,8 +385,6 @@ NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
     setZValue(style::zValue(ZValue::NodeHovered));
 
-    setCursor(QCursor());
-
     m_hovered = true;
     update();
 
@@ -395,7 +394,32 @@ NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 void
 NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 {
-    event->accept();
+    QPointF pos = event->pos();
+
+    auto finally = gt::finally(event, &QEvent::accept);
+
+    // check for resize handle hit and change cursor
+    if (m_geometry->resizeHandleRect().contains(pos) &&
+        m_node->nodeFlags() & NodeFlag::Resizable &&
+        m_proxyWidget && m_proxyWidget->widget())
+    {
+        setCursor(QCursor(Qt::SizeFDiagCursor));
+        return;
+    }
+
+    setCursor(QCursor());
+
+    // set tooltip for ports
+    NodeGeometry::PortHit hit = m_geometry->portHit(pos);
+    if (hit)
+    {
+        auto* port = m_node->port(hit.port);
+        assert(port);
+        setToolTip(NodeDataFactory::instance().typeName(port->typeId));
+        return;
+    }
+
+    setToolTip(QString{});
 }
 
 void

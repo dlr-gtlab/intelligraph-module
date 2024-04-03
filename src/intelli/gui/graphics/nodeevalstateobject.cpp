@@ -54,13 +54,26 @@ NodeEvalStateGraphicsObject::setNodeEvalState(NodeEvalState state)
 {
     m_state = state;
 
-    if (m_state == NodeEvalState::Evaluating)
+    m_timeLine.stop();
+
+    switch (m_state)
     {
-        if (m_timeLine.state() != QTimeLine::Running) m_timeLine.start();
-    }
-    else
-    {
-        m_timeLine.stop();
+    case NodeEvalState::Invalid:
+        setToolTip(tr("Node failed to evaluate or is not setp correctly"));
+        break;
+    case NodeEvalState::Outdated:
+        setToolTip(tr("Node data is outdated and requires an reevaluation"));
+        break;
+    case NodeEvalState::Paused:
+        setToolTip(tr("Node is paused and will not be evaluated automatically"));
+        break;
+    case NodeEvalState::Valid:
+        setToolTip(tr("Node has evaluated successfully"));
+        break;
+    case NodeEvalState::Evaluating:
+        setToolTip(tr("Node is evaluating"));
+        m_timeLine.start();
+        break;
     }
 
     update();
