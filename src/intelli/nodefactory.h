@@ -14,16 +14,6 @@
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
 
-#define GTIG_REGISTER_NODE(CLASS, CAT) \
-    struct RegisterNodeOnce ## CLASS { \
-        [[deprecated("Use GT_INTELLI_REGISTER_NODE instead")]] \
-        RegisterNodeOnce ## CLASS() { \
-            intelli::NodeFactory::instance() \
-                .registerNode(GT_METADATA(CLASS), CAT); \
-        } \
-    }; \
-    static RegisterNodeOnce ## CLASS s_register_node_once_##CLASS;
-
 /// Helper macro for registering a node class. The node class does should not be
 /// listed as a "data" object of your module. Use an empty string to "hide"
 /// the node in the viewer.
@@ -68,9 +58,6 @@ public:
         return instance().registerNode(T::staticMetaObject, category);
     }
 
-    [[deprecated("use `makeNode` instead!")]]
-    std::unique_ptr<Node> newNode(QString const& className) const noexcept(false);
-
     /**
      * @brief Instantiates a new node of type className. May throw a
      * `logic_error` if the function fails.
@@ -101,7 +88,5 @@ private:
 };
 
 } // namespace intelli
-
-using GtIntelliGraphNodeFactory [[deprecated]] = intelli::NodeFactory;
 
 #endif // GT_INTELLI_NODEFACTORY_H

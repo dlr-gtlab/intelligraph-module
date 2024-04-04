@@ -157,9 +157,4 @@ private:
 
 } // namespace intelli
 
-using GtIgNodeData [[deprecated]] = intelli::NodeData;
-
-template <typename T>
-using GtIgTemplateData [[deprecated]] = intelli::TemplateData<T>;
-
 #endif // GT_INTELLI_NODEDATA_H

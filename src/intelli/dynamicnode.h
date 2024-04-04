@@ -250,6 +250,4 @@ private:
 
 } // namespace intelli
 
-using GtIntelliGraphDynamicNode [[deprecated]] = intelli::DynamicNode;
-
 #endif // GT_INTELLI_DYNAMICNODE_H

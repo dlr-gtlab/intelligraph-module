@@ -542,8 +542,6 @@ private:
 
 } // namespace intelli
 
-using GtIntelliGraphNode [[deprecated]] = intelli::Node;
-
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, intelli::Node::PortData const& d)
 {

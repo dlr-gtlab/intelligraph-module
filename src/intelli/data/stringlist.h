@@ -30,6 +30,4 @@ private:
 
 } // namespace intelli
 
-using GtIgStringListData [[deprecated]]  = intelli::StringListData;
-
 #endif // GT_INTELLI_STRINGLISTDATA_H

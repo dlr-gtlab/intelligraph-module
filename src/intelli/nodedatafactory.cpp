@@ -71,12 +71,6 @@ NodeDataFactory::canConvert(TypeId const& a, TypeId const& b) const
 }
 
 std::unique_ptr<NodeData>
-NodeDataFactory::newData(TypeId const& typeId) const noexcept
-{
-    return makeData(typeId);
-}
-
-std::unique_ptr<NodeData>
 NodeDataFactory::makeData(TypeId const& typeId) const noexcept
 {
     std::unique_ptr<GtObject> obj{

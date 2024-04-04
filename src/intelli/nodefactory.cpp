@@ -88,12 +88,6 @@ NodeFactory::registerNode(QMetaObject const& meta,
 }
 
 std::unique_ptr<Node>
-NodeFactory::newNode(QString const& className) const noexcept(false)
-{
-    return makeNode(className);
-}
-
-std::unique_ptr<Node>
 NodeFactory::makeNode(QString const& className) const noexcept(false)
 {
     std::unique_ptr<GtObject> obj{
