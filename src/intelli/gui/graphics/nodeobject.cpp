@@ -304,15 +304,21 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
         }
     }
 
+    bool select = !(event->modifiers().testFlag(Qt::ControlModifier));
+
     // clear selection
-    if (!isSelected() && !event->modifiers().testFlag(Qt::ControlModifier))
+    if (!isSelected())
     {
-        auto* scene = this->scene();
-        assert(scene);
-        scene->clearSelection();
+        select = true;
+        if (!event->modifiers().testFlag(Qt::ControlModifier))
+        {
+            auto* scene = this->scene();
+            assert(scene);
+            scene->clearSelection();
+        }
     }
 
-    setSelected(true);
+    setSelected(select);
     emit gtApp->objectSelected(m_node);
 
     m_state = Translating;
@@ -341,6 +347,7 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         return event->accept();
 
     case Translating:
+//        setSelected(true);
         moveBy(diff.x(), diff.y());
         emit nodeShifted(this, diff);
         return event->accept();
@@ -455,6 +462,12 @@ void
 NodeGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 {
     auto const& pos = event->pos();
+
+    if (event->modifiers() & Qt::ControlModifier)
+    {
+        setSelected(true);
+        update();
+    }
 
     NodeGeometry::PortHit hit = m_geometry->portHit(pos);
 

@@ -31,18 +31,20 @@
 
 #include <gt_logging.h>
 
+#include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QClipboard>
 #include <QApplication>
 #include <QKeyEvent>
+#include <QElapsedTimer>
+#include <QTimer>
+#include <QWidgetAction>
 #include <QMenuBar>
 #include <QLineEdit>
-#include <QWidgetAction>
 #include <QTreeWidget>
 #include <QHeaderView>
-#include <QGraphicsView>
-#include <QTimer>
+#include <QVarLengthArray>
 
 using namespace intelli;
 
@@ -748,7 +750,7 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
 
     if (triggered == groupAct)
     {
-        return makeGroupNode(selected.nodes);
+        return groupNodes(selected.nodes);
     }
     if (triggered == deleteAct)
     {
@@ -761,8 +763,10 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     }
 }
 
+constexpr size_t PRE_ALLOC = 32;
+
 void
-GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
+GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
 {
     // get new node name
     GtInputDialog dialog(GtInputDialog::TextInput);
@@ -772,10 +776,24 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
     dialog.setInitialTextValue(QStringLiteral("Graph"));
     if (!dialog.exec()) return;
 
-    QString const& groupNodeName = dialog.textValue();
+    QString const& groupNodeName = dialog.textValue().trimmed();
+    if (groupNodeName.isEmpty())
+    {
+        gtError() << tr("Failed to group nodes! (Invalid graph name)");
+        return;
+    }
 
-    // find input/output connections and connections to move
-    QVector<ConnectionId> connectionsInternal, connectionsIn, connectionsOut;
+    // timmer to track elapsed time
+    QElapsedTimer timer;
+    timer.start();
+    auto finally = gt::finally([&timer](){
+        gtTrace().verbose()
+            << tr("Grouping nodes took %1 ms!").arg(timer.elapsed());
+    });
+
+    // separate connections into connections that are ingoing and outgoing to the group node
+    // and internal connections that can be kept as is
+    QVarLengthArray<ConnectionId, PRE_ALLOC> connectionsInternal, connectionsIn, connectionsOut;
 
     for (auto const* object : selectedNodeObjects)
     {
@@ -785,12 +803,12 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
         // check connections
         for (ConnectionId conId : m_graph->findConnections(nodeId))
         {
-            auto const findNode = [&conId](NodeGraphicsObject* o){
+            auto const findNodeFunctor = [&conId](NodeGraphicsObject* o){
                 return o->nodeId() == conId.inNodeId;
             };
 
             // if ingoing node is not part of nodes to group it is an outside connection
-            if(std::find_if(selectedNodeObjects.begin(), selectedNodeObjects.end(), findNode) == selectedNodeObjects.end())
+            if(std::find_if(selectedNodeObjects.begin(), selectedNodeObjects.end(), findNodeFunctor) == selectedNodeObjects.end())
             {
                 connectionsOut.push_back(conId);
                 continue;
@@ -800,7 +818,7 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
             conId.reverse();
 
             // if outgoing node is not part of nodes to group it is an outside connection
-            if(std::find_if(selectedNodeObjects.begin(), selectedNodeObjects.end(), findNode) == selectedNodeObjects.end())
+            if(std::find_if(selectedNodeObjects.begin(), selectedNodeObjects.end(), findNodeFunctor) == selectedNodeObjects.end())
             {
                 // revert reverse
                 conId.reverse();
@@ -810,65 +828,27 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
 
             // revert reverse
             conId.reverse();
-            // internal connection
-            connectionsInternal.push_back(conId);
+            // internal connections may already be contained
+            if (!connectionsInternal.contains(conId))
+            {
+                connectionsInternal.push_back(conId);
+            }
         }
     }
 
     // sort in and out going connections to avoid crossing connections
     auto const sortByScenePos = [this](ConnectionId a, ConnectionId b, bool reverse = false){
-        auto oA = connectionObject(reverse ? a.reversed() : a);
-        auto oB = connectionObject(reverse ? b.reversed() : b);
+        auto oA = connectionObject(a);
+        auto oB = connectionObject(b);
         assert(oA);
         assert(oB);
         return oA->endPoint(PortType::In).y() < oB->endPoint(PortType::In).y();
     };
 
-    std::sort(connectionsIn.begin(), connectionsIn.end(),
-              [=](ConnectionId a, ConnectionId b){
-        return sortByScenePos(a, b);
-    });
+    std::sort(connectionsIn.begin(),  connectionsIn.end(),
+              std::bind(sortByScenePos, std::placeholders::_1, std::placeholders::_2, false));
     std::sort(connectionsOut.begin(), connectionsOut.end(),
-              [=](ConnectionId a, ConnectionId b){
-        return sortByScenePos(a.reversed(), b.reversed(), true);
-    });
-
-    auto const getTypeId = [this](ConnectionId conId){
-        auto* node = m_graph->findNode(conId.inNodeId);
-        assert(node);
-        auto* port = node->port(conId.inPort);
-        assert(port);
-
-        if (!NodeDataFactory::instance().knownClass(port->typeId))
-        {
-            gtError() << tr("Failed to create group node! "
-                            "(Unkown node datatype '%1', id: %2, port: %3)")
-                             .arg(port->typeId, node->caption(), toString(*port));
-            return QString{};
-        }
-
-        return port->typeId;
-    };
-
-    // find datatype for input provider
-    QVector<QString> dtypeIn;
-    for (ConnectionId conId : connectionsIn)
-    {
-        auto typeId = getTypeId(conId);
-        if (typeId.isEmpty()) return;
-
-        dtypeIn.push_back(std::move(typeId));
-    }
-
-    // find datatypes for output provider
-    QVector<QString> dtypeOut;
-    for (ConnectionId conId : connectionsOut)
-    {
-        auto typeId = getTypeId(conId.reversed());
-        if (typeId.isEmpty()) return;
-
-        dtypeOut.push_back(std::move(typeId));
-    }
+              std::bind(sortByScenePos, std::placeholders::_1, std::placeholders::_2, true));
 
     // preprocess selected nodes
     QVector<Node*> selectedNodes;
@@ -896,6 +876,9 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
     groupNode->setPos(center);
     groupNode->setActive(true);
 
+    auto exec = groupNode->makeDummyExecutionModel();
+    exec->disableAutoEvaluation();
+
     // setup input/output provider
     groupNode->initInputOutputProviders();
     auto* inputProvider  = groupNode->inputProvider();
@@ -903,41 +886,91 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
 
     if (!inputProvider || !outputProvider)
     {
-        gtError() << tr("Failed to create group node! "
-                        "(Invalid input or output provider)");
+        gtError() << tr("Failed to group nodes! "
+                    "(Invalid input or output provider)");
         return;
     }
 
     inputProvider->setPos(inputProvider->pos() - offset);
     outputProvider->setPos(outputProvider->pos() + offset);
 
+    // find commections that share the same outgoing node and port
+    auto const extractSharedConnections = [](auto& connections){
+        QVarLengthArray<ConnectionId, PRE_ALLOC> shared;
+
+        for (auto begin = connections.begin(); begin != connections.end(); ++begin)
+        {
+            auto iter = std::find_if(begin + 1, connections.end(), [conId = *begin](ConnectionId other){
+                return conId.outNodeId == other.outNodeId && conId.outPort == other.outPort;
+            });
+            if (iter == connections.end()) continue;
+
+            shared.push_back(*iter);
+            connections.erase(iter);
+        }
+
+        return shared;
+    };
+
+    QVarLengthArray<ConnectionId, PRE_ALLOC> connectionsInShared  = extractSharedConnections(connectionsIn);
+    QVarLengthArray<ConnectionId, PRE_ALLOC> connectionsOutShared = extractSharedConnections(connectionsOut);
+
+    // helper function to extract and check typeIds
+    auto const extractTypeIds = [this](auto const& connections){
+        QVarLengthArray<QString, PRE_ALLOC> retval;
+
+        for (ConnectionId conId : connections)
+        {
+            auto* node = m_graph->findNode(conId.inNodeId);
+            assert(node);
+            auto* port = node->port(conId.inPort);
+            assert(port);
+
+            if (!NodeDataFactory::instance().knownClass(port->typeId))
+            {
+                gtError() << tr("Failed to group nodes! "
+                                "(Unkown node datatype '%1', id: %2, port: %3)")
+                                 .arg(port->typeId,
+                                      node->caption(),
+                                      toString(*port));
+                continue;
+            }
+
+            retval.push_back(port->typeId);
+        }
+
+        return retval;
+    };
+
+    // find datatype for input and output provider
+    auto const& dtypeIn  = extractTypeIds(connectionsIn);
+    auto const& dtypeOut = extractTypeIds(connectionsOut);
+
+    if (dtypeIn.size()  != connectionsIn.size() ||
+        dtypeOut.size() != connectionsOut.size()) return;
+
+    // setup input and output ports
     for (QString const& typeId : dtypeIn ) inputProvider->insertPort(typeId);
     for (QString const& typeId : dtypeOut) outputProvider->insertPort(typeId);
 
-    QVector<ConnectionId> sharedConnections;
-
-    foreach (ConnectionId conId, connectionsIn)
     {
-        auto iter = std::find_if(connectionsIn.begin(), connectionsIn.end(), [conId](ConnectionId other){
-            return conId != other && conId.outNodeId == other.outNodeId;
-        });
-        if (iter == connectionsIn.end()) continue;
 
-        gtDebug() << "SHARED INPUT" << *iter;
-    }
+    // helper maps to track which index was already updated
+    std::vector<bool> updatedIngoingConnectionsMap;
+    updatedIngoingConnectionsMap.resize(connectionsIn.size());
+    std::vector<bool> updatedOutgoingConnectionsMap;
+    updatedOutgoingConnectionsMap.resize(connectionsOut.size());
+    std::vector<bool> updatedInternalInConnectionsMap;
+    updatedInternalInConnectionsMap.resize(connectionsInternal.size());
+    std::vector<bool> updatedInternalOutConnectionsMap;
+    updatedInternalOutConnectionsMap.resize(connectionsInternal.size());
+    std::vector<bool> updatedSharedIngoingConnectionsMap;
+    updatedSharedIngoingConnectionsMap.resize(connectionsInShared.size());
+    std::vector<bool> updatedSharedOutgoingConnectionsMap;
+    updatedSharedOutgoingConnectionsMap.resize(connectionsOutShared.size());
 
-    foreach (ConnectionId conId, connectionsOut)
-    {
-        auto iter = std::find_if(connectionsOut.begin(), connectionsOut.end(), [conId](ConnectionId other){
-            return conId != other && conId.outNodeId == other.outNodeId;
-        });
-        if (iter == connectionsOut.end()) continue;
-
-        gtDebug() << "SHARED OUTPUT" << *iter;
-    }
-
-    // move selected nodes
-    for (auto* node : selectedNodes)
+    // move selected nodes to subgraph and update their id
+    for (auto* node : qAsConst(selectedNodes))
     {
         auto newNode = gt::unique_qobject_cast<Node>(
             node->toMemento().toObject(*gtObjectFactory)
@@ -965,26 +998,46 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
             return;
         }
 
-        NodeId newId = movedNode->id();
-
         // udpate connections if node id has changed
+        NodeId newId = movedNode->id();
         if (newId == oldId) continue;
 
         gtInfo().verbose() << "Updating node id from" << oldId << "to" << newId << "...";
 
-        for (auto& conId : connectionsIn)
-        {
-            if (conId.inNodeId == oldId) conId.inNodeId = newId;
-        }
-        for (auto& conId : connectionsOut)
-        {
-            if (conId.outNodeId == oldId) conId.outNodeId = newId;
-        }
-        for (auto& conId : connectionsInternal)
-        {
-            if      (conId.inNodeId  == oldId) conId.inNodeId  = newId;
-            else if (conId.outNodeId == oldId) conId.outNodeId = newId;
-        }
+        // helper function to update the old node ids without overriding each entry multiple times
+        auto const updateConnections = [](auto& connections, auto& map, size_t& index, NodeId oldId, NodeId newId, PortType type){
+            index = 0;
+            if (type == PortType::In)  for (ConnectionId& conId : connections)
+            {
+                if (!map[index] && conId.inNodeId == oldId)
+                {
+                    map[index] = true;
+                    conId.inNodeId = newId;
+                }
+                index++;
+            }
+            index = 0;
+            if (type == PortType::Out) for (ConnectionId& conId : connections)
+            {
+                if (!map[index] && conId.outNodeId == oldId)
+                {
+                    map[index] = true;
+                    conId.outNodeId = newId;
+                }
+                index++;
+            }
+        };
+
+        size_t index = 0;
+        updateConnections(connectionsInShared,  updatedSharedIngoingConnectionsMap,  index, oldId, newId, PortType::In);
+        updateConnections(connectionsIn,        updatedIngoingConnectionsMap,        index, oldId, newId, PortType::In);
+        updateConnections(connectionsOutShared, updatedSharedOutgoingConnectionsMap, index, oldId, newId, PortType::Out);
+        updateConnections(connectionsOut,       updatedOutgoingConnectionsMap,       index, oldId, newId, PortType::Out);
+        // ingoing and outgoing connections msut be tracked individually here
+        updateConnections(connectionsInternal,  updatedInternalInConnectionsMap,     index, oldId, newId, PortType::In);
+        updateConnections(connectionsInternal,  updatedInternalOutConnectionsMap,    index, oldId, newId, PortType::Out);
+    }
+
     }
 
     // move group to graph
@@ -996,7 +1049,7 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
 
     if (!m_graph->appendNode(std::move(tmpGraph)))
     {
-        gtError() << tr("Failed to create group node! (Invalid group node)");
+        gtError() << tr("Failed to group nodes! (Appending group node failed)");
         return;
     }
 
@@ -1004,7 +1057,10 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
     // appending new connections
     qDeleteAll(selectedNodes);
 
-    auto const makeConnections = [this, groupNode](ConnectionId conId, auto* provider, PortIndex index, PortType type){
+    // helper function to create ingoing and outgoing connections
+    auto const makeConnections = [this, groupNode](ConnectionId conId, auto* provider, PortIndex index, PortType type, bool addToMainGraph = true){
+        if (type == PortType::Out) conId.reverse();
+
         // create connection in parent graph
         ConnectionId newCon = conId;
         newCon.inNodeId = groupNode->id();
@@ -1017,28 +1073,68 @@ GraphScene::makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObject
         assert(newCon.isValid());
         assert(conId .isValid());
 
-        m_graph->appendConnection(  std::make_unique<Connection>(type == PortType::Out ? newCon.reversed() : newCon));
-        groupNode->appendConnection(std::make_unique<Connection>(type == PortType::Out ? conId.reversed()  : conId ));
+        if (type == PortType::Out)
+        {
+            conId.reverse();
+            newCon.reverse();
+        }
+        if (addToMainGraph)
+        {
+            m_graph->appendConnection(  std::make_unique<Connection>(newCon));
+        }
+        groupNode->appendConnection(std::make_unique<Connection>(conId ));
     };
 
-    // move input connections
+    // create connections that share the same node and port
+    auto const makeSharedConnetions = [makeConnections](auto& shared, ConnectionId conId, auto* provider, PortIndex index, PortType type){
+        bool success = true;
+        while (success)
+        {
+            auto iter = std::find_if(shared.begin(), shared.end(), [conId](ConnectionId other){
+                return conId.outNodeId == other.outNodeId && conId.outPort == other.outPort;
+            });
+            if ((success = iter != shared.end()))
+            {
+                makeConnections(*iter, provider, index, type, false);
+                shared.erase(iter);
+            }
+        }
+    };
+
+    // make input connections
     PortIndex index{0};
-    for (ConnectionId conId : connectionsIn)
+    PortType type = PortType::In;
+    for (ConnectionId conId : qAsConst(connectionsIn))
     {
-        makeConnections(conId, inputProvider, index++, PortType::In);
+        makeConnections(conId, inputProvider, index, type);
+
+        makeSharedConnetions(connectionsInShared, conId, inputProvider, index, type);
+
+        index++;
     }
 
-    // move output connections
+    // make output connections
     index = PortIndex{0};
-    for (ConnectionId conId : connectionsOut)
+    type  = PortType::Out;
+    for (ConnectionId conId : qAsConst(connectionsOut))
     {
-        makeConnections(conId.reversed(), outputProvider, index++, PortType::Out);
+        makeConnections(conId, outputProvider, index, type);
+
+        makeSharedConnetions(connectionsOutShared, conId, inputProvider, index, type);
+
+        index++;
     }
 
-    // move internal connections
-    for (ConnectionId const& conId : connectionsInternal)
+    // make internal connections
+    for (ConnectionId const& conId : qAsConst(connectionsInternal))
     {
         groupNode->appendConnection(std::make_unique<Connection>(conId));
+    }
+
+    // enable auto evaluation if parent graph is auto evaluating
+    if (auto* parentExec = m_graph->executionModel())
+    {
+        if (parentExec->isAutoEvaluating()) exec->autoEvaluate().detach();
     }
 }
 

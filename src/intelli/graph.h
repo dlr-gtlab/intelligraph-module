@@ -145,6 +145,7 @@ class GT_INTELLI_EXPORT Graph : public Node
     friend class AbstractGroupProvider;
 
     friend class GraphBuilder;
+    friend class GraphScene;
 
 public:
     

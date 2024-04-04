@@ -166,6 +166,8 @@ constexpr inline T invalid() noexcept
  */
 struct ConnectionId
 {
+    constexpr ConnectionId() {};
+
     constexpr ConnectionId(NodeId _outNode, PortId _outPort,
                            NodeId _inNode, PortId _inPort) :
         outNodeId(_outNode), outPort(_outPort),

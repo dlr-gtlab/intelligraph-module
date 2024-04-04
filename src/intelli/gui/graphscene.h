@@ -104,8 +104,8 @@ private:
     void beginReset();
 
     void endReset();
-
-    void makeGroupNode(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
+    
+    void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
 
     void moveConnection(ConnectionGraphicsObject* object, NodeGraphicsObject* node = nullptr);
 
