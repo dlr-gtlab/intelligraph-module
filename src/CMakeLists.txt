@@ -4,7 +4,11 @@ set(INTELLIGRAPH_VERSION 0.8.0)
 
 option(
     _DEBUG_NODE_GRAPHICS
-    "Draws debugging information into the scene to show bounds of node and connection objects" OFF
+    "Draws debugging information into the scene to show bounds of node objects" OFF
+)
+option(
+    _DEBUG_CONNECTION_GRAPHICS
+    "Draws debugging information into the scene to show bounds of connection objects" OFF
 )
 
 set(PUBLIC_HEADERS
@@ -92,7 +96,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/editabledoublelabel.h
     intelli/gui/property_item/editableintegerlabel.h
     intelli/gui/property_item/integerinputwidget.h
-    intelli/gui/property_item/logic.h
+    intelli/gui/property_item/logicdisplay.h
     intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
     intelli/gui/ui/logicnodeui.h
@@ -160,7 +164,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/editabledoublelabel.cpp
     intelli/gui/property_item/editableintegerlabel.cpp
     intelli/gui/property_item/integerinputwidget.cpp
-    intelli/gui/property_item/logic.cpp
+    intelli/gui/property_item/logicdisplay.cpp
     intelli/gui/property_item/objectlink.cpp
     intelli/gui/property_item/stringselection.cpp
     intelli/gui/ui/logicnodeui.cpp
@@ -186,7 +190,12 @@ target_compile_definitions(GTlabIntelliGraph PRIVATE
 
 if (_DEBUG_NODE_GRAPHICS)
     target_compile_definitions(GTlabIntelliGraph PRIVATE
-        GT_INTELLI_DEBUG_GRAPHICS
+        GT_INTELLI_DEBUG_NODE_GRAPHICS
+    )
+endif()
+if (_DEBUG_CONNECTION_GRAPHICS)
+    target_compile_definitions(GTlabIntelliGraph PRIVATE
+        GT_INTELLI_DEBUG_CONNECTION_GRAPHICS
     )
 endif()
 

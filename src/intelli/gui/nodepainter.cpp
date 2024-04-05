@@ -15,6 +15,8 @@
 #include "intelli/nodedatafactory.h"
 #include "intelli/graph.h"
 
+#include <gt_application.h>
+
 #include <gt_colors.h>
 
 #include <QPainter>
@@ -30,23 +32,28 @@ NodePainter::NodePainter(NodeGraphicsObject& object, NodeGeometry& geometry) :
 void
 NodePainter::applyBackgroundConfig(QPainter& painter) const
 {
+    QColor bg = backgroundColor();
+
     painter.setPen(Qt::NoPen);
-    painter.setBrush(backgroundColor());
+    painter.setBrush(bg);
 }
 
 void
 NodePainter::applyOutlineConfig(QPainter& painter) const
 {
+    auto& object = this->object();
+
     QColor penColor = style::nodeOutline();
     double penWidth = style::nodeOutlineWidth();
 
-    if (object().isHovered())
+    if (object.isHovered())
     {
         penWidth = style::nodeHoveredOutlineWidth();
         penColor = style::nodeHoveredOutline();
     }
-    if (object().isSelected())
+    if (object.isSelected())
     {
+        penWidth = style::nodeHoveredOutlineWidth();
         penColor = style::nodeSelectedOutline();
     }
 
@@ -58,9 +65,28 @@ NodePainter::applyOutlineConfig(QPainter& painter) const
 QColor
 NodePainter::backgroundColor() const
 {
-    auto& node = object().node();
+    auto& object = this->object();
 
-    QColor const& bg = style::nodeBackground();
+    QColor bg = customBackgroundColor();
+
+    // apply tint if node is highlighted
+    if (object.isHighlighted())
+    {
+        int val = -10;
+        if (gtApp && gtApp->inDarkMode()) val *= -1;
+        bg = style::tint(bg, val, val, val);
+    }
+
+    return bg;
+}
+
+
+QColor
+NodePainter::customBackgroundColor() const
+{
+    auto& node = this->node();
+
+    QColor bg = style::nodeBackground();
 
     if (node.nodeFlags() & NodeFlag::Unique)
     {
@@ -102,7 +128,8 @@ void
 NodePainter::drawPorts(QPainter& painter) const
 {
     auto& node  = this->node();
-    auto& graph = object().graph();
+    auto& object = this->object();
+    auto& graph = object.graph();
 
     for (PortType type : {PortType::Out, PortType::In})
     {
@@ -117,13 +144,24 @@ NodePainter::drawPorts(QPainter& painter) const
 
             bool connected = !graph.findConnections(node.id(), port->id()).empty();
 
-            drawPort(painter, *port, type, idx, connected);
+            uint flags = NoPortFlag;
+
+            if (connected) flags |= PortConnected;
+            if (object.highlightsActive())
+            {
+                flags |= HighlightPorts;
+
+                bool highlighted = object.isPortHighlighted(port->id());
+                if (highlighted) flags |= PortHighlighted;
+            }
+
+            drawPort(painter, *port, type, idx, flags);
 
             if (!port->captionVisible) continue;
 
-            drawPortCaption(painter, *port, type, idx, connected);
+            drawPortCaption(painter, *port, type, idx, flags);
 
-#ifdef GT_INTELLI_DEBUG_GRAPHICS
+#ifdef GT_INTELLI_DEBUG_NODE_GRAPHICS
             painter.setPen(Qt::yellow);
             painter.setBrush(Qt::NoBrush);
             painter.drawRect(geometry().portCaptionRect(type, idx));
@@ -138,11 +176,11 @@ NodePainter::drawPort(QPainter& painter,
                       PortData& port,
                       PortType type,
                       PortIndex idx,
-                      bool connected) const
+                      uint flags) const
 {
-    Q_UNUSED(connected);
-
     QRectF p = geometry().portRect(type, idx);
+    p.translate(0.5, 0.5);
+    p.setSize(p.size() - QSizeF{1, 1});
 
     double penWidth = object().isHovered() ?
                           style::nodeHoveredOutlineWidth() :
@@ -152,7 +190,9 @@ NodePainter::drawPort(QPainter& painter,
                           style::nodeSelectedOutline() :
                           style::nodeOutline();
     
-    QBrush brush = style::typeIdColor(port.typeId);
+    QBrush brush = ((flags & HighlightPorts) && !(flags & PortHighlighted)) ?
+                       gt::gui::color::disabled() :
+                       style::typeIdColor(port.typeId);
 
     QPen pen(penColor, penWidth);
     painter.setPen(pen);
@@ -167,12 +207,12 @@ NodePainter::drawPortCaption(QPainter& painter,
                              PortData& port,
                              PortType type,
                              PortIndex idx,
-                             bool connected) const
+                             uint flags) const
 {
     auto& factory = NodeDataFactory::instance();
 
     painter.setBrush(Qt::NoBrush);
-    painter.setPen(connected ? gt::gui::color::text() : gt::gui::color::disabled());
+    painter.setPen(flags & PortConnected ? gt::gui::color::text() : gt::gui::color::disabled());
 
     painter.drawText(geometry().portCaptionRect(type, idx),
                      port.caption.isEmpty() ? factory.typeName(port.typeId) : port.caption,
@@ -218,7 +258,7 @@ NodePainter::drawCaption(QPainter& painter) const
     f.setBold(isBold);
     painter.setFont(f);
 
-#ifdef GT_INTELLI_DEBUG_GRAPHICS
+#ifdef GT_INTELLI_DEBUG_NODE_GRAPHICS
     painter.setBrush(Qt::NoBrush);
 
     painter.setPen(Qt::white);
@@ -235,7 +275,7 @@ NodePainter::paint(QPainter& painter) const
     drawCaption(painter);
     drawPorts(painter);
 
-#ifdef GT_INTELLI_DEBUG_GRAPHICS
+#ifdef GT_INTELLI_DEBUG_NODE_GRAPHICS
     painter.setBrush(Qt::NoBrush);
 
     painter.setPen(Qt::white);

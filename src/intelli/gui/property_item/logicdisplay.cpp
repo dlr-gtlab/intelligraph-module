@@ -7,7 +7,11 @@
  */
 
 
-#include "intelli/gui/property_item/logic.h"
+#include "intelli/gui/property_item/logicdisplay.h"
+#include "intelli/gui/style.h"
+
+#include <gt_colors.h>
+#include <gt_application.h>
 
 #include <QMouseEvent>
 #include <QPainter>
@@ -71,20 +75,19 @@ LogicDisplayWidget::paintEvent(QPaintEvent* e)
     painter.setRenderHint(QPainter::Antialiasing);
 
     // Define the circle's position and size
-    int circleSize = qMin(width(), height()) - 2;
-    int x = (width() - circleSize) * 0.5;
-    int y = (height() - circleSize) * 0.5;
+    double circleRadius = qMin(width(), height()) * 0.5;
+    double x = (width() - circleRadius);
+    double y = (height() - circleRadius);
 
-    painter.setPen(QPen(Qt::black, readOnly() ? 0 : 2));
+    QColor brushColor = value() ? Qt::green : Qt::white;
+    QColor outlineColor = readOnly() ? gt::gui::color::disabled() : Qt::black;
 
-    if (value())
-    {
-        painter.setBrush(QBrush(Qt::green));
-    }
-    else
-    {
-        painter.setBrush(QBrush(Qt::white));
-    }
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(outlineColor);
+    painter.drawEllipse(QPointF{x, y}, circleRadius, circleRadius);
 
-    painter.drawEllipse(x, y, circleSize, circleSize);
+    circleRadius -= 2 * (readOnly() ? 0.5 : 1);
+    painter.setBrush(brushColor);
+    painter.drawEllipse(QPointF{x, y},
+                        circleRadius, circleRadius);
 }

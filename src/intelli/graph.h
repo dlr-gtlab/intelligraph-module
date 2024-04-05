@@ -181,17 +181,29 @@ public:
 
     /**
      * @brief Returns a list of all nodes in this graph
-     * @return
+     * @return Nodes
      */
     QList<Node*> nodes();
     QList<Node const*> nodes() const;
+
+    /**
+     * @brief Returns a list of all node ids in this graph
+     * @return Node ids
+     */
+    QVector<NodeId> nodeIds() const;
     
     /**
      * @brief Returns a list of all connections in this graph
-     * @return
+     * @return Connections
      */
     QList<Connection*> connections();
     QList<Connection const*> connections() const;
+
+    /**
+     * @brief Returns a list of all connection ids in this graph
+     * @return Connection ids
+     */
+    QVector<ConnectionId> connectionIds() const;
     
     /**
      * @brief Attempts to finde the node specified by the given nodeId
@@ -278,16 +290,45 @@ public:
     GroupOutputProvider* outputProvider();
     GroupOutputProvider const* outputProvider() const;
     
+    /**
+     * @brief Constructs an execution model. Each graph has it's own
+     * execution model. If one already exists, this will be returned.
+     * @return Execution model, may be null.
+     */
     GraphExecutionModel* makeExecutionModel();
 
+    /**
+     * @brief Returns the exection model of this graph. Each graph has it's own
+     * execution model.
+     * @return Execution model, may be null.
+     */
     GraphExecutionModel* executionModel();
     GraphExecutionModel const* executionModel() const;
+
+    /**
+     * @brief Finds all dependencies of the node referred by `nodeId`
+     * @param nodeId Node to find dependencies of
+     * @return Dependencies
+     */
+    QVector<NodeId> findDependencies(NodeId nodeId) const;
+
+    /**
+     * @brief Finds all nodes that are depent of the node referred by `nodeId`
+     * @param nodeId Node to find depent nodes of
+     * @return Dependent nodes
+     */
+    QVector<NodeId> findDependentNodes(NodeId nodeId) const;
 
     /**
      * @brief Clears all nodes and connections
      */
     void clearGraph();
 
+    /**
+     * @brief Checks if the connection `conid` can be appended to the graph
+     * @param conId Connection to chech
+     * @return Can connect
+     */
     bool canAppendConnections(ConnectionId conId);
 
     /**

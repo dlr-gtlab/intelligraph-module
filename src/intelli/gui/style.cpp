@@ -11,6 +11,7 @@
 
 #include "gt_application.h"
 #include "gt_colors.h"
+#include "gt_utilities.h"
 
 #include <random>
 
@@ -33,6 +34,28 @@ intelli::applyTheme(Theme newTheme)
         theme = gtApp->inDarkMode() ? Theme::Dark : Theme::Bright;
     }
 }
+
+QColor
+intelli::style::tint(QColor const& color, int r, int g, int b)
+{
+    constexpr int MAX = std::numeric_limits<uint8_t>::max();
+    constexpr int MIN = std::numeric_limits<uint8_t>::min();
+
+    return QColor{
+        gt::clamp(color.red()   + r, MIN, MAX),
+        gt::clamp(color.green() + g, MIN, MAX),
+        gt::clamp(color.blue()  + b, MIN, MAX)
+    };
+}
+
+QColor
+intelli::style::invert(QColor const& color)
+{
+    constexpr int MAX = std::numeric_limits<uint8_t>::max();
+
+    return QColor{MAX - color.red(), MAX - color.green(), MAX - color.blue()};
+}
+
 
 QColor
 intelli::style::viewBackground()
@@ -62,6 +85,12 @@ QColor
 intelli::style::nodeSelectedOutline()
 {
     return gtApp->inDarkMode() ? QColor{255, 165, 0} : QColor{"deepskyblue"};
+}
+
+double
+intelli::style::nodeSelectedOutlineWidth()
+{
+    return nodeOutlineWidth();
 }
 
 QColor
@@ -106,51 +135,51 @@ intelli::style::typeIdColor(TypeId const& typeId)
 }
 
 double
-intelli::style::connectionOutlineWidth()
+intelli::style::connectionPathWidth()
 {
     return 3.0;
 }
 
 QColor
-intelli::style::connectionSelectedOutline()
+intelli::style::connectionSelectedPath()
 {
     return nodeSelectedOutline();
 }
 
+double
+intelli::style::connectionSelectedPathWidth()
+{
+    return 2 * connectionPathWidth();
+}
+
 QColor
-intelli::style::connectionDraftOutline()
+intelli::style::connectionDraftPath()
 {
     return gt::gui::color::disabled();
 }
 
 double
-intelli::style::connectionDraftOutlineWidth()
+intelli::style::connectionDraftPathWidth()
 {
-    return 3.0;
+    return connectionPathWidth();
 }
 
 QColor
-intelli::style::connectionHoveredOutline()
+intelli::style::connectionHoveredPath()
 {
     return Qt::lightGray;
 }
 
 double
-intelli::style::connectionHoveredOutlineWidth()
+intelli::style::connectionHoveredPathWidth()
 {
-    return 4.0;
+    return 1 + connectionPathWidth();
 }
 
 double
 intelli::style::nodePortSize()
 {
     return 5.0;
-}
-
-double
-intelli::style::nodePortRadius()
-{
-    return nodePortSize() - 1.0;
 }
 
 double
@@ -163,10 +192,4 @@ double
 intelli::style::nodeEvalStateSize()
 {
     return 20.0;
-}
-
-double
-intelli::style::connectionEndPointRadius()
-{
-    return 5.0;
 }

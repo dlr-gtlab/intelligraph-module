@@ -337,9 +337,9 @@ void
 GraphScene::setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape)
 {
     m_connectionShape = shape;
-    if (m_draft)
+    if (m_draftConnection)
     {
-        m_draft.connection->setConnectionShape(shape);
+        m_draftConnection->setConnectionShape(shape);
     }
     for (auto& con : m_connections)
     {
@@ -545,10 +545,10 @@ GraphScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 void
 GraphScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (m_draft)
+    if (m_draftConnection)
     {
-        PortType type = m_draft.connection->connectionId().inNodeId.isValid() ? PortType::Out : PortType::In;
-        m_draft.connection->setEndPoint(type, event->scenePos());
+        PortType type = m_draftConnection->connectionId().inNodeId.isValid() ? PortType::Out : PortType::In;
+        m_draftConnection->setEndPoint(type, event->scenePos());
         return event->accept();
     }
 
@@ -558,16 +558,23 @@ GraphScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 void
 GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (m_draft)
+    if (m_draftConnection)
     {
+        // clear target nodes
+        for (auto& entry : m_nodes)
+        {
+            assert(entry.object);
+            entry.object->clearHighlights();
+        }
+
         auto pos = event->scenePos();
 
-        ConnectionId conId = m_draft.connection->connectionId();
+        ConnectionId conId = m_draftConnection->connectionId();
         bool reverse = conId.inNodeId.isValid();
         if (reverse) conId.reverse();
 
-        m_draft.connection->ungrabMouse();
-        m_draft.connection.reset();
+        m_draftConnection->ungrabMouse();
+        m_draftConnection.reset();
 
         constexpr QPointF offset{5, 5};
         QRectF rect{pos - offset, pos + offset};
@@ -783,6 +790,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         return;
     }
 
+#ifdef _DEBUG
     // timmer to track elapsed time
     QElapsedTimer timer;
     timer.start();
@@ -790,6 +798,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         gtTrace().verbose()
             << tr("Grouping nodes took %1 ms!").arg(timer.elapsed());
     });
+#endif
 
     // separate connections into connections that are ingoing and outgoing to the group node
     // and internal connections that can be kept as is
@@ -1321,7 +1330,7 @@ GraphScene::moveConnectionPoint(ConnectionGraphicsObject* object, PortType type)
     QPointF connectionPos = object->sceneTransform().inverted().map(nodePos);
 
     object->setEndPoint(type, connectionPos);
-};
+}
 
 void
 GraphScene::moveConnections(NodeGraphicsObject* object)
@@ -1342,7 +1351,7 @@ GraphScene::moveConnections(NodeGraphicsObject* object)
 void
 GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId)
 {
-    assert(!m_draft);
+    assert(!m_draftConnection);
     assert(object);
     assert(conId.isValid());
     assert(conId.inNodeId == object->nodeId());
@@ -1366,23 +1375,28 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId
     onMakeDraftConnection(nodeObject(conId.outNodeId), invert(type), conId.outPort);
 
     // move initial end position of draft connection
-    assert(m_draft);
-    m_draft.connection->setEndPoint(type, oldEndPoint);
+    assert(m_draftConnection);
+    m_draftConnection->setEndPoint(type, oldEndPoint);
 }
 
 void
-GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, PortType type, PortId port)
+GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, PortType type, PortId portId)
 {
-    assert (!m_draft);
+    assert (!m_draftConnection);
     assert(object);
-    assert(port.isValid());
+    assert(portId.isValid());
+
+    NodeId nodeId = object->nodeId();
 
     ConnectionId conId{
-        object->nodeId(),
-        port,
+        nodeId,
+        portId,
         invalid<NodeId>(),
         invalid<PortId>()
     };
+
+    auto* port = object->node().port(portId);
+    assert(port);
 
     if (type == PortType::In) conId.reverse();
 
@@ -1392,5 +1406,41 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, PortType type, Por
     moveConnectionPoint(entity, type);
     entity->setEndPoint(invert(type), entity->endPoint(type));
     entity->grabMouse();
-    m_draft.connection = std::move(entity);
+    m_draftConnection = std::move(entity);
+
+    highlightCompatibleNodes(nodeId, type, port->typeId);
 }
+
+void
+GraphScene::highlightCompatibleNodes(NodeId nodeId, PortType type, TypeId const& typeId)
+{
+    // find nodes that can potentially recieve connection
+    // -> all nodes that we do not depend on
+    QVector<NodeId> targets;
+    auto nodeIds = m_graph->nodeIds();
+    auto dependencies = m_graph->findDependencies(nodeId);
+
+    std::sort(nodeIds.begin(), nodeIds.end());
+    std::sort(dependencies.begin(), dependencies.end());
+
+    std::set_difference(nodeIds.begin(), nodeIds.end(),
+                        dependencies.begin(), dependencies.end(),
+                        std::back_inserter(targets));
+
+    targets.removeOne(nodeId);
+
+    // frist "unhilight" all nodes
+    for (NodeId node : qAsConst(nodeIds))
+    {
+        NodeGraphicsObject* target = nodeObject(node);
+        assert(target);
+        target->highlightAsIncompatible();
+    }
+    // then highlight all nodes that are compatible
+    for (NodeId node : qAsConst(targets))
+    {
+        NodeGraphicsObject* target = nodeObject(node);
+        assert(target);
+        target->highlightCompatiblePorts(typeId, invert(type));
+    }
+};

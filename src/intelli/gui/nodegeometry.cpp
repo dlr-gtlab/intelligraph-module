@@ -116,7 +116,7 @@ QRectF
 NodeGeometry::computeInnerRect() const
 {
     QSize wSize{0, 0};
-    if (auto w = widget())
+    if (auto w = centralWidget())
     {
         wSize = w->size();
     }
@@ -157,14 +157,18 @@ NodeGeometry::boundingRect() const
     // set empty value to avoid cyclic calls
     m_boundingRect = QRectF{};
     m_boundingRect = computeBoundingRect();
+
+    // apply extra margin
+    m_boundingRect->setSize(m_boundingRect->size() + QSizeF{2.0, 2.0});
+    m_boundingRect->translate(-1.0, -1.0);
     return *m_boundingRect;
 }
 
 QRectF
 NodeGeometry::computeBoundingRect() const
 {
-    double xoffset = 0.6 * style::nodePortSize() * 2;
-    double yoffset = 0.6 * style::nodePortSize() * 2;
+    double xoffset = 1.0 * style::nodePortSize() + 1;
+    double yoffset = 0.5 * vspacing() + 1;
 
     auto rect = innerRect();
 
@@ -211,7 +215,7 @@ NodeGeometry::evalStateRect() const
 QPointF
 NodeGeometry::widgetPosition() const
 {
-    auto* w = widget();
+    auto* w = centralWidget();
     if (!w) return {};
 
     if (positionWidgetAtBottom())
@@ -343,7 +347,7 @@ NodeGeometry::node() const
 }
 
 QWidget const*
-NodeGeometry::widget() const
+NodeGeometry::centralWidget() const
 {
     return m_widget;
 }

@@ -8,7 +8,7 @@
 
 
 #include "intelli/node/logicdisplay.h"
-#include "intelli/gui/property_item/logic.h"
+#include "intelli/gui/property_item/logicdisplay.h"
 
 #include <intelli/data/bool.h>
 

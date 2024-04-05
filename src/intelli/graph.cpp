@@ -142,6 +142,26 @@ canAppendConnection(Graph& graph, ConnectionId conId, MakeError makeError = {}, 
     return true;
 }
 
+static bool
+accumulateDependentNodes(Graph const& graph, QVector<NodeId>& nodes, NodeId nodeId, PortType type)
+{
+    auto const* entry = graph.findNodeEntry(nodeId);
+    if (!entry) return false;
+
+    for (auto& dependent : type == PortType::In ? entry->ancestors : entry->descendants)
+    {
+        if (nodes.contains(dependent.node)) continue;
+        nodes.append(dependent.node);
+        if (!accumulateDependentNodes(graph, nodes, dependent.node, type))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
 /// checks and updates the node id of the node depending of the policy specified
 static bool
 updateNodeId(Graph const& graph, Node& node, NodeIdPolicy policy)
@@ -337,7 +357,6 @@ Graph::~Graph() = default;
 QList<Node*>
 Graph::nodes()
 {
-
     return findDirectChildren<Node*>();
 }
 
@@ -347,6 +366,17 @@ Graph::nodes() const
     return gt::container_const_cast(
         const_cast<Graph*>(this)->nodes()
     );
+}
+
+QVector<NodeId>
+Graph::nodeIds() const
+{
+    QVector<NodeId> ids;
+    auto const& nodes = this->nodes();
+    ids.resize(nodes.size());
+    std::transform(nodes.begin(), nodes.end(), ids.begin(),
+                   [](Node const* node){ return node->id(); });
+    return ids;
 }
 
 QList<Connection*>
@@ -361,6 +391,17 @@ Graph::connections() const
     return gt::container_const_cast(
         const_cast<Graph*>(this)->connections()
     );
+}
+
+QVector<ConnectionId>
+Graph::connectionIds() const
+{
+    QVector<ConnectionId> ids;
+    auto const& connections = this->connections();
+    ids.resize(connections.size());
+    std::transform(connections.begin(), connections.end(), ids.begin(),
+                   [](Connection const* con){ return con->connectionId(); });
+    return ids;
 }
 
 ConnectionGroup&
@@ -442,6 +483,28 @@ GraphExecutionModel const*
 Graph::executionModel() const
 {
     return const_cast<Graph*>(this)->executionModel();
+}
+
+QVector<NodeId>
+Graph::findDependencies(NodeId nodeId) const
+{
+    QVector<NodeId> nodes;
+    if (!Impl::accumulateDependentNodes(*this, nodes, nodeId, PortType::In))
+    {
+        return {};
+    }
+    return nodes;
+}
+
+QVector<NodeId>
+Graph::findDependentNodes(NodeId nodeId) const
+{
+    QVector<NodeId> nodes;
+    if (!Impl::accumulateDependentNodes(*this, nodes, nodeId, PortType::Out))
+    {
+        return {};
+    }
+    return nodes;
 }
 
 Node*
@@ -585,7 +648,7 @@ Graph::clearGraph()
     qDeleteAll(nodes());
 }
 
-Node::PortId
+PortId
 Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
 {
     static auto const makeError = [=](){

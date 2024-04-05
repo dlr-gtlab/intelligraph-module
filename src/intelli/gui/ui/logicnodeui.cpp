@@ -29,7 +29,7 @@ LogicNodeGeometry::captionRect() const
 {
     QRectF inner = innerRect();
     QRectF rect = NodeGeometry::captionRect();
-    rect.moveTo({inner.topLeft().x() + 1.5 * hspacing(), -20});
+    rect.moveTo({inner.topLeft().x() + style::nodeEvalStateSize(), -20});
     return rect;
 }
 
@@ -179,21 +179,17 @@ LogicNodeGeometry::computeInnerRect() const
 QRectF
 LogicNodeGeometry::computeBoundingRect() const
 {
-    QRectF rect = evalStateRect().united(captionRect());
-    rect.setHeight(rect.height() + 20);
-    return innerRect().united(rect);
+    QRectF upper = evalStateRect().united(captionRect());
+    upper.setHeight(upper.height() + 20);
+    QRectF lower = shape().boundingRect().translated(-style::nodePortSize(), 0);
+    lower.setWidth(lower.width() + 2 * style::nodePortSize());
+    return upper.united(lower);
 }
 
 LogicNodePainter::LogicNodePainter(NodeGraphicsObject& object, NodeGeometry& geometry) :
     NodePainter(object, geometry)
 {
 
-}
-
-QColor
-LogicNodePainter::backgroundColor() const
-{
-    return NodePainter::backgroundColor();
 }
 
 void
@@ -229,13 +225,17 @@ LogicNodePainter::drawOutline(QPainter& painter) const
 }
 
 void
-LogicNodePainter::drawPortCaption(QPainter& painter, Node::PortData& port, PortType type, PortIndex idx, bool connected) const
+LogicNodePainter::drawPortCaption(QPainter& painter,
+                                  PortData& port,
+                                  PortType type,
+                                  PortIndex idx,
+                                  uint flags) const
 {
     Q_UNUSED(painter);
     Q_UNUSED(port);
     Q_UNUSED(type);
     Q_UNUSED(idx);
-    Q_UNUSED(connected);
+    Q_UNUSED(flags);
 
     // not drawing caption due to size constraint
 }

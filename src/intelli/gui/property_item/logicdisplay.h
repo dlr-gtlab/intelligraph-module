@@ -7,8 +7,8 @@
  */
 
 
-#ifndef GT_INTELLI_LOGIC_H
-#define GT_INTELLI_LOGIC_H
+#ifndef GT_INTELLI_LOGICDISPLAY_H
+#define GT_INTELLI_LOGICDISPLAY_H
 
 #include <QLabel>
 
@@ -56,4 +56,4 @@ private:
 
 } // namespace intelli
 
-#endif // GT_INTELLI_LOGIC_H
+#endif // GT_INTELLI_LOGICDISPLAY_H

@@ -48,7 +48,7 @@ ConnectionGraphicsObject::boundingRect() const
 
     QRectF commonRect = basicRect.united(c1c2Rect);
 
-    double const diam = style::connectionEndPointRadius() * 2;
+    double const diam = style::nodePortSize() * 2;
     QPointF const cornerOffset(diam, diam);
 
     // Expand rect by port circle diameter
@@ -205,46 +205,47 @@ ConnectionGraphicsObject::paint(QPainter* painter,
 
     painter->setClipRect(option->exposedRect);
 
-    bool const hovered  = m_hovered;
-    bool const selected = isSelected();
-    bool const isDraft  = !m_connection.isValid();
+    bool hovered  = m_hovered;
+    bool selected = isSelected();
+    bool isDraft = !m_connection.isValid();
 
-    QColor outColor = style::typeIdColor(m_startType);
-    QColor inColor  = style::typeIdColor(m_endType);
+    auto const makePen = [this, &hovered, &selected, &isDraft](){
 
-    double penWidth = style::connectionOutlineWidth();
-    Qt::PenStyle penStyle = Qt::SolidLine;
-    QBrush penBrush = outColor;
+        QColor outColor = style::typeIdColor(m_startType);
 
-    if (hovered)
-    {
-        penWidth = style::connectionHoveredOutlineWidth();
-        penBrush = style::connectionHoveredOutline();
-    }
-    else if (selected)
-    {
-        penWidth = style::connectionHoveredOutlineWidth();
-        penBrush = style::connectionSelectedOutline();;
-    }
-    else if (isDraft)
-    {
-        penWidth = style::connectionDraftOutlineWidth();
-        inColor  = style::connectionDraftOutline();
-        outColor = inColor;
-        penBrush = outColor;
-        penStyle = Qt::DashLine;
-    }
-    // apply gradient for potentially invalid connection
-    else if (!NodeDataFactory::instance().canConvert(m_endType, m_startType))
-    {
-        QLinearGradient gradient(m_start, m_end);
-        gradient.setColorAt(0.1, outColor);
-        gradient.setColorAt(0.9, inColor);
-        penBrush = gradient;
-    }
+        double penWidth = style::connectionPathWidth();
+        Qt::PenStyle penStyle = Qt::SolidLine;
+        QBrush penBrush = outColor;
 
-    QPen pen{penBrush, penWidth, penStyle};
+        if (hovered)
+        {
+            penWidth = style::connectionHoveredPathWidth();
+            penBrush = style::connectionHoveredPath();
+        }
+        else if (selected)
+        {
+            penWidth = style::connectionHoveredPathWidth();
+            penBrush = style::connectionSelectedPath();
+        }
+        else if (isDraft)
+        {
+            penWidth = style::connectionDraftPathWidth();
+            penBrush = style::connectionDraftPath();
+            penStyle = Qt::DashLine;
+        }
+        else if (!NodeDataFactory::instance().canConvert(m_startType, m_endType))
+        {
+            QColor inColor  = style::typeIdColor(m_endType);
+            QLinearGradient gradient(m_start, m_end);
+            gradient.setColorAt(0.1, outColor);
+            gradient.setColorAt(0.9, inColor);
+            penBrush = gradient;
+        }
 
+        return QPen{penBrush, penWidth, penStyle};
+    };
+
+    QPen pen = makePen();
     painter->setPen(pen);
     painter->setBrush(Qt::NoBrush);
 
@@ -252,26 +253,28 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     auto const path = this->path();
     painter->drawPath(path);
 
-    double const pointRadius = style::connectionEndPointRadius();
+    if (selected)
+    {
+        selected = false;
+        pen = makePen();
+        pen.setWidth(pen.width() - 1);
+        painter->setPen(pen);
+        painter->setPen(pen);
+        painter->drawPath(path);
+    }
+
+    double const pointRadius = style::nodePortSize();
 
     // draw end points
     if (isDraft)
     {
-        if (!m_connection.inNodeId.isValid())
-        {
-            painter->setPen(inColor);
-            painter->setBrush(inColor);
-            painter->drawEllipse(m_end,  pointRadius, pointRadius);
-        }
-        else
-        {
-            painter->setPen(outColor);
-            painter->setBrush(outColor);
-            painter->drawEllipse(m_start, pointRadius, pointRadius);
-        }
+        painter->setPen(style::connectionDraftPath());
+        painter->setBrush(style::connectionDraftPath());
+        painter->drawEllipse(!m_connection.inNodeId.isValid() ? m_end : m_start,
+                             pointRadius, pointRadius);
     }
 
-#ifdef GT_INTELLI_DEBUG_GRAPHICS
+#ifdef GT_INTELLI_DEBUG_CONNECTION_GRAPHICS
     QPointF in  = endPoint(PortType::In);
     QPointF out = endPoint(PortType::Out);
 

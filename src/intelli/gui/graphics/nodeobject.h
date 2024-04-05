@@ -95,6 +95,42 @@ public:
     QGraphicsWidget const* centralWidget() const;
 
     /**
+     * @brief Whether ports should be highlighted
+     * @return Highlight ports
+     */
+    bool highlightsActive() const;
+
+    /**
+     * @brief Whether this node has highlighted ports
+     * @return
+     */
+    bool isHighlighted() const;
+
+    /**
+     * @brief Returns whether the port should be highlighted
+     * @param port Port to check
+     * @return Is port highlighted
+     */
+    bool isPortHighlighted(PortId port) const;
+
+    /**
+     * @brief Highlights this node and all ports as incompatible
+     */
+    void highlightAsIncompatible();
+
+    /**
+     * @brief Highlights all ports that are compatible to the TypeId.
+     * @param typeId TypeId to check
+     * @param type Which ports should be checked
+     */
+    void highlightCompatiblePorts(TypeId const& typeId, PortType type);
+
+    /**
+     * @brief Clears the highlights.
+     */
+    void clearHighlights();
+
+    /**
      * @brief Returns the geometry object, denoting the layout of the graphics
      * object.
      * @return Geometry
@@ -181,6 +217,11 @@ private:
     QPointer<QGraphicsProxyWidget> m_proxyWidget = nullptr;
     /// Node eval state object
     NodeEvalStateGraphicsObject* m_evalStateObject = nullptr;
+    /// list of highlightes ports
+    /// (used preallocated array as a preliminary optimization)
+    QVarLengthArray<PortId, 10> m_highlightedPorts;
+    /// whether ports should be highlighted
+    bool m_highlight = false;
 
     // flags
     State m_state = Normal;

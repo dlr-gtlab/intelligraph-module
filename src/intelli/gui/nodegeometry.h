@@ -70,7 +70,7 @@ public:
     };
 
     /**
-     * @brief Predefined horizontal spacing between ports and widgets
+     * @brief Predefined horizontal spacing between ports and central widget
      * @return Horizontal spacing
      */
     int hspacing() const;
@@ -191,10 +191,10 @@ protected:
     Node& node() const;
 
     /**
-     * @brief Returns the associated widget. May be null
+     * @brief Returns the associated widget. May be null.
      * @return Widget
      */
-    QWidget const* widget() const;
+    QWidget const* centralWidget() const;
 
     /**
      * @brief Override this method to define a custom collision shape

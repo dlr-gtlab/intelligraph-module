@@ -165,6 +165,80 @@ NodeGraphicsObject::centralWidget() const
     return const_cast<NodeGraphicsObject*>(this)->centralWidget();
 }
 
+bool
+NodeGraphicsObject::isPortHighlighted(PortId port) const
+{
+    return m_highlightedPorts.contains(port);
+}
+
+bool
+NodeGraphicsObject::highlightsActive() const
+{
+    return m_highlight;
+}
+
+bool
+NodeGraphicsObject::isHighlighted() const
+{
+    return m_highlight && !m_highlightedPorts.empty();
+}
+
+void
+NodeGraphicsObject::highlightAsIncompatible()
+{
+    m_highlight = true;
+    m_highlightedPorts.clear();
+    update();
+}
+
+void
+NodeGraphicsObject::highlightCompatiblePorts(TypeId const& sourceTypeId,
+                                             PortType type)
+{
+    m_highlight = true;
+    auto& factory = NodeDataFactory::instance();
+    for (auto& port : m_node->ports(type))
+    {
+        std::pair<TypeId const&, TypeId const&> pair{
+            type == PortType::In ? port.typeId : sourceTypeId,
+            type == PortType::In ? sourceTypeId : port.typeId
+        };
+
+        if (!factory.canConvert(pair.first, pair.second)) continue;
+        if (!m_graph->findConnections(m_node->id(), port.id()).empty()) continue;
+
+        m_highlightedPorts.append(port.id());
+    }
+
+    if (isHighlighted() && (m_proxyWidget))
+    if (auto* w = m_proxyWidget->widget())
+    {
+        auto p = w->palette();
+        p.setColor(QPalette::Window, m_painter->backgroundColor());
+        w->setPalette(p);
+    }
+    update();
+}
+
+void
+NodeGraphicsObject::clearHighlights()
+{
+    bool wasHighlighted = isHighlighted();
+
+    m_highlight = false;
+    m_highlightedPorts.clear();
+
+    if (wasHighlighted && (m_proxyWidget))
+    if (auto* w = m_proxyWidget->widget())
+    {
+        auto p = w->palette();
+        p.setColor(QPalette::Window, m_painter->backgroundColor());
+        w->setPalette(p);
+    }
+
+    update();
+}
+
 NodeGeometry const&
 NodeGraphicsObject::geometry() const
 {
@@ -347,7 +421,6 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         return event->accept();
 
     case Translating:
-//        setSelected(true);
         moveBy(diff.x(), diff.y());
         emit nodeShifted(this, diff);
         return event->accept();

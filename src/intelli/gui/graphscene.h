@@ -86,19 +86,15 @@ private:
         volatile_ptr<ConnectionGraphicsObject, DirectDeleter> object;
     };
 
-    struct DraftData
-    {
-        volatile_ptr<ConnectionGraphicsObject> connection;
-        QPointer<NodeGraphicsObject> target = nullptr;
-
-        operator bool() const { return connection; }
-    };
-
+    /// graph this scene refers to
     QPointer<Graph> m_graph = nullptr;
+    /// Node objects in this scene
     std::vector<NodeEntry> m_nodes;
+    /// Connection objects in this scene
     std::vector<ConnectionEntry> m_connections;
-    DraftData m_draft;
-
+    /// Draft connection if active
+    volatile_ptr<ConnectionGraphicsObject> m_draftConnection;
+    /// Shape style of the connections in this scene
     ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
 
     void beginReset();
@@ -110,6 +106,8 @@ private:
     void moveConnection(ConnectionGraphicsObject* object, NodeGraphicsObject* node = nullptr);
 
     void moveConnectionPoint(ConnectionGraphicsObject* object, PortType type);
+
+    void highlightCompatibleNodes(NodeId nodeId, PortType type, TypeId const& typeId);
 
 private slots:
 
@@ -131,7 +129,7 @@ private slots:
 
     void onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId);
 
-    void onMakeDraftConnection(NodeGraphicsObject* object, PortType type, PortId port);
+    void onMakeDraftConnection(NodeGraphicsObject* object, PortType type, PortId portId);
 
     void onNodeContextMenu(NodeGraphicsObject* object, QPointF pos);
 

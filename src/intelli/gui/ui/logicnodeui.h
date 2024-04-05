@@ -18,6 +18,11 @@ namespace intelli
 {
 
 class LogicNode;
+/**
+ * @brief The LogicNodeUI class.
+ * Geometry class for the `LogicNode`. Describes the shape of the Gates shapes
+ * of the boolean opeations.
+ */
 class LogicNodeGeometry : public NodeGeometry
 {
 public:
@@ -47,13 +52,16 @@ protected:
     QRectF computeBoundingRect() const override;
 };
 
+/**
+ * @brief The LogicNodeUI class.
+ * Painter class for the `LogicNode`. Renders the Gate shapes of the boolean
+ * opeations.
+ */
 class LogicNodePainter : public NodePainter
 {
 public:
 
     LogicNodePainter(NodeGraphicsObject& object, NodeGeometry& geometry);
-
-    QColor backgroundColor() const override;
 
     void drawBackground(QPainter& painter) const override;
 
@@ -63,9 +71,13 @@ public:
                          PortData& port,
                          PortType type,
                          PortIndex idx,
-                         bool connected) const override;
+                         uint flags) const override;
 };
 
+/**
+ * @brief The LogicNodeUI class.
+ * UI class for the `LogicNode`
+ */
 class LogicNodeUI : public NodeUI
 {
     Q_OBJECT

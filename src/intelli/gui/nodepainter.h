@@ -37,6 +37,18 @@ public:
 
     using PortData = Node::PortData;
 
+    /// Flags to tell the painter the state of the port
+    enum PortRenderFlag : uint
+    {
+        NoPortFlag = 0,
+        /// Whether the port is connected
+        PortConnected = 1,
+        /// Whether ports should be highlighted at all
+        HighlightPorts = 2,
+        /// Whether the port should be highlighted. Check `HighlightPorts` first
+        PortHighlighted = 4,
+    };
+
     /**
      * @brief Constructor
      * @param object Graphic object to paint
@@ -64,12 +76,13 @@ public:
     void applyOutlineConfig(QPainter& painter) const;
 
     /**
-     * @brief May be overriden to apply a custom background color similiar
-     * to how input/output provider and graphs have an altered color.
-     * Use the predefined painter config.
+     * @brief Returns the the background color of the node. Additional effects
+     * may be applied. Override `customBackgroundColor` to apply a custom
+     * background color similiar to how input/output provider and graphs have
+     * an altered color.
      * @return Background color
      */
-    virtual QColor backgroundColor() const;
+    QColor backgroundColor() const;
 
     /**
      * @brief Draws the background of the node.
@@ -97,13 +110,13 @@ public:
      * @param port Port info
      * @param type Port type
      * @param idx Port index
-     * @param connected Whether the port is connected
+     * @param flags Port flag to draw the port according to it state
      */
     virtual void drawPort(QPainter& painter,
                           PortData& port,
                           PortType type,
                           PortIndex idx,
-                          bool connected) const;
+                          uint flags) const;
 
     /**
      * @brief Draws the caption of the port
@@ -111,13 +124,13 @@ public:
      * @param port Port info
      * @param type Port type
      * @param idx Port index
-     * @param connected Whether the port is connected
+     * @param flags Port flag to draw the port according to it state
      */
     virtual void drawPortCaption(QPainter& painter,
                                  PortData& port,
                                  PortType type,
                                  PortIndex idx,
-                                 bool connected) const;
+                                 uint flags) const;
 
     /**
      * @brief Draws the resize handle
@@ -157,6 +170,13 @@ protected:
      * @return Geometry
      */
     NodeGeometry& geometry() const;
+
+    /**
+     * @brief May be overriden to apply a custom background color similiar
+     * to how input/output provider and graphs have an altered color.
+     * @return Background color
+     */
+    virtual QColor customBackgroundColor() const;
 
 private:
 

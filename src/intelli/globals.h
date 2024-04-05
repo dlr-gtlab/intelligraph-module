@@ -235,7 +235,7 @@ struct ConnectionId
     }
 };
 
-//! Enum for GraphicsObject::Type value
+/// Enum for GraphicsObject::Type value
 enum class GraphicsItemType
 {
     None = 0,
