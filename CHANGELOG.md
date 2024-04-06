@@ -6,10 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
+- Updated visuals of nodes and connections - #67
+- Grid state will now be saved per graph instead globally - #67
+- Clicking a widget will now select the node - #67
+- onnections that share the same out node and out port are merged when grouping nodes - #67
 
 ### Added
+- Added entry to the scene menu to center the scene - #67
+- Added entry to the scene menu to cycle through multiple connection styles (straight, cubic, rectangle). The connection shape is saved persistently per graph. - #67
 
 ### Fixed
+- Fixed imprecise port hit registration - #67
 
 ## [0.9.0] - 2024-03-27
 ### Changed
