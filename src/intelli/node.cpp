@@ -63,12 +63,16 @@ Node::Node(QString const& modelName, GtObject* parent) :
     registerProperty(pimpl->isActive, catEval);
 
     pimpl->id.setReadOnly(true);
-    bool hide = !gtApp || !gtApp->devMode();
+    pimpl->posX.setReadOnly(true);
+    pimpl->posY.setReadOnly(true);
+    pimpl->sizeWidth.setReadOnly(true);
+    pimpl->sizeHeight.setReadOnly(true);
 
-    pimpl->posX.setReadOnly(hide);
-    pimpl->posY.setReadOnly(hide);
-    pimpl->sizeWidth.setReadOnly(hide);
-    pimpl->sizeHeight.setReadOnly(hide);
+    bool hide = !gtApp || !gtApp->devMode();
+    pimpl->posX.hide(hide);
+    pimpl->posY.hide(hide);
+    pimpl->sizeWidth.hide(hide);
+    pimpl->sizeHeight.hide(hide);
 
     setCaption(modelName);
     
