@@ -53,9 +53,6 @@ intelli::detachedEvaluation(Node& node, GraphExecutionModel& model)
 void
 NodeExecutor::evaluate(Node& node)
 {
-    gtDebug().verbose().nospace()
-        << "### Evaluating node: '" << node.objectName() << "'";
-
     node.eval();
 }
 

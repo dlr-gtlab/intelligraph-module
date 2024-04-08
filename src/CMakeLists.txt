@@ -10,6 +10,10 @@ option(
     _DEBUG_CONNECTION_GRAPHICS
     "Draws debugging information into the scene to show bounds of connection objects" OFF
 )
+option(
+    _DEBUG_NODE_EXECUTION
+    "Logs additional debugging information when execution graphs" OFF
+)
 
 set(PUBLIC_HEADERS
     intelli/core.h
@@ -115,7 +119,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node.cpp
     intelli/nodedata.cpp
     intelli/nodedatafactory.cpp
-    intelli/nodedatainterface.cpp
     intelli/nodeexecutor.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp
@@ -196,6 +199,11 @@ endif()
 if (_DEBUG_CONNECTION_GRAPHICS)
     target_compile_definitions(GTlabIntelliGraph PRIVATE
         GT_INTELLI_DEBUG_CONNECTION_GRAPHICS
+    )
+endif()
+if (_DEBUG_NODE_EXECUTION)
+    target_compile_definitions(GTlabIntelliGraph PRIVATE
+        GT_INTELLI_DEBUG_NODE_EXEC
     )
 endif()
 

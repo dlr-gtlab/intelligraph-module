@@ -14,15 +14,7 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT IntegerData : public IntData
-{
-    Q_OBJECT
-
-public:
-
-    [[deprecated("Use `IntData` instead (note: include `intelli/data/int.h` instead)")]]
-    Q_INVOKABLE IntegerData(int val = {}) : IntData(val) {}
-};
+using IntegerData[[deprecated("Use `IntData` instead (note: include `intelli/data/int.h` instead)")]] = IntData;
 
 } // namespace intelli
 

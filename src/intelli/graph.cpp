@@ -232,8 +232,6 @@ struct NodeDeleted
 
     void operator()(NodeId nodeId)
     {
-        gtInfo().verbose() << tr("Deleting node %1 from map").arg(nodeId);
-
         auto node = graph->m_nodes.find(nodeId);
         if (node == graph->m_nodes.end())
         {
@@ -307,8 +305,6 @@ struct ConnectionDeleted
                         << "in:" << (inIdx >= 0) << "and out:" << (outIdx >= 0);
             return;
         }
-
-        gtInfo().verbose() << tr("Deleting connection %1 from map").arg(toString(conId));
 
         emit targetNode->node->portDisconnected(conId.inPort);
         emit sourceNode->node->portDisconnected(conId.outPort);
@@ -765,9 +761,6 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     }
 
     // append node to model
-    gtDebug().verbose() << tr("Appending node to map: %1 (id: %2)")
-                              .arg(node->objectName()).arg(nodeId);
-
     m_nodes.insert(nodeId, dag::Entry{ node.get() });
 
     // setup connections
@@ -818,8 +811,6 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     }
 
     connection->updateObjectName();
-
-    gtInfo().verbose() << tr("Appending connection %1 to map").arg(toString(conId));
 
     // check if nodes exist
     auto* targetNode = findNodeEntry(conId.inNodeId);

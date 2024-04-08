@@ -20,6 +20,12 @@
 
 #include <gt_logging.h>
 
+#ifdef GT_INTELLI_DEBUG_NODE_EXEC
+#define INTELLI_LOG() gtTrace().verbose()
+#else
+#define INTELLI_LOG() if (false) gtTrace()
+#endif
+
 using namespace intelli;
 
 namespace gt
@@ -317,6 +323,10 @@ doTriggerNode(GraphExecutionModel& model, Node* node)
 
     entry->state = NodeState::Evaluated;
 
+    gtInfo().medium().nospace()
+        << Impl::graphName(model)
+        << tr("Evaluating node %1...").arg(node->id());
+
     // evaluate nodes
     if (!node->handleNodeEvaluation(model))
     {
@@ -347,17 +357,17 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
     reset();
 
     connect(this, &GraphExecutionModel::nodeEvaluated, this, [this](NodeId nodeId){
-        gtDebug().nospace()
+        gtInfo().nospace().medium()
             << Impl::graphName(*this)
             << tr("Node %1 evaluated!").arg(nodeId);
     });
     connect(this, &GraphExecutionModel::graphEvaluated, this, [this, &graph](){
-        gtDebug().nospace()
+        gtInfo().nospace().medium()
             << Impl::graphName(*this)
             << tr("Graph '%1' evaluated!").arg(graph.objectName());
     });
     connect(this, &GraphExecutionModel::graphStalled, this, [this, &graph](){
-        gtWarning().nospace()
+        gtInfo().nospace().medium()
             << Impl::graphName(*this)
             << tr("Graph '%1' stalled!").arg(graph.objectName());
     });
@@ -613,14 +623,18 @@ GraphExecutionModel::autoEvaluateNode(NodeId nodeId)
     // cannot auto evaluate inactive nodes
     if (!find.node->isActive())
     {
-        gtDebug().verbose() << makeError() << tr("(node %1 is not active)").arg(nodeId);
+        INTELLI_LOG()
+            << makeError()
+            << tr("(node %1 is not active)").arg(nodeId);
         return false;
     }
 
     // node is already evaluating
     if (find.isEvaluating())
     {
-        gtDebug().verbose() << makeError() << tr("(Node is already evaluating)");
+        INTELLI_LOG()
+            << makeError()
+            << tr("(Node is already evaluating)");
         // nothing to do
         return true;
     }
@@ -632,7 +646,9 @@ GraphExecutionModel::autoEvaluateNode(NodeId nodeId)
     }
 
     // evaluate next nodes
-    gtDebug().verbose() << makeError() << tr("(Node was already evaluated)");
+    INTELLI_LOG()
+        << makeError()
+        << tr("(Node was already evaluated)");
 
     auto const& targetNodes = graph.findConnectedNodes(nodeId, PortType::Out);
 
@@ -689,7 +705,9 @@ GraphExecutionModel::evaluateNode(NodeId nodeId)
 
     if (m_targetNodes.contains(nodeId))
     {
-        gtDebug().verbose() << makeError() << tr("(Node is already marked for evaluation)");
+        INTELLI_LOG()
+            << makeError()
+            << tr("(Node is already marked for evaluation)");
         return FutureNodeEvaluated(this, nodeId);
     }
 
@@ -719,7 +737,9 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId, bool reevaluate)
     // node is already pending
     if (!reevaluate && m_pendingNodes.contains(nodeId))
     {
-        gtDebug().verbose() << makeError() << tr("(Node is already pending)");
+        INTELLI_LOG()
+            << makeError()
+            << tr("(Node is already pending)");
         return true;
     }
 
@@ -734,14 +754,18 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId, bool reevaluate)
     // node is already evaluating
     if (find.isEvaluating())
     {
-        gtDebug().verbose() << makeError() << tr("(Node is already evaluating)");
+        INTELLI_LOG()
+            << makeError()
+            << tr("(Node is already evaluating)");
         return true;
     }
 
     // node was already evaluated
     if (find.isEvaluated())
     {
-        gtDebug().verbose() << makeError() << tr("(Node was already evaluated)");
+        INTELLI_LOG()
+            << makeError()
+            << tr("(Node was already evaluated)");
         return true;
     }
 
@@ -757,7 +781,7 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId, bool reevaluate)
     // node not ready to be queued -> dependencies not fullfilled
     auto const& dependencies = graph().findConnectedNodes(nodeId, PortType::In);
 
-    gtDebug().verbose().nospace()
+    INTELLI_LOG().nospace()
         << Impl::graphName(*this)
         << tr("Node %1 is not ready for evaluation. Checking dependencies: %2")
                .arg(nodeId).arg(toString(dependencies));
@@ -770,7 +794,7 @@ GraphExecutionModel::evaluateNodeDependencies(NodeId nodeId, bool reevaluate)
 
     for (NodeId dependency : dependencies)
     {
-        gtDebug().verbose().nospace()
+        INTELLI_LOG().nospace()
             << Impl::graphName(*this)
             << tr("Checking dependency: ") << dependency;
 
@@ -794,7 +818,9 @@ GraphExecutionModel::queueNodeForEvaluation(NodeId nodeId)
     // check if node is already queued
     if (m_queuedNodes.contains(nodeId))
     {
-        gtDebug().verbose() << makeError() << tr("(Node is already queued)");
+        INTELLI_LOG()
+            << makeError()
+            << tr("(Node is already queued)");
         return true;
     }
 
@@ -802,14 +828,16 @@ GraphExecutionModel::queueNodeForEvaluation(NodeId nodeId)
     auto find = Impl::findNode(*this, nodeId);
     if (!find)
     {
-        gtError() << makeError() << tr("(Node not found)");
+        INTELLI_LOG()
+            << makeError()
+            << tr("(Node not found)");
         return false;
     }
 
     // is node ready for evaluation?
     if (!find.readyForEvaluation())
     {
-        gtDebug().verbose()
+        INTELLI_LOG()
             << makeError()
             << tr("(Node is not ready for evaluation, "
                   "some inputs are not valid yet)");
@@ -817,7 +845,7 @@ GraphExecutionModel::queueNodeForEvaluation(NodeId nodeId)
     }
 
     // schedule node
-    gtDebug().nospace().verbose()
+    INTELLI_LOG().nospace()
         << Impl::graphName(*this)
         << tr("Queuing node %1...").arg(nodeId);
 
@@ -840,7 +868,9 @@ GraphExecutionModel::evaluateNextInQueue()
     // do not evaluate if graph is currently being modified
     if (m_modificationCount > 0)
     {
-        gtDebug().verbose() << makeError() << tr("(Model is inserting)");
+        INTELLI_LOG()
+            << makeError()
+            << tr("(Model is inserting)");
         return false;
     }
 
@@ -872,20 +902,24 @@ GraphExecutionModel::evaluateNextInQueue()
         // an exclusive node has to be evaluated separatly to all other nodes
         if (containsExclusiveNodes)
         {
-            gtDebug().verbose() << makeError(node) << tr("(Executor contains exclusive nodes)");
+            INTELLI_LOG()
+                << makeError()
+                << tr("(Executor contains exclusive nodes)");
             return false;
         }
 
         if (node->nodeEvalMode() == NodeEvalMode::Exclusive && !m_evaluatingNodes.empty())
         {
-            gtDebug().verbose() << makeError(node) << tr("(Node is exclusive and executor is not empty)");
+            INTELLI_LOG()
+                << makeError()
+                << tr("(Node is exclusive and executor is not empty)");
             continue;
         }
 
         m_evaluatingNodes.push_back(node);
         m_queuedNodes.removeAt(idx--);
 
-        gtDebug().nospace().verbose()
+        INTELLI_LOG().nospace()
             << Impl::graphName(*this)
             << tr("Evaluating node %1...").arg(nodeId);
 
@@ -968,7 +1002,7 @@ GraphExecutionModel::invalidatePortEntry(NodeId nodeId, graph_data::PortEntry& p
 
     port.data.state = PortDataState::Outdated;
 
-    gtDebug().nospace().verbose()
+    INTELLI_LOG().nospace()
         << Impl::graphName(*this)
         << "Invalidating node " << nodeId << " port id " << port.id;
 
@@ -1118,7 +1152,7 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, NodeDataSet data)
         port->data.state == data.state &&
         data.state == PortDataState::Valid)
     {
-        gtDebug().verbose()
+        INTELLI_LOG()
             << Impl::graphName(*this)
             << tr("(Not setting port data for node %1:%2, "
                   "data did not change)")
@@ -1149,7 +1183,7 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, NodeDataSet data)
 
             if (!isEvaluating)
             {
-                gtDebug().verbose().nospace()
+                INTELLI_LOG()
                     << Impl::graphName(*this)
                     << tr("Triggering node %1 from input data").arg(nodeId);
                 autoEvaluateNode(nodeId);
@@ -1417,7 +1451,7 @@ GraphExecutionModel::onNodeEvaluated()
 
     if (find.isEvaluating())
     {
-        gtDebug().nospace().verbose()
+        INTELLI_LOG().nospace()
             << Impl::graphName(*this)
             << tr("Node %1 is still evaluating!").arg(nodeId);
         return;
@@ -1427,7 +1461,7 @@ GraphExecutionModel::onNodeEvaluated()
 
     if (find.requiresReevaluation())
     {
-        gtWarning().nospace().verbose()
+        INTELLI_LOG().nospace()
             << Impl::graphName(*this)
             << tr("Node %1 requieres reevaluation!").arg(nodeId);
 
@@ -1458,7 +1492,7 @@ GraphExecutionModel::onNodeEvaluated()
     // queue next nodes
     if (m_autoEvaluate)
     {
-        gtDebug().nospace().verbose()
+        INTELLI_LOG().nospace()
             << Impl::graphName(*this)
             << tr("Triggering next nodes...");
 
@@ -1469,7 +1503,7 @@ GraphExecutionModel::onNodeEvaluated()
             autoEvaluateNode(nextNode);
         }
 
-        gtDebug().nospace().verbose()
+        INTELLI_LOG().nospace()
             << Impl::graphName(*this)
             << tr("...done!");
     }

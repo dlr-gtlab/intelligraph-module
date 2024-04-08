@@ -582,11 +582,6 @@ GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         auto const& items = this->items(rect);
         for (auto* item : items)
         {
-            gtDebug() << static_cast<QGraphicsObject*>(item);
-        }
-
-        for (auto* item : items)
-        {
             auto* object = qgraphicsitem_cast<NodeGraphicsObject*>(item);
             if (!object) continue;
 
@@ -1012,7 +1007,9 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         NodeId newId = movedNode->id();
         if (newId == oldId) continue;
 
-        gtInfo().verbose() << "Updating node id from" << oldId << "to" << newId << "...";
+#ifdef _DEBUG
+        gtTrace().verbose() << "Updating node id from" << oldId << "to" << newId << "...";
+#endif
 
         // helper function to update the old node ids without overriding each entry multiple times
         auto const updateConnections = [](auto& connections, auto& map, size_t& index, NodeId oldId, NodeId newId, PortType type){

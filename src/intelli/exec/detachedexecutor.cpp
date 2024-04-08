@@ -170,9 +170,11 @@ int signal_offset(){
 
         offset += 1;
 
-        gtDebug().verbose()
+#ifdef GT_INTELLI_DEBUG_NODE_EXEC
+        gtTrace().verbose()
             << QObject::tr("Signal offset for derived nodes of '%1' is %2")
                    .arg(sourceMetaObject->className()).arg(offset);
+#endif
 
         return offset;
     }();
@@ -252,9 +254,11 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
         }
         assert(signalIndex == targetMetaObject->indexOfSignal(signal));
 
-        gtDebug().verbose()
+#ifdef GT_INTELLI_DEBUG_NODE_EXEC
+        gtTrace().verbose()
             << GT_CLASSNAME(DetachedExecutor) << '-'
             << QObject::tr("Connecting custom Node signal '%1'").arg(signal.constData());
+#endif
 
         if (!QObject::connect(sourceObject, sourceMetaObject->method(signalIndex),
                               targetObject, targetMetaObject->method(signalIndex),
