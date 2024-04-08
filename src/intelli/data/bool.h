@@ -31,6 +31,4 @@ private:
 
 } // namespace intelli
 
-using GtIgBoolData [[deprecated]] = intelli::BoolData;
-
 #endif // GT_INTELLI_BOOLDATA_H

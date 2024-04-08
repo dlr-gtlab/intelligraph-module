@@ -16,6 +16,9 @@
 #include "intelli/data/double.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/icons.h"
+#include "intelli/gui/nodegeometry.h"
+#include "intelli/gui/nodepainter.h"
+#include "intelli/gui/graphics/nodeobject.h"
 
 #include <gt_logging.h>
 
@@ -23,9 +26,6 @@
 #include <gt_inputdialog.h>
 #include <gt_application.h>
 
-#include <QJsonObject>
-#include <QJsonDocument>
-#include <QRegExpValidator>
 #include <QFileInfo>
 #include <QFile>
 
@@ -128,12 +128,6 @@ NodeUI::NodeUI(Option option)
         model->debug(node->id());
     }).setIcon(gt::gui::icon::bug());
 
-    addSingleAction(tr("Update Node"), [](GtObject* obj){
-        auto* node = toNode(obj);
-        if (!node) return;
-        emit node->nodeStateChanged();
-    }).setIcon(gt::gui::icon::bug());
-
     addPortAction(tr("Port Info"), [](Node* obj, PortType type, PortIndex idx){
         if (!obj) return;
         gtInfo() << tr("Node '%1' (id: %2), Port id: %3")
@@ -141,6 +135,18 @@ NodeUI::NodeUI(Option option)
                         .arg(obj->id())
                         .arg(obj->portId(type, idx));
     }).setIcon(gt::gui::icon::bug());
+}
+
+std::unique_ptr<NodePainter>
+NodeUI::painter(NodeGraphicsObject& object, NodeGeometry& geometry) const
+{
+    return std::make_unique<NodePainter>(object, geometry);
+}
+
+std::unique_ptr<NodeGeometry>
+NodeUI::geometry(Node& node) const
+{
+    return std::make_unique<NodeGeometry>(node);
 }
 
 QIcon

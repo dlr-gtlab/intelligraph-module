@@ -9,6 +9,7 @@
 
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
+#include "intelli/gui/style.h"
 #include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
 
@@ -17,25 +18,44 @@
 #include <gt_guiutilities.h>
 #include <gt_application.h>
 #include <gt_filedialog.h>
+#include <gt_grid.h>
+#include <gt_state.h>
+#include <gt_statehandler.h>
 
 #include <gt_logging.h>
-
-#include <QtNodes/DataFlowGraphModel>
-#include <QtNodes/internal/locateNode.hpp>
-#include <QtNodes/internal/NodeGraphicsObject.hpp>
 
 #include <QCoreApplication>
 #include <QWheelEvent>
 #include <QGraphicsSceneWheelEvent>
+#include <QGraphicsWidget>
 #include <QMenuBar>
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QPrinter>
 
-
 #include <cmath>
 
 using namespace intelli;
+
+struct GraphView::Impl
+{
+    static NodeGraphicsObject* locateNode(QPointF scenePoint,
+                                          QGraphicsScene& scene,
+                                          QTransform const& viewTransform)
+    {
+        for (auto* item : scene.items(scenePoint,
+                                      Qt::IntersectsItemShape,
+                                      Qt::DescendingOrder,
+                                      viewTransform))
+        {
+            if (auto* node = qgraphicsitem_cast<NodeGraphicsObject*>(item))
+            {
+                return node;
+            }
+        }
+        return nullptr;
+    }
+};
 
 GraphView::GraphView(QWidget* parent) :
     GtGraphicsView(nullptr, parent)
@@ -43,8 +63,7 @@ GraphView::GraphView(QWidget* parent) :
     setDragMode(QGraphicsView::ScrollHandDrag);
     setRenderHint(QPainter::Antialiasing);
 
-    auto const &flowViewStyle = QtNodes::StyleCollection::flowViewStyle();
-    setBackgroundBrush(flowViewStyle.BackgroundColor);
+    setBackgroundBrush(style::viewBackground());
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -54,15 +73,27 @@ GraphView::GraphView(QWidget* parent) :
     setCacheMode(QGraphicsView::CacheBackground);
     setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
-    setScaleRange(0.3, 2);
+    // disable scale range
+    setScaleRange(0, 0);
 
     // Sets the scene rect to its maximum possible ranges to avoid auto scene range
     // re-calculation when expanding the all QGraphicsItems common rect.
     int maxSize = 32767;
     setSceneRect(-maxSize, -maxSize, (maxSize * 2), (maxSize * 2));
 
+    /* GRID */
+    auto* grid = new GtGrid(*this);
+    setGrid(grid);
+    grid->setShowAxis(false);
+    grid->setGridHeight(15);
+    grid->setGridWidth(15);
+
     /* MENU BAR */
     auto* menuBar = new QMenuBar;
+
+    auto const makeSeparator = [](){
+        return GtObjectUIAction();
+    };
 
     /* SCENE MENU */
     m_sceneMenu = menuBar->addMenu(tr("Scene"));
@@ -70,18 +101,29 @@ GraphView::GraphView(QWidget* parent) :
 
     auto resetScaleAction =
         gt::gui::makeAction(tr("Reset scale"), std::bind(&GraphView::setScale, this, 1))
-              .setIcon(gt::gui::icon::revert());
+            .setIcon(gt::gui::icon::revert());
+
+    auto centerSceneAction =
+        gt::gui::makeAction(tr("Center scene"), std::bind(&GraphView::centerScene, this))
+            .setIcon(gt::gui::icon::select());
 
     auto changeGrid =
-        gt::gui::makeAction(tr("Change Grid"), std::bind(&GraphView::changeGridTriggered, this))
+        gt::gui::makeAction(tr("Toggle Grid"), std::bind(&GraphView::gridChanged, this, QPrivateSignal()))
             .setIcon(gt::gui::icon::grid());
+
+    auto changeConShape =
+        gt::gui::makeAction(tr("Toggle Connection Shape"), std::bind(&GraphView::connectionShapeChanged, this, QPrivateSignal()))
+            .setIcon(gt::gui::icon::vectorBezier2());
 
     auto print =
         gt::gui::makeAction(tr("Print to PDF"), std::bind(&GraphView::printPDF, this))
               .setIcon(gt::gui::icon::pdf());
 
     gt::gui::addToMenu(resetScaleAction, *m_sceneMenu, nullptr);
+    gt::gui::addToMenu(centerSceneAction, *m_sceneMenu, nullptr);
+    gt::gui::addToMenu(changeConShape, *m_sceneMenu, nullptr);
     gt::gui::addToMenu(changeGrid, *m_sceneMenu, nullptr);
+    gt::gui::addToMenu(makeSeparator(), *m_sceneMenu, nullptr);
     gt::gui::addToMenu(print, *m_sceneMenu, nullptr);
 
     /* EDIT MENU */
@@ -93,8 +135,9 @@ GraphView::GraphView(QWidget* parent) :
         auto* btn = new QPushButton();
         btn->setVisible(false);
         btn->setEnabled(false);
+//        btn->setFlat(true);
         auto height = btn->sizeHint().height();
-        btn->setFixedSize(QSize(height * 1.5, height));
+        btn->setFixedSize(QSize(height/* * 1.5*/, height));
         return btn;
     };
 
@@ -109,6 +152,7 @@ GraphView::GraphView(QWidget* parent) :
 
     /* OVERLAY */
     auto* overlay = new QHBoxLayout(this);
+    overlay->setContentsMargins(5, 5, 0, 0);
     overlay->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     overlay->addWidget(menuBar);
     overlay->addWidget(m_startAutoEvalBtn);
@@ -123,7 +167,68 @@ GraphView::GraphView(QWidget* parent) :
 void
 GraphView::setScene(GraphScene& scene)
 {
+    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
+
     QGraphicsView::setScene(&scene);
+    centerScene();
+
+    auto* guardian = new GtObject();
+    guardian->setParent(&scene);
+
+    auto& graph = scene.graph();
+
+    /// grid change state
+    auto* gridState = gtStateHandler->initializeState(
+        GT_CLASSNAME(GraphView),
+        tr("Show Grid"),
+        graph.uuid() + QStringLiteral(";show_grid"),
+        true, guardian);
+
+    connect(gridState, qOverload<QVariant const&>(&GtState::valueChanged),
+            this, [this](QVariant const& enable){
+        resetCachedContent();
+
+        if (auto* g = grid())
+        {
+            g->showGrid(enable.toBool());
+        }
+    });
+    connect(this, &GraphView::gridChanged, gridState, [gridState](){
+        gridState->setValue(!gridState->getValue().toBool());
+    });
+
+    // trigger grid update
+    emit gridState->valueChanged(gridState->getValue());
+
+    /// connection style state
+    auto* conShapeState = gtStateHandler->initializeState(
+        GT_CLASSNAME(GraphView),
+        tr("Connection Shape"),
+        graph.uuid() + QStringLiteral(";connection_shape"),
+        ConnectionShape::DefaultShape, guardian);
+
+    connect(conShapeState, qOverload<QVariant const&>(&GtState::valueChanged),
+            &scene, [&scene, conShapeState](QVariant const& shape){
+        scene.setConnectionShape(conShapeState->getValue().value<ConnectionShape>());
+    });
+    connect(this, &GraphView::connectionShapeChanged, conShapeState, [conShapeState](){
+        auto value = conShapeState->getValue().value<ConnectionShape>();
+        switch (value)
+            {
+        case ConnectionShape::Cubic:
+            value = ConnectionShape::Rectangle;
+            break;
+        case ConnectionShape::Rectangle:
+            value = ConnectionShape::Straight;
+            break;
+        case ConnectionShape::Straight:
+            value = ConnectionShape::Cubic;
+        }
+        conShapeState->setValue(value);
+    });
+
+    // trigger connection shape update
+    emit conShapeState->valueChanged(conShapeState->getValue());
 
     m_sceneMenu->setEnabled(true);
 
@@ -170,11 +275,8 @@ GraphView::setScene(GraphScene& scene)
             &scene, &QGraphicsScene::clearSelection,
             Qt::UniqueConnection);
 
-    auto* graph = nodeScene()->graph();
-    assert(graph);
-
-    auto updateAutoEvalBtns = [this, graph](){
-        auto* exec = graph->executionModel();
+    auto updateAutoEvalBtns = [this, &graph](){
+        auto* exec = graph.executionModel();
         bool isAutoEvaluating = exec && exec->isAutoEvaluating();
 
         m_startAutoEvalBtn->setVisible(!isAutoEvaluating);
@@ -186,13 +288,13 @@ GraphView::setScene(GraphScene& scene)
 
     updateAutoEvalBtns();
 
-    connect(graph, &Graph::isActiveChanged, this, updateAutoEvalBtns);
+    connect(&graph, &Graph::isActiveChanged, this, updateAutoEvalBtns);
 
-    connect(m_startAutoEvalBtn, &QPushButton::clicked, &scene, [=](){
-        if (auto* scene = nodeScene()) scene->autoEvaluate(true);
+    connect(m_startAutoEvalBtn, &QPushButton::clicked, &graph, [&graph](){
+        graph.setActive(true);
     });
-    connect(m_stopAutoEvalBtn, &QPushButton::clicked, &scene, [=](){
-        if (auto* scene = nodeScene()) scene->autoEvaluate(false);
+    connect(m_stopAutoEvalBtn, &QPushButton::clicked, &graph, [&graph](){
+        graph.setActive(false);
     });
 
     addAction(copyAction);
@@ -263,7 +365,14 @@ GraphView::scaleDown()
 void
 GraphView::setScale(double scale)
 {
-    scale = std::max(m_scaleRange.minimum, std::min(m_scaleRange.maximum, scale));
+    if (m_scaleRange.minimum > 0.0)
+    {
+        scale = std::max(m_scaleRange.minimum, scale);
+    }
+    if (m_scaleRange.maximum > 0.0)
+    {
+        scale = std::min(m_scaleRange.maximum, scale);
+    }
 
     if (scale <= 0) return;
 
@@ -279,7 +388,6 @@ GraphView::setScale(double scale)
 void
 GraphView::printPDF()
 {
-    gtTrace() << __FUNCTION__;
     QString filePath =
         GtFileDialog::getSaveFileName(parentWidget(),
                                       tr("Choose File"),
@@ -350,13 +458,12 @@ GraphView::wheelEvent(QWheelEvent* event)
     if (auto* s = scene())
     {
         auto pos = event->position().toPoint();
-        auto* node = QtNodes::locateNodeAt(mapToScene(pos), *s, transform());
+        auto* node = Impl::locateNode(mapToScene(pos), *s, transform());
 
-        if (node && node->centralWidget())
+        if (node)
+        if (auto* w = node->centralWidget())
         {
-            auto* w = node->centralWidget();
-
-            auto bounding = mapFromScene(w->sceneBoundingRect());
+            QPolygon bounding = mapFromScene(w->sceneBoundingRect());
 
             // forward event to widget
             if (bounding.containsPoint(pos, Qt::OddEvenFill))
@@ -378,9 +485,9 @@ GraphView::wheelEvent(QWheelEvent* event)
 
     QPoint delta = event->angleDelta();
 
-    if (delta.y() == 0) {
-        event->ignore();
-        return;
+    if (delta.y() == 0)
+    {
+        return event->ignore();
     }
 
     double const d = delta.y() / std::abs(delta.y());

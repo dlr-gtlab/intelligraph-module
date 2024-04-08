@@ -36,6 +36,8 @@ public:
 
     Q_INVOKABLE LogicNode();
 
+    LogicOperation operation() const;
+
 protected:
 
     void eval() override;

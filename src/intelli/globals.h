@@ -10,8 +10,10 @@
 #define GT_INTELLI_GLOBALS_H
 
 #include <gt_logging.h>
+#include <gt_exceptions.h>
 
 #include <chrono>
+#include <utility>
 
 #include <QPointF>
 #include <QRegExp>
@@ -22,6 +24,32 @@ namespace intelli
 class NodeData;
 
 constexpr auto max_timeout = std::chrono::milliseconds::max();
+
+/**
+ * @brief Denotes the possible port types
+ */
+enum class PortType
+{
+    /// Input port
+    In = 0,
+    /// Output port
+    Out,
+    /// Undefined port type (most uses are invalid!)
+    NoType
+};
+
+inline constexpr PortType invert(PortType type) noexcept
+{
+    switch (type)
+    {
+    case PortType::In:
+        return PortType::Out;
+    case PortType::Out:
+        return PortType::In;
+    default:
+        return type;
+    }
+}
 
 // Base class for typesafe type aliases
 template <typename T, typename Tag, T InitValue = 0>
@@ -42,6 +70,8 @@ public:
 
     template<typename U>
     constexpr static StrongType fromValue(U value) { return StrongType{static_cast<T>(value)}; }
+
+    constexpr bool isValid() const noexcept;
 
     // Overload comparison operators as needed
     constexpr inline bool
@@ -96,10 +126,14 @@ using PortId    = StrongType<unsigned, struct PortId_, std::numeric_limits<unsig
 
 using Position = QPointF;
 
-using NodeDataPtr  = std::shared_ptr<const NodeData>;
+using NodeDataPtr = std::shared_ptr<const NodeData>;
 
 using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
 
+using TypeName = QString;
+
+using TypeId = QString;
+using TypeIdList = QStringList;
 
 namespace detail
 {
@@ -132,6 +166,8 @@ constexpr inline T invalid() noexcept
  */
 struct ConnectionId
 {
+    constexpr ConnectionId() {};
+
     constexpr ConnectionId(NodeId _outNode, PortId _outPort,
                            NodeId _inNode, PortId _inPort) :
         outNodeId(_outNode), outPort(_outPort),
@@ -142,46 +178,71 @@ struct ConnectionId
     PortId outPort;
     NodeId inNodeId;
     PortId inPort;
-    
+
+    constexpr void reverse() noexcept
+    {
+        *this = reversed();
+    }
+
     constexpr ConnectionId reversed() const noexcept
     {
         return { inNodeId, inPort, outNodeId, outPort };
     }
 
+    constexpr NodeId node(PortType type) const
+    {
+        switch (type)
+        {
+        case PortType::In:
+            return inNodeId;
+        case PortType::Out:
+            return outNodeId;
+        case PortType::NoType:
+            throw GTlabException(__FUNCTION__, "invalid port type!");
+        }
+    }
+
+    constexpr PortId port(PortType type) const
+    {
+        switch (type)
+        {
+        case PortType::In:
+            return inPort;
+        case PortType::Out:
+            return outPort;
+        case PortType::NoType:
+            throw GTlabException(__FUNCTION__, "invalid port type!");
+        }
+    }
+
     constexpr bool isValid() const noexcept
     {
-        return inNodeId  != invalid<NodeId>() ||
-               outNodeId != invalid<NodeId>() ||
-               inPort    != invalid<PortId>() ||
+        return inNodeId  != invalid<NodeId>() &&
+               outNodeId != invalid<NodeId>() &&
+               inPort    != invalid<PortId>() &&
                outPort   != invalid<PortId>();
     }
-};
 
-/**
- * @brief Denotes the possible port types
- */
-enum class PortType
-{
-    /// Input port
-    In = 0,
-    /// Output port
-    Out,
-    /// Undefined port type (most uses are invalid!)
-    NoType
-};
-
-inline constexpr PortType invert(PortType type) noexcept
-{
-    switch (type)
-    {
-    case PortType::In:
-        return PortType::Out;
-    case PortType::Out:
-        return PortType::In;
-    default:
-        return type;
+    // Overload comparison operators as needed
+    constexpr inline bool operator==(ConnectionId const& o) const noexcept {
+        return inNodeId == o.inNodeId &&
+               inPort == o.inPort &&
+               outNodeId == o.outNodeId &&
+               outPort == o.outPort;
     }
-}
+    constexpr inline bool operator!=(ConnectionId const& o) const noexcept {
+        return !(*this == o);
+    }
+};
+
+/// Enum for GraphicsObject::Type value
+enum class GraphicsItemType
+{
+    None = 0,
+    Node,
+    NodeEvalState,
+    Connection
+};
 
 namespace detail
 {
@@ -216,15 +277,11 @@ constexpr inline bool
 operator/=(StrongType<T, Tag, InitVal> const& a,
            StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
 
-inline bool
-operator==(ConnectionId const& a, ConnectionId const& b)
+template <typename T, typename Tag, T InitValue>
+constexpr inline bool StrongType<T, Tag, InitValue>::isValid() const noexcept
 {
-    return a.outNodeId == b.outNodeId && a.outPort == b.outPort &&
-           a.inNodeId  == b.inNodeId  && a.inPort  == b.inPort;
+    return *this != invalid<StrongType<T, Tag, InitValue>>();
 }
-
-inline bool
-operator!=(ConnectionId const& a, ConnectionId const& b) { return !(a == b); }
 
 } // namespace intelli
 
@@ -290,14 +347,5 @@ operator<<(gt::log::Stream& s, intelli::PortType type)
 
 } // namespace gt
 
-namespace gt
-{
-
-namespace [[deprecated]] ig
-{
-using namespace ::intelli;
-}
-
-}
 
 #endif // GT_INTELLI_GLOBALS_H

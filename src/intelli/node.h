@@ -28,8 +28,10 @@ enum NodeFlag
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
     Unique      = 1 << 2,
+    /// Indicates that the widget should be placed so that its size can be maximized
+    MaximizeWidget  = 1 << 3,
     /// Indicates that the node is evaluating (will be set automatically)
-    Evaluating = 1 << 4,
+    Evaluating  = 1 << 7,
 
     /// default node flags
     DefaultNodeFlags = NoFlag
@@ -63,13 +65,14 @@ struct NodeImpl;
  * for widgets, that have trouble resizing correctly.
  * @return Widget pointer (never null)
  */
-GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeWidget();
+GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeBaseWidget();
 
 class GT_INTELLI_EXPORT Node : public GtObject
 {
     Q_OBJECT
     
     friend class NodeExecutor;
+    friend class NodeGraphicsObject;
     friend class GraphExecutionModel;
 
 public:
@@ -139,6 +142,8 @@ public:
         QString caption;
         // whether port caption should be visible
         bool captionVisible = true;
+        // whether the port is visible at all
+        bool visible = true;
         // whether the port is required for the node evaluation
         bool optional = true;
 
@@ -300,14 +305,6 @@ public:
      */
     PortId portId(PortType type, PortIndex idx) const noexcept(false);
 
-    /**
-     * @brief Returns the embedded widget used in the intelli graph. Ownership
-     * may be transfered safely. Note: Will instantiate the widget if it does
-     * not yet exists
-     * @return Embedded widget
-     */
-    QWidget* embeddedWidget();
-
 signals:
 
     /**
@@ -340,11 +337,6 @@ signals:
      * node flag `Evaluating` automatically.
      */
     void computingFinished();
-
-    /**
-     * @brief stateChanged
-     */
-    void nodeStateChanged();
 
     /**
      * @brief Emitted if node specific data has changed (cpation, number of
@@ -546,14 +538,9 @@ private:
 
     // hide object name setter
     using GtObject::setObjectName;
-
-    /// initializes the widgets
-    void initWidget();
 };
 
 } // namespace intelli
-
-using GtIntelliGraphNode [[deprecated]] = intelli::Node;
 
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, intelli::Node::PortData const& d)

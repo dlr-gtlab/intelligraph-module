@@ -30,6 +30,4 @@ private:
 
 } // namespace intelli
 
-using GtIgDoubleData [[deprecated]] = intelli::DoubleData;
-
 #endif // GT_INTELLI_DOUBLEDATA_H

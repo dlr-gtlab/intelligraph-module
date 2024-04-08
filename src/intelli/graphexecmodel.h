@@ -50,7 +50,7 @@ public:
 
     void reset();
 
-    NodeEvalState nodeState(NodeId nodeId) const;
+    NodeEvalState nodeEvalState(NodeId nodeId) const;
 
     /**
      * @brief Returns whether the underlying graph has been evaluated completly,
@@ -132,6 +132,8 @@ signals:
     void internalError();
 
     void graphStalled();
+
+    void nodeEvalStateChanged(NodeId nodeId);
 
 private:
 

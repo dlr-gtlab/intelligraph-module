@@ -7,7 +7,7 @@
  */
 
 
-#include "intelli/data/int.h"
+#include "intelli/data/integer.h"
 
 using namespace intelli;
 

@@ -43,6 +43,4 @@ private:
 
 } // namespace intelli
 
-using GtIgObjectData [[deprecated]] = intelli::ObjectData;
-
 #endif // GT_INTELLI_OBJECTDATA_H

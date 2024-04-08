@@ -14,15 +14,14 @@
 
 #include <QLayout>
 
-namespace intelli
-{
+using namespace intelli;
 
 IntInputNode::IntInputNode() :
     AbstractInputNode("Integer Input",
                       std::make_unique<GtIntProperty>("value", tr("Value"),
                                                       tr("Current value"))),
-    m_min("min", tr("Min."), tr("minimum value"), 0),
-    m_max("max", tr("Max."), tr("maxiumum value"), 1),
+    m_min("min", tr("Min."), tr("minimum value"), -10),
+    m_max("max", tr("Max."), tr("maxiumum value"), 10),
     m_displayType("type", "type", "type"),
     m_textDisplay("Text", "Text"),
     m_dial("dial", "dial"),
@@ -40,11 +39,11 @@ IntInputNode::IntInputNode() :
     registerProperty(m_displayType);
 
     m_value->hide();
-
-    m_out = addOutPort(intelli::typeId<intelli::IntegerData>());
+    
+    m_out = addOutPort(typeId<IntData>());
     port(m_out)->captionVisible = false;
 
-    setNodeFlag(intelli::Resizable);
+    setNodeFlag(Resizable);
 
     registerWidgetFactory([this]() {
         IntegerInputWidget::InputType t = IntegerInputWidget::Dial;
@@ -65,7 +64,7 @@ IntInputNode::IntInputNode() :
             t = IntegerInputWidget::LineEdit;
         }
 
-        auto base = intelli::makeWidget();
+        auto base = makeBaseWidget();
 
         auto overallW = new IntegerInputWidget(value(),
                                                  m_min.getVal(),
@@ -75,7 +74,7 @@ IntInputNode::IntInputNode() :
 
         base->layout()->addWidget(overallW);
 
-        auto onMinMaxChanged = [this, &overallW]()
+        auto onMinMaxChanged = [this]()
         {
             emit triggerWidgetUpdate(value(),
                                      m_min.getVal(),
@@ -160,7 +159,7 @@ IntInputNode::setValue(int value)
 void
 IntInputNode::eval()
 {
-    setNodeData(m_out, std::make_shared<intelli::IntegerData>(value()));
+    setNodeData(m_out, std::make_shared<IntData>(value()));
 }
 
 void
@@ -168,4 +167,3 @@ IntInputNode::onWidgetValueChanges(int newVal)
 {
     if (newVal != value()) setValue(newVal);
 }
-} //namespace intelli

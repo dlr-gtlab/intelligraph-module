@@ -40,7 +40,6 @@ target_link_libraries(IntelliGraphUnitTests PRIVATE
     gtest
     GTlabIntelliGraph
     Qt5::Concurrent
-    QtNodes::QtNodes
 )
 target_compile_definitions(IntelliGraphUnitTests PRIVATE
     GT_LOG_USE_QT_BINDINGS # enable Qt operator<< for logging

@@ -8,8 +8,6 @@
 
 #include "intelli/node/numbermath.h"
 
-#include "intelli/nodedatainterface.h"
-#include "intelli/nodefactory.h"
 #include "intelli/data/double.h"
 
 #include <QComboBox>
@@ -34,7 +32,7 @@ NumberMathNode::NumberMathNode() :
     });
 
     registerWidgetFactory([=](){
-        auto base = makeWidget();
+        auto base = makeBaseWidget();
         auto w = new QComboBox();
         base->layout()->addWidget(w);
         w->addItems(QStringList{"+", "-", "*", "/", "pow"});
@@ -68,8 +66,8 @@ NumberMathNode::NumberMathNode() :
 void
 NumberMathNode::eval()
 {
-    auto* dataA = nodeData<intelli::DoubleData*>(m_inA);
-    auto* dataB = nodeData<intelli::DoubleData*>(m_inB);
+    auto* dataA = nodeData<DoubleData*>(m_inA);
+    auto* dataB = nodeData<DoubleData*>(m_inB);
     if (!dataA && !dataB)
     {
         setNodeData(m_out, nullptr);
@@ -93,7 +91,7 @@ NumberMathNode::eval()
         {
             gtWarning().verbose().nospace()
                 << __FUNCTION__ << ": " << tr("Cannot divide by 0!");
-            break;
+            return;
         }
         c = a / b;
         break;

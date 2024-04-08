@@ -10,33 +10,45 @@
 #ifndef GT_INTELLI_SCENE_H
 #define GT_INTELLI_SCENE_H
 
-#include "intelli/graph.h"
+#include <intelli/memory.h>
+#include <intelli/graph.h>
+#include <intelli/gui/graphics/nodeobject.h>
+#include <intelli/gui/graphics/connectionobject.h>
 
-#include <QtNodes/BasicGraphicsScene>
-#include <QtNodes/Definitions>
+#include <map>
+
+#include <QGraphicsScene>
 
 namespace intelli
 {
 
 class GraphAdapterModel;
 
-class GraphScene : public QtNodes::BasicGraphicsScene
+class GraphScene : public QGraphicsScene
 {
     Q_OBJECT
 
 public:
 
+    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
+
     GraphScene(Graph& graph);
     ~GraphScene();
 
-    Graph* graph();
-    Graph const* graph() const;
+    void reset();
 
-    void autoEvaluate(bool enable = true);
+    Graph& graph();
+    Graph const& graph() const;
 
-    bool isAutoEvaluating();
+    NodeGraphicsObject* nodeObject(NodeId nodeId);
+    NodeGraphicsObject const* nodeObject(NodeId nodeId) const;
 
-    QMenu* createSceneMenu(QPointF scenePos) override;
+    ConnectionGraphicsObject* connectionObject(ConnectionId conId);
+    ConnectionGraphicsObject const* connectionObject(ConnectionId conId) const;
+
+    QMenu* createSceneMenu(QPointF scenePos);
+
+    void setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape);
 
 public slots:
 
@@ -52,33 +64,83 @@ protected:
 
     void keyPressEvent(QKeyEvent* event) override;
 
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+
 private:
 
     struct Impl;
-    
+
+    struct NodeEntry
+    {
+        NodeId nodeId;
+        volatile_ptr<NodeGraphicsObject, DirectDeleter> object;
+    };
+
+    struct ConnectionEntry
+    {
+        ConnectionId conId;
+        volatile_ptr<ConnectionGraphicsObject, DirectDeleter> object;
+    };
+
+    /// graph this scene refers to
     QPointer<Graph> m_graph = nullptr;
+    /// Node objects in this scene
+    std::vector<NodeEntry> m_nodes;
+    /// Connection objects in this scene
+    std::vector<ConnectionEntry> m_connections;
+    /// Draft connection if active
+    volatile_ptr<ConnectionGraphicsObject> m_draftConnection;
+    /// Shape style of the connections in this scene
+    ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
 
-    void deleteNodes(std::vector<QtNodes::NodeId> const& nodeIds);
+    void beginReset();
 
-    void makeGroupNode(std::vector<QtNodes::NodeId> const& selectedNodeIds);
+    void endReset();
+    
+    void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
 
-    GraphAdapterModel& adapterModel();
+    void moveConnection(ConnectionGraphicsObject* object, NodeGraphicsObject* node = nullptr);
+
+    void moveConnectionPoint(ConnectionGraphicsObject* object, PortType type);
+
+    void highlightCompatibleNodes(NodeId nodeId, PortType type, TypeId const& typeId);
 
 private slots:
 
-    void onNodeSelected(QtNodes::NodeId nodeId);
+    void onNodeAppended(Node* node);
 
-    void onNodeDoubleClicked(QtNodes::NodeId nodeId);
+    void onNodeDeleted(NodeId nodeId);
 
-    void onWidgetResized(QtNodes::NodeId nodeId, QSize size);
+    void onNodeEvalStateChanged(NodeId nodeId);
 
-    void onNodeContextMenu(QtNodes::NodeId nodeId, QPointF pos);
+    void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
 
-    void onPortContextMenu(QtNodes::NodeId nodeId,
-                           QtNodes::PortType type,
-                           QtNodes::PortIndex idx,
-                           QPointF pos);
+    void onNodeMoved(NodeGraphicsObject* sender);
+
+    void onConnectionAppended(Connection* con);
+
+    void onConnectionDeleted(ConnectionId conId);
+
+    void moveConnections(NodeGraphicsObject* object);
+
+    void onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId);
+
+    void onMakeDraftConnection(NodeGraphicsObject* object, PortType type, PortId portId);
+
+    void onNodeContextMenu(NodeGraphicsObject* object, QPointF pos);
+
+    void onPortContextMenu(NodeGraphicsObject* object, PortId portId, QPointF pos);
 };
+
+inline GraphScene*
+nodeScene(QGraphicsObject& o)
+{
+    return qobject_cast<GraphScene*>(o.scene());
+}
 
 } // namespace intelli
 

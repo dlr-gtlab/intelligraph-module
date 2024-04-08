@@ -15,6 +15,45 @@
 #include <gt_objectfactory.h>
 
 using namespace intelli;
+TEST(Graph, ancestors_and_descendants)
+{
+    Graph graph;
+
+    ASSERT_TRUE(test::buildBasicGraph(graph));
+
+    EXPECT_EQ(graph.connections().size(), 5);
+    EXPECT_EQ(graph.nodes().size(), 5);
+
+    auto* A = graph.findNode(A_id);
+    auto* B = graph.findNode(B_id);
+    auto* C = graph.findNode(C_id);
+    auto* D = graph.findNode(D_id);
+    auto* E = graph.findNode(E_id);
+
+    EXPECT_NE(A, nullptr);
+    EXPECT_NE(B, nullptr);
+    EXPECT_NE(C, nullptr);
+    EXPECT_NE(D, nullptr);
+    EXPECT_NE(E, nullptr);
+
+    dag::debugGraph(graph.dag());
+
+    EXPECT_EQ(graph.findDependencies(A->id()).size(), 0);
+    EXPECT_EQ(graph.findDependentNodes(A->id()), (QVector<NodeId>{C->id(), D->id()}));
+
+    EXPECT_EQ(graph.findDependencies(B->id()).size(), 0);
+    EXPECT_EQ(graph.findDependentNodes(B->id()), (QVector<NodeId>{C->id(), D->id(), E->id()}));
+
+    EXPECT_EQ(graph.findDependencies(C->id()), (QVector<NodeId>{A->id(), B->id()}));
+    EXPECT_EQ(graph.findDependentNodes(C->id()), (QVector<NodeId>{D->id()}));
+
+    EXPECT_EQ(graph.findDependencies(D->id()), (QVector<NodeId>{C->id(), A->id(), B->id()}));
+    EXPECT_EQ(graph.findDependentNodes(D->id()).size(), 0);
+
+    EXPECT_EQ(graph.findDependencies(E->id()), (QVector<NodeId>{B->id()}));
+    EXPECT_EQ(graph.findDependentNodes(E->id()).size(), 0);
+}
+
 TEST(Graph, remove_connections_on_node_deletion)
 {
     Graph graph;

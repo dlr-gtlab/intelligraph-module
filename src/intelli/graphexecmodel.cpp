@@ -310,7 +310,7 @@ doTriggerNode(GraphExecutionModel& model, Node* node)
                      Qt::UniqueConnection);
 
     auto cleanup = gt::finally([&model, node](){
-        emit node->nodeStateChanged();
+        emit model.nodeEvalStateChanged(node->id());
         QObject::disconnect(node, &Node::computingFinished,
                             &model, &GraphExecutionModel::onNodeEvaluated);
     });
@@ -363,21 +363,21 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
     });
 
     connect(&graph, &Graph::nodeAppended,
-            this, &GraphExecutionModel::onNodeAppended);
+            this, &GraphExecutionModel::onNodeAppended, Qt::DirectConnection);
     connect(&graph, &Graph::nodeDeleted,
-            this, &GraphExecutionModel::onNodeDeleted);
+            this, &GraphExecutionModel::onNodeDeleted, Qt::DirectConnection);
     connect(&graph, &Graph::connectionAppended,
-            this, &GraphExecutionModel::onConnectedionAppended);
+            this, &GraphExecutionModel::onConnectedionAppended, Qt::DirectConnection);
     connect(&graph, &Graph::connectionDeleted,
-            this, &GraphExecutionModel::onConnectionDeleted);
+            this, &GraphExecutionModel::onConnectionDeleted, Qt::DirectConnection);
     connect(&graph, &Graph::nodePortInserted,
-            this, &GraphExecutionModel::onNodePortInserted);
+            this, &GraphExecutionModel::onNodePortInserted, Qt::DirectConnection);
     connect(&graph, &Graph::nodePortAboutToBeDeleted,
-            this, &GraphExecutionModel::onNodePortAboutToBeDeleted);
+            this, &GraphExecutionModel::onNodePortAboutToBeDeleted, Qt::DirectConnection);
     connect(&graph, &Graph::beginModification,
-            this, &GraphExecutionModel::onBeginGraphModification);
+            this, &GraphExecutionModel::onBeginGraphModification, Qt::DirectConnection);
     connect(&graph, &Graph::endModification,
-            this, &GraphExecutionModel::onEndGraphModification);
+            this, &GraphExecutionModel::onEndGraphModification, Qt::DirectConnection);
 }
 
 GraphExecutionModel::~GraphExecutionModel() = default;
@@ -485,7 +485,7 @@ GraphExecutionModel::endReset()
 }
 
 NodeEvalState
-GraphExecutionModel::nodeState(NodeId nodeId) const
+GraphExecutionModel::nodeEvalState(NodeId nodeId) const
 {
     auto find = Impl::findNode(*this, nodeId);
     if (!find) return NodeEvalState::Invalid;
@@ -988,14 +988,14 @@ GraphExecutionModel::invalidatePortEntry(NodeId nodeId, graph_data::PortEntry& p
         break;
     }
     case PortType::In:
-        emit find.node->nodeStateChanged();
+        emit nodeEvalStateChanged(nodeId);
         success = invalidateOutPorts(nodeId);
         break;
     case PortType::NoType:
         throw GTlabException(__FUNCTION__, "path is unreachable!");
     }
 
-    emit find.node->nodeStateChanged();
+    emit nodeEvalStateChanged(nodeId);
     return success;
 }
 
@@ -1006,7 +1006,7 @@ GraphExecutionModel::invalidateOutPorts(NodeId nodeId)
     if (!find) return false;
 
     find.entry->state = NodeState::RequiresReevaluation;
-    emit find.node->nodeStateChanged();
+    emit nodeEvalStateChanged(nodeId);
 
     bool success = true;
     for (auto& port : find.entry->portsOut)
@@ -1121,7 +1121,7 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, NodeDataSet data)
         gtDebug().verbose()
             << Impl::graphName(*this)
             << tr("(Not setting port data for node %1:%2, "
-                  "data did not change for port)")
+                  "data did not change)")
                    .arg(nodeId).arg(portId);
         return true;
     }
@@ -1177,7 +1177,7 @@ GraphExecutionModel::setNodeData(NodeId nodeId, PortId portId, NodeDataSet data)
         throw GTlabException(__FUNCTION__, "path is unreachable!");
     }
 
-    emit find.node->nodeStateChanged();
+    emit nodeEvalStateChanged(nodeId);
 
     return true;
 }
@@ -1247,6 +1247,13 @@ GraphExecutionModel::onNodeAppended(Node* node)
         invalidateOutPorts(nodeId);
         autoEvaluateNode(nodeId);
     });
+
+    connect(node, &Node::isActiveChanged,
+            this, std::bind(&GraphExecutionModel::nodeEvalStateChanged, this, node->id()));
+    connect(node, &Node::computingStarted,
+            this, std::bind(&GraphExecutionModel::nodeEvalStateChanged, this, node->id()));
+    connect(node, &Node::evaluated,
+            this, std::bind(&GraphExecutionModel::nodeEvalStateChanged, this, node->id()));
 }
 void
 GraphExecutionModel::onNodeDeleted(NodeId nodeId)

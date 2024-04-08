@@ -31,11 +31,12 @@ StringListInputNode::StringListInputNode() :
     registerPropertyStructContainer(m_values);
 
     setNodeFlag(Resizable);
+    setNodeFlag(MaximizeWidget);
     
     m_out = addOutPort(typeId<StringListData>());
 
     registerWidgetFactory([this]() {
-        auto base = makeWidget();
+        auto base = makeBaseWidget();
         auto w = new QTextEdit;
         base->layout()->addWidget(w);
         w->setReadOnly(true);

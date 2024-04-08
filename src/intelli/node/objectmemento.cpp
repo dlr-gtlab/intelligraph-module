@@ -15,12 +15,13 @@ ObjectMementoNode::ObjectMementoNode() :
     Node(tr("Memento Viewer"))
 {
     setNodeFlag(Resizable);
+    setNodeFlag(MaximizeWidget);
     setNodeEvalMode(NodeEvalMode::MainThread);
 
     PortId inPort = addInPort(typeId<ObjectData>());
 
     registerWidgetFactory([this, inPort]() {
-        auto base = makeWidget();
+        auto base = makeBaseWidget();
         auto* w = new GtCodeEditor();
         base->layout()->addWidget(w);
 
@@ -38,7 +39,7 @@ ObjectMementoNode::ObjectMementoNode() :
                 }
             }
         };
-        
+
         connect(this, &Node::inputDataRecieved, w, update);
         update();
 

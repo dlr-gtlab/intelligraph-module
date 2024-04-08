@@ -93,7 +93,6 @@ struct Entry
 using DataModel [[deprecated("Use 'GraphData' instead")]] = QHash<NodeId, Entry>;
 using GraphData = QHash<NodeId, Entry>;
 
-
 } // namesace graph_data
 
 using graph_data::GraphData;

@@ -57,13 +57,16 @@ public slots:
     void setScale(double scale);
 
 private slots:
+
     void printPDF();
 
 signals:
 
     void scaleChanged(double scale);
 
-    void changeGridTriggered();
+    void gridChanged(QPrivateSignal);
+
+    void connectionShapeChanged(QPrivateSignal);
 
 protected:
 
@@ -80,6 +83,8 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
+    struct Impl;
+
     ScaleRange m_scaleRange;
     QPointF m_panPosition;
 

@@ -7,122 +7,13 @@
  */
 
 
-#include "style.h"
+#include <intelli/gui/style.h>
 
 #include "gt_application.h"
+#include "gt_colors.h"
+#include "gt_utilities.h"
 
-#include "gt_logging.h"
-
-#include <QtNodes/StyleCollection>
-
-#include <stdexcept>
-
-static void setStyleDark()
-{
-    using QtNodes::GraphicsViewStyle;
-    using QtNodes::NodeStyle;
-    using QtNodes::ConnectionStyle;
-
-    GraphicsViewStyle::setStyle(
-        R"(
-  {
-    "GraphicsViewStyle": {
-      "BackgroundColor": [21, 38, 53],
-      "FineGridColor": [30, 47, 62],
-      "CoarseGridColor": [25, 25, 25]
-    }
-  }
-  )");
-
-    NodeStyle::setNodeStyle(
-        R"(
-  {
-    "NodeStyle": {
-      "NormalBoundaryColor": [63, 73, 86],
-      "SelectedBoundaryColor": [255, 165, 0],
-      "GradientColor0": [36, 49, 63],
-      "GradientColor1": [36, 49, 63],
-      "GradientColor2": [36, 49, 63],
-      "GradientColor3": [36, 49, 63],
-      "ShadowColor": [20, 20, 20],
-      "FontColor": "white",
-      "FontColorFaded": "gray",
-      "ConnectionPointColor": [255, 255, 255],
-      "PenWidth": 1.0,
-      "HoveredPenWidth": 1.5,
-      "ConnectionPointDiameter": 8.0,
-      "Opacity": 1.0
-    }
-  }
-  )");
-
-    ConnectionStyle::setConnectionStyle(
-        R"(
-  {
-    "ConnectionStyle": {
-      "UseDataDefinedColors": true
-    }
-  }
-  )");
-}
-
-static void setStyleBright()
-{
-    using QtNodes::GraphicsViewStyle;
-    using QtNodes::NodeStyle;
-    using QtNodes::ConnectionStyle;
-
-    GraphicsViewStyle::setStyle(
-        R"(
-  {
-    "GraphicsViewStyle": {
-      "BackgroundColor": [255, 255, 255],
-      "FineGridColor": [245, 245, 230],
-      "CoarseGridColor": [235, 235, 220]
-    }
-  }
-  )");
-
-    NodeStyle::setNodeStyle(
-        R"(
-  {
-    "NodeStyle": {
-      "NormalBoundaryColor": "darkgray",
-      "SelectedBoundaryColor": "deepskyblue",
-      "GradientColor0": [245, 245, 245],
-      "GradientColor1": [245, 245, 245],
-      "GradientColor2": [245, 245, 245],
-      "GradientColor3": [245, 245, 245],
-      "ShadowColor": [200, 200, 200],
-      "FontColor": [10, 10, 10],
-      "FontColorFaded": [100, 100, 100],
-      "ConnectionPointColor": "white",
-      "PenWidth": 1.0,
-      "HoveredPenWidth": 1.5,
-      "ConnectionPointDiameter": 8.0,
-      "Opacity": 1.0
-    }
-  }
-  )");
-
-    ConnectionStyle::setConnectionStyle(
-        R"(
-  {
-    "ConnectionStyle": {
-      "UseDataDefinedColors": true
-    }
-  }
-  )");
-}
-
-struct ApplyThemeFunctor
-{
-    void operator()() const noexcept {
-        intelli::applyTheme();
-    }
-
-    intelli::Theme lastTheme;
-};
+#include <random>
 
 void
 intelli::applyTheme(Theme newTheme)
@@ -142,32 +33,163 @@ intelli::applyTheme(Theme newTheme)
     {
         theme = gtApp->inDarkMode() ? Theme::Dark : Theme::Bright;
     }
-
-    switch (theme)
-    {
-    case Theme::Bright:
-        return setStyleBright();
-    case Theme::Dark:
-        return setStyleDark();
-    case Theme::System:
-        throw std::logic_error("path is unreachable!");
-    }
-
-    gtError() << QObject::tr("Invalid theme!");
 }
 
-float
-intelli::style::colorVariaton(ColorVariation variation)
+QColor
+intelli::style::tint(QColor const& color, int r, int g, int b)
 {
-    switch (variation)
-    {
-    case intelli::ColorVariation::Unique:
-        return (gtApp->inDarkMode() ? 30 : -10);
-    case intelli::ColorVariation::Graph:
-        return (gtApp->inDarkMode() ? 20 : -7.5);
-    case intelli::ColorVariation::Default:
-    default:
-        return 0.0;
-    }
+    constexpr int MAX = std::numeric_limits<uint8_t>::max();
+    constexpr int MIN = std::numeric_limits<uint8_t>::min();
+
+    return QColor{
+        gt::clamp(color.red()   + r, MIN, MAX),
+        gt::clamp(color.green() + g, MIN, MAX),
+        gt::clamp(color.blue()  + b, MIN, MAX)
+    };
 }
 
+QColor
+intelli::style::invert(QColor const& color)
+{
+    constexpr int MAX = std::numeric_limits<uint8_t>::max();
+
+    return QColor{MAX - color.red(), MAX - color.green(), MAX - color.blue()};
+}
+
+
+QColor
+intelli::style::viewBackground()
+{
+    return gtApp->inDarkMode() ? QColor{21, 38, 53} : QColor{255, 255, 255};
+}
+
+QColor
+intelli::style::nodeBackground()
+{
+    return gtApp->inDarkMode() ? QColor{36, 49, 63} : QColor{245, 245, 245};
+}
+
+QColor
+intelli::style::nodeOutline()
+{
+    return gtApp->inDarkMode() ? QColor{63, 73, 86} : QColor{"darkgray"};
+}
+
+double
+intelli::style::nodeOutlineWidth()
+{
+    return 1.0;
+}
+
+QColor
+intelli::style::nodeSelectedOutline()
+{
+    return gtApp->inDarkMode() ? QColor{255, 165, 0} : QColor{"deepskyblue"};
+}
+
+double
+intelli::style::nodeSelectedOutlineWidth()
+{
+    return nodeOutlineWidth();
+}
+
+QColor
+intelli::style::nodeHoveredOutline()
+{
+    return nodeOutline();
+}
+
+double
+intelli::style::nodeHoveredOutlineWidth()
+{
+    return 1.5;
+}
+
+QColor
+intelli::style::typeIdColor(TypeId const& typeId)
+{
+    static QHash<QString, QColor> cache;
+
+    if (typeId.isEmpty()) return Qt::darkCyan;
+
+    auto iter = cache.find(typeId);
+    if (iter != cache.end())
+    {
+        return *iter;
+    }
+
+    // from QtNodes
+    std::size_t hash = qHash(typeId);
+
+    std::size_t const hue_range = 0xFF;
+
+    std::mt19937 gen(static_cast<unsigned int>(hash));
+    std::uniform_int_distribution<int> distrib(0, hue_range);
+
+    int hue = distrib(gen);
+    int sat = 120 + hash % 129;
+
+    QColor color = QColor::fromHsl(hue, sat, 160);
+    cache.insert(typeId, color);
+    return color;
+}
+
+double
+intelli::style::connectionPathWidth()
+{
+    return 3.0;
+}
+
+QColor
+intelli::style::connectionSelectedPath()
+{
+    return nodeSelectedOutline();
+}
+
+double
+intelli::style::connectionSelectedPathWidth()
+{
+    return 2 * connectionPathWidth();
+}
+
+QColor
+intelli::style::connectionDraftPath()
+{
+    return gt::gui::color::disabled();
+}
+
+double
+intelli::style::connectionDraftPathWidth()
+{
+    return connectionPathWidth();
+}
+
+QColor
+intelli::style::connectionHoveredPath()
+{
+    return Qt::lightGray;
+}
+
+double
+intelli::style::connectionHoveredPathWidth()
+{
+    return 1 + connectionPathWidth();
+}
+
+double
+intelli::style::nodePortSize()
+{
+    return 5.0;
+}
+
+double
+intelli::style::nodeRoundingRadius()
+{
+    return 2.0;
+}
+
+double
+intelli::style::nodeEvalStateSize()
+{
+    return 20.0;
+}

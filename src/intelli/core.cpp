@@ -44,13 +44,14 @@ intelli::initModule()
     static auto _ = [](){
         gtTrace() << "Initializing nodes...";
 
-        GT_INTELLI_REGISTER_DATA(StringListData);
         GT_INTELLI_REGISTER_DATA(BoolData);
+        GT_INTELLI_REGISTER_DATA(ByteArrayData);
         GT_INTELLI_REGISTER_DATA(DoubleData);
+        GT_INTELLI_REGISTER_DATA(IntData);
+        GT_INTELLI_REGISTER_DATA(IntegerData);
         GT_INTELLI_REGISTER_DATA(ObjectData);
         GT_INTELLI_REGISTER_DATA(StringData);
-        GT_INTELLI_REGISTER_DATA(IntegerData);
-        GT_INTELLI_REGISTER_DATA(ByteArrayData);
+        GT_INTELLI_REGISTER_DATA(StringListData);
 
         GT_INTELLI_REGISTER_NODE(Graph, "Other")
         GT_INTELLI_REGISTER_NODE(GroupInputProvider, "")
@@ -76,6 +77,7 @@ intelli::initModule()
         GT_INTELLI_REGISTER_NODE(DoubleInputNode, "Input");
         GT_INTELLI_REGISTER_NODE(StringInputNode, "Input");
         GT_INTELLI_REGISTER_NODE(ObjectInputNode, "Input");
+        GT_INTELLI_REGISTER_NODE(IntInputNode, "Input");
         GT_INTELLI_REGISTER_NODE(IntInputNode, "Input");
 
 

@@ -37,7 +37,7 @@ inline auto* dataInterface(N* node, P& pimpl)
 } // namespace
 
 std::unique_ptr<QWidget>
-intelli::makeWidget()
+intelli::makeBaseWidget()
 {
     auto base = std::make_unique<QWidget>();
     auto* layout = new QVBoxLayout(base.get());
@@ -80,27 +80,22 @@ Node::Node(QString const& modelName, GtObject* parent) :
             this, &Node::nodeChanged);
 
     connect(&pimpl->isActive, &GtAbstractProperty::changed, this, [this](){
-        emit nodeStateChanged();
         if (pimpl->isActive) emit triggerNodeEvaluation();
         emit isActiveChanged();
     });
 
     connect(this, &Node::computingStarted, this, [this](){
         setNodeFlag(NodeFlag::Evaluating, true);
-        emit nodeStateChanged();
     }, Qt::DirectConnection);
 
     connect(this, &Node::computingFinished, this, [this](){
         setNodeFlag(NodeFlag::Evaluating, false);
         emit evaluated();
-        emit nodeStateChanged();
     }, Qt::DirectConnection);
 }
 
 Node::~Node()
 {
-    pimpl->widget.reset();
-
     emit nodeAboutToBeDeleted(id());
 }
 
@@ -111,7 +106,6 @@ Node::setActive(bool active)
 
     pimpl->isActive = active;
     emit isActiveChanged();
-    emit nodeStateChanged();
 }
 
 bool
@@ -194,8 +188,7 @@ Node::setNodeEvalMode(NodeEvalMode mode)
 NodeFlags
 Node::nodeFlags() const
 {
-    // remove Resizable flag if no widgets exists
-    return pimpl->widget ? pimpl->flags : pimpl->flags & ~Resizable;
+    return pimpl->flags;
 }
 
 NodeEvalMode
@@ -445,28 +438,4 @@ Node::registerWidgetFactory(WidgetFactoryNoArgs factory)
     registerWidgetFactory([f = std::move(factory)](Node&){
         return f();
     });
-}
-
-QWidget*
-Node::embeddedWidget()
-{
-    if (!pimpl->widget) initWidget();
-
-    return pimpl->widget;
-}
-
-void
-Node::initWidget()
-{
-    if (pimpl->widgetFactory)
-    {
-        auto tmp = pimpl->widgetFactory(*this);
-        auto* widget = tmp.get();
-        pimpl->widget = volatile_ptr<QWidget>(tmp.release());
-
-        if (!widget || !(nodeFlags() & Resizable)) return;
-
-        auto size = this->size();
-        if (size.isValid()) widget->resize(size);
-    }
 }

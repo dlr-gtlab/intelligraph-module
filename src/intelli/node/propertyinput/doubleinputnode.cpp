@@ -13,14 +13,14 @@
 #include "intelli/gui/property_item/doubleinputwidget.h"
 #include <QLayout>
 
-namespace intelli
-{
+using namespace intelli;
+
 DoubleInputNode::DoubleInputNode() :
     AbstractInputNode(tr("Double Input"),
                       std::make_unique<GtDoubleProperty>("value", tr("Value"),
                                                          tr("Current value"))),
-    m_min("min", tr("Min."), tr("minimum value"), GtUnit::None, 0),
-    m_max("max", tr("Max."), tr("maxiumum value"), GtUnit::None, 1),
+    m_min("min", tr("Min."), tr("minimum value"), GtUnit::None, -10),
+    m_max("max", tr("Max."), tr("maxiumum value"), GtUnit::None, 10),
     m_displayType("type", "type", "type"),
     m_textDisplay("Text", "Text"),
     m_dial("dial", "dial"),
@@ -39,10 +39,10 @@ DoubleInputNode::DoubleInputNode() :
 
     m_value->hide();
 
-    m_out = addOutPort(intelli::typeId<intelli::DoubleData>());
+    m_out = addOutPort(typeId<DoubleData>());
     port(m_out)->captionVisible = false;
 
-    setNodeFlag(intelli::Resizable);
+    setNodeFlag(Resizable);
 
     registerWidgetFactory([this]() {
         DoubleInputWidget::InputType t = DoubleInputWidget::Dial;
@@ -63,7 +63,7 @@ DoubleInputNode::DoubleInputNode() :
             t = DoubleInputWidget::LineEdit;
         }
 
-        auto base = intelli::makeWidget();
+        auto base = makeBaseWidget();
 
         auto overallW = new DoubleInputWidget(value(),
                                               m_min.getVal(),
@@ -73,7 +73,7 @@ DoubleInputNode::DoubleInputNode() :
 
         base->layout()->addWidget(overallW);
 
-        auto onMinMaxChanged = [this, &overallW]()
+        auto onMinMaxChanged = [this]()
         {
             emit triggerWidgetUpdate(value(),
                                    m_min.getVal(),
@@ -158,7 +158,7 @@ DoubleInputNode::setValue(double value)
 void
 DoubleInputNode::eval()
 {
-    setNodeData(m_out, std::make_shared<intelli::DoubleData>(value()));
+    setNodeData(m_out, std::make_shared<DoubleData>(value()));
 }
 
 void
@@ -166,4 +166,4 @@ DoubleInputNode::onWidgetValueChanges(double newVal)
 {
     if (newVal != value()) setValue(newVal);
 }
-} // namespace intelli
+

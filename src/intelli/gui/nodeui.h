@@ -13,14 +13,19 @@
 #include <intelli/gui/portuiaction.h>
 #include <intelli/exports.h>
 
+#include <thirdparty/tl/optional.hpp>
+
 #include <gt_objectui.h>
 
 
 namespace intelli
 {
 
-class Graph;
 class Node;
+class NodeGeometry;
+class NodePainter;
+class NodeGraphicsObject;
+class Graph;
 class DynamicNode;
 
 class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
@@ -42,6 +47,26 @@ public:
     using PortActionFunction = typename PortUIAction::ActionMethod;
 
     Q_INVOKABLE NodeUI(Option option = NoOption);
+    
+    /**
+     * @brief Returns a painter object, used to paint the graphics object
+     * given the node geomtry. Can be used to override the default
+     * implementation.
+     * @param object Graphics object on which the painter should operate
+     * @param geometry Node geometry which defines the position and size of
+     * ports, the caption etc.
+     * @return Node painter object
+     */
+    virtual std::unique_ptr<NodePainter> painter(NodeGraphicsObject& object, NodeGeometry& geometry) const;
+
+    /**
+     * @brief Returns a geomtry object, used to tell graphics object where
+     * ports, the caption etc . are placed. Can be used to override the default
+     * implementation.
+     * @param node Node to operate on
+     * @return Node geometry object
+     */
+    virtual std::unique_ptr<NodeGeometry> geometry(Node& node) const;
 
     /**
      * @brief Icon for the object
@@ -140,7 +165,7 @@ protected:
      * @return Reference to port action
      */
     PortUIAction& addPortAction(QString const& actionText,
-                                    PortActionFunction actionMethod);
+                                PortActionFunction actionMethod);
 
 private:
 

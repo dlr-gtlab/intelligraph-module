@@ -9,23 +9,19 @@
 #ifndef GT_INTELLI_INTEGERDATA_H
 #define GT_INTELLI_INTEGERDATA_H
 
-#include "intelli/nodedata.h"
+#include "intelli/data/int.h"
 
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT IntegerData : public NodeData
+class GT_INTELLI_EXPORT IntegerData : public IntData
 {
     Q_OBJECT
 
 public:
 
-    Q_INVOKABLE IntegerData(int val = {});
-
-    Q_INVOKABLE int value() const;
-
-private:
-    int m_data;
+    [[deprecated("Use `IntData` instead (note: include `intelli/data/int.h` instead)")]]
+    Q_INVOKABLE IntegerData(int val = {}) : IntData(val) {}
 };
 
 } // namespace intelli

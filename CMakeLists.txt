@@ -23,6 +23,5 @@ if (NOT TARGET GTlab::Core)
     find_package(GTlab REQUIRED)
 endif()
 
-add_subdirectory(thirdparty)
 add_subdirectory(src)
 add_subdirectory(tests/unittests)
