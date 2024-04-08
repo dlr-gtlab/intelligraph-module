@@ -50,11 +50,11 @@ GraphEditor::setData(GtObject* obj)
         return;
     }
 
-    // close width if graph is destroyed
-    connect(graph, &QObject::destroyed, this, &QObject::deleteLater);
+    // instantly commit suicide if widget is destroyed (avoids issue #87)
+    connect(graph, &QObject::destroyed, this, [this](){ delete this; });
 
     // close graph model if its no longer used
-    m_scene = make_volatile<GraphScene>(*graph);
+    m_scene = make_volatile<GraphScene, DirectDeleter>(*graph);
 
     m_view->setScene(*m_scene);
 

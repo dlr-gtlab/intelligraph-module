@@ -38,7 +38,7 @@ public:
 private:
 
     /// scene
-    volatile_ptr<GraphScene> m_scene = nullptr;
+    volatile_ptr<GraphScene, DirectDeleter> m_scene = nullptr;
     /// view
     GraphView* m_view = nullptr;
 };
