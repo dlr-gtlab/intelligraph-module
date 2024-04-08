@@ -29,7 +29,7 @@ NodeDataFactory::registerData(const QMetaObject& meta) noexcept
 {
     QString className = meta.className();
 
-    gtTrace().nospace()
+    gtTrace().verbose().nospace()
         << "### Registering Data '" << className << "'...";
 
     if (!registerClass(meta)) return false;

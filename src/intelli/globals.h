@@ -318,7 +318,7 @@ operator<<(gt::log::Stream& s, intelli::ConnectionId const& con)
     {
         gt::log::StreamStateSaver saver(s);
         s.nospace()
-            << "NodeConnection["
+            << "Connection["
             << con.outNodeId << ":" << con.outPort << "/"
             << con.inNodeId  << ":" << con.inPort  << "]";
     }

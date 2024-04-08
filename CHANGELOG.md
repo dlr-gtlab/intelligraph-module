@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.10.2] - 2024-04-08
+### Changed
+- Reduced and updated logging output. - #85
+
+### Removed
+- Removed `IntegerData` in favor of `IntData`. This might lead to breaking changes in existing graphs. - #86
+
 ## [0.10.1] - 2024-04-08
 ### Changed
 - Updated visuals of nodes and connections - #67

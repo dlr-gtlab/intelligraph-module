@@ -544,12 +544,12 @@ private:
 } // namespace intelli
 
 inline gt::log::Stream&
-operator<<(gt::log::Stream& s, intelli::Node::PortInfo const& d)
+operator<<(gt::log::Stream& s, intelli::Node::PortInfo const& p)
 {
     {
         gt::log::StreamStateSaver saver(s);
         s.nospace()
-            << "Port[" << d.typeId << "/" << d.id() << "]";
+            << "Port[" << p.typeId << "/" << p.id() << "]";
     }
     return s.doLogSpace();
 }

@@ -58,7 +58,7 @@ NodeFactory::registerNode(QMetaObject const& meta,
 {
     QString className = meta.className();
 
-    gtTrace().nospace()
+    gtTrace().verbose().nospace()
         << "### Registering Node '" << className
         << "' (Category: " << category << ")...";
 

@@ -10,9 +10,9 @@
 #ifndef GT_INTELLI_NODEDATA_H
 #define GT_INTELLI_NODEDATA_H
 
-#include <gt_logging.h>
 #include <intelli/exports.h>
 
+#include <gt_logging.h>
 #include <gt_object.h>
 #include <thirdparty/tl/optional.hpp>
 
@@ -90,7 +90,7 @@ public:
                                        val4, val5, val6, val7, val8, val9))
         {
             gtTraceId("IntelliGraph")
-                << tr("invoking meber function '%1' failed!").arg(methodName);
+                << tr("Invoking meber function '%1' failed!").arg(methodName);
             return {};
         }
 
