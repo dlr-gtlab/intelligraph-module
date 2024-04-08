@@ -39,6 +39,8 @@ NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent
     connect(&m_timeLine, &QTimeLine::frameChanged, &node, [=](){
         this->update();
     });
+
+    setNodeEvalState(NodeEvalState::Invalid);
 }
 
 QRectF
