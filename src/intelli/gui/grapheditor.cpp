@@ -12,8 +12,6 @@
 #include "intelli/gui/graphview.h"
 
 #include <gt_logging.h>
-#include <gt_state.h>
-#include <gt_grid.h>
 
 #include <QVBoxLayout>
 

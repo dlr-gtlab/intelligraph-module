@@ -128,12 +128,6 @@ NodeUI::NodeUI(Option option)
         model->debug(node->id());
     }).setIcon(gt::gui::icon::bug());
 
-//    addSingleAction(tr("Update Node"), [](GtObject* obj){
-//        auto* node = toNode(obj);
-//        if (!node) return;
-//        emit node->nodeStateChanged();
-//    }).setIcon(gt::gui::icon::bug());
-
     addPortAction(tr("Port Info"), [](Node* obj, PortType type, PortIndex idx){
         if (!obj) return;
         gtInfo() << tr("Node '%1' (id: %2), Port id: %3")

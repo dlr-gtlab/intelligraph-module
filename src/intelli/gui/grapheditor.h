@@ -9,10 +9,10 @@
 #ifndef NDSNODEEDITOR_H
 #define NDSNODEEDITOR_H
 
-#include "intelli/memory.h"
-#include "intelli/gui/graphscene.h"
+#include <intelli/memory.h>
+#include <intelli/gui/graphscene.h>
 
-#include "gt_mdiitem.h"
+#include <gt_mdiitem.h>
 
 class QMenu;
 

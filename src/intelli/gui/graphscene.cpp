@@ -770,6 +770,7 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     }
 }
 
+// this is quite the convoluted mess...
 constexpr size_t PRE_ALLOC = 32;
 
 void

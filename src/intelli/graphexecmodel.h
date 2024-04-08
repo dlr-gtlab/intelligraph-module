@@ -214,8 +214,6 @@ private slots:
     void onConnectionDeleted(ConnectionId conId);
 
     void onNodeEvaluated();
-
-    void onGraphIsActiveChanged();
 };
 
 /**
