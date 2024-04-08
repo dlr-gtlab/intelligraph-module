@@ -226,7 +226,7 @@ LogicNodePainter::drawOutline(QPainter& painter) const
 
 void
 LogicNodePainter::drawPortCaption(QPainter& painter,
-                                  PortData& port,
+                                  PortInfo& port,
                                   PortType type,
                                   PortIndex idx,
                                   uint flags) const

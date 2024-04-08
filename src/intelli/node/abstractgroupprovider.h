@@ -48,7 +48,7 @@ public:
                 Qt::UniqueConnection);
     }
 
-    bool insertPort(PortData data, int idx = -1)
+    bool insertPort(PortInfo data, int idx = -1)
     {
         PortId id;
         switch (invert(Type))
@@ -84,7 +84,7 @@ private slots:
             auto graphPortId = id << 1;
             if (Type == PortType::In) graphPortId |= 1;
 
-            auto p = PortData::customId(PortId(graphPortId), *port);
+            auto p = PortInfo::customId(PortId(graphPortId), *port);
 
             Type == PortType::In ?
                 graph->insertInPort( std::move(p), idx) :
@@ -111,7 +111,7 @@ private slots:
         if (!graphPort) return;
 
         // update port but keep port id
-        *graphPort = PortData::customId(graphPortId, *port);
+        *graphPort = PortInfo::customId(graphPortId, *port);
 
         emit graph->portChanged(graphPortId);
     }

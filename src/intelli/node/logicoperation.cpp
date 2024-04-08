@@ -63,7 +63,7 @@ LogicNode::LogicNode() :
         }
         else if (!port(m_inB))
         {
-            addInPort(PortData::customId(m_inB, typeId<BoolData>()));
+            addInPort(PortInfo::customId(m_inB, typeId<BoolData>()));
         }
         emit nodeChanged();
         emit triggerNodeEvaluation();

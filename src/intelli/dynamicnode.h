@@ -74,7 +74,7 @@ public:
      * @param policy Port policy
      * @return Port id
      */
-    PortId addInPort(PortData port, PortPolicy policy = DefaultPortPolicy);
+    PortId addInPort(PortInfo port, PortPolicy policy = DefaultPortPolicy);
 
     /**
      * @brief Appends a dynamic/user output port. User ports are saved
@@ -84,7 +84,7 @@ public:
      * @param policy Port policy
      * @return Port id
      */
-    PortId addOutPort(PortData port);
+    PortId addOutPort(PortInfo port);
 
     /**
      * @brief Inserts a user input port at the given position.
@@ -94,7 +94,7 @@ public:
      * @param policy Port policy
      * @return Port id
      */
-    PortId insertInPort(PortData port,int idx = -1, PortPolicy policy = DefaultPortPolicy);
+    PortId insertInPort(PortInfo port,int idx = -1, PortPolicy policy = DefaultPortPolicy);
 
     /**
      * @brief Inserts a user output port at the given position.
@@ -104,7 +104,7 @@ public:
      * @param policy Port policy
      * @return Port id
      */
-    PortId insertOutPort(PortData port, int idx = -1);
+    PortId insertOutPort(PortInfo port, int idx = -1);
     
     using Node::removePort;
 
@@ -136,7 +136,7 @@ protected:
      * @param policy Port policy
      * @return Port id
      */
-    PortId addStaticInPort(PortData port, PortPolicy policy = DefaultPortPolicy);
+    PortId addStaticInPort(PortInfo port, PortPolicy policy = DefaultPortPolicy);
 
     /**
      * @brief Appends a static output port. Static ports are like the regular
@@ -146,7 +146,7 @@ protected:
      * @param port Port to append
      * @return Port id
      */
-    PortId addStaticOutPort(PortData port);
+    PortId addStaticOutPort(PortInfo port);
 
 private slots:
 
@@ -203,7 +203,7 @@ private:
      * @param idx Where to insert the port
      * @return Port id
      */
-    PortId insertPort(PortOption option, PortType type, PortData port, int idx = -1);
+    PortId insertPort(PortOption option, PortType type, PortInfo port, int idx = -1);
 
     /**
      * @brief Returns the offset for to the first index of a dynamic port.

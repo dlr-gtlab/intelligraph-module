@@ -173,7 +173,7 @@ NodePainter::drawPorts(QPainter& painter) const
 
 void
 NodePainter::drawPort(QPainter& painter,
-                      PortData& port,
+                      PortInfo& port,
                       PortType type,
                       PortIndex idx,
                       uint flags) const
@@ -204,7 +204,7 @@ NodePainter::drawPort(QPainter& painter,
 
 void
 NodePainter::drawPortCaption(QPainter& painter,
-                             PortData& port,
+                             PortInfo& port,
                              PortType type,
                              PortIndex idx,
                              uint flags) const

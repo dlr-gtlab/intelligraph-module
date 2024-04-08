@@ -35,7 +35,8 @@ class GT_INTELLI_EXPORT GraphBuilder
 {
 public:
 
-    using PortData = Node::PortData;
+    using PortInfo = Node::PortInfo;
+    using PortData [[deprecated("use PortInfo")]] = PortInfo;
 
     GraphBuilder(Graph& graph);
 
@@ -62,8 +63,8 @@ public:
      * @param pos Optional: position in graph
      * @return
      */
-    GraphData addGraph(std::vector<PortData> const& inPorts,
-                       std::vector<PortData> const& outPorts,
+    GraphData addGraph(std::vector<PortInfo> const& inPorts,
+                       std::vector<PortInfo> const& outPorts,
                        Position pos = {}) noexcept(false);
 
     /**

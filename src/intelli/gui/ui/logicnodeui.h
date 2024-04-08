@@ -68,7 +68,7 @@ public:
     void drawOutline(QPainter& painter) const override;
 
     void drawPortCaption(QPainter& painter,
-                         PortData& port,
+                         PortInfo& port,
                          PortType type,
                          PortIndex idx,
                          uint flags) const override;

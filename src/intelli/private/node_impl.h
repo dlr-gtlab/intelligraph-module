@@ -33,8 +33,7 @@ auto findPort(Ports&& ports, PortId id)
 
 struct NodeImpl
 {
-    using NodeDataPtr   = Node::NodeDataPtr;
-    using PortData      = Node::PortData;
+    using PortInfo      = Node::PortInfo;
     using WidgetFactory = Node::WidgetFactory;
 
     NodeImpl(QString const& name) : modelName(name) { }
@@ -76,7 +75,7 @@ struct NodeImpl
     /// caption string
     QString modelName;
     /// ports
-    std::vector<PortData> inPorts, outPorts{};
+    std::vector<PortInfo> inPorts, outPorts{};
     /// factory for creating the widget
     WidgetFactory widgetFactory{};
 
@@ -88,7 +87,7 @@ struct NodeImpl
     /// iterator for the next port id
     PortId nextPortId{0};
 
-    std::vector<PortData>& ports(PortType type) noexcept(false)
+    std::vector<PortInfo>& ports(PortType type) noexcept(false)
     {
         switch (type)
         {
@@ -105,7 +104,7 @@ struct NodeImpl
         };
     }
 
-    std::vector<PortData> const& ports(PortType type) const noexcept(false)
+    std::vector<PortInfo> const& ports(PortType type) const noexcept(false)
     {
         return const_cast<NodeImpl*>(this)->ports(type);
     }
@@ -114,7 +113,7 @@ struct NodeImpl
     {
         PortType type{PortType::NoType};
         PortIndex idx{};
-        std::vector<PortData>* ports{};
+        std::vector<PortInfo>* ports{};
 
         operator bool() const {
             return ports && type != PortType::NoType && idx != invalid<PortIndex>();

@@ -35,7 +35,8 @@ class GT_INTELLI_EXPORT NodePainter
 {
 public:
 
-    using PortData = Node::PortData;
+    using PortInfo = Node::PortInfo;
+    using PortData [[deprecated("Use PortInfo")]] = PortInfo;
 
     /// Flags to tell the painter the state of the port
     enum PortRenderFlag : uint
@@ -113,7 +114,7 @@ public:
      * @param flags Port flag to draw the port according to it state
      */
     virtual void drawPort(QPainter& painter,
-                          PortData& port,
+                          PortInfo& port,
                           PortType type,
                           PortIndex idx,
                           uint flags) const;
@@ -127,7 +128,7 @@ public:
      * @param flags Port flag to draw the port according to it state
      */
     virtual void drawPortCaption(QPainter& painter,
-                                 PortData& port,
+                                 PortInfo& port,
                                  PortType type,
                                  PortIndex idx,
                                  uint flags) const;

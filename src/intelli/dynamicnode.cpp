@@ -20,8 +20,8 @@
 
 using namespace intelli;
 
-QString const S_PORT_DATA_IN  = QStringLiteral("PortDataIn");
-QString const S_PORT_DATA_OUT = QStringLiteral("PortDataOut");
+QString const S_PORT_INFO_IN  = QStringLiteral("PortInfoIn");
+QString const S_PORT_INFO_OUT = QStringLiteral("PortInfoOut");
 
 QString const S_PORT_TYPE = QStringLiteral("TypeId");
 QString const S_PORT_CAPTION = QStringLiteral("Caption");
@@ -63,22 +63,22 @@ DynamicNode::DynamicNode(QString const& modelName,
                                      NodeDataFactory::instance().registeredTypeIds() :
                                      std::move(outputWhiteList);
 
-        GtPropertyStructDefinition portDataIn{S_PORT_DATA_IN};
-        portDataIn.defineMember(S_PORT_TYPE, makeStringSelectionProperty(std::move(inputTypes)));
-        portDataIn.defineMember(S_PORT_CAPTION, gt::makeStringProperty());
-        portDataIn.defineMember(S_PORT_CAPTION_VISIBLE, gt::makeBoolProperty(true));
-        portDataIn.defineMember(S_PORT_OPTIONAL, gt::makeBoolProperty(true));
-        portDataIn.defineMember(S_PORT_ID, makeReadOnly(makeUIntProperty(invalid<PortId>())));
+        GtPropertyStructDefinition portInfoIn{S_PORT_INFO_IN};
+        portInfoIn.defineMember(S_PORT_TYPE, makeStringSelectionProperty(std::move(inputTypes)));
+        portInfoIn.defineMember(S_PORT_CAPTION, gt::makeStringProperty());
+        portInfoIn.defineMember(S_PORT_CAPTION_VISIBLE, gt::makeBoolProperty(true));
+        portInfoIn.defineMember(S_PORT_OPTIONAL, gt::makeBoolProperty(true));
+        portInfoIn.defineMember(S_PORT_ID, makeReadOnly(makeUIntProperty(invalid<PortId>())));
 
-        GtPropertyStructDefinition portDataOut{S_PORT_DATA_OUT};
-        portDataOut.defineMember(S_PORT_TYPE, makeStringSelectionProperty(std::move(outputTypes)));
-        portDataOut.defineMember(S_PORT_CAPTION, gt::makeStringProperty());
-        portDataOut.defineMember(S_PORT_CAPTION_VISIBLE, gt::makeBoolProperty(true));
-        portDataOut.defineMember(S_PORT_OPTIONAL, gt::makeBoolProperty(true));
-        portDataOut.defineMember(S_PORT_ID, makeReadOnly(makeUIntProperty(invalid<PortId>())));
+        GtPropertyStructDefinition portInfoOut{S_PORT_INFO_OUT};
+        portInfoOut.defineMember(S_PORT_TYPE, makeStringSelectionProperty(std::move(outputTypes)));
+        portInfoOut.defineMember(S_PORT_CAPTION, gt::makeStringProperty());
+        portInfoOut.defineMember(S_PORT_CAPTION_VISIBLE, gt::makeBoolProperty(true));
+        portInfoOut.defineMember(S_PORT_OPTIONAL, gt::makeBoolProperty(true));
+        portInfoOut.defineMember(S_PORT_ID, makeReadOnly(makeUIntProperty(invalid<PortId>())));
 
-        m_inPorts.registerAllowedType(portDataIn);
-        m_outPorts.registerAllowedType(portDataOut);
+        m_inPorts.registerAllowedType(portInfoIn);
+        m_outPorts.registerAllowedType(portInfoOut);
 
         if (m_option != DynamicOutputOnly) registerPropertyStructContainer(m_inPorts);
         if (m_option != DynamicInputOnly)  registerPropertyStructContainer(m_outPorts);
@@ -123,45 +123,45 @@ DynamicNode::isDynamicPort(PortType type, PortIndex idx) const
 }
 
 PortId
-DynamicNode::addStaticInPort(PortData port, PortPolicy policy)
+DynamicNode::addStaticInPort(PortInfo port, PortPolicy policy)
 {
     port.optional = policy & PortPolicy::Optional;
     return insertPort(StaticPort, PortType::In, std::move(port));
 }
 
 PortId
-DynamicNode::addStaticOutPort(PortData port)
+DynamicNode::addStaticOutPort(PortInfo port)
 {
     return insertPort(StaticPort, PortType::Out, std::move(port));
 }
 
 PortId
-DynamicNode::addInPort(PortData port, PortPolicy policy)
+DynamicNode::addInPort(PortInfo port, PortPolicy policy)
 {
     return insertInPort(std::move(port), -1, policy);
 }
 
 PortId
-DynamicNode::addOutPort(PortData port)
+DynamicNode::addOutPort(PortInfo port)
 {
     return insertOutPort(std::move(port), -1);
 }
 
 PortId
-DynamicNode::insertInPort(PortData port, int idx, PortPolicy policy)
+DynamicNode::insertInPort(PortInfo port, int idx, PortPolicy policy)
 {
     port.optional = policy & PortPolicy::Optional;
     return insertPort(DynamicPort, PortType::In, std::move(port), idx);
 }
 
 PortId
-DynamicNode::insertOutPort(PortData port, int idx)
+DynamicNode::insertOutPort(PortInfo port, int idx)
 {
     return insertPort(DynamicPort, PortType::Out, std::move(port), idx);
 }
 
 PortId
-DynamicNode::insertPort(PortOption option, PortType type, PortData port, int idx)
+DynamicNode::insertPort(PortOption option, PortType type, PortInfo port, int idx)
 {
     if (idx < 0) idx = std::numeric_limits<int>::max();
 
@@ -195,7 +195,7 @@ DynamicNode::insertPort(PortOption option, PortType type, PortData port, int idx
 
     int dynamicPortIdx = gt::clamp(idx, 0, (int)dynamicPorts.size());
 
-    auto& entry = dynamicPorts.newEntry(type == PortType::In ? S_PORT_DATA_IN : S_PORT_DATA_OUT,
+    auto& entry = dynamicPorts.newEntry(type == PortType::In ? S_PORT_INFO_IN : S_PORT_INFO_OUT,
                                         std::next(dynamicPorts.begin(), dynamicPortIdx),
                                         QString::number(portId));
     entry.setMemberVal(S_PORT_ID, portId.value());
@@ -299,11 +299,11 @@ DynamicNode::onPortEntryAdded(int idx)
         return;
     }
 
-    auto portData = PortData::customId(portId, typeId, caption, captionVisible, optional);
+    auto portInfo = PortInfo::customId(portId, typeId, caption, captionVisible, optional);
 
     idx += offset(type) + 1;
 
-    portId = Node::insertPort(type, portData, idx);
+    portId = Node::insertPort(type, portInfo, idx);
     if (portId == invalid<PortId>())
     {
         gtWarning() << makeError()
@@ -356,7 +356,7 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
 
     if (portId != newPortId && newPortId != invalid<PortId>())
     {
-        auto portData = PortData::customId(newPortId, *port);
+        auto portInfo = PortInfo::customId(newPortId, *port);
 
         // hacky solution -> remove port and insert new port with new id
         auto ignoreRemoved = ignoreSignal(
@@ -366,7 +366,7 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
         Q_UNUSED(ignoreRemoved);
 
         removePort(portId);
-        insertPort(type, std::move(portData), idx);
+        insertPort(type, std::move(portInfo), idx);
         return;
     }
 

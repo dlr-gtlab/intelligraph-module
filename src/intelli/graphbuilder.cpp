@@ -28,8 +28,8 @@ GraphBuilder::GraphBuilder(Graph& graph) :
 { }
 
 GraphBuilder::GraphData
-GraphBuilder::addGraph(std::vector<PortData> const& inPorts,
-                       std::vector<PortData> const& outPorts,
+GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
+                       std::vector<PortInfo> const& outPorts,
                        Position pos) noexcept(false)
 {
     auto graph = std::make_unique<Graph>();

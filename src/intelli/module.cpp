@@ -87,7 +87,7 @@ static const int ns_meta_port_type = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber{0, 10, 0};
+    return GtVersionNumber{0, 10, 1};
 }
 
 QString
@@ -122,6 +122,7 @@ bool upgrade_to_0_3_0(QDomElement& root, QString const& file);
 bool upgrade_to_0_3_1(QDomElement& root, QString const& file);
 bool upgrade_to_0_5_0(QDomElement& root, QString const& file);
 bool upgrade_to_0_8_0(QDomElement& root, QString const& file);
+bool upgrade_to_0_10_1(QDomElement& root, QString const& file);
 
 QList<gt::VersionUpgradeRoutine>
 GtIntelliGraphModule::upgradeRoutines() const
@@ -147,6 +148,11 @@ GtIntelliGraphModule::upgradeRoutines() const
     to_0_8_0.target = GtVersionNumber{0, 8, 0};
     to_0_8_0.f = upgrade_to_0_8_0;
     routines << to_0_8_0;
+
+    gt::VersionUpgradeRoutine to_0_10_1;
+    to_0_10_1.target = GtVersionNumber{0, 10, 1};
+    to_0_10_1.f = upgrade_to_0_10_1;
+    routines << to_0_10_1;
 
     return routines;
 }
@@ -291,9 +297,10 @@ GtIntelliGraphModule::propertyItems()
     return map;
 }
 
+template<typename ConverterFunction>
 bool upgradeModuleFiles(QDomElement& root,
                         QString const& file,
-                        gt::ConverterFunction f);
+                        ConverterFunction f);
 
 // stolen from xml utilities
 template <typename Predicate>
@@ -395,7 +402,11 @@ remove_objects(QDomElement& root,
 }
 
 // update dynamic input/output container types
-bool upgrade_to_0_8_0_impl(QDomElement& root, QString const& file)
+bool
+rename_dynamicport_structs(QDomElement& root,
+                           QString const& file,
+                           QString const& typeIn,
+                           QString const& typeOut)
 {
     auto objects = propertyContainerElements(root);
 
@@ -403,13 +414,13 @@ bool upgrade_to_0_8_0_impl(QDomElement& root, QString const& file)
 
     for (auto& object : objects)
     {
-        QString newType = QStringLiteral("PortDataIn");
+        QString const* newType = &typeIn;
 
         // check for dynamic node containers
         auto const& name = object.attribute(gt::xml::S_NAME_TAG);
         if (name == QStringLiteral("dynamicOutPorts"))
         {
-            newType = QStringLiteral("PortDataOut");
+            newType = &typeOut;
         }
         else if (name != QStringLiteral("dynamicInPorts"))
         {
@@ -421,16 +432,29 @@ bool upgrade_to_0_8_0_impl(QDomElement& root, QString const& file)
         for (int i = 0; i < size; ++i)
         {
             auto child = childs.at(i).toElement();
-            child.setAttribute(gt::xml::S_TYPE_TAG, newType);
+            child.setAttribute(gt::xml::S_TYPE_TAG, *newType);
         }
     }
 
     return true;
 }
 
+bool upgrade_to_0_10_1(QDomElement& root, QString const& file)
+{
+    return upgradeModuleFiles(root, file, std::bind(rename_dynamicport_structs,
+                                                    std::placeholders::_1,
+                                                    std::placeholders::_2,
+                                                    QStringLiteral("PortInfoIn"),
+                                                    QStringLiteral("PortInfoOut")));
+}
+
 bool upgrade_to_0_8_0(QDomElement& root, QString const& file)
 {
-    return upgradeModuleFiles(root, file, upgrade_to_0_8_0_impl);
+    return upgradeModuleFiles(root, file, std::bind(rename_dynamicport_structs,
+                                                    std::placeholders::_1,
+                                                    std::placeholders::_2,
+                                                    QStringLiteral("PortDataIn"),
+                                                    QStringLiteral("PortDataOut")));
 }
 
 // connections no longer store indicies but port ids -> remove connections
@@ -489,7 +513,8 @@ bool upgrade_to_0_3_0(QDomElement& root, QString const& file)
     return true;
 }
 
-bool upgradeModuleFiles(QDomElement& root, QString const& file, gt::ConverterFunction f)
+template<typename ConverterFunction>
+bool upgradeModuleFiles(QDomElement& root, QString const& file, ConverterFunction f)
 {
     if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseSensitive)) return true;
 
