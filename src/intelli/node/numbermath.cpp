@@ -26,7 +26,7 @@ NumberMathNode::NumberMathNode() :
     m_inB = addInPort(typeId<DoubleData>());
 
     // out ports
-    m_out = addOutPort(PortData{
+    m_out = addOutPort(PortInfo{
         typeId<DoubleData>(),
         QStringLiteral("result") // custom port caption
     });

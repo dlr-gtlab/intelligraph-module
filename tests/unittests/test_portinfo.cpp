@@ -12,31 +12,31 @@
 
 #include "node/test_node.h"
 
-TEST(PortData, default_id)
+TEST(PortInfo, default_id)
 {
     using namespace intelli;
 
-    auto port = Node::PortData(typeId<DoubleData>());
+    auto port = Node::PortInfo(typeId<DoubleData>());
     TestNode node;
     auto id = node.addInPort(port);
     EXPECT_EQ(id, 0);
 }
 
-TEST(PortData, custom_id)
+TEST(PortInfo, custom_id)
 {
     using namespace intelli;
 
-    auto port = Node::PortData::customId(PortId(42), typeId<DoubleData>());
+    auto port = Node::PortInfo::customId(PortId(42), typeId<DoubleData>());
     TestNode node;
     auto id = node.addInPort(port);
     EXPECT_EQ(id, 42);
 }
 
-TEST(PortData, copy)
+TEST(PortInfo, copy)
 {
     using namespace intelli;
 
-    auto port = Node::PortData::customId(PortId(42), typeId<DoubleData>());
+    auto port = Node::PortInfo::customId(PortId(42), typeId<DoubleData>());
 
     ASSERT_EQ(port.id(), 42);
 

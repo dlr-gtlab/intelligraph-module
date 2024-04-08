@@ -102,14 +102,14 @@ public:
     };
 
     /// port data struct
-    class PortData
+    class PortInfo
     {
     public:
 
         // cppcheck-suppress noExplicitConstructor
-        PortData(QString _typeId) : PortData(std::move(_typeId), {}) {}
+        PortInfo(QString _typeId) : PortInfo(std::move(_typeId), {}) {}
 
-        PortData(QString _typeId,
+        PortInfo(QString _typeId,
                  QString _caption,
                  bool _captionVisible = true,
                  bool _optional = true) :
@@ -119,19 +119,19 @@ public:
             optional(_optional)
         {}
 
-        /// creates a Portdata struct with a custom port id
+        /// creates a PortInfo struct with a custom port id
         template<typename ...T>
-        static PortData customId(PortId id, T&&... args)
+        static PortInfo customId(PortId id, T&&... args)
         {
-            PortData pd(std::forward<T>(args)...);
+            PortInfo pd(std::forward<T>(args)...);
             pd.m_id = id;
             return pd;
         }
 
         /// creates a copy of this object but resets the id parameter
-        PortData copy() const
+        PortInfo copy() const
         {
-            PortData pd(*this);
+            PortInfo pd(*this);
             pd.m_id = invalid<PortId>();
             return pd;
         }
@@ -159,6 +159,7 @@ public:
         
         friend class Node;
     };
+    using PortData [[deprecated("use PortInfo")]] = PortInfo;
     
     ~Node();
 
@@ -271,15 +272,15 @@ public:
      * @param type Port type (input or output)
      * @return Ports
      */
-    std::vector<PortData> const& ports(PortType type) const noexcept(false);
+    std::vector<PortInfo> const& ports(PortType type) const noexcept(false);
 
     /**
      * @brief Returns the port for the port id
      * @param id Port id
      * @return Port. May be null
      */
-    PortData* port(PortId id) noexcept;
-    PortData const* port(PortId id) const noexcept;
+    PortInfo* port(PortId id) noexcept;
+    PortInfo const* port(PortId id) const noexcept;
 
     /**
      * @brief Returns the port index of the port id and its port type.
@@ -459,14 +460,14 @@ protected:
      * @param policy Input port policy
      * @return Port id
      */
-    PortId addInPort(PortData port, PortPolicy policy = DefaultPortPolicy) noexcept(false);
+    PortId addInPort(PortInfo port, PortPolicy policy = DefaultPortPolicy) noexcept(false);
 
     /**
      * @brief Appends the output port
      * @param port Port data to append
      * @return Port id
      */
-    PortId addOutPort(PortData port) noexcept(false);
+    PortId addOutPort(PortInfo port) noexcept(false);
 
     /**
      * @brief Inserts an input port at the given location
@@ -476,7 +477,7 @@ protected:
      * @param policy Input port policy
      * @return Port id
      */
-    PortId insertInPort(PortData port, int idx, PortPolicy policy = DefaultPortPolicy) noexcept(false);
+    PortId insertInPort(PortInfo port, int idx, PortPolicy policy = DefaultPortPolicy) noexcept(false);
 
     /**
      * @brief Inserts an output port at the given location
@@ -485,7 +486,7 @@ protected:
      * @param idx Where to insert the port
      * @return Port id
      */
-    PortId insertOutPort(PortData port, int idx) noexcept(false);
+    PortId insertOutPort(PortInfo port, int idx) noexcept(false);
 
     /**
      * @brief Helper method for inserting a port. Prefer the explicit insert/add
@@ -495,7 +496,7 @@ protected:
      * @param idx Where to insert the port
      * @return Port id
     */
-    PortId insertPort(PortType type, PortData port, int idx = -1) noexcept(false);
+    PortId insertPort(PortType type, PortInfo port, int idx = -1) noexcept(false);
 
     /**
      * @brief Removes the port specified by id
@@ -543,12 +544,12 @@ private:
 } // namespace intelli
 
 inline gt::log::Stream&
-operator<<(gt::log::Stream& s, intelli::Node::PortData const& d)
+operator<<(gt::log::Stream& s, intelli::Node::PortInfo const& d)
 {
     {
         gt::log::StreamStateSaver saver(s);
         s.nospace()
-            << "PortData[" << d.typeId << "/" << d.id() << "]";
+            << "Port[" << d.typeId << "/" << d.id() << "]";
     }
     return s.doLogSpace();
 }

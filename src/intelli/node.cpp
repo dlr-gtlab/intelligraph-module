@@ -227,39 +227,39 @@ Node::modelName() const
     return pimpl->modelName;
 }
 
-std::vector<Node::PortData> const&
+std::vector<Node::PortInfo> const&
 Node::ports(PortType type) const noexcept(false)
 {
     return pimpl->ports(type);
 }
 
 PortId
-Node::addInPort(PortData port, PortPolicy policy) noexcept(false)
+Node::addInPort(PortInfo port, PortPolicy policy) noexcept(false)
 {
     return insertInPort(std::move(port), -1, policy);
 }
 
 PortId
-Node::addOutPort(PortData port) noexcept(false)
+Node::addOutPort(PortInfo port) noexcept(false)
 {
     return insertOutPort(std::move(port), -1);
 }
 
 PortId
-Node::insertInPort(PortData port, int idx, PortPolicy policy) noexcept(false)
+Node::insertInPort(PortInfo port, int idx, PortPolicy policy) noexcept(false)
 {
     port.optional = policy == PortPolicy::Optional;
     return insertPort(PortType::In, std::move(port), idx);
 }
 
 PortId
-Node::insertOutPort(PortData port, int idx) noexcept(false)
+Node::insertOutPort(PortInfo port, int idx) noexcept(false)
 {
     return insertPort(PortType::Out, std::move(port), idx);
 }
 
 PortId
-Node::insertPort(PortType type, PortData port, int idx) noexcept(false)
+Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
 {
     auto const makeError = [this, type, idx](){
         return objectName() + QStringLiteral(": ") +
@@ -349,7 +349,7 @@ Node::setNodeData(PortId id, NodeDataPtr data)
     return model->setNodeData(this->id(), id, std::move(data));
 }
 
-Node::PortData*
+Node::PortInfo*
 Node::port(PortId id) noexcept
 {
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
@@ -362,7 +362,7 @@ Node::port(PortId id) noexcept
     return nullptr;
 }
 
-Node::PortData const*
+Node::PortInfo const*
 Node::port(PortId id) const noexcept
 {
     return const_cast<Node*>(this)->port(id);
