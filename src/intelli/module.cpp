@@ -32,6 +32,8 @@
 
 #include "intelli/calculators/graphexeccalculator.h"
 
+#include "gt_logging.h"
+
 #include "gt_xmlexpr.h"
 #include "gt_xmlutilities.h"
 #include "gt_coreapplication.h"
@@ -44,17 +46,6 @@
 #include <QDomNodeList>
 
 using namespace intelli;
-
-namespace intelli
-{
-gt::log::Stream& nospace(gt::log::Stream& s) { return s.nospace(); }
-gt::log::Stream& space(gt::log::Stream& s) { return s.space(); }
-
-gt::log::Stream& noquote(gt::log::Stream& s) { return s.noquote(); }
-gt::log::Stream& quote(gt::log::Stream& s) { return s.quote(); }
-
-gt::log::Stream& operator<<(gt::log::Stream& s, gt::log::Stream&(*f)(gt::log::Stream&)) { return f(s); }
-}
 
 // non namespace variants
 static const int meta_port_index = [](){
@@ -570,8 +561,8 @@ bool upgradeModuleFiles(QDomElement& root, QString const& file, ConverterFunctio
             {
                 gtError()
                     << makeError()
-                    << "(XML ERROR: line:" << errorLine << intelli::nospace
-                    << ", column: " << errorColumn << " -> " << errorStr;
+                    << "(XML ERROR: line:" << errorLine
+                    << "- column:" << errorColumn << "->" << errorStr;
                 success = false;
                 continue;
             }
@@ -583,8 +574,8 @@ bool upgradeModuleFiles(QDomElement& root, QString const& file, ConverterFunctio
                 success = false;
                 gtError()
                     << makeError()
-                    << "(XML ERROR: line:" << errorLine << intelli::nospace
-                    << ", column: " << errorColumn << " -> " << errorStr;
+                    << "(XML ERROR: line:" << errorLine
+                    << "- column:" << errorColumn << "->" << errorStr;
                 continue;
             }
 
