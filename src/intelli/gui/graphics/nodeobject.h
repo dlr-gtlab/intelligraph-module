@@ -197,6 +197,7 @@ signals:
 private:
 
     struct Impl;
+    class NodeProxyWidget;
 
     enum State
     {
@@ -226,6 +227,11 @@ private:
     // flags
     State m_state = Normal;
     bool m_hovered = false;
+
+    /**
+     * @brief selects the item and the node in the application
+     */
+    void selectNode();
 
 private slots:
 

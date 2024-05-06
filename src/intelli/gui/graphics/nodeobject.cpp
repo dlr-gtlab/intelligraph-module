@@ -27,7 +27,7 @@
 using namespace intelli;
 
 // proxy widget to select node when clicking widget
-class NodeProxyWidget : public QGraphicsProxyWidget
+class NodeGraphicsObject::NodeProxyWidget : public QGraphicsProxyWidget
 {
 public:
 
@@ -44,7 +44,10 @@ protected:
             scene->clearSelection();
         }
 
-        parentItem()->setSelected(true);
+        assert(qgraphicsitem_cast<NodeGraphicsObject*>(parentItem()));
+
+        auto item = static_cast<NodeGraphicsObject*>(parentItem());
+        item->selectNode();
 
         return QGraphicsProxyWidget::mousePressEvent(event);
     }
@@ -392,8 +395,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
         }
     }
 
-    setSelected(select);
-    emit gtApp->objectSelected(m_node);
+    if (select) selectNode();
 
     m_state = Translating;
 
@@ -554,6 +556,13 @@ NodeGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
     }
 
     event->accept();
+}
+
+void
+NodeGraphicsObject::selectNode()
+{
+    setSelected(true);
+    emit gtApp->objectSelected(m_node);
 }
 
 void
