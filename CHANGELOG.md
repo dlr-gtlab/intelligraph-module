@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.10.3] - 2024-04-09
 ### Fixed
 - Fixed a crash when grouping nodes and reverting the action, while the subgraph is opened. - #87
+- Clicking the widget of a node will now also select the object application wide and thus update the properties dock. - #88
 
 ## [0.10.2] - 2024-04-08
 ### Changed
