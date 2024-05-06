@@ -21,21 +21,16 @@
 
 using namespace intelli;
 
-GraphEditor::GraphEditor() :
-    m_view(new GraphView)
+GraphEditor::GraphEditor() : m_view(nullptr)
 {
     setObjectName(tr("IntelliGraph Editor"));
-
-    m_view->setFrameShape(QFrame::NoFrame);
-
-    auto* l = new QVBoxLayout(widget());
-    l->addWidget(m_view);
-    l->setContentsMargins(0, 0, 0, 0);
 }
 
 void
 GraphEditor::setData(GtObject* obj)
 {
+    assert(m_view);
+
     auto graph  = qobject_cast<Graph*>(obj);
     if (!graph)
     {
@@ -59,4 +54,16 @@ GraphEditor::setData(GtObject* obj)
     m_view->setScene(*m_scene);
 
     setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + graph->caption());
+}
+
+void
+GraphEditor::initialized()
+{
+    assert(!m_view);
+    m_view = new GraphView;
+    m_view->setFrameShape(QFrame::NoFrame);
+
+    auto* l = new QVBoxLayout(widget());
+    l->addWidget(m_view);
+    l->setContentsMargins(0, 0, 0, 0);
 }
