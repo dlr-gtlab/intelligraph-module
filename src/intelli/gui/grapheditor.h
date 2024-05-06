@@ -35,6 +35,10 @@ public:
 
     void setData(GtObject* obj) override;
 
+protected:
+
+    void initialized() override;
+
 private:
 
     /// scene

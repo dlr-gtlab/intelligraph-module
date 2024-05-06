@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Fixed pop-up window when starting GTlab. - #93
+
 ## [0.10.3] - 2024-04-09
 ### Fixed
 - Fixed a crash when grouping nodes and reverting the action, while the subgraph is opened. - #87
