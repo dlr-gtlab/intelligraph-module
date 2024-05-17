@@ -7,6 +7,7 @@
  */
 
 
+#include <intelli/gui/graphscenedata.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/nodeevalstateobject.h>
 #include <intelli/gui/style.h>
@@ -71,8 +72,12 @@ static inline auto prepareGeometryChange(NodeGraphicsObject* o)
 
 }; // struct Impl;
 
-NodeGraphicsObject::NodeGraphicsObject(Graph& graph, Node& node, NodeUI& ui) :
+NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
+                                       Graph& graph,
+                                       Node& node,
+                                       NodeUI& ui) :
     QGraphicsObject(nullptr),
+    m_sceneData(&data),
     m_graph(&graph),
     m_node(&node),
     m_geometry(ui.geometry(node)),
@@ -135,6 +140,12 @@ Graph const&
 NodeGraphicsObject::graph() const
 {
     return const_cast<NodeGraphicsObject*>(this)->graph();
+}
+
+GraphSceneData const&
+NodeGraphicsObject::sceneData() const
+{
+    return *m_sceneData;
 }
 
 bool
@@ -381,13 +392,13 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
         }
     }
 
-    bool select = !(event->modifiers().testFlag(Qt::ControlModifier));
+    bool select = !(event->modifiers() & Qt::ControlModifier);
 
     // clear selection
     if (!isSelected())
     {
         select = true;
-        if (!event->modifiers().testFlag(Qt::ControlModifier))
+        if (!(event->modifiers() & Qt::ControlModifier))
         {
             auto* scene = this->scene();
             assert(scene);
@@ -398,13 +409,14 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     if (select) selectNode();
 
     m_state = Translating;
-
+    m_translationDiff = pos();
 }
 
 void
 NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    auto diff = event->pos() - event->lastPos();
+    QPointF diff = event->pos() - event->lastPos();
+    m_translationDiff += diff;
 
     switch (m_state)
     {
@@ -414,8 +426,7 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         {
             auto change = Impl::prepareGeometryChange(this);
 
-            auto oldSize = w->size();
-
+            QSize oldSize = w->size();
             oldSize += QSize(diff.x(), diff.y());
 
             w->resize(oldSize);
@@ -423,6 +434,17 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         return event->accept();
 
     case Translating:
+        if ((m_sceneData->snapToGrid || event->modifiers() & Qt::ControlModifier)
+            && m_sceneData->gridSize > 0)
+        {
+            QPoint newPos = quantize(m_translationDiff, m_sceneData->gridSize);
+
+            // position not changed
+            if (pos() == newPos) return event->accept();
+
+            diff = newPos - pos();
+        }
+
         moveBy(diff.x(), diff.y());
         emit nodeShifted(this, diff);
         return event->accept();

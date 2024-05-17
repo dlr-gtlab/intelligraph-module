@@ -12,19 +12,21 @@
 
 #include <intelli/memory.h>
 #include <intelli/graph.h>
+#include <intelli/gui/graphscenedata.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/connectionobject.h>
 
+#include <gt_graphicsscene.h>
+
 #include <map>
 
-#include <QGraphicsScene>
 
 namespace intelli
 {
 
 class GraphAdapterModel;
 
-class GraphScene : public QGraphicsScene
+class GraphScene : public GtGraphicsScene
 {
     Q_OBJECT
 
@@ -40,6 +42,27 @@ public:
     Graph& graph();
     Graph const& graph() const;
 
+    /**
+     * @brief Returns the scene data object, that is shared by all nodes and
+     * grants access to scene specific properties.
+     * @return Scene data.
+     */
+    GraphSceneData const& sceneData() const;
+
+    /**
+     * @brief Applies the new grid size. The grid size is used to snap the
+     * movement of nodes in finite steps, thus aligning nodes to the grid if
+     * the `snapToGrid` property is enabled.
+     * @param gridSize Grid size used for snapping nodes
+     */
+    void setGridSize(double gridSize);
+
+    /**
+     * @brief Sets whether moving a node should always snap it to the grid
+     * @param enable Whether to enable snap to grid
+     */
+    void setSnapToGrid(bool enable = true);
+
     NodeGraphicsObject* nodeObject(NodeId nodeId);
     NodeGraphicsObject const* nodeObject(NodeId nodeId) const;
 
@@ -51,6 +74,11 @@ public:
     void setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape);
 
 public slots:
+
+    /**
+     * @brief Alings all nodes to the grid
+     */
+    void alignObjectsToGrid();
 
     void deleteSelectedObjects();
 
@@ -94,6 +122,8 @@ private:
     std::vector<ConnectionEntry> m_connections;
     /// Draft connection if active
     volatile_ptr<ConnectionGraphicsObject> m_draftConnection;
+    /// Shared scene data
+    std::unique_ptr<GraphSceneData> m_sceneData;
     /// Shape style of the connections in this scene
     ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
 

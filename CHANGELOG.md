@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added the option to snap nodes to the grid. - #44
+
+### Changed
+- Updated rendering of the grid to show minor and major grid lines. - #95
+
 ### Fixed
 - Fixed pop-up window when starting GTlab. - #93
 

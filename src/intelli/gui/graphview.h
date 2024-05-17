@@ -93,6 +93,7 @@ private:
 
     QPushButton* m_startAutoEvalBtn = nullptr;
     QPushButton* m_stopAutoEvalBtn = nullptr;
+    QPushButton* m_snapToGridBtn = nullptr;
 };
 
 } // namespace intelli

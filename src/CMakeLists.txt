@@ -39,6 +39,7 @@ set(PUBLIC_HEADERS
     intelli/data/stringlist.h
     intelli/data/string.h
     intelli/gui/icons.h
+    intelli/gui/graphscenedata.h
     intelli/gui/nodegeometry.h
     intelli/gui/nodepainter.h
     intelli/gui/nodeui.h

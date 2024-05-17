@@ -115,7 +115,8 @@ static QVector<T> findItems(GraphScene& scene)
 }; // struct Impl
 
 GraphScene::GraphScene(Graph& graph) :
-    m_graph(&graph)
+    m_graph(&graph),
+    m_sceneData(std::make_unique<GraphSceneData>())
 {
     reset();
 }
@@ -186,6 +187,24 @@ Graph const&
 GraphScene::graph() const
 {
     return const_cast<GraphScene*>(this)->graph();
+}
+
+GraphSceneData const&
+GraphScene::sceneData() const
+{
+    return *m_sceneData;
+}
+
+void
+GraphScene::setGridSize(double gridSize)
+{
+    m_sceneData->gridSize = gridSize;
+}
+
+void
+GraphScene::setSnapToGrid(bool enable)
+{
+    m_sceneData->snapToGrid = enable;
 }
 
 NodeGraphicsObject*
@@ -344,6 +363,18 @@ GraphScene::setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape)
     for (auto& con : m_connections)
     {
         con.object->setConnectionShape(shape);
+    }
+}
+
+void
+GraphScene::alignObjectsToGrid()
+{
+    for (NodeEntry& entry : m_nodes)
+    {
+        auto& object = entry.object;
+        assert(object);
+        object->setPos(quantize(object->pos(), m_sceneData->gridSize));
+        moveConnections(object);
     }
 }
 
@@ -682,13 +713,13 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
         });
     }
 
-    QAction* deleteAct = menu.addAction(tr("Remove all connections"));
-    deleteAct->setEnabled(!connections.empty());
-    deleteAct->setIcon(gt::gui::icon::chainOff());
+    QAction* deleteAction = menu.addAction(tr("Remove all connections"));
+    deleteAction->setEnabled(!connections.empty());
+    deleteAction->setIcon(gt::gui::icon::chainOff());
 
     QAction* triggered = menu.exec(QCursor::pos());
 
-    if (triggered == deleteAct)
+    if (triggered == deleteAction)
     {
         gtDataModel->deleteFromModel(connections);
         return;
@@ -713,6 +744,8 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
 
     // retrieve selected nodes
     auto selected = Impl::findSelectedItems(*this, Impl::NodesOnly);
+    // selection should not be empty
+    assert (!selected.nodes.empty());
 
     bool allDeletable = std::all_of(selected.nodes.begin(),
                                     selected.nodes.end(),
@@ -723,38 +756,32 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     // create menu
     QMenu menu;
 
-    QAction* groupAct = menu.addAction(tr("Group selected Nodes"));
-    groupAct->setIcon(gt::gui::icon::select());
-    groupAct->setEnabled(allDeletable);
-    groupAct->setVisible(!selected.nodes.empty());
+    QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
+    groupAction->setIcon(gt::gui::icon::select());
+    groupAction->setEnabled(allDeletable);
+    groupAction->setVisible(!selected.nodes.empty());
 
     menu.addSeparator();
 
-    QAction* deleteAct = menu.addAction(tr("Delete selected Nodes"));
-    deleteAct->setIcon(gt::gui::icon::delete_());
-    deleteAct->setEnabled(allDeletable);
-
-    // add node to selected nodes
-    if (selected.nodes.empty())
-    {
-        gtWarning() << "FUNCTION IS TRIGGERED";
-    }
+    QAction* deleteAction = menu.addAction(tr("Delete selected Nodes"));
+    deleteAction->setIcon(gt::gui::icon::delete_());
+    deleteAction->setEnabled(allDeletable);
 
     // add custom object menu
     if (selected.nodes.size() == 1)
     {
         menu.addSeparator();
         gt::gui::makeObjectContextMenu(menu, *node);
-        deleteAct->setVisible(false);
+        deleteAction->setVisible(false);
     }
 
     QAction* triggered = menu.exec(QCursor::pos());
 
-    if (triggered == groupAct)
+    if (triggered == groupAction)
     {
         return groupNodes(selected.nodes);
     }
-    if (triggered == deleteAct)
+    if (triggered == deleteAction)
     {
         GtObjectList list;
         std::transform(selected.nodes.begin(), selected.nodes.end(),
@@ -1154,7 +1181,7 @@ GraphScene::onNodeAppended(Node* node)
     NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
     if (!ui) ui = &defaultUI;
 
-    auto entity = make_volatile<NodeGraphicsObject, DirectDeleter>(*m_graph, *node, *ui);
+    auto entity = make_volatile<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *m_graph, *node, *ui);
     // add to scene
     addItem(entity);
 
