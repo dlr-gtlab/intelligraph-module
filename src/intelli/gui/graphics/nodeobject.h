@@ -38,6 +38,8 @@ class GT_INTELLI_EXPORT NodeGraphicsObject : public QGraphicsObject
 
 public:
 
+    class Highlights;
+
     // Needed for qgraphicsitem_cast
     enum { Type = UserType + (int)GraphicsItemType::Node };
     int type() const override { return Type; }
@@ -107,40 +109,11 @@ public:
     QGraphicsWidget const* centralWidget() const;
 
     /**
-     * @brief Whether ports should be highlighted
-     * @return Highlight ports
+     * @brief Returns a helper object, that contains all highlight specific data
+     * @return Highlights objects.
      */
-    bool highlightsActive() const;
-
-    /**
-     * @brief Whether this node has highlighted ports
-     * @return
-     */
-    bool isHighlighted() const;
-
-    /**
-     * @brief Returns whether the port should be highlighted
-     * @param port Port to check
-     * @return Is port highlighted
-     */
-    bool isPortHighlighted(PortId port) const;
-
-    /**
-     * @brief Highlights this node and all ports as incompatible
-     */
-    void highlightAsIncompatible();
-
-    /**
-     * @brief Highlights all ports that are compatible to the TypeId.
-     * @param typeId TypeId to check
-     * @param type Which ports should be checked
-     */
-    void highlightCompatiblePorts(TypeId const& typeId, PortType type);
-
-    /**
-     * @brief Clears the highlights.
-     */
-    void clearHighlights();
+    Highlights& highlights();
+    Highlights const& highlights() const;
 
     /**
      * @brief Returns the geometry object, denoting the layout of the graphics
@@ -165,6 +138,60 @@ public:
      * @param state Evaluation state
      */
     void setNodeEvalState(NodeEvalState state);
+
+    class Highlights
+    {
+        friend class NodeGraphicsObject;
+
+        explicit Highlights(NodeGraphicsObject& object);
+
+        NodeGraphicsObject* m_object = nullptr;
+        /// List of highlightes ports
+        /// (used preallocated array as a preliminary optimization)
+        QVarLengthArray<PortId, 10> m_comaptiblePorts;
+        /// Whether ports should be highlighted
+        bool m_active = false;
+
+    public:
+
+        Highlights(Highlights const&) = delete;
+        Highlights(Highlights&&) = delete;
+        Highlights& operator=(Highlights const&) = delete;
+        Highlights& operator=(Highlights&&) = delete;
+        ~Highlights() = default;
+
+        /**
+         * @brief Whether ports should be highlighted
+         * @return Highlight ports
+         */
+        bool isActive() const;
+        /**
+         * @brief Whether this node has ports maked as comaptible
+         * @return
+         */
+        bool isCompatible() const;
+        /**
+         * @brief Returns whether the port should be highlighted
+         * @param port Port to check
+         * @return Is port highlighted
+         */
+        bool isPortCompatible(PortId port) const;
+
+        /**
+         * @brief Highlights this node and all ports as incompatible
+         */
+        void setAsIncompatible();
+        /**
+         * @brief Highlights all ports that are compatible to the TypeId.
+         * @param sourceTypeId TypeId to check
+         * @param type Which ports should be checked
+         */
+        void setCompatiblePorts(TypeId const& sourceTypeId, PortType type);
+        /**
+         * @brief Clears the highlights.
+         */
+        void clear();
+    };
 
 protected:
 
@@ -242,16 +269,13 @@ private:
     QPointer<QGraphicsProxyWidget> m_proxyWidget = nullptr;
     /// Node eval state object
     NodeEvalStateGraphicsObject* m_evalStateObject = nullptr;
-    /// List of highlightes ports
-    /// (used preallocated array as a preliminary optimization)
-    QVarLengthArray<PortId, 10> m_highlightedPorts;
     /// Holds how much the node was shifted since the beginning of a
     /// translation operation
     QPointF m_translationDiff;
+    /// Highlight data
+    Highlights m_highlights;
     /// State flag
     State m_state = Normal;
-    /// Whether ports should be highlighted
-    bool m_highlight = false;
     /// Whether node is hovered
     bool m_hovered = false;
 

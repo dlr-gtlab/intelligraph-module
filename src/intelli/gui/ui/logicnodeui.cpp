@@ -18,10 +18,10 @@
 
 using namespace intelli;
 
-LogicNodeGeometry::LogicNodeGeometry(Node& node) :
+LogicNodeGeometry::LogicNodeGeometry(Node const& node) :
     NodeGeometry(node)
 {
-    assert(qobject_cast<Node*>(&node));
+    assert(qobject_cast<Node const*>(&node));
 }
 
 QRectF
@@ -141,8 +141,8 @@ LogicNodeGeometry::applyRightCurve(QPainterPath& path) const
 LogicNode const&
 LogicNodeGeometry::logicNode() const
 {
-    assert (qobject_cast<LogicNode*>(&node()));
-    return static_cast<LogicNode&>(node());
+    assert (qobject_cast<LogicNode const*>(&node()));
+    return static_cast<LogicNode const&>(node());
 }
 
 QPainterPath
@@ -186,7 +186,8 @@ LogicNodeGeometry::computeBoundingRect() const
     return upper.united(lower);
 }
 
-LogicNodePainter::LogicNodePainter(NodeGraphicsObject& object, NodeGeometry& geometry) :
+LogicNodePainter::LogicNodePainter(NodeGraphicsObject const& object,
+                                   NodeGeometry const& geometry) :
     NodePainter(object, geometry)
 {
 
@@ -215,7 +216,7 @@ LogicNodePainter::drawOutline(QPainter& painter) const
     QPainterPath path(geo->innerRect().topLeft());
     geo->applyLeftCurve(path);
 
-    if (static_cast<LogicNode&>(object().node()).operation() == LogicNode::XOR)
+    if (static_cast<LogicNode const&>(object().node()).operation() == LogicNode::XOR)
     {
         painter.drawPath(path.translated(-style::nodePortSize(), 0));
     }
@@ -226,7 +227,7 @@ LogicNodePainter::drawOutline(QPainter& painter) const
 
 void
 LogicNodePainter::drawPortCaption(QPainter& painter,
-                                  PortInfo& port,
+                                  PortInfo const& port,
                                   PortType type,
                                   PortIndex idx,
                                   uint flags) const
@@ -243,21 +244,22 @@ LogicNodePainter::drawPortCaption(QPainter& painter,
 LogicNodeUI::LogicNodeUI() = default;
 
 std::unique_ptr<intelli::NodePainter>
-intelli::LogicNodeUI::painter(NodeGraphicsObject& object, NodeGeometry& geometry) const
+intelli::LogicNodeUI::painter(NodeGraphicsObject const& object,
+                              NodeGeometry const& geometry) const
 {
-    if (!qobject_cast<LogicNode*>(&object.node()))
+    if (!qobject_cast<LogicNode const*>(&object.node()))
     {
         return NodeUI::painter(object, geometry);
     }
 
-    assert(dynamic_cast<LogicNodeGeometry*>(&geometry));
+    assert(dynamic_cast<LogicNodeGeometry const*>(&geometry));
     return std::make_unique<LogicNodePainter>(object, geometry);
 }
 
 std::unique_ptr<NodeGeometry>
-LogicNodeUI::geometry(Node& node) const
+LogicNodeUI::geometry(Node const& node) const
 {
-    if (!qobject_cast<LogicNode*>(&node))
+    if (!qobject_cast<LogicNode const*>(&node))
     {
         return NodeUI::geometry(node);
     }

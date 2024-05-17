@@ -15,14 +15,14 @@
 
 using namespace intelli;
 
-NodeGeometry::NodeGeometry(Node& node) :
+NodeGeometry::NodeGeometry(Node const& node) :
     m_node(&node)
 {
 
 }
 
 void
-NodeGeometry::setWidget(QPointer<QWidget> widget)
+NodeGeometry::setWidget(QPointer<QWidget const> widget)
 {
     m_widget = widget;
 }
@@ -339,7 +339,7 @@ NodeGeometry::recomputeGeomtry()
     m_boundingRect.reset();
 }
 
-Node&
+Node const&
 NodeGeometry::node() const
 {
     assert(m_node);

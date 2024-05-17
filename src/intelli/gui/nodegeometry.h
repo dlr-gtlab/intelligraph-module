@@ -50,7 +50,7 @@ public:
      * @brief Constructor.
      * @param node The node for which the grapical layout should be computed
      */
-    explicit NodeGeometry(Node& node);
+    explicit NodeGeometry(Node const& node);
     NodeGeometry(NodeGeometry const&) = delete;
     NodeGeometry(NodeGeometry&&) = delete;
     NodeGeometry& operator=(NodeGeometry const&) = delete;
@@ -188,7 +188,7 @@ protected:
      * @brief Returns the associated node
      * @return Node
      */
-    Node& node() const;
+    Node const& node() const;
 
     /**
      * @brief Returns the associated widget. May be null.
@@ -219,9 +219,9 @@ protected:
 private:
 
     /// Node
-    Node* m_node;
+    Node const* m_node;
     /// Widget
-    QPointer<QWidget> m_widget;
+    QPointer<QWidget const> m_widget;
     /// cache for inner rect
     mutable tl::optional<QRectF> m_innerRect;
     /// cache for bounding rect
@@ -237,7 +237,7 @@ private:
 
     int portHeightExtent() const;
 
-    void setWidget(QPointer<QWidget> widget);
+    void setWidget(QPointer<QWidget const> widget);
 };
 
 } // namespace intelli

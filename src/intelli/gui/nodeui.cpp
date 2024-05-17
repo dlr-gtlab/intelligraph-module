@@ -138,13 +138,14 @@ NodeUI::NodeUI(Option option)
 }
 
 std::unique_ptr<NodePainter>
-NodeUI::painter(NodeGraphicsObject& object, NodeGeometry& geometry) const
+NodeUI::painter(NodeGraphicsObject const& object,
+                NodeGeometry const& geometry) const
 {
     return std::make_unique<NodePainter>(object, geometry);
 }
 
 std::unique_ptr<NodeGeometry>
-NodeUI::geometry(Node& node) const
+NodeUI::geometry(Node const& node) const
 {
     return std::make_unique<NodeGeometry>(node);
 }
