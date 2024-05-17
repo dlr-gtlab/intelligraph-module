@@ -24,6 +24,7 @@ namespace intelli
 
 class NodeUI;
 class NodeEvalStateGraphicsObject;
+struct GraphSceneData;
 
 /**
  * @brief Graphic object representing a node in the graph.
@@ -43,11 +44,15 @@ public:
 
     /**
      * @brief constructor
+     * @param data Graph scene data which holds shared data for all node objects
      * @param graph Graph to which the node belongs
      * @param node Node that this graphic object represents
      * @param ui Node UI used to access painter and geomtery data
      */
-    NodeGraphicsObject(Graph& graph, Node& node, NodeUI& ui);
+    NodeGraphicsObject(GraphSceneData& data,
+                       Graph& graph,
+                       Node& node,
+                       NodeUI& ui);
 
     /**
      * @brief Returns the associated node
@@ -68,6 +73,13 @@ public:
      */
     Graph& graph();
     Graph const& graph() const;
+
+    /**
+     * @brief Returns the scene data object, that is shared by all nodes and
+     * grants access to scene specific properties.
+     * @return Scene data.
+     */
+    GraphSceneData const& sceneData() const;
 
     /**
      * @brief Returns whether this node is currently hovered (via the cursor).
@@ -184,8 +196,18 @@ signals:
 
     void makeDraftConnection(NodeGraphicsObject* object, PortType type, PortId port);
 
+    /**
+     * @brief Emitted if the node was shifted (moved by x,y).
+     * @param object Object that was moved
+     * @param diff Difference that the object was moved by
+     */
     void nodeShifted(NodeGraphicsObject* object, QPointF diff);
 
+    /**
+     * @brief Emitted once the node was moved to its "final" postion (i.e. the
+     * user no longer has ended the move operation)
+     * @param object Object that was moved
+     */
     void nodeMoved(NodeGraphicsObject* object);
 
     void nodeGeometryChanged(NodeGraphicsObject* object);
@@ -206,7 +228,9 @@ private:
         Resizing
     };
 
-    /// graph
+    /// Pointer to graph scene data
+    GraphSceneData* m_sceneData;
+    /// Pointer to graph
     QPointer<Graph> m_graph;
     /// Associated node
     QPointer<Node> m_node;
@@ -218,14 +242,17 @@ private:
     QPointer<QGraphicsProxyWidget> m_proxyWidget = nullptr;
     /// Node eval state object
     NodeEvalStateGraphicsObject* m_evalStateObject = nullptr;
-    /// list of highlightes ports
+    /// List of highlightes ports
     /// (used preallocated array as a preliminary optimization)
     QVarLengthArray<PortId, 10> m_highlightedPorts;
-    /// whether ports should be highlighted
-    bool m_highlight = false;
-
-    // flags
+    /// Holds how much the node was shifted since the beginning of a
+    /// translation operation
+    QPointF m_translationDiff;
+    /// State flag
     State m_state = Normal;
+    /// Whether ports should be highlighted
+    bool m_highlight = false;
+    /// Whether node is hovered
     bool m_hovered = false;
 
     /**

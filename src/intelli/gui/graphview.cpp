@@ -15,6 +15,7 @@
 
 #include <gt_objectuiaction.h>
 #include <gt_icons.h>
+#include <gt_colors.h>
 #include <gt_guiutilities.h>
 #include <gt_application.h>
 #include <gt_filedialog.h>
@@ -35,27 +36,181 @@
 
 #include <cmath>
 
+constexpr int s_major_grid_size = 100;
+constexpr int s_minor_grid_size = s_major_grid_size / 10;
+
 using namespace intelli;
 
 struct GraphView::Impl
 {
-    static NodeGraphicsObject* locateNode(QPointF scenePoint,
-                                          QGraphicsScene& scene,
-                                          QTransform const& viewTransform)
+
+/// attempts to lacate a node at the given scene position
+static NodeGraphicsObject* locateNode(QPointF scenePoint,
+                                      QGraphicsScene& scene,
+                                      QTransform const& viewTransform)
+{
+    for (auto* item : scene.items(scenePoint,
+                                  Qt::IntersectsItemShape,
+                                  Qt::DescendingOrder,
+                                  viewTransform))
     {
-        for (auto* item : scene.items(scenePoint,
-                                      Qt::IntersectsItemShape,
-                                      Qt::DescendingOrder,
-                                      viewTransform))
+        if (auto* node = qgraphicsitem_cast<NodeGraphicsObject*>(item))
         {
-            if (auto* node = qgraphicsitem_cast<NodeGraphicsObject*>(item))
-            {
-                return node;
-            }
+            return node;
         }
-        return nullptr;
     }
+    return nullptr;
+}
+
+struct GridStateChanged
+{
+    void operator()(QVariant const& enable)
+    {
+        assert(view);
+        assert(view->m_snapToGridBtn);
+
+        auto* btn = view->m_snapToGridBtn;
+        auto* g = view->grid();
+        auto* s = view->nodeScene();
+        if (!g)
+        {
+            btn->setVisible(false);
+            if (s) s->setSnapToGrid(false);
+            return;
+        }
+
+        bool enabled = enable.toBool();
+
+        view->resetCachedContent();
+        g->showGrid(enabled);
+        btn->setVisible(enabled);
+        if (s) s->setSnapToGrid(enabled && btn->isChecked());
+    }
+
+    GraphView* view{};
 };
+
+struct GridValueChanged
+{
+    void operator()()
+    {
+        assert(gridState);
+        // triggers state update
+        gridState->setValue(!gridState->getValue().toBool());
+    }
+
+    GtState* gridState{};
+};
+
+struct SnapToGridStateChanged
+{
+    void operator()(QVariant const& enable)
+    {
+        assert(view);
+        assert(view->m_snapToGridBtn);
+
+        bool enabled = enable.toBool();
+
+        auto* btn = view->m_snapToGridBtn;
+        btn->setChecked(enabled);
+
+        auto* s = view->nodeScene();
+        if (s) s->setSnapToGrid(enabled);
+    }
+
+    GraphView* view{};
+};
+
+struct SnapToGridValueChanged
+{
+    void operator()()
+    {
+        assert(snapToGridState);
+        // triggers state update
+        snapToGridState->setValue(!snapToGridState->getValue().toBool());
+    }
+
+    GtState* snapToGridState{};
+};
+
+struct ConnectionShapeStateChanged
+{
+    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
+
+    void operator()(QVariant const& shape)
+    {
+        assert(view);
+        auto scene = view->nodeScene();
+        if (scene) scene->setConnectionShape(shape.value<ConnectionShape>());
+    }
+
+    GraphView* view{};
+};
+
+struct ConnectionShapeValueChanged
+{
+    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
+
+    void operator()()
+    {
+        assert(conShapeState);
+        auto value = conShapeState->getValue().value<ConnectionShape>();
+        switch (value)
+        {
+        case ConnectionShape::Cubic:
+            value = ConnectionShape::Rectangle;
+            break;
+        case ConnectionShape::Rectangle:
+            value = ConnectionShape::Straight;
+            break;
+        case ConnectionShape::Straight:
+            value = ConnectionShape::Cubic;
+        }
+        conShapeState->setValue(value);
+    }
+
+    GtState* conShapeState{};
+};
+
+/// helper function to create a state and update it accordingly when signals are
+/// fired.
+template<typename StateChangedSlot,
+         typename ValueChangedSlot,
+         typename Value,
+         typename Signal,
+         typename Sender = GraphView>
+static GtState* setupState(GraphView& view,
+                           GtObject& guardian,
+                           Graph& graph,
+                           QString const& stateId,
+                           Value defaulValue,
+                           Sender* sender,
+                           Signal signal)
+{
+    /// grid change state
+    auto* state = gtStateHandler->initializeState(
+        // group id
+        GT_CLASSNAME(GraphView),
+        // state id
+        stateId,
+        // entry for this graph
+        graph.uuid() + QChar(';') + stateId.toLower().replace(' ', '_'),
+        // default value
+        defaulValue,
+        // guardian object
+        &guardian);
+
+    connect(state, qOverload<QVariant const&>(&GtState::valueChanged),
+            &view, StateChangedSlot{&view});
+    connect(sender, signal,
+            state, ValueChangedSlot{state});
+
+    // trigger grid update
+    emit state->valueChanged(state->getValue());
+    return state;
+}
+
+}; // Impl
 
 GraphView::GraphView(QWidget* parent) :
     GtGraphicsView(nullptr, parent)
@@ -78,15 +233,16 @@ GraphView::GraphView(QWidget* parent) :
 
     // Sets the scene rect to its maximum possible ranges to avoid auto scene range
     // re-calculation when expanding the all QGraphicsItems common rect.
-    int maxSize = 32767;
+    constexpr int maxSize = 32767;
     setSceneRect(-maxSize, -maxSize, (maxSize * 2), (maxSize * 2));
 
     /* GRID */
     auto* grid = new GtGrid(*this);
     setGrid(grid);
     grid->setShowAxis(false);
-    grid->setGridHeight(15);
-    grid->setGridWidth(15);
+    // controls minor and major lines
+    grid->setGridHeight(s_major_grid_size);
+    grid->setGridWidth(s_major_grid_size);
 
     /* MENU BAR */
     auto* menuBar = new QMenuBar;
@@ -131,24 +287,46 @@ GraphView::GraphView(QWidget* parent) :
     m_editMenu->setEnabled(false);
 
     /* AUTO EVAL */
-    auto setupEvalBtn = [](){
+    auto setupBtn = [](){
         auto* btn = new QPushButton();
         btn->setVisible(false);
         btn->setEnabled(false);
-//        btn->setFlat(true);
         auto height = btn->sizeHint().height();
-        btn->setFixedSize(QSize(height/* * 1.5*/, height));
+        btn->setFixedSize(QSize(height, height));
         return btn;
     };
 
-    m_startAutoEvalBtn = setupEvalBtn();
+    m_startAutoEvalBtn = setupBtn();
     m_startAutoEvalBtn->setVisible(true);
     m_startAutoEvalBtn->setToolTip(tr("Enable automatic graph evaluation"));
     m_startAutoEvalBtn->setIcon(gt::gui::icon::play());
 
-    m_stopAutoEvalBtn = setupEvalBtn();
+    m_stopAutoEvalBtn = setupBtn();
     m_stopAutoEvalBtn->setToolTip(tr("Stop automatic graph evaluation"));
     m_stopAutoEvalBtn->setIcon(gt::gui::icon::stop());
+
+    m_snapToGridBtn = setupBtn();
+    m_snapToGridBtn->setCheckable(true);
+    m_snapToGridBtn->setToolTip(tr("Toggle snap to grid"));
+    m_snapToGridBtn->setVisible(true);
+    m_snapToGridBtn->setEnabled(false);
+
+    using gt::gui::color::lighten;
+    using gt::gui::color::disabled;
+    using gt::gui::color::text;
+    using gt::gui::colorize; // use custom colors for icon
+
+    {
+        auto* button = m_snapToGridBtn;
+        // checked button do not use On/Off Icons, thus we have to update the
+        // icon ourselfes (adapted from `GtOutputDock`)
+        auto const updateIconColor = [b = QPointer<QPushButton>(button)](){
+            assert (b);
+            return b->isChecked() ? text() : lighten(disabled(), 15);
+        };
+        button->setIcon(colorize(gt::gui::icon::gridSnap(),
+                                 gt::gui::SvgColorData{ updateIconColor }));
+    }
 
     /* OVERLAY */
     auto* overlay = new QHBoxLayout(this);
@@ -157,6 +335,7 @@ GraphView::GraphView(QWidget* parent) :
     overlay->addWidget(menuBar);
     overlay->addWidget(m_startAutoEvalBtn);
     overlay->addWidget(m_stopAutoEvalBtn);
+    overlay->addWidget(m_snapToGridBtn);
     overlay->addStretch();
 
     auto size = menuBar->sizeHint();
@@ -178,57 +357,32 @@ GraphView::setScene(GraphScene& scene)
     auto& graph = scene.graph();
 
     /// grid change state
-    auto* gridState = gtStateHandler->initializeState(
-        GT_CLASSNAME(GraphView),
-        tr("Show Grid"),
-        graph.uuid() + QStringLiteral(";show_grid"),
-        true, guardian);
+    auto* gridState =
+        Impl::setupState<Impl::GridStateChanged,
+                         Impl::GridValueChanged>(
+            *this, *guardian, graph, tr("Show Grid"), true,
+            this, &GraphView::gridChanged
+    );
 
-    connect(gridState, qOverload<QVariant const&>(&GtState::valueChanged),
-            this, [this](QVariant const& enable){
-        resetCachedContent();
-
-        if (auto* g = grid())
-        {
-            g->showGrid(enable.toBool());
-        }
-    });
-    connect(this, &GraphView::gridChanged, gridState, [gridState](){
-        gridState->setValue(!gridState->getValue().toBool());
-    });
-
-    // trigger grid update
-    emit gridState->valueChanged(gridState->getValue());
+    /// snap to grid state
+    Impl::setupState<Impl::SnapToGridStateChanged,
+                     Impl::SnapToGridValueChanged>(
+        *this, *guardian, graph, tr("Snap to Grid"), true,
+        m_snapToGridBtn, &QPushButton::clicked
+    );
 
     /// connection style state
-    auto* conShapeState = gtStateHandler->initializeState(
-        GT_CLASSNAME(GraphView),
-        tr("Connection Shape"),
-        graph.uuid() + QStringLiteral(";connection_shape"),
-        ConnectionShape::DefaultShape, guardian);
+    Impl::setupState<Impl::ConnectionShapeStateChanged,
+                     Impl::ConnectionShapeValueChanged>(
+        *this, *guardian, graph, tr("Connection Shape"),
+        ConnectionShape::DefaultShape,
+        this, &GraphView::connectionShapeChanged
+    );
 
-    connect(conShapeState, qOverload<QVariant const&>(&GtState::valueChanged),
-            &scene, [&scene, conShapeState](QVariant const& shape){
-        scene.setConnectionShape(conShapeState->getValue().value<ConnectionShape>());
-    });
-    connect(this, &GraphView::connectionShapeChanged, conShapeState, [conShapeState](){
-        auto value = conShapeState->getValue().value<ConnectionShape>();
-        switch (value)
-            {
-        case ConnectionShape::Cubic:
-            value = ConnectionShape::Rectangle;
-            break;
-        case ConnectionShape::Rectangle:
-            value = ConnectionShape::Straight;
-            break;
-        case ConnectionShape::Straight:
-            value = ConnectionShape::Cubic;
-        }
-        conShapeState->setValue(value);
-    });
-
-    // trigger connection shape update
-    emit conShapeState->valueChanged(conShapeState->getValue());
+    /// snap nodes to minor grid
+    scene.setGridSize(s_minor_grid_size);
+    bool gridEnabled = gridState->getValue().toBool();
+    if (!gridEnabled) scene.setSnapToGrid(false);
 
     m_sceneMenu->setEnabled(true);
 
@@ -236,6 +390,19 @@ GraphView::setScene(GraphScene& scene)
     m_editMenu->setEnabled(true);
 
     // setup actions
+    auto* alignAction = m_editMenu->addAction(tr("Align Nodes to Grid"));
+    alignAction->setShortcutContext(Qt::ShortcutContext::WidgetShortcut);
+    alignAction->setIcon(gt::gui::icon::gridSnap());
+    alignAction->setEnabled(gridEnabled);
+    connect(alignAction, &QAction::triggered,
+            &scene, qOverload<>(&GraphScene::alignObjectsToGrid),
+            Qt::UniqueConnection);
+    // enable/disable if grid is toggled
+    connect(this, &GraphView::gridChanged,
+            alignAction, [gridState, alignAction](){
+        alignAction->setEnabled(gridState->getValue().toBool());
+    });
+
     auto* copyAction = m_editMenu->addAction(tr("Copy Selection"));
     copyAction->setShortcutContext(Qt::ShortcutContext::WidgetShortcut);
     copyAction->setShortcut(gtApp->getShortCutSequence("copy"));
@@ -276,27 +443,53 @@ GraphView::setScene(GraphScene& scene)
             Qt::UniqueConnection);
 
     auto updateAutoEvalBtns = [this, &graph](){
-        auto* exec = graph.executionModel();
-        bool isAutoEvaluating = exec && exec->isAutoEvaluating();
+        if (auto* s = nodeScene())
+        {
+            if (&s->graph() != &graph) return;
 
-        m_startAutoEvalBtn->setVisible(!isAutoEvaluating);
-        m_stopAutoEvalBtn->setVisible(isAutoEvaluating);
+            auto* exec = graph.executionModel();
+            bool isAutoEvaluating = exec && exec->isAutoEvaluating();
+
+            m_startAutoEvalBtn->setVisible(!isAutoEvaluating);
+            m_stopAutoEvalBtn->setVisible(isAutoEvaluating);
+        }
     };
 
     m_startAutoEvalBtn->setEnabled(true);
     m_stopAutoEvalBtn->setEnabled(true);
+    m_snapToGridBtn->setEnabled(true);
 
     updateAutoEvalBtns();
 
     connect(&graph, &Graph::isActiveChanged, this, updateAutoEvalBtns);
 
-    connect(m_startAutoEvalBtn, &QPushButton::clicked, &graph, [&graph](){
-        graph.setActive(true);
+    connect(m_startAutoEvalBtn, &QPushButton::clicked,
+            this, [this](){
+        if (auto* s = nodeScene())
+        {
+            s->graph().setActive(true);
+        }
     });
-    connect(m_stopAutoEvalBtn, &QPushButton::clicked, &graph, [&graph](){
-        graph.setActive(false);
+    connect(m_stopAutoEvalBtn, &QPushButton::clicked,
+            this, [this](){
+        if (auto* s = nodeScene())
+        {
+            s->graph().setActive(false);
+        }
+    });
+    connect(m_snapToGridBtn, &QPushButton::clicked,
+            this, [this](){
+        if (auto* s = nodeScene())
+        {
+            s->setSnapToGrid(m_snapToGridBtn->isChecked());
+        }
     });
 
+    QAction* separtor = new QAction;
+    separtor->setSeparator(true);
+
+    addAction(alignAction);
+    addAction(separtor);
     addAction(copyAction);
     addAction(pasteAction);
     addAction(duplicateAction);

@@ -14,6 +14,7 @@
 
 #include <chrono>
 #include <utility>
+#include <stdlib.h>
 
 #include <QPointF>
 #include <QRegExp>
@@ -24,6 +25,28 @@ namespace intelli
 class NodeData;
 
 constexpr auto max_timeout = std::chrono::milliseconds::max();
+
+/**
+ * @brief Quantizes `point` so that it is a multiple of `stepSize`.
+ * Example:
+ *     quantize(QPointF(42.4,9.75), 5) -> QPoint(40, 10)
+ * @param point Point to quantize
+ * @param stepSize Step size to use for quantization
+ * @return quantized point
+ */
+inline QPoint quantize(QPointF point, int stepSize)
+{
+    auto divX = std::div(point.x(), stepSize);
+    auto divY = std::div(point.y(), stepSize);
+    double x = divX.rem;
+    double y = divY.rem;
+
+    double stepHalf = 0.5 * stepSize;
+    divX.quot += x > stepHalf ? 1 : x < -stepHalf ? -1 : 0;
+    divY.quot += y > stepHalf ? 1 : y < -stepHalf ? -1 : 0;
+
+    return QPoint{divX.quot * stepSize, divY.quot * stepSize};
+};
 
 /**
  * @brief Denotes the possible port types
