@@ -27,7 +27,7 @@ class LogicNodeGeometry : public NodeGeometry
 {
 public:
 
-    LogicNodeGeometry(Node& node);
+    LogicNodeGeometry(Node const& node);
 
     QRectF captionRect() const override;
 
@@ -61,14 +61,15 @@ class LogicNodePainter : public NodePainter
 {
 public:
 
-    LogicNodePainter(NodeGraphicsObject& object, NodeGeometry& geometry);
+    LogicNodePainter(NodeGraphicsObject const& object,
+                     NodeGeometry const& geometry);
 
     void drawBackground(QPainter& painter) const override;
 
     void drawOutline(QPainter& painter) const override;
 
     void drawPortCaption(QPainter& painter,
-                         PortInfo& port,
+                         PortInfo const& port,
                          PortType type,
                          PortIndex idx,
                          uint flags) const override;
@@ -86,9 +87,10 @@ public:
 
     Q_INVOKABLE LogicNodeUI();
 
-    virtual std::unique_ptr<NodePainter> painter(NodeGraphicsObject& object, NodeGeometry& geometry) const;
+    virtual std::unique_ptr<NodePainter> painter(NodeGraphicsObject const& object,
+                                                 NodeGeometry const& geometry) const;
 
-    virtual std::unique_ptr<NodeGeometry> geometry(Node& node) const;
+    virtual std::unique_ptr<NodeGeometry> geometry(Node const& node) const;
 };
 
 } // namespace intelli

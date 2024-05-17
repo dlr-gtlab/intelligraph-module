@@ -55,7 +55,8 @@ public:
      * @param object Graphic object to paint
      * @param geometry Geometry to use to draw components at the correct position
      */
-    NodePainter(NodeGraphicsObject& object, NodeGeometry& geometry);
+    NodePainter(NodeGraphicsObject const& object,
+                NodeGeometry const& geometry);
     NodePainter(NodePainter const&) = delete;
     NodePainter(NodePainter&&) = delete;
     NodePainter& operator=(NodePainter const&) = delete;
@@ -114,7 +115,7 @@ public:
      * @param flags Port flag to draw the port according to it state
      */
     virtual void drawPort(QPainter& painter,
-                          PortInfo& port,
+                          PortInfo const& port,
                           PortType type,
                           PortIndex idx,
                           uint flags) const;
@@ -128,7 +129,7 @@ public:
      * @param flags Port flag to draw the port according to it state
      */
     virtual void drawPortCaption(QPainter& painter,
-                                 PortInfo& port,
+                                 PortInfo const& port,
                                  PortType type,
                                  PortIndex idx,
                                  uint flags) const;
@@ -158,19 +159,19 @@ protected:
      * @brief Returns the associated graphic object.
      * @return Graphic object
      */
-    NodeGraphicsObject& object() const;
+    NodeGraphicsObject const& object() const;
 
     /**
      * @brief Returns the associated node.
      * @return Node
      */
-    Node& node() const;
+    Node const& node() const;
 
     /**
      * @brief Returns the geometry used for the organization of all components
      * @return Geometry
      */
-    NodeGeometry& geometry() const;
+    NodeGeometry const& geometry() const;
 
     /**
      * @brief May be overriden to apply a custom background color similiar
@@ -182,9 +183,9 @@ protected:
 private:
 
     /// Graphic object
-    NodeGraphicsObject* m_object;
+    NodeGraphicsObject const* m_object;
     /// Geometry
-    NodeGeometry* m_geometry;
+    NodeGeometry const* m_geometry;
 };
 
 } // namespace intelli

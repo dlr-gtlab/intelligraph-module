@@ -595,7 +595,7 @@ GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         for (auto& entry : m_nodes)
         {
             assert(entry.object);
-            entry.object->clearHighlights();
+            entry.object->highlights().clear();
         }
 
         auto pos = event->scenePos();
@@ -1459,13 +1459,13 @@ GraphScene::highlightCompatibleNodes(NodeId nodeId, PortType type, TypeId const&
     {
         NodeGraphicsObject* target = nodeObject(node);
         assert(target);
-        target->highlightAsIncompatible();
+        target->highlights().setAsIncompatible();
     }
     // then highlight all nodes that are compatible
     for (NodeId node : qAsConst(targets))
     {
         NodeGraphicsObject* target = nodeObject(node);
         assert(target);
-        target->highlightCompatiblePorts(typeId, invert(type));
+        target->highlights().setCompatiblePorts(typeId, invert(type));
     }
 };

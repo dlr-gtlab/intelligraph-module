@@ -57,7 +57,8 @@ public:
      * ports, the caption etc.
      * @return Node painter object
      */
-    virtual std::unique_ptr<NodePainter> painter(NodeGraphicsObject& object, NodeGeometry& geometry) const;
+    virtual std::unique_ptr<NodePainter> painter(NodeGraphicsObject const& object,
+                                                 NodeGeometry const& geometry) const;
 
     /**
      * @brief Returns a geomtry object, used to tell graphics object where
@@ -66,7 +67,7 @@ public:
      * @param node Node to operate on
      * @return Node geometry object
      */
-    virtual std::unique_ptr<NodeGeometry> geometry(Node& node) const;
+    virtual std::unique_ptr<NodeGeometry> geometry(Node const& node) const;
 
     /**
      * @brief Icon for the object

@@ -82,7 +82,8 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
     m_node(&node),
     m_geometry(ui.geometry(node)),
     m_painter(ui.painter(*this, *m_geometry)),
-    m_evalStateObject(new NodeEvalStateGraphicsObject(*this, *m_painter, node))
+    m_evalStateObject(new NodeEvalStateGraphicsObject(*this, *m_painter, node)),
+    m_highlights(*this)
 {
     setFlag(QGraphicsItem::ItemContainsChildrenInShape, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);
@@ -179,78 +180,16 @@ NodeGraphicsObject::centralWidget() const
     return const_cast<NodeGraphicsObject*>(this)->centralWidget();
 }
 
-bool
-NodeGraphicsObject::isPortHighlighted(PortId port) const
+NodeGraphicsObject::Highlights&
+NodeGraphicsObject::highlights()
 {
-    return m_highlightedPorts.contains(port);
+    return m_highlights;
 }
 
-bool
-NodeGraphicsObject::highlightsActive() const
+NodeGraphicsObject::Highlights const&
+NodeGraphicsObject::highlights() const
 {
-    return m_highlight;
-}
-
-bool
-NodeGraphicsObject::isHighlighted() const
-{
-    return m_highlight && !m_highlightedPorts.empty();
-}
-
-void
-NodeGraphicsObject::highlightAsIncompatible()
-{
-    m_highlight = true;
-    m_highlightedPorts.clear();
-    update();
-}
-
-void
-NodeGraphicsObject::highlightCompatiblePorts(TypeId const& sourceTypeId,
-                                             PortType type)
-{
-    m_highlight = true;
-    auto& factory = NodeDataFactory::instance();
-    for (auto& port : m_node->ports(type))
-    {
-        std::pair<TypeId const&, TypeId const&> pair{
-            type == PortType::In ? port.typeId : sourceTypeId,
-            type == PortType::In ? sourceTypeId : port.typeId
-        };
-
-        if (!factory.canConvert(pair.first, pair.second)) continue;
-        if (!m_graph->findConnections(m_node->id(), port.id()).empty()) continue;
-
-        m_highlightedPorts.append(port.id());
-    }
-
-    if (isHighlighted() && (m_proxyWidget))
-    if (auto* w = m_proxyWidget->widget())
-    {
-        auto p = w->palette();
-        p.setColor(QPalette::Window, m_painter->backgroundColor());
-        w->setPalette(p);
-    }
-    update();
-}
-
-void
-NodeGraphicsObject::clearHighlights()
-{
-    bool wasHighlighted = isHighlighted();
-
-    m_highlight = false;
-    m_highlightedPorts.clear();
-
-    if (wasHighlighted && (m_proxyWidget))
-    if (auto* w = m_proxyWidget->widget())
-    {
-        auto p = w->palette();
-        p.setColor(QPalette::Window, m_painter->backgroundColor());
-        w->setPalette(p);
-    }
-
-    update();
+    return m_highlights;
 }
 
 NodeGeometry const&
@@ -603,3 +542,84 @@ NodeGraphicsObject::updateChildItems()
     if (m_proxyWidget) m_proxyWidget->setPos(m_geometry->widgetPosition());
 }
 
+NodeGraphicsObject::Highlights::Highlights(NodeGraphicsObject& object) :
+    m_object(&object)
+{
+    assert(m_object);
+}
+
+bool
+NodeGraphicsObject::Highlights::isActive() const
+{
+    return m_active;
+}
+
+bool
+NodeGraphicsObject::Highlights::isCompatible() const
+{
+    return isActive() && !m_comaptiblePorts.empty();
+}
+
+bool
+NodeGraphicsObject::Highlights::isPortCompatible(PortId port) const
+{
+    return m_comaptiblePorts.contains(port);
+}
+
+void
+NodeGraphicsObject::Highlights::setAsIncompatible()
+{
+    m_active = true;
+    m_comaptiblePorts.clear();
+    m_object->update();
+}
+void
+NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& sourceTypeId,
+                                                   PortType type)
+{
+    m_active = true;
+    auto& graph = m_object->graph();
+    auto& node  = m_object->node();
+
+    auto& factory = NodeDataFactory::instance();
+    for (auto& port :node.ports(type))
+    {
+        std::pair<TypeId const&, TypeId const&> pair{
+            type == PortType::In ? port.typeId : sourceTypeId,
+            type == PortType::In ? sourceTypeId : port.typeId
+        };
+
+        if (!factory.canConvert(pair.first, pair.second)) continue;
+        if (!graph.findConnections(node.id(), port.id()).empty()) continue;
+
+        m_comaptiblePorts.append(port.id());
+    }
+
+    if (isActive() && (m_object->m_proxyWidget))
+    if (auto* w = m_object->m_proxyWidget->widget())
+    {
+        auto p = w->palette();
+        p.setColor(QPalette::Window, m_object->m_painter->backgroundColor());
+        w->setPalette(p);
+    }
+    m_object->update();
+}
+
+void
+NodeGraphicsObject::Highlights::clear()
+{
+    bool wasHighlighted = isCompatible();
+
+    m_active = false;
+    m_comaptiblePorts.clear();
+
+    if (wasHighlighted && (m_object->m_proxyWidget))
+    if (auto* w = m_object->m_proxyWidget->widget())
+    {
+        auto p = w->palette();
+        p.setColor(QPalette::Window, m_object->m_painter->backgroundColor());
+        w->setPalette(p);
+    }
+
+    m_object->update();
+}

@@ -23,7 +23,8 @@
 
 using namespace intelli;
 
-NodePainter::NodePainter(NodeGraphicsObject& object, NodeGeometry& geometry) :
+NodePainter::NodePainter(NodeGraphicsObject const& object,
+                         NodeGeometry const& geometry) :
     m_object(&object), m_geometry(&geometry)
 {
 
@@ -69,8 +70,8 @@ NodePainter::backgroundColor() const
 
     QColor bg = customBackgroundColor();
 
-    // apply tint if node is highlighted
-    if (object.isHighlighted())
+    // apply tint if node is comatible
+    if (object.highlights().isCompatible())
     {
         int val = -10;
         if (gtApp && gtApp->inDarkMode()) val *= -1;
@@ -92,7 +93,7 @@ NodePainter::customBackgroundColor() const
     {
         return gt::gui::color::lighten(bg, -20);
     }
-    if (qobject_cast<Graph*>(&node))
+    if (qobject_cast<Graph const*>(&node))
     {
         return gt::gui::color::lighten(bg, -12);
     }
@@ -130,6 +131,7 @@ NodePainter::drawPorts(QPainter& painter) const
     auto& node  = this->node();
     auto& object = this->object();
     auto& graph = object.graph();
+    auto& highlights = object.highlights();
 
     for (PortType type : {PortType::Out, PortType::In})
     {
@@ -147,11 +149,11 @@ NodePainter::drawPorts(QPainter& painter) const
             uint flags = NoPortFlag;
 
             if (connected) flags |= PortConnected;
-            if (object.highlightsActive())
+            if (highlights.isActive())
             {
                 flags |= HighlightPorts;
 
-                bool highlighted = object.isPortHighlighted(port->id());
+                bool highlighted = highlights.isPortCompatible(port->id());
                 if (highlighted) flags |= PortHighlighted;
             }
 
@@ -173,7 +175,7 @@ NodePainter::drawPorts(QPainter& painter) const
 
 void
 NodePainter::drawPort(QPainter& painter,
-                      PortInfo& port,
+                      PortInfo const& port,
                       PortType type,
                       PortIndex idx,
                       uint flags) const
@@ -204,7 +206,7 @@ NodePainter::drawPort(QPainter& painter,
 
 void
 NodePainter::drawPortCaption(QPainter& painter,
-                             PortInfo& port,
+                             PortInfo const& port,
                              PortType type,
                              PortIndex idx,
                              uint flags) const
@@ -289,20 +291,20 @@ NodePainter::paint(QPainter& painter) const
 #endif
 }
 
-NodeGraphicsObject&
+NodeGraphicsObject const&
 NodePainter::object() const
 {
     assert(m_object);
     return *m_object;
 }
 
-Node&
+Node const&
 NodePainter::node() const
 {
     return object().node();
 }
 
-NodeGeometry&
+NodeGeometry const&
 NodePainter::geometry() const
 {
     assert(m_geometry);
