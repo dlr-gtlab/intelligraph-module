@@ -158,6 +158,12 @@ intelli::style::connectionDraftPath()
     return gt::gui::color::disabled();
 }
 
+QColor
+intelli::style::connectionInactivePath()
+{
+    return connectionDraftPath();
+}
+
 double
 intelli::style::connectionDraftPathWidth()
 {

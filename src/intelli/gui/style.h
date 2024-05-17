@@ -46,6 +46,7 @@ enum class ZValue : int
 {
     Connection        = -2,
     ConnectionHovered = -1,
+    DraftConnection   =  2,
     Node              =  0,
     NodeHovered       =  1,
     NodeWidget        = 10,
@@ -166,6 +167,12 @@ GT_INTELLI_EXPORT double connectionSelectedPathWidth();
  * @return Color
  */
 GT_INTELLI_EXPORT QColor connectionDraftPath();
+
+/**
+ * @brief Color of inactive connections
+ * @return Color
+ */
+GT_INTELLI_EXPORT QColor connectionInactivePath();
 
 /**
  * @brief Width of draft connections

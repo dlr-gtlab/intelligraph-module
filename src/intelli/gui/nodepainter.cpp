@@ -67,17 +67,21 @@ QColor
 NodePainter::backgroundColor() const
 {
     auto& object = this->object();
+    auto& highlights = object.highlights();
 
-    QColor bg = customBackgroundColor();
-
-    // apply tint if node is comatible
-    if (object.highlights().isCompatible())
+    // apply tint if node is compatible
+    if (highlights.isActive())
     {
-        int val = -10;
+        QColor bg = style::nodeBackground();
+        if (!highlights.isNodeCompatible()) return bg;
+
+        int val = -20;
         if (gtApp && gtApp->inDarkMode()) val *= -1;
-        bg = style::tint(bg, val, val, val);
+
+        return style::tint(bg, val, val, val);
     }
 
+    auto bg = customBackgroundColor();
     return bg;
 }
 
@@ -180,9 +184,11 @@ NodePainter::drawPort(QPainter& painter,
                       PortIndex idx,
                       uint flags) const
 {
-    QRectF p = geometry().portRect(type, idx);
-    p.translate(0.5, 0.5);
-    p.setSize(p.size() - QSizeF{1, 1});
+    bool isPortIncompatible =  (flags & HighlightPorts) &&
+                              !(flags & PortHighlighted);
+
+    QSizeF offset = QSizeF{1, 1};
+    if (isPortIncompatible) offset *= 3;
 
     double penWidth = object().isHovered() ?
                           style::nodeHoveredOutlineWidth() :
@@ -191,17 +197,21 @@ NodePainter::drawPort(QPainter& painter,
     QColor penColor = object().isSelected() ?
                           style::nodeSelectedOutline() :
                           style::nodeOutline();
-    
-    QBrush brush = ((flags & HighlightPorts) && !(flags & PortHighlighted)) ?
-                       gt::gui::color::disabled() :
+
+    QBrush brush = isPortIncompatible ?
+                       style::connectionInactivePath() :
                        style::typeIdColor(port.typeId);
+
+
+    QRectF p = geometry().portRect(type, idx);
+    p.translate(offset.width() * 0.5, offset.height() * 0.5);
+    p.setSize(p.size() - offset);
 
     QPen pen(penColor, penWidth);
     painter.setPen(pen);
     painter.setBrush(brush);
 
     painter.drawEllipse(p);
-
 }
 
 void

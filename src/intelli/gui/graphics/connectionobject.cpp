@@ -33,7 +33,8 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection,
 
     setAcceptHoverEvents(true);
 
-    setZValue(style::zValue(ZValue::Connection));
+    setZValue(style::zValue(connection.isDraft() ? ZValue::DraftConnection :
+                                                   ZValue::Connection));
 }
 
 QRectF
@@ -197,6 +198,13 @@ ConnectionGraphicsObject::controlPoints() const
 }
 
 void
+ConnectionGraphicsObject::makeInactive(bool inactive)
+{
+    m_inactive = inactive;
+    update();
+}
+
+void
 ConnectionGraphicsObject::paint(QPainter* painter,
                                 QStyleOptionGraphicsItem const* option,
                                 QWidget* widget)
@@ -207,9 +215,10 @@ ConnectionGraphicsObject::paint(QPainter* painter,
 
     bool hovered  = m_hovered;
     bool selected = isSelected();
-    bool isDraft = !m_connection.isValid();
+    bool isDraft  = m_connection.isDraft();
+    bool isInactive = m_inactive;
 
-    auto const makePen = [this, &hovered, &selected, &isDraft](){
+    auto const makePen = [this, &hovered, &selected, &isDraft, &isInactive](){
 
         QColor outColor = style::typeIdColor(m_startType);
 
@@ -217,7 +226,11 @@ ConnectionGraphicsObject::paint(QPainter* painter,
         Qt::PenStyle penStyle = Qt::SolidLine;
         QBrush penBrush = outColor;
 
-        if (hovered)
+        if (isInactive)
+        {
+            penBrush = style::connectionInactivePath();
+        }
+        else if (hovered)
         {
             penWidth = style::connectionHoveredPathWidth();
             penBrush = style::connectionHoveredPath();
@@ -229,8 +242,13 @@ ConnectionGraphicsObject::paint(QPainter* painter,
         }
         else if (isDraft)
         {
+            PortType draftType = m_connection.draftType();
+            if (draftType == PortType::In)
+            {
+                penBrush = style::typeIdColor(m_endType);
+            }
+
             penWidth = style::connectionDraftPathWidth();
-            penBrush = style::connectionDraftPath();
             penStyle = Qt::DashLine;
         }
         else if (!NodeDataFactory::instance().canConvert(m_startType, m_endType))
@@ -263,14 +281,14 @@ ConnectionGraphicsObject::paint(QPainter* painter,
         painter->drawPath(path);
     }
 
-    double const pointRadius = style::nodePortSize();
-
     // draw end points
     if (isDraft)
     {
-        painter->setPen(style::connectionDraftPath());
-        painter->setBrush(style::connectionDraftPath());
-        painter->drawEllipse(!m_connection.inNodeId.isValid() ? m_end : m_start,
+        double const pointRadius = style::nodePortSize();
+
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(pen.brush());
+        painter->drawEllipse(m_connection.draftType() == PortType::Out ? m_end : m_start,
                              pointRadius, pointRadius);
     }
 
