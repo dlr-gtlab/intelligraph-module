@@ -202,16 +202,20 @@ struct ConnectionId
     NodeId inNodeId;
     PortId inPort;
 
+    /// Reverses the node and port ids, such that the out node becomes the
+    /// in node
     constexpr void reverse() noexcept
     {
         *this = reversed();
     }
 
+    /// Returns a new connection that has its node and port ids reversed
     constexpr ConnectionId reversed() const noexcept
     {
         return { inNodeId, inPort, outNodeId, outPort };
     }
 
+    /// Returns the node id associated with the port type
     constexpr NodeId node(PortType type) const
     {
         switch (type)
@@ -225,6 +229,7 @@ struct ConnectionId
         }
     }
 
+    /// Returns the port id associated with the port type
     constexpr PortId port(PortType type) const
     {
         switch (type)
@@ -238,12 +243,36 @@ struct ConnectionId
         }
     }
 
+    /// Whether this connection is valid (i.e. contains only valid node
+    /// and port ids)
     constexpr bool isValid() const noexcept
     {
         return inNodeId  != invalid<NodeId>() &&
                outNodeId != invalid<NodeId>() &&
                inPort    != invalid<PortId>() &&
                outPort   != invalid<PortId>();
+    }
+
+    /// Whether this connection is a draft (i.e. one side is valid)
+    constexpr bool isDraft() const noexcept
+    {
+        return draftType() != PortType::NoType;
+    }
+
+    /// Returns which side of the draft connection is valid
+    constexpr PortType draftType() const noexcept
+    {
+        if (outNodeId == invalid<NodeId>() && outPort == invalid<PortId>() &&
+            inNodeId  != invalid<NodeId>() && inPort  != invalid<PortId>())
+        {
+            return PortType::In;
+        }
+        if (inNodeId  == invalid<NodeId>() && inPort  == invalid<PortId>() &&
+            outNodeId != invalid<NodeId>() && outPort != invalid<PortId>())
+        {
+            return PortType::Out;
+        }
+        return PortType::NoType;
     }
 
     // Overload comparison operators as needed

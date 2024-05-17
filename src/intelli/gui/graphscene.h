@@ -32,6 +32,7 @@ class GraphScene : public GtGraphicsScene
 
 public:
 
+    using PortInfo = Node::PortInfo;
     using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
 
     GraphScene(Graph& graph);
@@ -133,11 +134,31 @@ private:
     
     void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
 
-    void moveConnection(ConnectionGraphicsObject* object, NodeGraphicsObject* node = nullptr);
+    /**
+     * @brief Updates the connection's end points. If a node graphics object
+     * is passed in, only this side is updated.
+     * @param object Connection object to update
+     * @param node Node object that has changed (optional)
+     */
+    void moveConnection(ConnectionGraphicsObject* object,
+                        NodeGraphicsObject* node = nullptr);
 
-    void moveConnectionPoint(ConnectionGraphicsObject* object, PortType type);
+    /**
+     * @brief Updates the connection's end point that the specified port type
+     * refers to.
+     * @param object Connection object to update
+     * @param type Port type of the end point
+     */
+    void moveConnectionPoint(ConnectionGraphicsObject& object, PortType type);
 
-    void highlightCompatibleNodes(NodeId nodeId, PortType type, TypeId const& typeId);
+    /**
+     * @brief Highlights all nodes their ports that are compatible to `port`
+     * @param node Source node
+     * @param port Source port
+     */
+    void highlightCompatibleNodes(Node& node, PortInfo const& port);
+
+    void clearHighlights();
 
 private slots:
 
@@ -159,7 +180,9 @@ private slots:
 
     void onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId);
 
-    void onMakeDraftConnection(NodeGraphicsObject* object, PortType type, PortId portId);
+    void onMakeDraftConnection(NodeGraphicsObject* object,
+                               PortType type,
+                               PortId portId);
 
     void onNodeContextMenu(NodeGraphicsObject* object, QPointF pos);
 

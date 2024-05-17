@@ -50,12 +50,12 @@ public:
     /**
      * @brief constructor
      * @param connection ConnectionId to render. May be partially invalid,
-     * indicating a draft connection
+     * indicating a draft connection.
      * @param outType typeId of the output side, used for rendering
      * @param inType typeId of the input side, used for rendering
      */
     explicit ConnectionGraphicsObject(ConnectionId connection,
-                                      TypeId outType  = {},
+                                      TypeId outType = {},
                                       TypeId inType = {});
 
     /**
@@ -113,6 +113,13 @@ public:
      */
     ControlPoints controlPoints() const;
 
+    /**
+     * @brief Deemphasizes this object, i.e. to visually highlight other
+     * objects.
+     * @param inactive Whether this object should be made inactive
+     */
+    void makeInactive(bool inactive = true);
+
 protected:
 
     void paint(QPainter* painter,
@@ -141,6 +148,8 @@ private:
     mutable QPointF m_start, m_end;
     /// Whether the object is hovered
     bool m_hovered = false;
+    /// Whether this object is considered inactive
+    bool m_inactive = false;
 
     /// returns the painter path for the current connection shape.
     QPainterPath path() const;

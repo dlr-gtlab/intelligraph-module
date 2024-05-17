@@ -139,6 +139,11 @@ public:
      */
     void setNodeEvalState(NodeEvalState state);
 
+    /**
+     * @brief The Highlights class.
+     * Denotes whether a node or a port should be highlighted by the painter.
+     * This is only intended for visualizations.
+     */
     class Highlights
     {
         friend class NodeGraphicsObject;
@@ -148,9 +153,11 @@ public:
         NodeGraphicsObject* m_object = nullptr;
         /// List of highlightes ports
         /// (used preallocated array as a preliminary optimization)
-        QVarLengthArray<PortId, 10> m_comaptiblePorts;
+        QVarLengthArray<PortId, 10> m_compatiblePorts;
         /// Whether ports should be highlighted
-        bool m_active = false;
+        bool m_isActive = false;
+        /// Whether the node is considered compatible
+        bool m_isNodeCompatible = false;
 
     public:
 
@@ -161,32 +168,37 @@ public:
         ~Highlights() = default;
 
         /**
-         * @brief Whether ports should be highlighted
-         * @return Highlight ports
+         * @brief Returns whether highlighting is active
+         * @return Is active
          */
         bool isActive() const;
         /**
-         * @brief Whether this node has ports maked as comaptible
-         * @return
+         * @brief Whether this node is should be marked as compatible
+         * @return Is node comaptible
          */
-        bool isCompatible() const;
+        bool isNodeCompatible() const;
         /**
-         * @brief Returns whether the port should be highlighted
+         * @brief Returns whether the port should be marked compatible
          * @param port Port to check
          * @return Is port highlighted
          */
         bool isPortCompatible(PortId port) const;
-
         /**
          * @brief Highlights this node and all ports as incompatible
          */
         void setAsIncompatible();
         /**
          * @brief Highlights all ports that are compatible to the TypeId.
-         * @param sourceTypeId TypeId to check
-         * @param type Which ports should be checked
+         * @param typeId TypeId to check
+         * @param type Which ports to check
          */
-        void setCompatiblePorts(TypeId const& sourceTypeId, PortType type);
+        void setCompatiblePorts(TypeId const& typeId, PortType type);
+        /**
+         * @brief Forces the port to be marked as compatible (visual only). Does
+         * not override other highlights.
+         * @param port Port to mark as compatible
+         */
+        void setPortAsCompatible(PortId port);
         /**
          * @brief Clears the highlights.
          */

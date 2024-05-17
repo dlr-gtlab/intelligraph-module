@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Updated rendering of the grid to show minor and major grid lines. - #95
+- Updated highlighting of nodes, connections, and ports when creating a draft connection to further emphasize compatibilities. - #94
 
 ### Fixed
 - Fixed pop-up window when starting GTlab. - #93
+- Fixed compatible ports sometimes not beeing highlighted correctly when creating a draft connection. - #94
 
 ## [0.10.3] - 2024-04-09
 ### Fixed

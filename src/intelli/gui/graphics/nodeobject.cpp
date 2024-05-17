@@ -58,9 +58,14 @@ protected:
 struct NodeGraphicsObject::Impl
 {
 
+/// Helper function that returns a scoped object which updates the geometry of
+/// the node accordingly
 GT_NO_DISCARD
-static inline auto prepareGeometryChange(NodeGraphicsObject* o)
+static inline auto
+prepareGeometryChange(NodeGraphicsObject* o)
 {
+    assert(o);
+
     o->prepareGeometryChange();
 
     return gt::finally([o](){
@@ -68,6 +73,31 @@ static inline auto prepareGeometryChange(NodeGraphicsObject* o)
         o->update();
         emit o->nodeGeometryChanged(o);
     });
+}
+
+/// Updates the palette of the widget
+static inline void
+updateWidgetPalette(NodeGraphicsObject* o)
+{
+    assert(o);
+
+    if (!o->m_proxyWidget) return;
+    QWidget* w = o->m_proxyWidget->widget();
+    if (!w) return;
+
+    QPalette p = w->palette();
+    p.setColor(QPalette::Window, o->m_painter->backgroundColor());
+    w->setPalette(p);
+}
+
+/// Helper function to check whether the resize handle should exist
+static inline bool
+hasResizeHandle(NodeGraphicsObject* o)
+{
+    assert(o);
+
+    return o->m_node->nodeFlags() & NodeFlag::Resizable &&
+           o->m_proxyWidget && o->m_proxyWidget->widget();
 }
 
 }; // struct Impl;
@@ -227,13 +257,6 @@ NodeGraphicsObject::embedCentralWidget()
 
     if (auto w = makeWidget())
     {
-        auto size = m_node->size();
-        if (size.isValid()) w->resize(m_node->size());
-
-        auto p = w->palette();
-        p.setColor(QPalette::Window, m_painter->backgroundColor());
-        w->setPalette(p);
-
         m_geometry->setWidget(w.get());
 
         m_proxyWidget = new NodeProxyWidget(this);
@@ -241,6 +264,8 @@ NodeGraphicsObject::embedCentralWidget()
         m_proxyWidget->setWidget(w.release());
         m_proxyWidget->setPreferredWidth(5);
         m_proxyWidget->setZValue(style::zValue(ZValue::NodeWidget));
+
+        Impl::updateWidgetPalette(this);
     }
 }
 
@@ -320,7 +345,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
 
     // check for resize handle hit
-    if (m_node->nodeFlags() & NodeFlag::Resizable && m_proxyWidget && m_proxyWidget->widget())
+    if (Impl::hasResizeHandle(this))
     {
         auto pos = event->pos();
         bool hit = m_geometry->resizeHandleRect().contains(pos);
@@ -449,8 +474,7 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 
     // check for resize handle hit and change cursor
     if (m_geometry->resizeHandleRect().contains(pos) &&
-        m_node->nodeFlags() & NodeFlag::Resizable &&
-        m_proxyWidget && m_proxyWidget->widget())
+        Impl::hasResizeHandle(this))
     {
         setCursor(QCursor(Qt::SizeFDiagCursor));
         return;
@@ -551,75 +575,77 @@ NodeGraphicsObject::Highlights::Highlights(NodeGraphicsObject& object) :
 bool
 NodeGraphicsObject::Highlights::isActive() const
 {
-    return m_active;
+    return m_isActive;
 }
 
 bool
-NodeGraphicsObject::Highlights::isCompatible() const
+NodeGraphicsObject::Highlights::isNodeCompatible() const
 {
-    return isActive() && !m_comaptiblePorts.empty();
+    return m_isNodeCompatible && !m_compatiblePorts.empty();
 }
 
 bool
 NodeGraphicsObject::Highlights::isPortCompatible(PortId port) const
 {
-    return m_comaptiblePorts.contains(port);
+    return m_compatiblePorts.contains(port);
 }
 
 void
 NodeGraphicsObject::Highlights::setAsIncompatible()
 {
-    m_active = true;
-    m_comaptiblePorts.clear();
+    m_isActive = true;
+    m_isNodeCompatible = false;
+
+    m_compatiblePorts.clear();
+
+    Impl::updateWidgetPalette(m_object);
+
     m_object->update();
 }
+
 void
-NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& sourceTypeId,
+NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& typeId,
                                                    PortType type)
 {
-    m_active = true;
+    m_isActive = true;
+    m_isNodeCompatible = true;
+
     auto& graph = m_object->graph();
     auto& node  = m_object->node();
 
     auto& factory = NodeDataFactory::instance();
-    for (auto& port :node.ports(type))
+    for (auto& port : node.ports(type))
     {
         std::pair<TypeId const&, TypeId const&> pair{
-            type == PortType::In ? port.typeId : sourceTypeId,
-            type == PortType::In ? sourceTypeId : port.typeId
+            type == PortType::In  ? port.typeId : typeId,
+            type == PortType::Out ? port.typeId : typeId
         };
 
+        if (type == PortType::In &&
+            !graph.findConnections(node.id(), port.id()).empty()) continue;
+
         if (!factory.canConvert(pair.first, pair.second)) continue;
-        if (!graph.findConnections(node.id(), port.id()).empty()) continue;
 
-        m_comaptiblePorts.append(port.id());
+        m_compatiblePorts.append(port.id());
     }
 
-    if (isActive() && (m_object->m_proxyWidget))
-    if (auto* w = m_object->m_proxyWidget->widget())
-    {
-        auto p = w->palette();
-        p.setColor(QPalette::Window, m_object->m_painter->backgroundColor());
-        w->setPalette(p);
-    }
+    if (isNodeCompatible()) Impl::updateWidgetPalette(m_object);
     m_object->update();
+}
+
+void
+NodeGraphicsObject::Highlights::setPortAsCompatible(PortId port)
+{
+    m_compatiblePorts.append(port);
 }
 
 void
 NodeGraphicsObject::Highlights::clear()
 {
-    bool wasHighlighted = isCompatible();
+    m_isActive = false;
+    m_compatiblePorts.clear();
 
-    m_active = false;
-    m_comaptiblePorts.clear();
-
-    if (wasHighlighted && (m_object->m_proxyWidget))
-    if (auto* w = m_object->m_proxyWidget->widget())
-    {
-        auto p = w->palette();
-        p.setColor(QPalette::Window, m_object->m_painter->backgroundColor());
-        w->setPalette(p);
-    }
+    Impl::updateWidgetPalette(m_object);
 
     m_object->update();
 }
