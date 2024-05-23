@@ -161,7 +161,6 @@ accumulateDependentNodes(Graph const& graph, QVector<NodeId>& nodes, NodeId node
     return true;
 }
 
-
 /// checks and updates the node id of the node depending of the policy specified
 static bool
 updateNodeId(Graph const& graph, Node& node, NodeIdPolicy policy)
@@ -198,21 +197,86 @@ struct PortDeleted
 
     void operator()(PortType type, PortIndex idx)
     {
+        NodeId nodeId = node->id();
+
         auto port = node->portId(type, idx);
         if (port == invalid<PortId>())
         {
-            gtWarning() << tr("Failed to update connections of deleted port %1 with %2 of node %3!")
-                               .arg(port).arg(toString(type)).arg(node->id());
+            gtWarning() << tr("Failed to update connections of deleted "
+                              "port %1 with %2 of node %3!")
+                               .arg(port).arg(toString(type)).arg(nodeId);
             return;
         }
 
-        auto cmd = graph->modify();
-        emit graph->nodePortAboutToBeDeleted(node->id(), type, idx);
+        emit graph->nodePortAboutToBeDeleted(nodeId, type, idx);
 
-        auto const& connections = graph->findConnections(node->id(), port);
+        auto const& connections = graph->findConnections(nodeId, port);
+        if (connections.empty()) return;
+
+        auto cmd = graph->modify();
+
         for (auto conId : connections)
         {
             graph->deleteConnection(conId);
+        }
+    }
+
+private:
+
+    Graph* graph = nullptr;
+    Node* node = nullptr;
+};
+
+/// Functor to handle port change
+struct PortChanged
+{
+    PortChanged(Graph* g, Node* n) : graph(g), node(n)
+    {
+        assert(graph);
+        assert(node);
+    }
+
+    void operator()(PortId portId)
+    {
+        NodeId nodeId = node->id();
+
+        auto const& connections = graph->findConnections(nodeId, portId);
+        if (connections.empty()) return;
+
+        PortInfo* port = node->port(portId);
+        if (!port)
+        {
+            gtWarning() << tr("Failed to update connections of changed "
+                              "portId %1 node %2!")
+                               .arg(portId).arg(nodeId);
+            return;
+        }
+
+        PortType type = invert(node->portType(portId));
+        assert(type != PortType::NoType);
+
+        Modification cmd;
+        assert(cmd.isNull());
+
+        auto& factory = NodeDataFactory::instance();
+
+        // check if connections are still valid
+        for (auto conId : connections)
+        {
+            NodeId otherNodeId = conId.node(type);
+            assert(otherNodeId != nodeId);
+
+            Node* otherNode = graph->findNode(otherNodeId);
+            if (!otherNode) continue;
+
+            PortInfo* otherPort = otherNode->port(conId.port(type));
+            if (!otherPort) continue;
+
+            if (!factory.canConvert(port->typeId, otherPort->typeId))
+            {
+                if (cmd.isNull()) cmd = graph->modify();
+                graph->deleteConnection(conId);
+            }
         }
     }
 
@@ -764,10 +828,13 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     m_nodes.insert(nodeId, dag::Entry{ node.get() });
 
     // setup connections
+    connect(node.get(), &Node::portChanged,
+            this, Impl::PortChanged(this, node.get()), Qt::DirectConnection);
+
     connect(node.get(), &Node::portInserted,
             this, [this, nodeId = node->id()](PortType type, PortIndex idx){
         emit nodePortInserted(nodeId, type, idx);
-    });
+    }, Qt::DirectConnection);
 
     connect(node.get(), &Node::portAboutToBeDeleted,
             this, Impl::PortDeleted(this, node.get()), Qt::DirectConnection);
@@ -775,7 +842,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     connect(node.get(), &Node::portDeleted,
             this, [this, nodeId = node->id()](PortType type, PortIndex idx){
         emit nodePortDeleted(nodeId, type, idx);
-    });
+    }, Qt::DirectConnection);
 
     connect(node.get(), &Node::nodeAboutToBeDeleted,
             this, Impl::NodeDeleted(this), Qt::DirectConnection);

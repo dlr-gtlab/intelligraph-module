@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed pop-up window when starting GTlab. - #93
 - Fixed compatible ports sometimes not beeing highlighted correctly when creating a draft connection. - #94
+- Updating the type of a port will now check if associated connections are still valid and remove incompatible connections. - #78
 
 ## [0.10.3] - 2024-04-09
 ### Fixed
