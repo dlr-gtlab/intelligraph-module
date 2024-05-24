@@ -158,14 +158,16 @@ GraphExecCalculator::run()
     intelli::GraphExecutionModel model(*graph);
     model.reset();
 
+#if 0
     bool success = model.evaluateGraph().wait();
 
     graph->deleteLater();
 
     /// ToDo:
     /// Add monitoring information if possible
-
     return success;
+#endif
+    return false;
 }
 
 }

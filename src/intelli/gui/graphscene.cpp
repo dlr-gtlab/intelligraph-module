@@ -253,10 +253,10 @@ GraphScene::~GraphScene()
 {
     if (!m_graph) return;
 
-    auto* model = m_graph->executionModel();
+    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
     if (!model) return;
 
-    model->disableAutoEvaluation();
+    model->stopAutoEvaluatingGraph();
 }
 
 void
@@ -277,9 +277,8 @@ GraphScene::endReset()
 {
     m_nodes.clear();
 
-    auto* model = m_graph->executionModel();
-    if (!model) model = m_graph->makeExecutionModel();
-    else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
+    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
+    if (!model) model = new GraphExecutionModel(*m_graph);
 
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
@@ -301,7 +300,7 @@ GraphScene::endReset()
     connect(model, &GraphExecutionModel::nodeEvalStateChanged,
             this, &GraphScene::onNodeEvalStateChanged, Qt::DirectConnection);
 
-    if ( m_graph->isActive()) model->autoEvaluate().detach();
+    if (m_graph->isActive()) model->autoEvaluateGraph();
 }
 
 Graph&
@@ -1063,9 +1062,6 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     groupNode->setPos(center);
     groupNode->setActive(true);
 
-    auto exec = groupNode->makeDummyExecutionModel();
-    exec->disableAutoEvaluation();
-
     // setup input/output provider
     groupNode->initInputOutputProviders();
     auto* inputProvider  = groupNode->inputProvider();
@@ -1074,7 +1070,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     if (!inputProvider || !outputProvider)
     {
         gtError() << tr("Failed to group nodes! "
-                    "(Invalid input or output provider)");
+                        "(Invalid input or output provider)");
         return;
     }
 
@@ -1319,12 +1315,6 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     {
         groupNode->appendConnection(std::make_unique<Connection>(conId));
     }
-
-    // enable auto evaluation if parent graph is auto evaluating
-    if (auto* parentExec = m_graph->executionModel())
-    {
-        if (parentExec->isAutoEvaluating()) exec->autoEvaluate().detach();
-    }
 }
 
 void
@@ -1376,13 +1366,18 @@ GraphScene::onNodeDeleted(NodeId nodeId)
 }
 
 void
-GraphScene::onNodeEvalStateChanged(NodeId nodeId)
+GraphScene::onNodeEvalStateChanged(QString nodeUuid)
 {
-    auto* node = nodeObject(nodeId);
-    if (!node) return;
+    auto* node = m_graph->findNodeByUuid(nodeUuid);
+    if (!node || node->parent() != m_graph) return;
 
-    auto exec = m_graph->executionModel();
-    node->setNodeEvalState(exec->nodeEvalState(nodeId));
+    auto* object = nodeObject(node->id());
+    assert(object);
+
+    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
+    assert(model);
+
+    object->setNodeEvalState(model->nodeEvalState(nodeUuid));
 }
 
 void

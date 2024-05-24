@@ -51,20 +51,25 @@ enum class NodeEvalMode
     /// Indicates that the node will be evaluated non blockingly in a separate
     /// thread
     Detached = 0,
-    /// Indicates the the node should be evaluated exclusively to other nodes in
-    /// a separate thread
-    Exclusive,
     /// Indicates that the node should be evaluated in the main thread, thus
     /// blocking the GUI. Should only be used if node evaluates instantly.
-    MainThread,
+    Blocking,
+    /// Indicates the the node should be evaluated exclusively to other nodes in
+    /// a separate thread
+    ExclusiveDetached,
+    /// Indicates the the node should be evaluated exclusively to other nodes in
+    /// the main thread
+    ExclusiveBlocking,
     /// Default behaviour
     Default = Detached,
+    /// deprecated
+    Exclusive [[deprecated("Use `ExclusiveDetached` or `ExclusiveBlocking` instead")]] = ExclusiveDetached,
+    MainThread [[deprecated("Use `Blocking` instead")]] = Blocking,
 };
 
 class NodeExecutor;
 class NodeData;
 class NodeDataInterface;
-class GraphExecutionModel;
 struct NodeImpl;
 
 /**
@@ -104,7 +109,6 @@ class GT_INTELLI_EXPORT Node : public GtObject
     
     friend class NodeExecutor;
     friend class NodeGraphicsObject;
-    friend class GraphExecutionModel;
 
 public:
 
@@ -469,7 +473,7 @@ protected:
      * @return Returns true if the evaluation was triggered sucessfully.
      * (node may be evaluated non-blocking)
      */
-    virtual bool handleNodeEvaluation(GraphExecutionModel& model);
+    virtual bool handleNodeEvaluation(NodeDataInterface& model);
 
     /**
      * @brief Should be called within the constructor. Used to register

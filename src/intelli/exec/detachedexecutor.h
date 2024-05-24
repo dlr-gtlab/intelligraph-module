@@ -28,7 +28,7 @@ public:
     DetachedExecutor();
     ~DetachedExecutor();
 
-    bool evaluateNode(Node& node, GraphExecutionModel& model);
+    bool evaluateNode(Node& node, NodeDataInterface& model);
 
 protected:
     

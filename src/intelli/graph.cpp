@@ -11,7 +11,6 @@
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
 #include "intelli/graphexecmodel.h"
-#include "intelli/nodeexecutor.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/private/utils.h"
@@ -26,6 +25,7 @@
 #include <QCoreApplication>
 
 using namespace intelli;
+using namespace intelli::connection_model;
 
 struct Graph::Impl
 {
@@ -145,10 +145,10 @@ canAppendConnection(Graph& graph, ConnectionId conId, MakeError makeError = {}, 
 static bool
 accumulateDependentNodes(Graph const& graph, QVector<NodeId>& nodes, NodeId nodeId, PortType type)
 {
-    auto const* entry = graph.findNodeEntry(nodeId);
+    auto const* entry = graph.findNodeConnection(nodeId);
     if (!entry) return false;
 
-    for (auto& dependent : type == PortType::In ? entry->ancestors : entry->descendants)
+    for (auto& dependent : entry->ports(type))
     {
         if (nodes.contains(dependent.node)) continue;
         nodes.append(dependent.node);
@@ -296,8 +296,8 @@ struct NodeDeleted
 
     void operator()(NodeId nodeId)
     {
-        auto node = graph->m_nodes.find(nodeId);
-        if (node == graph->m_nodes.end())
+        auto node = graph->m_data.find(nodeId);
+        if (node == graph->m_data.end())
         {
             gtWarning() << tr("Failed to delete node") << nodeId
                         << tr("(node was not found!)");
@@ -312,13 +312,9 @@ struct NodeDeleted
             graph->deleteConnection(conId);
         }
 
-        graph->m_nodes.erase(node);
+        emit graph->nodeAboutToBeDeleted(nodeId);
 
-        node = graph->m_nodes.find(nodeId);
-        if (node != graph->m_nodes.end())
-        {
-            gtError() << tr("something went wrong?") << nodeId;
-        }
+        graph->m_data.erase(node);
 
         emit graph->nodeDeleted(nodeId);
     }
@@ -339,8 +335,8 @@ struct ConnectionDeleted
 
     void operator()()
     {
-        auto ancestorConnection   = dag::ConnectionDetail::fromConnection(conId.reversed());
-        auto descendantConnection = dag::ConnectionDetail::fromConnection(conId);
+        auto ancestorConnection   = ConnectionDetail::fromConnection(conId.reversed());
+        auto descendantConnection = ConnectionDetail::fromConnection(conId);
 
         auto* targetNode = graph->findNodeEntry(conId.inNodeId);
         auto* sourceNode = graph->findNodeEntry(conId.outNodeId);
@@ -373,8 +369,8 @@ struct ConnectionDeleted
         emit targetNode->node->portDisconnected(conId.inPort);
         emit sourceNode->node->portDisconnected(conId.outPort);
 
-        targetNode->ancestors.removeAt(inIdx);
-        sourceNode->descendants.removeAt(outIdx);
+        targetNode->ancestors.remove(inIdx);
+        sourceNode->descendants.remove(outIdx);
 
         emit graph->connectionDeleted(conId);
     }
@@ -397,22 +393,26 @@ Graph::Graph() :
     group->setDefault(true);
 
     setActive(false);
+    setNodeEvalMode(NodeEvalMode::Blocking);
 
     connect(group, &ConnectionGroup::mergeConnections, this, [this](){
         restoreConnections();
     });
-
-    connect(this, &Node::isActiveChanged, this, [this](){
-        if (this->findParent<Graph*>()) return;
-        if (auto* exec = executionModel())
-        {
-            isActive() ? (void)exec->autoEvaluate().detach() :
-                exec->disableAutoEvaluation();
-        }
-    });
 }
 
 Graph::~Graph() = default;
+
+Graph*
+Graph::parentGraph()
+{
+    return qobject_cast<Graph*>(parent());
+}
+
+Graph const*
+Graph::parentGraph() const
+{
+    return qobject_cast<Graph const*>(parent());
+}
 
 QList<Node*>
 Graph::nodes()
@@ -477,17 +477,17 @@ ConnectionGroup const& Graph::connectionGroup() const
     return const_cast<Graph*>(this)->connectionGroup();
 }
 
-dag::Entry*
+ConnectionData*
 Graph::findNodeEntry(NodeId nodeId)
 {
-    auto iter = m_nodes.find(nodeId);
-    if (iter == m_nodes.end()) return {};
+    auto iter = m_data.find(nodeId);
+    if (iter == m_data.end()) return {};
 
     return &(*iter);
 }
 
-dag::Entry const*
-Graph::findNodeEntry(NodeId nodeId) const
+ConnectionData const*
+Graph::findNodeConnection(NodeId nodeId) const
 {
     return const_cast<Graph*>(this)->findNodeEntry(nodeId);
 }
@@ -504,6 +504,18 @@ Graph::inputProvider() const
     return const_cast<Graph*>(this)->inputProvider();
 }
 
+DynamicNode*
+Graph::inputNode()
+{
+    return inputProvider();
+}
+
+DynamicNode const*
+Graph::inputNode() const
+{
+    return inputProvider();
+}
+
 GroupOutputProvider*
 Graph::outputProvider()
 {
@@ -516,33 +528,16 @@ Graph::outputProvider() const
     return const_cast<Graph*>(this)->outputProvider();
 }
 
-GraphExecutionModel*
-Graph::makeExecutionModel()
+DynamicNode*
+Graph::outputNode()
 {
-    auto* model = makeDummyExecutionModel();
-    model->makeActive();
-
-    return model;
+    return outputProvider();
 }
 
-GraphExecutionModel*
-Graph::makeDummyExecutionModel()
+DynamicNode const*
+Graph::outputNode() const
 {
-    if (auto* model = executionModel()) return model;
-
-    return new GraphExecutionModel(*this, GraphExecutionModel::DummyModel);
-}
-
-GraphExecutionModel*
-Graph::executionModel()
-{
-    return findDirectChild<GraphExecutionModel*>();
-}
-
-GraphExecutionModel const*
-Graph::executionModel() const
-{
-    return const_cast<Graph*>(this)->executionModel();
+    return outputProvider();
 }
 
 QVector<NodeId>
@@ -586,6 +581,18 @@ Graph::findNode(NodeId nodeId) const
     return const_cast<Graph*>(this)->findNode(nodeId);
 }
 
+Node*
+Graph::findNodeByUuid(NodeUuid const& uuid)
+{
+    return qobject_cast<Node*>(getObjectByUuid(uuid));
+}
+
+Node const*
+Graph::findNodeByUuid(NodeUuid const& uuid) const
+{
+    return const_cast<Graph*>(this)->findNodeByUuid(uuid);
+}
+
 Connection*
 Graph::findConnection(ConnectionId conId)
 {
@@ -609,7 +616,7 @@ Graph::findConnection(ConnectionId conId) const
 QVector<ConnectionId>
 Graph::findConnections(NodeId nodeId, PortType type) const
 {
-    auto* entry = findNodeEntry(nodeId);
+    auto* entry = findNodeConnection(nodeId);
     if (!entry) return {};
 
     QVector<ConnectionId> connections;
@@ -635,7 +642,7 @@ Graph::findConnections(NodeId nodeId, PortType type) const
 QVector<ConnectionId>
 Graph::findConnections(NodeId nodeId, PortId portId) const
 {
-    auto* entry = findNodeEntry(nodeId);
+    auto* entry = findNodeConnection(nodeId);
     if (!entry) return {};
 
     QVector<ConnectionId> connections;
@@ -825,7 +832,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     }
 
     // append node to model
-    m_nodes.insert(nodeId, dag::Entry{ node.get() });
+    m_data.insert(nodeId, ConnectionData{ node.get() });
 
     // setup connections
     connect(node.get(), &Node::portChanged,
@@ -886,8 +893,8 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     assert(sourceNode);
 
     // append connection to model
-    auto ancestorConnection   = dag::ConnectionDetail::fromConnection(conId.reversed());
-    auto descendantConnection = dag::ConnectionDetail::fromConnection(conId);
+    auto ancestorConnection   = ConnectionDetail::fromConnection(conId.reversed());
+    auto descendantConnection = ConnectionDetail::fromConnection(conId);
 
     targetNode->ancestors.append(ancestorConnection);
     sourceNode->descendants.append(descendantConnection);
@@ -976,47 +983,6 @@ Graph::deleteConnection(ConnectionId connectionId)
     return false;
 }
 
-bool
-Graph::handleNodeEvaluation(GraphExecutionModel& model)
-{
-    auto* input = inputProvider();
-    if (!input) return false;
-
-    auto* output = outputProvider();
-    if (!output) return false;
-
-    auto* submodel = makeDummyExecutionModel();
-
-    gtDebug().verbose().nospace()
-            << "### Evaluating node: '" << objectName() << "'";
-
-    emit computingStarted();
-    // trick the submodel into thinking that the node was already evaluated
-    emit input->computingStarted();
-
-    submodel->setNodeData(input->id(), PortType::Out, model.nodeData(id(), PortType::In));
-    submodel->invalidateNode(output->id());
-
-    connect(submodel, &GraphExecutionModel::nodeEvaluated,
-            this, &Graph::onSubNodeEvaluated, Qt::UniqueConnection);
-    connect(submodel, &GraphExecutionModel::graphStalled,
-            this, &Graph::onSubGraphStalled, Qt::UniqueConnection);
-
-    emit input->computingFinished();
-
-    auto finally = gt::finally([this](){
-        emit computingFinished();
-    });
-
-    if (submodel->evaluateNode(output->id()).detach() &&
-        !submodel->isNodeEvaluated(output->id()))
-    {
-        finally.clear();
-    }
-
-    return true;
-}
-
 void
 Graph::onObjectDataMerged()
 {
@@ -1100,6 +1066,15 @@ Graph::initInputOutputProviders()
     if (output) appendNode(std::move(output));
 }
 
+void
+Graph::eval()
+{
+    for (auto const& port : ports(PortType::Out))
+    {
+        setNodeData(port.id(), nodeData(port.id()));
+    }
+}
+
 Graph::Modification
 Graph::modify()
 {
@@ -1129,46 +1104,6 @@ Graph::emitEndModification()
     }
 }
 
-void
-Graph::onSubNodeEvaluated(NodeId nodeId)
-{
-    auto* output = outputProvider();
-    if (!output) return;
-
-    if (output->id() != nodeId) return;
-
-    auto finally = gt::finally([this](){
-        emit computingFinished();
-    });
-
-    auto* submodel = NodeExecutor::accessExecModel(*output);
-    if (!submodel) return;
-
-    auto* model = NodeExecutor::accessExecModel(*this);
-    if (!model) return;
-
-    model->setNodeData(id(), PortType::Out, submodel->nodeData(output->id(), PortType::In));
-}
-
-void
-Graph::onSubGraphStalled()
-{
-    auto finally = gt::finally([this](){
-        emit computingFinished();
-    });
-
-    auto* output = outputProvider();
-    if (!output) return;
-
-    auto* submodel = NodeExecutor::accessExecModel(*output);
-    if (!submodel) return;
-
-    auto* model = NodeExecutor::accessExecModel(*this);
-    if (!model) return;
-
-    model->setNodeData(id(), PortType::Out, submodel->nodeData(output->id(), PortType::In));
-}
-
 GtMdiItem*
 intelli::show(Graph& graph)
 {
@@ -1194,51 +1129,6 @@ intelli::show(std::unique_ptr<Graph> graph)
     if (item->appendChild(graph.get())) graph.release();
 
     return item;
-}
-
-void
-intelli::dag::debugGraph(DirectedAcyclicGraph const& graph)
-{
-    auto const printableCpation = [](Node* node){
-        if (!node) return QStringLiteral("NULL");
-
-        auto caption = node->caption();
-        caption.remove(']');
-        caption.replace('[', '_');
-        caption.replace(' ', '_');
-        return QStringLiteral("%1:").arg(node->id()) + caption;
-    };
-
-    auto text = QStringLiteral("flowchart LR\n");
-
-    auto begin = graph.keyValueBegin();
-    auto end   = graph.keyValueEnd();
-    for (auto iter = begin; iter != end; ++iter)
-    {
-        auto& nodeId = iter->first;
-        auto& entry = iter->second;
-
-        assert(entry.node && entry.node->id() == nodeId);
-
-        auto caption = printableCpation(entry.node);
-        text += QStringLiteral("\t") + caption + QStringLiteral("\n");
-
-        for (auto& data : entry.descendants)
-        {
-            auto otherEntry = graph.find(data.node);
-            if (otherEntry == graph.end()) continue;
-            
-            assert(otherEntry->node && otherEntry->node->id() == data.node);
-
-            text += QStringLiteral("\t") + caption +
-                    QStringLiteral(" --p") + QString::number(data.sourcePort) +
-                    QStringLiteral(" : p") + QString::number(data.port) +
-                    QStringLiteral("--> ") + printableCpation(otherEntry->node) +
-                    QStringLiteral("\n");
-        }
-    }
-
-    gtInfo().nospace() << "Debugging graph...\n\"\n" << text << "\"";
 }
 
 bool isAcyclicHelper(Graph const& graph,
@@ -1296,4 +1186,95 @@ intelli::cyclicNodes(Graph const& graph)
     }
 
     return pending;
+}
+
+namespace intelli
+{
+
+inline QString
+printableCaption(Node const* node)
+{
+    if (!node) return QStringLiteral("id{NULL}");
+
+    QString uuid = node->uuid();
+    uuid.remove('{');
+    uuid.remove('}');
+    uuid.remove('-');
+
+    if (qobject_cast<GroupInputProvider const*>(node))
+    {
+        return QStringLiteral("id_%1((I))").arg(uuid);
+    }
+    if (qobject_cast<GroupOutputProvider const*>(node))
+    {
+        return QStringLiteral("id_%1((O))").arg(uuid);
+    }
+
+    QString caption = node->caption();
+    caption.remove(']');
+    caption.replace('[', '_');
+    caption.replace(' ', '_');
+    return QStringLiteral("id_%1(%2)").arg(uuid, node->caption());
+};
+
+QString
+debugGraphHelper(Graph const& graph)
+{
+    QString text;
+
+    auto const& data = graph.data();
+
+    auto begin = data.keyValueBegin();
+    auto end   = data.keyValueEnd();
+    for (auto iter = begin; iter != end; ++iter)
+    {
+        auto& nodeId = iter->first;
+        auto& entry = iter->second;
+
+        assert(entry.node && entry.node->id() == nodeId);
+
+        QString const& caption = printableCaption(entry.node);
+        text += QStringLiteral("\t") + caption + QStringLiteral("\n");
+
+        if (auto* g = qobject_cast<Graph const*>(entry.node))
+        if (auto* input  = g->inputProvider())
+        if (auto* output = g->outputProvider())
+        {
+            text += QStringLiteral("\t") + caption + QStringLiteral("-.->") + printableCaption(input)  + QStringLiteral("\n");
+            text += QStringLiteral("\t") + printableCaption(output) + QStringLiteral("-.->") + caption + QStringLiteral("\n");
+            text += QStringLiteral("\tsubgraph ") + g->caption() + QStringLiteral("\n");
+            text += debugGraphHelper(*g);
+            text += QStringLiteral("\tend\n");
+        }
+
+        for (auto& desc : entry.descendants)
+        {
+            auto otherEntry = data.find(desc.node);
+            if (otherEntry == data.end()) continue;
+
+            assert(otherEntry->node && otherEntry->node->id() == desc.node);
+
+            text += QStringLiteral("\t") + caption +
+                    QStringLiteral(" --") + QString::number(desc.sourcePort) +
+                    QStringLiteral(" : ") + QString::number(desc.port) +
+                    QStringLiteral("--> ") + printableCaption(otherEntry->node) +
+                    QStringLiteral("\n");
+        }
+    }
+
+    return text;
+}
+
+} // namespace intelli
+
+void
+intelli::connection_model::debugGraph(ConnectionGraph const&) { }
+
+void
+intelli::debug(Graph const& graph)
+{
+    QString text = QStringLiteral("flowchart LR\n");
+    text += debugGraphHelper(graph);
+
+    gtInfo().nospace() << "Debugging graph...\n\"\n" << text << "\"";
 }

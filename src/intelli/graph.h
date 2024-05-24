@@ -26,6 +26,7 @@ class GroupInputProvider;
 class GroupOutputProvider;
 class Connection;
 class ConnectionGroup;
+class DynamicNode;
 
 /**
  * @brief Opens the graph in a graph editor. The graph object should be kept
@@ -74,7 +75,7 @@ enum class NodeIdPolicy
 };
 
 /// directed acyclic graph representing connections and nodes
-namespace dag
+namespace connection_model
 {
 
 struct ConnectionDetail
@@ -107,12 +108,29 @@ struct ConnectionDetail
     }
 };
 
-struct Entry
+struct ConnectionData
 {
+    static constexpr size_t PRE_ALLOC = 10;
+
     /// pointer to node
     QPointer<Node> node;
     /// adjacency lists
-    QVector<ConnectionDetail> ancestors = {}, descendants = {};
+    QVarLengthArray<ConnectionDetail, PRE_ALLOC> ancestors = {}, descendants = {};
+
+    /**
+     * @brief Returns the ancestors or descendants depending on the port type
+     * @param type Port type
+     * @return Port vector
+     */
+    auto& ports(PortType type)
+    {
+        assert(type != PortType::NoType);
+        return (type == PortType::In) ? ancestors : descendants;
+    }
+    auto const& ports(PortType type) const
+    {
+        return const_cast<ConnectionData*>(this)->ports(type);
+    }
 };
 
 inline bool operator==(ConnectionDetail const& a, ConnectionDetail const& b)
@@ -122,14 +140,21 @@ inline bool operator==(ConnectionDetail const& a, ConnectionDetail const& b)
 
 inline bool operator!=(ConnectionDetail const& a, ConnectionDetail const& b) { return !(a == b); }
 
-using DirectedAcyclicGraph = QHash<NodeId, dag::Entry>;
+using ConnectionGraph = QHash<NodeId, ConnectionData>;
+using DirectedAcyclicGraph [[deprecated]] = ConnectionGraph;
+
+[[deprecated("use `debug` overload")]]
+GT_INTELLI_EXPORT void debugGraph(ConnectionGraph const&);
+
+} // namespace connection_model
+
+namespace dag = connection_model;
 
 /// prints the graph as a mermaid flow chart useful for debugging
-GT_INTELLI_EXPORT void debugGraph(DirectedAcyclicGraph const& graph);
+GT_INTELLI_EXPORT void debug(Graph const& graph);
 
-} // namespace dag
-
-using dag::DirectedAcyclicGraph;
+using connection_model::ConnectionGraph;
+using DirectedAcyclicGraph [[deprecated]] = ConnectionGraph;
 
 /**
  * @brief The Graph class.
@@ -143,12 +168,13 @@ class GT_INTELLI_EXPORT Graph : public Node
 
     template <PortType>
     friend class AbstractGroupProvider;
+    friend class GroupInputProvider;
 
     friend class GraphBuilder;
     friend class GraphScene;
 
 public:
-    
+
     Q_INVOKABLE Graph();
     ~Graph();
 
@@ -168,7 +194,7 @@ public:
     /**
      * @brief Returns the connection id matched by the given nodes and port
      * indicies. This can be used to easily access a connection id without
-     * knowing the speific port ids. The returned connection id may be invalid
+     * knowing the specific port ids. The returned connection id may be invalid
      * if the port are out of bounds or a node does not exist.
      * @param outNodeId Starting node id
      * @param outPortIdx Starting port index
@@ -178,6 +204,14 @@ public:
      */
     ConnectionId connectionId(NodeId outNodeId, PortIndex outPortIdx,
                               NodeId inNodeId, PortIndex inPortIdx) const;
+
+    /**
+     * @brief Returns the parent graph of this node (null if the graph is a
+     * root graph node)
+     * @return Parent graph
+     */
+    Graph* parentGraph();
+    Graph const* parentGraph() const;
 
     /**
      * @brief Returns a list of all nodes in this graph
@@ -212,6 +246,9 @@ public:
      */
     Node* findNode(NodeId nodeId);
     Node const* findNode(NodeId nodeId) const;
+
+    Node* findNodeByUuid(NodeUuid const& uuid);
+    Node const* findNodeByUuid(NodeUuid const& uuid) const;
 
     /**
      * @brief Attempts to finde a connection specified by the given connectionId
@@ -282,6 +319,9 @@ public:
     GroupInputProvider* inputProvider();
     GroupInputProvider const* inputProvider() const;
 
+    DynamicNode* inputNode();
+    DynamicNode const* inputNode() const;
+
     /**
      * @brief Returns the output provider of this graph. May be null if sub graph
      * was not yet initialized or it is the root graph.
@@ -289,21 +329,9 @@ public:
      */
     GroupOutputProvider* outputProvider();
     GroupOutputProvider const* outputProvider() const;
-    
-    /**
-     * @brief Constructs an execution model. Each graph has it's own
-     * execution model. If one already exists, this will be returned.
-     * @return Execution model, may be null.
-     */
-    GraphExecutionModel* makeExecutionModel();
 
-    /**
-     * @brief Returns the exection model of this graph. Each graph has it's own
-     * execution model.
-     * @return Execution model, may be null.
-     */
-    GraphExecutionModel* executionModel();
-    GraphExecutionModel const* executionModel() const;
+    DynamicNode* outputNode();
+    DynamicNode const* outputNode() const;
 
     /**
      * @brief Finds all dependencies of the node referred by `nodeId`
@@ -387,7 +415,15 @@ public:
      * and their connections
      * @return DAG
      */
-    DirectedAcyclicGraph const& dag() const { return m_nodes; }
+    [[deprecated("use `data` instead")]]
+    ConnectionGraph const& dag() const { return m_data; }
+
+    /**
+     * @brief Gives access to the internal graph model used to manage the nodes
+     * and their connections
+     * @return Graph model
+     */
+    inline auto const& data() const { return m_data; }
 
     /**
      * @brief initializes the input and output of this graph
@@ -485,7 +521,7 @@ signals:
 
 protected:
     
-    bool handleNodeEvaluation(GraphExecutionModel& model) override;
+    void eval() override;
 
     void onObjectDataMerged() override;
 
@@ -493,8 +529,9 @@ private:
 
     struct Impl;
 
-    DirectedAcyclicGraph m_nodes;
-
+    /// connection graph
+    ConnectionGraph m_data;
+    /// indicator if the connection model is currently beeing modified
     int m_modificationCount = 0;
 
     /**
@@ -511,16 +548,8 @@ private:
     void restoreConnections();
     void restoreNodesAndConnections();
 
-    dag::Entry* findNodeEntry(NodeId nodeId);
-    dag::Entry const* findNodeEntry(NodeId nodeId) const;
-
-    GraphExecutionModel* makeDummyExecutionModel();
-
-private slots:
-
-    void onSubNodeEvaluated(NodeId nodeId);
-
-    void onSubGraphStalled();
+    connection_model::ConnectionData* findNodeEntry(NodeId nodeId);
+    connection_model::ConnectionData const* findNodeConnection(NodeId nodeId) const;
 };
 
 } // namespace intelli

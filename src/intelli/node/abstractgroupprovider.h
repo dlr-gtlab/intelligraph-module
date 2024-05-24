@@ -23,6 +23,8 @@ class AbstractGroupProvider : public DynamicNode
 {
 public:
 
+    constexpr static PortType providerType = Type;
+
     AbstractGroupProvider(QString const& modelName,
                           QStringList iwl = {},
                           QStringList owl = {}) :
@@ -33,19 +35,19 @@ public:
 
         setNodeFlag(Unique, true);
 
-        setNodeEvalMode(NodeEvalMode::MainThread);
+        setNodeEvalMode(NodeEvalMode::Blocking);
 
         if (!gtApp || !gtApp->devMode()) setFlag(UserHidden, true);
 
         connect(this, &Node::portInserted,
                 this, &AbstractGroupProvider::onPortInserted,
-                Qt::UniqueConnection);
+                Qt::DirectConnection);
         connect(this, &Node::portChanged,
                 this, &AbstractGroupProvider::onPortChanged,
-                Qt::UniqueConnection);
+                Qt::DirectConnection);
         connect(this, &Node::portAboutToBeDeleted,
                 this, &AbstractGroupProvider::onPortDeleted,
-                Qt::UniqueConnection);
+                Qt::DirectConnection);
     }
 
     bool insertPort(PortInfo data, int idx = -1)

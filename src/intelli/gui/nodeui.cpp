@@ -12,7 +12,6 @@
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
 #include "intelli/graph.h"
-#include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/icons.h"
@@ -117,16 +116,6 @@ NodeUI::NodeUI(Option option)
         .setVisibilityMethod(isDynamicNode);
 
     if (!gtApp || !gtApp->devMode()) return;
-
-    addSingleAction(tr("Node Info"), [](GtObject* obj){
-        auto* node = toNode(obj);
-        if (!node) return;
-        auto* graph = obj->findParent<Graph*>();
-        if (!graph) return;
-        auto* model = graph->executionModel();
-        if (!model) return;
-        model->debug(node->id());
-    }).setIcon(gt::gui::icon::bug());
 
     addPortAction(tr("Port Info"), [](Node* obj, PortType type, PortIndex idx){
         if (!obj) return;
@@ -262,11 +251,7 @@ NodeUI::executeNode(GtObject* obj)
     });
     Q_UNUSED(cleanup);
     
-    auto* model = graph->makeExecutionModel();
-
-    node->setActive();
-    model->invalidateNode(node->id());
-    model->evaluateNode(node->id()).detach();
+    emit node->triggerNodeEvaluation();
 }
 
 void

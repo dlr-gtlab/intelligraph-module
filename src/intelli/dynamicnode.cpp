@@ -47,7 +47,6 @@ DynamicNode::DynamicNode(QString const& modelName,
 {
     if (m_option != NoDynamicPorts)
     {
-
         auto makeReadOnly = [](auto func){
             return [func = std::move(func)](QString const& id){
                 GtAbstractProperty* tmp = func(id);
@@ -366,6 +365,7 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
         Q_UNUSED(ignoreRemoved);
 
         removePort(portId);
+
         insertPort(type, std::move(portInfo), idx);
         return;
     }

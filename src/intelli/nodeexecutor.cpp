@@ -9,19 +9,51 @@
 
 #include "intelli/nodeexecutor.h"
 #include "intelli/node.h"
-#include "intelli/graph.h"
-#include "intelli/graphexecmodel.h"
-
 #include "intelli/exec/detachedexecutor.h"
-
 #include "intelli/private/node_impl.h"
 
 #include <gt_utilities.h>
 
+
+namespace intelli
+{
+/**
+ * @brief The NodeExecutor class. Helper class to access private or protected
+ * members of a Node used for the evaluation.
+ */
+class NodeExecutor
+{
+    NodeExecutor() = delete;
+
+public:
+
+    static void evaluateNode(Node& node)
+    {
+        node.eval();
+    }
+
+    static void setNodeDataInterface(Node& node, NodeDataInterface& interface)
+    {
+        node.pimpl->dataInterface = &interface;
+    }
+
+    static NodeDataInterface* nodeDataInterface(Node& node)
+    {
+        return node.pimpl->dataInterface;
+    }
+
+    static bool triggerNodeEvaluation(Node& node, NodeDataInterface& interface)
+    {
+        return node.handleNodeEvaluation(interface);
+    }
+};
+
+} // namespace intelli
+
 using namespace intelli;
 
 bool
-intelli::blockingEvaluation(Node& node, GraphExecutionModel& model)
+intelli::exec::blockingEvaluation(Node& node, NodeDataInterface& model)
 {
     // cleanup routine
     auto finally = gt::finally([&node](){
@@ -30,13 +62,14 @@ intelli::blockingEvaluation(Node& node, GraphExecutionModel& model)
 
     emit node.computingStarted();
 
-    NodeExecutor::evaluate(node);
+    NodeExecutor::setNodeDataInterface(node, model);
+    NodeExecutor::evaluateNode(node);
 
     return true;
 }
 
 bool
-intelli::detachedEvaluation(Node& node, GraphExecutionModel& model)
+intelli::exec::detachedEvaluation(Node& node, NodeDataInterface& model)
 {
     if (node.findChild<DetachedExecutor*>())
     {
@@ -50,21 +83,20 @@ intelli::detachedEvaluation(Node& node, GraphExecutionModel& model)
     return executor->evaluateNode(node, model);
 }
 
-void
-NodeExecutor::evaluate(Node& node)
+bool
+intelli::exec::triggerNodeEvaluation(Node& node, NodeDataInterface& model)
 {
-    node.eval();
-}
-
-GraphExecutionModel*
-NodeExecutor::accessExecModel(Node& node)
-{
-    auto*  parent = qobject_cast<Graph*>(node.parent());
-    return parent ? parent->executionModel() : nullptr;
+    return NodeExecutor::triggerNodeEvaluation(node, model);
 }
 
 void
-NodeExecutor::setNodeDataInterface(Node& node, NodeDataInterface* interface)
+intelli::exec::setNodeDataInterface(Node& node, NodeDataInterface& model)
 {
-    node.pimpl->dataInterface = interface;
+    return NodeExecutor::setNodeDataInterface(node, model);
+}
+
+NodeDataInterface*
+intelli::exec::nodeDataInterface(Node& node)
+{
+    return NodeExecutor::nodeDataInterface(node);
 }

@@ -11,6 +11,7 @@
 #include "intelli/nodedatafactory.h"
 #include "intelli/graph.h"
 #include "intelli/nodeexecutor.h"
+#include "intelli/nodedatamodel.h"
 #include "intelli/private/node_impl.h"
 #include "intelli/private/utils.h"
 
@@ -28,21 +29,6 @@ intelli::convert(NodeDataPtr const& data, TypeId const& to)
     // forwarding call
     return NodeDataFactory::instance().convert(data, to);
 }
-
-namespace
-{
-
-template <typename N, typename P>
-inline auto* dataInterface(N* node, P& pimpl)
-{
-    NodeDataInterface* model = pimpl->dataInterface;
-
-    if (!model) model = NodeExecutor::accessExecModel(*const_cast<Node*>(node));
-
-    return model;
-}
-
-} // namespace
 
 std::unique_ptr<QWidget>
 intelli::makeBaseWidget()
@@ -102,7 +88,6 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
     connect(this, &Node::computingFinished, this, [this](){
         setNodeFlag(NodeFlag::Evaluating, false);
-        emit evaluated();
     }, Qt::DirectConnection);
 }
 
@@ -275,7 +260,7 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
 {
     auto const makeError = [this, type, idx](){
         return objectName() + QStringLiteral(": ") +
-               tr("Failed to insert port idx %1 (%2)").arg(idx).arg(toString(type));
+               tr("Failed to insert port at idx %1 (%2)").arg(idx).arg(toString(type));
     };
 
     if (port.typeId.isEmpty())
@@ -334,7 +319,7 @@ Node::removePort(PortId id)
 Node::NodeDataPtr
 Node::nodeData(PortId id) const
 {
-    auto* model = dataInterface(this, pimpl);
+    auto* model = pimpl->dataInterface;
     if (!model)
     {
         gtWarning().nospace()
@@ -343,13 +328,13 @@ Node::nodeData(PortId id) const
         return {};
     }
 
-    return model->nodeData(this->id(), id);
+    return model->nodeData(this->uuid(), id);
 }
 
 bool
 Node::setNodeData(PortId id, NodeDataPtr data)
 {
-    auto* model = dataInterface(this, pimpl);
+    auto* model = pimpl->dataInterface;
     if (!model)
     {
         gtWarning().nospace()
@@ -358,7 +343,7 @@ Node::setNodeData(PortId id, NodeDataPtr data)
         return false;
     }
 
-    return model->setNodeData(this->id(), id, std::move(data));
+    return model->setNodeData(this->uuid(), id, std::move(data));
 }
 
 Node::PortInfo*
@@ -430,15 +415,16 @@ Node::eval()
 }
 
 bool
-Node::handleNodeEvaluation(GraphExecutionModel& model)
+Node::handleNodeEvaluation(NodeDataInterface& model)
 {
     switch (pimpl->evalMode)
     {
-    case NodeEvalMode::Exclusive:
+    case NodeEvalMode::ExclusiveDetached:
     case NodeEvalMode::Detached:
-        return detachedEvaluation(*this, model);
-    case NodeEvalMode::MainThread:
-        return blockingEvaluation(*this, model);
+        return exec::detachedEvaluation(*this, model);
+    case NodeEvalMode::ExclusiveBlocking:
+    case NodeEvalMode::Blocking:
+        return exec::blockingEvaluation(*this, model);
     }
 
     gtError().nospace()

@@ -63,8 +63,8 @@ TEST(GraphBuilder, basic_graph)
         ASSERT_NO_THROW(throw);
         return;
     }
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 }
 
 TEST(GraphBuilder, graph_with_groups)
@@ -119,6 +119,6 @@ TEST(GraphBuilder, graph_with_groups)
         ASSERT_NO_THROW(throw);
         return;
     }
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 }

@@ -27,7 +27,7 @@ set(PUBLIC_HEADERS
     intelli/node.h
     intelli/nodedata.h
     intelli/nodedatafactory.h
-    intelli/nodedatainterface.h
+    intelli/nodedatamodel.h
     intelli/nodeexecutor.h
     intelli/nodefactory.h
     intelli/data/bool.h

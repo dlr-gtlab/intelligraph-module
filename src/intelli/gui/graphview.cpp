@@ -451,8 +451,8 @@ GraphView::setScene(GraphScene& scene)
         {
             if (&s->graph() != &graph) return;
 
-            auto* exec = graph.executionModel();
-            bool isAutoEvaluating = exec && exec->isAutoEvaluating();
+            auto* model = GraphExecutionModel::accessExecModel(graph);
+            bool isAutoEvaluating = model && model->isAutoEvaluatingGraph();
 
             m_startAutoEvalBtn->setVisible(!isAutoEvaluating);
             m_stopAutoEvalBtn->setVisible(isAutoEvaluating);
@@ -469,16 +469,18 @@ GraphView::setScene(GraphScene& scene)
 
     connect(m_startAutoEvalBtn, &QPushButton::clicked,
             this, [this](){
-        if (auto* s = nodeScene())
+        if (auto* scene = nodeScene())
+        if (auto* model = GraphExecutionModel::accessExecModel(scene->graph()))
         {
-            s->graph().setActive(true);
+            model->autoEvaluateGraph();
         }
     });
     connect(m_stopAutoEvalBtn, &QPushButton::clicked,
             this, [this](){
-        if (auto* s = nodeScene())
+        if (auto* scene = nodeScene())
+        if (auto* model = GraphExecutionModel::accessExecModel(scene->graph()))
         {
-            s->graph().setActive(false);
+            model->stopAutoEvaluatingGraph();
         }
     });
     connect(m_snapToGridBtn, &QPushButton::clicked,

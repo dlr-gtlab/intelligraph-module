@@ -35,8 +35,8 @@ TEST(Graph, ancestors_and_descendants)
     EXPECT_NE(C, nullptr);
     EXPECT_NE(D, nullptr);
     EXPECT_NE(E, nullptr);
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     EXPECT_EQ(graph.findDependencies(A->id()).size(), 0);
     EXPECT_EQ(graph.findDependentNodes(A->id()), (QVector<NodeId>{C->id(), D->id()}));
@@ -76,8 +76,8 @@ TEST(Graph, remove_connections_on_node_deletion)
     EXPECT_NE(E, nullptr);
 
     EXPECT_EQ(graph.findNode(NodeId(5)), nullptr); // no extra node can be found
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // delete node C
 
@@ -92,8 +92,8 @@ TEST(Graph, remove_connections_on_node_deletion)
     EXPECT_EQ(graph.findNode(E_id), E);
 
     EXPECT_EQ(graph.findNode(C_id), nullptr);
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // delete node B
 
@@ -108,8 +108,8 @@ TEST(Graph, remove_connections_on_node_deletion)
 
     EXPECT_EQ(graph.findNode(B_id), nullptr);
     EXPECT_EQ(graph.findNode(C_id), nullptr);
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // delete all
     
@@ -117,8 +117,8 @@ TEST(Graph, remove_connections_on_node_deletion)
 
     EXPECT_EQ(graph.connections().size(), 0);
     EXPECT_EQ(graph.nodes().size(), 0);
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // check deleting A does not work
 
@@ -174,8 +174,8 @@ TEST(Graph, remove_connections_on_port_deletion)
 
     EXPECT_EQ(graph.nodes().size(), 2);
     EXPECT_EQ(graph.connections().size(), 3);
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // delete 1. connection
     EXPECT_TRUE(graph.deleteConnection(conId1));
@@ -183,8 +183,8 @@ TEST(Graph, remove_connections_on_port_deletion)
     EXPECT_FALSE(graph.findConnection(conId1));
     EXPECT_TRUE(graph.findConnection(conId2));
     EXPECT_TRUE(graph.findConnection(conId3));
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // no connections removed when deleting unconnected port no. 1
     ASSERT_TRUE(dynamicNode->removePort(PortId(0)));
@@ -193,8 +193,8 @@ TEST(Graph, remove_connections_on_port_deletion)
     EXPECT_FALSE(graph.findConnection(conId1));
     EXPECT_TRUE(graph.findConnection(conId2));
     EXPECT_TRUE(graph.findConnection(conId3));
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // connections are removed when deleting port no. 2
     ASSERT_TRUE(dynamicNode->removePort(PortId(1)));
@@ -203,8 +203,8 @@ TEST(Graph, remove_connections_on_port_deletion)
     EXPECT_FALSE(graph.findConnection(conId1));
     EXPECT_FALSE(graph.findConnection(conId2));
     EXPECT_TRUE(graph.findConnection(conId3));
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // connections are removed when deleting port no. 2
     ASSERT_TRUE(dynamicNode->removePort(PortId(2)));
@@ -216,8 +216,8 @@ TEST(Graph, remove_connections_on_port_deletion)
 
     EXPECT_EQ(graph.nodes().size(), 2);
     EXPECT_EQ(graph.connections().size(), 0);
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 }
 
 // when reverting a diff the DAG must be updated accordingly
@@ -282,8 +282,8 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
 
     // Node C does no longer exists -> its connections have been deleted as well
     EXPECT_EQ(graph.findConnections(C_id).size(), 0);
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     GtObjectMemento mementoAfter = graph.toMemento();
 
@@ -304,8 +304,8 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
     EXPECT_EQ(graph.findNode(E_id), E);
 
     checkConnectionsOfNodeC();
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // apply memento diff
 
@@ -352,8 +352,8 @@ TEST(Graph, restore_connections_only_on_memento_diff)
     EXPECT_NE(E, nullptr);
 
     EXPECT_EQ(graph.findConnections(C_id, PortType::Out).size(), 1);
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     GtObjectMemento mementoBefore = graph.toMemento();
 
@@ -372,8 +372,8 @@ TEST(Graph, restore_connections_only_on_memento_diff)
     EXPECT_EQ(graph.findNode(E_id), E);
 
     EXPECT_EQ(graph.findConnections(C_id, PortType::Out).size(), 0);
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     GtObjectMemento mementoAfter = graph.toMemento();
 
@@ -394,8 +394,8 @@ TEST(Graph, restore_connections_only_on_memento_diff)
 
     EXPECT_EQ(graph.findConnections(C_id, PortType::Out).size(), 1);
     EXPECT_TRUE(graph.findConnections(C_id, PortType::Out).contains(connectionToDelete));
-
-    dag::debugGraph(graph.dag());
+    
+    debug(graph);
 
     // apply memento diff
 

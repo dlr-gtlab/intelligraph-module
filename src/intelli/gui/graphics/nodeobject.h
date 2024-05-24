@@ -11,7 +11,7 @@
 #define GT_INTELLI_NODEGRAPHICSOBJECT_H
 
 #include <intelli/node.h>
-#include <intelli/nodedatainterface.h>
+#include <intelli/nodedatamodel.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/nodepainter.h>
 

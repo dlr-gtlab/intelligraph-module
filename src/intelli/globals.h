@@ -24,8 +24,6 @@ namespace intelli
 
 class NodeData;
 
-constexpr auto max_timeout = std::chrono::milliseconds::max();
-
 /**
  * @brief Quantizes `point` so that it is a multiple of `stepSize`.
  * Example:
@@ -143,6 +141,7 @@ private:
     T m_value = InitValue;
 };
 
+using NodeUuid = QString;
 using NodeId    = StrongType<unsigned, struct NodeId_, std::numeric_limits<unsigned>::max()>;
 using PortIndex = StrongType<unsigned, struct PortIndex_, std::numeric_limits<unsigned>::max()>;
 using PortId    = StrongType<unsigned, struct PortId_, std::numeric_limits<unsigned>::max()>;
@@ -151,7 +150,7 @@ using Position = QPointF;
 
 using NodeDataPtr = std::shared_ptr<const NodeData>;
 
-using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
+using NodeDataPtrList = std::vector<std::pair<PortId, NodeDataPtr>>;
 
 using TypeName = QString;
 
@@ -161,13 +160,13 @@ using TypeIdList = QStringList;
 namespace detail
 {
 
-template <typename T>
+template<typename T>
 struct InvalidValue
 {
     constexpr static T get() { return std::numeric_limits<T>::max(); }
 };
 
-template <typename T, typename Tag, T InitVal>
+template<typename T, typename Tag, T InitVal>
 struct InvalidValue<StrongType<T, Tag, InitVal>>
 {
     using StrongTypeDef = StrongType<T, Tag, InitVal>;
@@ -296,6 +295,51 @@ enum class GraphicsItemType
     Connection
 };
 
+/// Enum indicating the evauation state of a node
+enum class NodeEvalState
+{
+    Invalid = 0,
+    Outdated,
+    Evaluating,
+    Paused,
+    Valid
+};
+
+// Enum indicating the data state of a node port
+enum class PortDataState
+{
+    /// Port data is outdated
+    Outdated = 0,
+    /// Port data is valid and up-to-date
+    Valid,
+};
+
+struct NodeDataSet
+{
+    NodeDataSet(std::nullptr_t) :
+        ptr(nullptr), state(PortDataState::Outdated)
+    {}
+    NodeDataSet(NodeDataPtr _data = {}) :
+        ptr(std::move(_data)), state(PortDataState::Valid)
+    {}
+    template <typename T>
+    NodeDataSet(std::shared_ptr<T> _data) :
+        ptr(std::move(_data)), state(PortDataState::Valid)
+    {}
+
+    /// actual node data
+    NodeDataPtr ptr;
+    /// data state
+    PortDataState state;
+
+    operator NodeDataPtr&() & { return ptr; }
+    operator NodeDataPtr() && { return std::move(ptr); }
+    operator NodeDataPtr const&() const& { return ptr; }
+
+    template <typename T>
+    inline auto value() const noexcept { return qobject_pointer_cast<T const>(ptr); }
+};
+
 namespace detail
 {
 
@@ -390,7 +434,44 @@ operator<<(gt::log::Stream& s, intelli::PortType type)
     {
         gt::log::StreamStateSaver saver(s);
         s.nospace()
-            << "PortType::INVALID(" << type << ')';
+            << "PortType::INVALID(" << (int)type << ')';
+    }
+    return s.doLogSpace();
+}
+
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, intelli::NodeEvalState state)
+{
+    switch (state)
+    {
+    case intelli::NodeEvalState::Evaluating: return s << "NodeEvalState::Evaluating";
+    case intelli::NodeEvalState::Invalid: return s << "NodeEvalState::Invalid";
+    case intelli::NodeEvalState::Outdated: return s << "NodeEvalState::Outdated";
+    case intelli::NodeEvalState::Paused: return s << "NodeEvalState::Paused";
+    case intelli::NodeEvalState::Valid: return s << "NodeEvalState::Valid";
+    }
+
+    {
+        gt::log::StreamStateSaver saver(s);
+        s.nospace()
+            << "NodeEvalState::INVALID(" << (int)state << ')';
+    }
+    return s.doLogSpace();
+}
+
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, intelli::PortDataState state)
+{
+    switch (state)
+    {
+    case intelli::PortDataState::Outdated: return s << "PortDataState::Outdated";
+    case intelli::PortDataState::Valid: return s << "PortDataState::Valid";
+    }
+
+    {
+        gt::log::StreamStateSaver saver(s);
+        s.nospace()
+            << "PortDataState::INVALID(" << (int)state << ')';
     }
     return s.doLogSpace();
 }

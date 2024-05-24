@@ -12,7 +12,7 @@
 
 #include <intelli/node.h>
 #include <intelli/gui/nodeui.h>
-#include <intelli/nodedatainterface.h>
+#include <intelli/nodedatamodel.h>
 
 #include <QPointer>
 #include <QTimeLine>
