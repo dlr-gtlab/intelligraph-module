@@ -182,6 +182,9 @@ inline bool buildGraphWithGroup(Graph& graph)
                                       );
         group.graph.setCaption(QStringLiteral("Group"));
         C_uuid = group.graph.uuid();
+        group_uuid = C_uuid;
+        group_input_uuid = group.inNode.uuid();
+        group_output_uuid = group.outNode.uuid();
 
         auto& D = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("D"));
         D_uuid = D.uuid();
@@ -229,10 +232,18 @@ inline bool buildGraphWithGroup(Graph& graph)
         EXPECT_EQ(group.graph.id(), C_id);
         EXPECT_EQ(D.id(), D_id);
         EXPECT_EQ(E.id(), E_id);
-        EXPECT_EQ(group_A.id(), group_A_id);
-        EXPECT_EQ(group_B.id(), group_B_id);
-        EXPECT_EQ(group_C.id(), group_C_id);
-        EXPECT_EQ(group_D.id(), group_D_id);
+
+        EXPECT_EQ(A.uuid(), A_uuid);
+        EXPECT_EQ(B.uuid(), B_uuid);
+        EXPECT_EQ(group.graph.uuid(), C_uuid);
+        EXPECT_EQ(group.graph.uuid(), group_uuid);
+        EXPECT_EQ(D.uuid(), D_uuid);
+        EXPECT_EQ(E.uuid(), E_uuid);
+
+        EXPECT_EQ(group.inNode.id(), group_input_id);
+        EXPECT_EQ(group.outNode.id(), group_output_id);
+        EXPECT_EQ(group.inNode.uuid(), group_input_uuid);
+        EXPECT_EQ(group.outNode.uuid(), group_output_uuid);
     }
     catch(std::logic_error const& e)
     {
@@ -403,26 +414,26 @@ struct ValueComparator<double>
 template<typename T>
 struct PortDataComparator
 {
-    bool operator()(QString const& uuid, NodeDataPtr const& data, T const& target)
+    bool operator()(QString const& uuid, PortId portId, NodeDataPtr const& data, T const& target)
     {
         if (!data)
         {
-            gtError() << QObject::tr("model.nodeData(%1).ptr == NULL")
-                             .arg(uuid);
+            gtError() << QObject::tr("model.nodeData(%1:%2).ptr == NULL")
+                             .arg(uuid).arg(portId);
         }
 
         auto value = data->invoke<T>("value");
         if (!value.has_value())
         {
-            gtError() << QObject::tr("model.nodeData(%1).ptr (%2) != %3 (types do not match)")
-                             .arg(uuid, toString(data), toString(QVariant::fromValue(target)));
+            gtError() << QObject::tr("model.nodeData(%1:%4).ptr (%2) != %3 (types do not match)")
+                             .arg(uuid, toString(data), toString(QVariant::fromValue(target))).arg(portId);
             return false;
         }
 
         if (!ValueComparator<T>()(value.value(), target))
         {
-            gtError() << QObject::tr("model.nodeData(%1).ptr (%2) != %3")
-                             .arg(uuid).arg(value.value()).arg(target);
+            gtError() << QObject::tr("model.nodeData(%1:%4).ptr (%2) != %3")
+                             .arg(uuid).arg(value.value()).arg(target).arg(portId);
             return false;
         }
 
@@ -434,12 +445,12 @@ struct PortDataComparator
 template<>
 struct PortDataComparator<std::nullptr_t>
 {
-    bool operator()(QString const& uuid, NodeDataPtr data, std::nullptr_t target)
+    bool operator()(QString const& uuid, PortId portId, NodeDataPtr data, std::nullptr_t target)
     {
         if (data)
         {
-            gtError() << QObject::tr("model.nodeData(%1).ptr (%2) != NULL")
-                             .arg(uuid, toString(data));
+            gtError() << QObject::tr("model.nodeData(%1:%3).ptr (%2) != NULL")
+                             .arg(uuid, toString(data)).arg(portId);
             return false;
         }
         return true;
@@ -474,14 +485,14 @@ inline bool comparePortData(Graph const& graph,
         auto data = model.nodeData(uuid, portId);
         if (data.state != targetState)
         {
-            gtError() << QObject::tr("model.nodeData(%1).state != %2")
-                             .arg(uuid, toString(targetState));
+            gtError() << QObject::tr("model.nodeData(%1:%3).state != %2")
+                             .arg(uuid, toString(targetState)).arg(portId);
             success = false;
         }
 
         if (!targetData.has_value()) continue;
 
-        success &= PortDataComparator<T>()(uuid, data.ptr, targetData.value());
+        success &= PortDataComparator<T>()(uuid, portId, data.ptr, targetData.value());
     }
 
     return success;

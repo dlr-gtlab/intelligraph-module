@@ -549,7 +549,7 @@ private:
     void restoreNodesAndConnections();
 
     connection_model::ConnectionData* findNodeEntry(NodeId nodeId);
-    connection_model::ConnectionData const* findNodeConnection(NodeId nodeId) const;
+    connection_model::ConnectionData const* findNodeEntry(NodeId nodeId) const;
 };
 
 } // namespace intelli

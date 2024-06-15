@@ -20,8 +20,7 @@ class Connection;
 class Graph;
 class Node;
 
-class FutureFGraphEvaluated;
-class FutureNodeEvaluated;
+class FutureEvaluated;
 
 /**
  * @brief The GraphExecutionModel class.
@@ -46,13 +45,20 @@ public:
 
     void reset();
 
-    NodeEvalState nodeEvalState(NodeUuid const& nodeUuid);
+    NodeEvalState nodeEvalState(NodeUuid const& nodeUuid) const;
 
-    bool autoEvaluateGraph();
-    bool autoEvaluateNode(NodeUuid const& nodeUuid);
+    bool isGraphEvaluated() const;
+    bool isNodeEvaluated(NodeUuid const& nodeUuid) const;
 
-    FutureNodeEvaluated evaluateGraph();
-    FutureNodeEvaluated evaluateNode(NodeUuid const& nodeUuid);
+    GT_NO_DISCARD
+    FutureEvaluated autoEvaluateGraph();
+    GT_NO_DISCARD
+    FutureEvaluated autoEvaluateNode(NodeUuid const& nodeUuid);
+
+    GT_NO_DISCARD
+    FutureEvaluated evaluateGraph();
+    GT_NO_DISCARD
+    FutureEvaluated evaluateNode(NodeUuid const& nodeUuid);
 
     void stopAutoEvaluatingGraph();
     void stopAutoEvaluatingNode(NodeUuid const& nodeUuid);
@@ -68,10 +74,12 @@ public:
 
     NodeDataSet nodeData(Graph const& graph, NodeId nodeId, PortId portId) const;
     NodeDataSet nodeData(NodeUuid const& nodeUuid, PortId portId) const override;
+    NodeDataSet nodeData(NodeUuid const& nodeUuid, PortType type, PortIndex portIdx) const;
     NodeDataPtrList nodeData(NodeUuid const& nodeUuid, PortType type) const override;
 
     bool setNodeData(Graph const& graph, NodeId nodeId, PortId portId, NodeDataSet data);
     bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet data) override;
+    bool setNodeData(NodeUuid const& nodeUuid, PortType type, PortIndex portIdx, NodeDataSet data);
     bool setNodeData(NodeUuid const& nodeUuid, PortType type, NodeDataPtrList const& data) override;
 
     /**
@@ -116,7 +124,8 @@ signals:
 
 private:
 
-    struct Impl; // helper struct to "hide" implementation details
+    // helper struct to "hide" implementation details
+    struct Impl;
 
     enum class NodeEvaluationType
     {
@@ -206,7 +215,7 @@ private slots:
 /// Outputs internal data of the graph exectuion model
 GT_INTELLI_EXPORT void debug(GraphExecutionModel const& model);
 
-class FutureNodeEvaluated
+class FutureEvaluated
 {
     friend class GraphExecutionModel;
 
@@ -214,29 +223,76 @@ class FutureNodeEvaluated
 
 public:
 
-    GT_NO_DISCARD
-    GT_INTELLI_EXPORT
-    bool wait(std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
+    using milliseconds = std::chrono::milliseconds;
 
-    GT_INTELLI_EXPORT
-    bool detach();
+    using CallbackFunctor = std::function<void(bool success)>;
 
     /**
-     * @brief Join with other futures. Canbe used to wait for multiple,
+     * @brief Waits for the evaluation of all target nodes. This is a blocking
+     * call. However, the event loop will continue in the background.
+     * An optional timeout may be specified, after which the future aborts the
+     * waiting process. If a target node fails to evaluate, the waiting process
+     * is aborted.
+     * @param timeout Timeout to wait until the waiting process is aborted.
+     * @return Success of evaluation/waiting process
+     */
+    GT_NO_DISCARD
+    GT_INTELLI_EXPORT
+    bool wait(milliseconds timeout = milliseconds::max()) const;
+
+    /**
+     * @brief Waits for the evaluation of the specified node (and only for the
+     * specified node, regardless of all other target nodes) and returns the
+     * data at the specified port.
+     * @param nodeUuid The target node to wait for its evaluation
+     * @param portId The port to query the data from
+     * @param timeout Timeout to wait until the waiting process is aborted.
+     * @return Data at the specified port. Returns null if the process fails or
+     * if the actual data is null
+     */
+    GT_NO_DISCARD
+    GT_INTELLI_EXPORT
+    NodeDataSet get(NodeUuid const& nodeUuid,
+                    PortId portId,
+                    milliseconds timeout = milliseconds::max()) const;
+
+    GT_NO_DISCARD
+    GT_INTELLI_EXPORT
+    NodeDataSet get(NodeUuid const& nodeUuid,
+                    PortType type,
+                    PortIndex portIdx,
+                    milliseconds timeout = milliseconds::max()) const;
+
+    GT_INTELLI_EXPORT
+    FutureEvaluated const& then(CallbackFunctor functor) const;
+
+    /**
+     * @brief Does not wait for the evaluation of all target nodes. Returns
+     * whether the nodes started their evaluation successfully. Does not
+     * invalidate the future, thus, it can be used to wait for the evaluation at
+     * a later point in time.
+     * @return Whether the evaluation prcocess started successfully
+     */
+    GT_INTELLI_EXPORT
+    bool detach() const;
+
+    /**
+     * @brief Joins with other futures. Can be used to wait for multiple,
      * separatly triggered nodes.
      * @param other Other future to join with
      * @return returns a new future
      */
-    GT_NO_DISCARD
     GT_INTELLI_EXPORT
-    FutureNodeEvaluated& join(FutureNodeEvaluated const& other);
+    FutureEvaluated& join(FutureEvaluated const& other);
 
 private:
+
+    struct Impl;
 
     struct TargetNode
     {
         NodeUuid uuid;
-        NodeEvalState evalState;
+        mutable NodeEvalState evalState;
     };
 
     /// pointer to the source execution model
@@ -250,15 +306,15 @@ private:
      * @param nodeUuid Node to register
      * @param evalState Current node eval state
      */
-    FutureNodeEvaluated(GraphExecutionModel& model,
-                        NodeUuid nodeUuid,
-                        NodeEvalState evalState);
+    FutureEvaluated(GraphExecutionModel& model,
+                    NodeUuid nodeUuid,
+                    NodeEvalState evalState);
 
     /**
      * @brief Constructs an empty future object from the model
      * @param model Source exection model
      */
-    explicit FutureNodeEvaluated(GraphExecutionModel& model);
+    explicit FutureEvaluated(GraphExecutionModel& model);
 
     /**
      * @brief Registers the node to this future.
@@ -266,13 +322,30 @@ private:
      * @param evalState Current node eval state
      * @return this
      */
-    FutureNodeEvaluated& append(NodeUuid nodeUuid, NodeEvalState evalState);
+    FutureEvaluated& append(NodeUuid nodeUuid, NodeEvalState evalState);
 
-    bool isFinished() const;
+    /**
+     * @brief Returns whether all nodes have finished their evaluation
+     * and are valid
+     * @return Are nodes evaluated
+     */
+    bool areNodesEvaluated() const;
 
-    bool containsFailedNodes() const;
+    /**
+     * @brief Returns whether a node has failed evaluation.
+     * @return Have nodes failed
+     */
+    bool haveNodesFailed() const;
 
-    void updateTargets();
+    /**
+     * @brief Updates evaluation state of all tracked targets.
+     */
+    void updateTargets() const;
+
+    /**
+     * @brief Resets the evaluation state of all tracked targets.
+     */
+    void resetTargets() const;
 };
 
 } // namespace intelli

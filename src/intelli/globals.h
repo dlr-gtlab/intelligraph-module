@@ -11,6 +11,7 @@
 
 #include <gt_logging.h>
 #include <gt_exceptions.h>
+#include <gt_platform.h>
 
 #include <chrono>
 #include <utility>
@@ -226,6 +227,7 @@ struct ConnectionId
         case PortType::NoType:
             throw GTlabException(__FUNCTION__, "invalid port type!");
         }
+        return invalid<NodeId>();
     }
 
     /// Returns the port id associated with the port type
@@ -240,6 +242,7 @@ struct ConnectionId
         case PortType::NoType:
             throw GTlabException(__FUNCTION__, "invalid port type!");
         }
+        return invalid<PortId>();
     }
 
     /// Whether this connection is valid (i.e. contains only valid node
@@ -337,8 +340,54 @@ struct NodeDataSet
     operator NodeDataPtr const&() const& { return ptr; }
 
     template <typename T>
-    inline auto value() const noexcept { return qobject_pointer_cast<T const>(ptr); }
+    [[deprecated("Use `as` instead")]]
+    inline auto value() const noexcept { return as<T>(); }
+
+    template <typename T>
+    inline auto as() const noexcept { return qobject_pointer_cast<T const>(ptr); }
 };
+
+template <typename Sender, typename SignalSender,
+         typename Reciever, typename SignalReciever>
+struct IgnoreSignal
+{
+    IgnoreSignal(Sender sender_, SignalSender signalSender_,
+                 Reciever reciever_, SignalReciever signalReciever_) :
+        sender(sender_), signalSender(signalSender_),
+        reciever(reciever_), signalReciever(signalReciever_)
+    {
+        QObject::disconnect(sender, signalSender, reciever, signalReciever);
+    }
+
+    ~IgnoreSignal()
+    {
+        QObject::connect(sender, signalSender, reciever, signalReciever, Qt::UniqueConnection);
+    }
+
+    Sender sender;
+    SignalSender signalSender;
+    Reciever reciever;
+    SignalReciever signalReciever;
+};
+
+/**
+ * @brief Ignores a signal-sginal/signal-slot connection between two objects
+ * for the lifetime of the returned helper object.
+ * @param sender Sender
+ * @param signalSender Signal of sender
+ * @param reciever Reciever
+ * @param signalReciever Signal/Slot of reciever
+ */
+template<typename Sender, typename SignalSender,
+         typename Reciever, typename SignalReciever>
+GT_NO_DISCARD
+inline auto ignoreSignal(Sender sender, SignalSender signalSender,
+                         Reciever reciever, SignalReciever signalReciever)
+{
+    return IgnoreSignal<Sender, SignalSender, Reciever, SignalReciever>{
+        sender, signalSender, reciever, signalReciever
+    };
+}
 
 namespace detail
 {

@@ -18,6 +18,8 @@ class TestNode : public intelli::Node
 
 public:
 
+    bool failEvaluation = false;
+
     static void registerOnce();
 
     Q_INVOKABLE TestNode();
@@ -27,6 +29,11 @@ public:
     using Node::addInPort;
     using Node::addOutPort;
     using Node::removePort;
+
+protected:
+
+    bool handleNodeEvaluation(intelli::NodeDataInterface& model) override;
+
 };
 
 #endif // TESTNODE_H

@@ -112,6 +112,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
     intelli/gui/ui/logicnodeui.h
+    intelli/private/graph_impl.h
+    intelli/private/graphexecmodel_impl.h
     intelli/private/node_impl.h
     intelli/private/utils.h
 

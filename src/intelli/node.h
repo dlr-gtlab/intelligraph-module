@@ -70,7 +70,6 @@ enum class NodeEvalMode
 class NodeExecutor;
 class NodeData;
 class NodeDataInterface;
-struct NodeImpl;
 
 /**
  * @brief Attempts to convert `data` to into the desired type. If
@@ -596,7 +595,8 @@ protected:
 
 private:
 
-    std::unique_ptr<NodeImpl> pimpl;
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
 
     // hide object name setter
     using GtObject::setObjectName;

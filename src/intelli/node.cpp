@@ -41,7 +41,7 @@ intelli::makeBaseWidget()
 
 Node::Node(QString const& modelName, GtObject* parent) :
     GtObject(parent),
-    pimpl(std::make_unique<NodeImpl>(modelName))
+    pimpl(std::make_unique<Impl>(modelName))
 {
     setFlag(UserDeletable, true);
     setFlag(UserRenamable, false);
@@ -302,16 +302,16 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
 bool
 Node::removePort(PortId id)
 {
-    auto find = pimpl->find(id);
-    if (!find) return false;
+    auto port = pimpl->findPort(id);
+    if (!port) return false;
 
     // notify model
-    emit portAboutToBeDeleted(find.type, find.idx);
-    auto finally = gt::finally([type = find.type, idx = find.idx, this](){
+    emit portAboutToBeDeleted(port.type, port.idx);
+    auto finally = gt::finally([type = port.type, idx = port.idx, this](){
         emit portDeleted(type, idx);
     });
 
-    find.ports->erase(std::next(find.ports->begin(), find.idx));
+    port.ports->erase(std::next(port.ports->begin(), port.idx));
 
     return true;
 }
@@ -351,7 +351,7 @@ Node::port(PortId id) noexcept
 {
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
     {
-        auto iter = findPort(*ports, id);
+        auto iter = Impl::find(*ports, id);
 
         if (iter != ports->end()) return &(*iter);
     }
@@ -370,7 +370,7 @@ Node::portIndex(PortType type, PortId id) const noexcept(false)
 {
     auto& ports = this->ports(type);
 
-    auto iter = findPort(ports, id);
+    auto iter = Impl::find(ports, id);
 
     if (iter != ports.end())
     {
@@ -383,10 +383,10 @@ Node::portIndex(PortType type, PortId id) const noexcept(false)
 Node::PortType
 Node::portType(PortId id) const noexcept(false)
 {
-    auto find = pimpl->find(id);
-    if (!find) return PortType::NoType;
+    auto port = pimpl->findPort(id);
+    if (!port) return PortType::NoType;
 
-    return find.type;
+    return port.type;
 }
 
 PortId

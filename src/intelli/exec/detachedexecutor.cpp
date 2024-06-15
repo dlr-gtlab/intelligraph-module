@@ -10,8 +10,8 @@
 #include "intelli/exec/detachedexecutor.h"
 
 #include "intelli/node.h"
-#include "intelli/nodedata.h"
 #include "intelli/nodedatamodel.h"
+#include "intelli/private/utils.h"
 
 #include "gt_utilities.h"
 #include "gt_qtutilities.h"
@@ -89,11 +89,10 @@ public:
             }
         }
 
-        gtWarning() << QObject::tr("DummyDataModel: Failed to access data of %1 (%2:%3), "
+        gtWarning() << QObject::tr("DummyDataModel: Failed to access data of '%1' (%2), "
                                    "port %4 not found!")
-                           .arg(nodeUuid)
-                           .arg(m_node->id(), 2)
-                           .arg(m_node->caption())
+                           .arg(relativeNodePath(*m_node))
+                           .arg(m_node->id())
                            .arg(portId);
         return {};
     }
@@ -395,10 +394,9 @@ DetachedExecutor::onResultReady(int result)
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
     gtTrace().verbose()
         << QStringLiteral("[DetachedExecutor]")
-        << QObject::tr("collecting data from node %1 (%2:%3)...")
-               .arg(m_node->uuid())
-               .arg(m_node->id(), 2)
-               .arg(m_node->caption());
+        << QObject::tr("collecting data from node '%1' (%2)...")
+               .arg(relativeNodePath(*m_node))
+               .arg(m_node->id());
 #endif
 
     auto const& outData = m_watcher.resultAt(result);
@@ -428,13 +426,11 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
     emit m_node->computingStarted();
 
     NodeUuid const& nodeUuid = node.uuid();
-    NodeId nodeId = node.id();
 
     auto inData  = model.nodeData(nodeUuid, PortType::In);
     auto outData = model.nodeData(nodeUuid, PortType::Out);
 
     auto run = [nodeUuid,
-                nodeId,
                 inData  = model.nodeData(nodeUuid, PortType::In),
                 outData = model.nodeData(nodeUuid, PortType::Out),
                 memento = node.toMemento(),
@@ -446,9 +442,9 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
             << QStringLiteral("[DetachedExecutor]")
-            << QObject::tr("beginning evaluation of node %1 (%2)...")
-                   .arg(nodeUuid)
-                   .arg(nodeId, 2);
+            << QObject::tr("beginning evaluation of node '%1' (%2)...")
+                   .arg(memento.ident())
+                   .arg(nodeUuid);
 #endif
 
         auto const makeError = [nodeUuid](){
@@ -491,7 +487,7 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
 
             if (!success)
             {
-                gtError() << makeError() << tr("(failed to copy source data9");
+                gtError() << makeError() << tr("(failed to copy source data)");
                 return {};
             }
 

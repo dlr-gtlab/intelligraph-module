@@ -59,6 +59,16 @@ using const_t = typename apply_const<IsConst, T>::type;
 template<typename U, typename T>
 using apply_constness_t = typename apply_const<is_const<U>::value, T>::type;
 
+/// Retrieves iterator type for `QHash` depending on `IsConst`
+template<bool IsConst, typename T>
+struct get_iterator;
+template<typename T>
+struct get_iterator<true, T> { using type = typename T::const_iterator; };
+template<typename T>
+struct get_iterator<false, T> { using type = typename T::iterator; };
+template<bool IsConst, typename T>
+using get_iterator_t = typename get_iterator<IsConst, T>::type;
+
 class Profiler
 {
 public:
@@ -79,45 +89,22 @@ private:
     std::chrono::high_resolution_clock::time_point m_start;
 };
 
-template <typename Sender, typename SignalSender,
-         typename Reciever, typename SignalReciever>
-struct IgnoreSignal
-{
-    IgnoreSignal(Sender sender_, SignalSender signalSender_,
-                 Reciever reciever_, SignalReciever signalReciever_) :
-        sender(sender_), signalSender(signalSender_), reciever(reciever_), signalReciever(signalReciever_)
-    {
-        QObject::disconnect(sender, signalSender, reciever, signalReciever);
-    }
-
-    ~IgnoreSignal()
-    {
-        QObject::connect(sender, signalSender, reciever, signalReciever, Qt::UniqueConnection);
-    }
-
-    Sender sender;
-    SignalSender signalSender;
-    Reciever reciever;
-    SignalReciever signalReciever;
-};
-
-template <typename Sender, typename SignalSender,
-         typename Reciever, typename SignalReciever>
-GT_NO_DISCARD auto
-ignoreSignal(Sender sender, SignalSender signalSender,
-             Reciever reciever, SignalReciever signalReciever)
-{
-    return IgnoreSignal<Sender, SignalSender, Reciever, SignalReciever>{
-        sender, signalSender, reciever, signalReciever
-    };
-}
-
 template <typename T>
 inline QString toString(T const& t)
 {
     gt::log::Stream s;
     s.nospace() << t;
     return QString::fromStdString(s.str());
+}
+
+template <typename N>
+inline QString
+relativeNodePath(N const& node)
+{
+    N const* root = node.template findRoot<std::remove_reference_t<N>*>();
+    if (!root) return node.caption();
+
+    return root->caption() + (node.objectPath().remove(root->objectPath())).replace(';', '/');
 }
 
 } // namespace intelli

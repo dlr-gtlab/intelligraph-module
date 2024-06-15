@@ -25,3 +25,9 @@ TestNode::TestNode() :
 
 }
 
+bool
+TestNode::handleNodeEvaluation(intelli::NodeDataInterface& model)
+{
+    return !failEvaluation && intelli::Node::handleNodeEvaluation(model);
+}
+

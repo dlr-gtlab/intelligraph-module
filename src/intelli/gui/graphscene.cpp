@@ -300,7 +300,7 @@ GraphScene::endReset()
     connect(model, &GraphExecutionModel::nodeEvalStateChanged,
             this, &GraphScene::onNodeEvalStateChanged, Qt::DirectConnection);
 
-    if (m_graph->isActive()) model->autoEvaluateGraph();
+    if (m_graph->isActive()) model->autoEvaluateGraph().detach();
 }
 
 Graph&

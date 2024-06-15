@@ -75,6 +75,7 @@ struct DataItem
     {
         return const_cast<DataItem*>(this)->ports(type);
     }
+
     /**
      * @brief Returns the port data item associated with `portId`. If `typeOut`
      * is not null, it will hold whether the port is an output or input.
@@ -128,7 +129,6 @@ public:
 
     virtual bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet data) = 0;
     virtual bool setNodeData(NodeUuid const& nodeUuid, PortType type, NodeDataPtrList const& data) = 0;
-
 };
 
 } // namespace intelli
