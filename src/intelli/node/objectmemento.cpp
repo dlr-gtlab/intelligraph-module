@@ -1,48 +1,31 @@
-#include "intelli/node/objectmemento.h"
+#include <intelli/node/objectmemento.h>
 
-#include "gt_object.h"
-#include "gt_objectmemento.h"
-#include "gt_xmlhighlighter.h"
-#include "gt_codeeditor.h"
+#include <gt_objectmemento.h>
 
 #include <intelli/data/object.h>
+#include <intelli/data/string.h>
 
 #include <QLayout>
 
 using namespace intelli;
 
 ObjectMementoNode::ObjectMementoNode() :
-    Node(tr("Memento Viewer"))
+    Node("To Memento")
 {
-    setNodeFlag(Resizable);
-    setNodeFlag(MaximizeWidget);
-    setNodeEvalMode(NodeEvalMode::MainThread);
+    m_in  = addInPort(typeId<ObjectData>());
+    m_out = addOutPort({typeId<StringData>(), tr("memento")});
+}
 
-    PortId inPort = addInPort(typeId<ObjectData>());
+void
+ObjectMementoNode::eval()
+{
+    auto data = nodeData<ObjectData>(m_in);
 
-    registerWidgetFactory([this, inPort]() {
-        auto base = makeBaseWidget();
-        auto* w = new GtCodeEditor();
-        base->layout()->addWidget(w);
+    if (!data || !data->object())
+    {
+        setNodeData(m_out, nullptr);
+        return;
+    }
 
-        w->setMinimumSize(300, 300);
-        w->setReadOnly(true);
-        new GtXmlHighlighter(w->document());
-
-        auto const update = [this, inPort, w](){
-            w->clear();
-            if (auto* data = nodeData<ObjectData*>(inPort))
-            {
-                if (auto* obj = data->object())
-                {
-                    w->setPlainText(obj->toMemento().toByteArray());
-                }
-            }
-        };
-
-        connect(this, &Node::inputDataRecieved, w, update);
-        update();
-
-        return base;
-    });
+    setNodeData(m_out, std::make_shared<StringData>(data->object()->toMemento().toByteArray()));
 }

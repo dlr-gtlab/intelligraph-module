@@ -19,6 +19,8 @@ StringInputNode::StringInputNode() :
                       std::make_unique<GtStringProperty>("value", tr("Value"),
                                                          tr("Current value")))
 {
+    setNodeFlag(ResizableHOnly, true);
+
     m_value->hide();
 
     m_out = addOutPort(intelli::typeId<intelli::StringData>());
@@ -30,6 +32,7 @@ StringInputNode::StringInputNode() :
     registerWidgetFactory([this]() {
         auto w = std::make_unique<GtLineEdit>();
         w->setPlaceholderText(QStringLiteral("String"));
+        w->setMinimumWidth(50);
 
         auto const updateProp = [this, w_ = w.get()](){
             if(value() != w_->text()) setValue(w_->text());

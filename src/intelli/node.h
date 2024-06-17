@@ -22,22 +22,29 @@ namespace intelli
 enum NodeFlag
 {
     NoFlag      = 0,
-    /// Indicates node is resizeable
-    Resizable   = 1 << 0,
     /// Indicates node caption should be hidden
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
     Unique      = 1 << 2,
+
     /// Indicates that the widget should be placed so that its size can be maximized
-    MaximizeWidget  = 1 << 3,
+    MaximizeWidget = 1 << 3,
+    /// Indicates node is resizeable
+    Resizable   = 1 << 4,
+    /// Indicates node is only resizeable horizontally
+    ResizableHOnly = 1 << 5,
+
     /// Indicates that the node is evaluating (will be set automatically)
     Evaluating  = 1 << 7,
 
     /// default node flags
-    DefaultNodeFlags = NoFlag
+    DefaultNodeFlags = NoFlag,
+
+    /// mask to check if node is resizable
+    IsResizableMask = Resizable | ResizableHOnly
 };
 
-using NodeFlags = int;
+using NodeFlags = unsigned int;
 
 enum class NodeEvalMode
 {
@@ -305,6 +312,13 @@ public:
      * @return Port id. May be invalid, check using `invalid<PortId>()`
      */
     PortId portId(PortType type, PortIndex idx) const noexcept(false);
+
+    /**
+     * @brief Returns whether a port is connected
+     * @param id Port id to check
+     * @return Is port connected
+     */
+    bool isPortConnected(PortId portId) const;
 
 signals:
 

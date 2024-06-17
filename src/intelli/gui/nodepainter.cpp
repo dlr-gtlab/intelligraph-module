@@ -234,8 +234,7 @@ NodePainter::drawPortCaption(QPainter& painter,
 void
 NodePainter::drawResizeHandle(QPainter& painter) const
 {
-    if (!object().centralWidget() ||
-        !(node().nodeFlags() & NodeFlag::Resizable)) return;
+    if (!object().hasResizeHandle()) return;
 
     QRectF rect = geometry().resizeHandleRect();
 
