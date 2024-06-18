@@ -87,7 +87,7 @@ static const int ns_meta_port_type = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber{0, 10, 3};
+    return GtVersionNumber{0, 10, 4};
 }
 
 QString
