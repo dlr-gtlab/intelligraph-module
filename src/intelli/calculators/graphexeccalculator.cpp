@@ -160,9 +160,7 @@ GraphExecCalculator::run()
 
     bool success = model.evaluateGraph().wait();
 
-    gtFatal() << "Test 1";
     graph->deleteLater();
-    gtFatal() << "Test 2";
 
     /// ToDo:
     /// Add monitoring information if possible
