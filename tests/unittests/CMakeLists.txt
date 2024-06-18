@@ -46,4 +46,5 @@ target_compile_definitions(IntelliGraphUnitTests PRIVATE
     GT_LOG_USE_QT_BINDINGS # enable Qt operator<< for logging
 )
 
-add_test(NAME Unittests COMMAND IntelliGraphUnitTests)
+include(GoogleTest)
+gtest_discover_tests(IntelliGraphUnitTests TEST_PREFIX "Intelligraph.")

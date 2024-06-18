@@ -38,6 +38,7 @@ windowsBuildDebug:
     - git submodule sync
     - git submodule update --init
     # build
+    - $env:PATH+=(";.\build;"+$env:GTLAB_DEV_TOOLS+"\binDebug;"+$env:GTLAB_DEV_TOOLS+"\binDebug\modules;")
     - cmake -B build -S . -G "Ninja" -DGTLAB_DEVTOOLS_DIR="$env:GTLAB_DEV_TOOLS"  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install-msvc2019-dbg -DBUILD_UNITTESTS=ON
     - cmake --build build --target install
 
@@ -66,6 +67,8 @@ linuxBuildDebug:
     - git submodule sync
     - git submodule update --init
     # build
+    - export LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/bin:$LD_LIBRARY_PATH"
+    - export LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/bin/modules:$LD_LIBRARY_PATH"
     - cmake -B build -S . -G "Ninja" -DGTLAB_DEVTOOLS_DIR=$GTLAB_DEV_TOOLS -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install-linux-dbg -DBUILD_UNITTESTS=ON
     - cmake --build build --target install
 
@@ -82,6 +85,8 @@ linuxBuildRelease:
     - git submodule sync
     - git submodule update --init
     # build
+    - export LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/bin:$LD_LIBRARY_PATH"
+    - export LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/bin/modules:$LD_LIBRARY_PATH"
     - cmake -B build -S . -G "Ninja" -DGTLAB_DEVTOOLS_DIR=$GTLAB_DEV_TOOLS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install-linux -DBUILD_UNITTESTS=ON
     - cmake --build build --target install
 
