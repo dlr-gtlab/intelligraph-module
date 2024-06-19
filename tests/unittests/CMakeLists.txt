@@ -47,4 +47,4 @@ target_compile_definitions(IntelliGraphUnitTests PRIVATE
 )
 
 include(GoogleTest)
-gtest_discover_tests(IntelliGraphUnitTests TEST_PREFIX "Intelligraph.")
+gtest_discover_tests(IntelliGraphUnitTests TEST_PREFIX "Intelligraph." DISCOVERY_MODE PRE_TEST)
