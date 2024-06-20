@@ -79,9 +79,14 @@ public:
     {
         T var;
 
-        auto* helper = const_cast<intelli::NodeData*>(this);
+        int rtypeId = qMetaTypeId<T>();
 
-        auto retarg = QReturnArgument<T>(typeid(T).name(), var);
+        QByteArray const& rtypeName = QMetaType(rtypeId).name();
+
+        // Qt is expecting a "normalized" type name here (not "typeid(T).name()")
+        auto retarg = QReturnArgument<T>(rtypeName, var);
+
+        auto* helper = const_cast<NodeData*>(this);
 
         if (!QMetaObject::invokeMethod(helper,
                                        methodName.toLatin1(),
@@ -90,7 +95,8 @@ public:
                                        val4, val5, val6, val7, val8, val9))
         {
             gtTraceId("IntelliGraph")
-                << tr("Invoking meber function '%1' failed!").arg(methodName);
+                << tr("Invoking meber function '%1 %2(...)' failed!")
+                        .arg(rtypeName, methodName);
             return {};
         }
 

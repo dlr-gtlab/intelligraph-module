@@ -90,6 +90,44 @@ linuxBuildRelease:
     - cmake -B build -S . -G "Ninja" -DGTLAB_DEVTOOLS_DIR=$GTLAB_DEV_TOOLS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install-linux -DBUILD_UNITTESTS=ON
     - cmake --build build --target install
 
+testWin_2.0:
+  stage: test
+  tags: ["windows", "docker"]
+  image: at-twk-hal9000.intra.dlr.de:5000/dlr-at/gtlabdev-2_0-win
+  needs: ["windowsBuildDebug"]
+  before_script:
+    - '& $env:GTLAB_UPDATE_TOOL up --confirm-command; $null'
+  script:
+    - $env:path = "$env:GTLAB_DEV_TOOLS\binDebug;$env:GTLAB_DEV_TOOLS\binDebug\modules;$env:path"
+    - cd build
+    - .\IntelliGraphUnitTests.exe --gtest_output=xml:unittests.xml
+  artifacts:
+    paths:
+      - "build/unittests.xml"
+    expire_in: 1 week
+    reports:
+      junit: build/unittests.xml
+
+testLinux_2.0:
+  stage: test
+  tags: ["linux", "docker"]
+  image: at-twk-hal9000.intra.dlr.de:5000/dlr-at/gtlabdev-2_0-buster
+  needs: ["linuxBuildDebug"]
+  before_script:
+    # update to latest dev tools
+    - '"$GTLAB_UPDATE_TOOL" up --confirm-command'
+  script:
+    - cd build
+    - LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/binDebug" ./IntelliGraphUnitTests --gtest_output=xml:unittests.xml
+  variables:
+    GIT_SUBMODULE_STRATEGY: "none"
+  artifacts:
+    paths:
+      - "build/unittests.xml"
+    expire_in: 1 week
+    reports:
+      junit: build/unittests.xml 
+
 .package:
   stage: package
   tags: ["docker", "linux"]
