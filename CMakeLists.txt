@@ -5,6 +5,8 @@ project(GTlabIntelliGraph)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 set(CMAKE_AUTOMOC ON)
 
+option(BUILD_UNITTESTS "Build Unittests" OFF)
+
 include(GNUInstallDirs)
 
 set(Qt5_DIR ${QT_DIR})
@@ -24,4 +26,6 @@ if (NOT TARGET GTlab::Core)
 endif()
 
 add_subdirectory(src)
-add_subdirectory(tests/unittests)
+if (BUILD_UNITTESTS)
+    add_subdirectory(tests/unittests)
+endif ()
