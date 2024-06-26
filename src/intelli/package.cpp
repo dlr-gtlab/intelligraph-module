@@ -268,6 +268,8 @@ struct Package::Impl
     template <typename Lambda>
     static bool readGraph(GraphCategory& cat, QString const& fileName, QDir const& dir, Lambda const& makeError)
     {
+        assert(gtObjectFactory);
+
         QFile file(dir.absoluteFilePath(fileName));
 
         if (!file.open(QIODevice::ReadOnly))
@@ -374,38 +376,124 @@ Package::Package()
 bool
 Package::readData(const QDomElement& root)
 {
-    assert(gtObjectFactory);
+#if GT_VERSION < GT_VERSION_CHECK(2, 1, 0)
     assert(gtApp);
 
-    auto const makeError = [](){
-        return tr("Failed to read package data!");
-    };
-
+    // Workaround. GTlab < 2.1.0 does not allow to access the project dir,
+    // hence we need to get it this way.
     auto* project = gtApp->currentProject();
 
     if (!project)
     {
-        gtError() << makeError() << tr("(project could not be accessed)");
-        gtError() << tr("The GTlab version is most likely incompatible with the module version of '%1'! "
-                        "Reading from module file instead...")
-                   .arg(GT_MODULENAME());
+        gtError() << tr("Failed to read package data!")
+                  << tr("(project could not be accessed)");
         return GtPackage::readData(root);
     }
 
-    QDir dir = project->path();
+    if (!readMiscData(project->path()))
+    {
+        gtError() << tr("The GTlab version is most likely incompatible with the module version of '%1'! "
+                        "Reading from module file instead...").arg(MODULE_DIR);
+        return GtPackage::readData(root);
+    }
+#endif
+    return true;
+}
+
+bool
+Package::saveData(QDomElement& root, QDomDocument& doc)
+{
+#if GT_VERSION < GT_VERSION_CHECK(2, 1, 0)
+    assert(gtApp);
+
+    // Workaround. GTlab < 2.1.0 does not allow to access the project dir,
+    // hence we need to get it this way.
+    auto* project = gtApp->currentProject();
+
+    if (!project)
+    {
+        gtError() << tr("Failed to save package data!")
+                  << tr("(project could not be accessed)");
+        GtPackage::saveData(root, doc);
+        return false;
+    }
+
+    if (!saveMiscData(project->path()))
+    {
+        GtPackage::saveData(root, doc);
+        return false;
+    }
+
+#endif
+    return true;
+}
+
+bool
+Package::saveMiscData(QDir const& projectDir)
+{
+    auto const makeError = [](){
+        return tr("Failed to save package data!");
+    };
+
+    QDir dir(projectDir);
+    dir.mkdir(MODULE_DIR);
+    if (!dir.cd(MODULE_DIR))
+    {
+        gtError() << makeError()
+                  << tr("(module dir '%1' could not be created)").arg(MODULE_DIR);
+        return false;
+    }
+
+    auto const& categories = findDirectChildren<GraphCategory*>();
+
+    Impl::deleteCategoryDirs(dir, gt::objectNames(categories));
+
+    // order of categories
+    QJsonArray jCats;
+
+    bool success = true;
+
+    for (auto const* cat : categories)
+    {
+        if (!Impl::saveCategory(cat, dir, makeError))
+        {
+            success = false;
+            continue;
+        }
+
+        jCats.append(cat->uuid());
+    }
+
+    // contents of index file
+    QJsonObject jIndex;
+    jIndex[QStringLiteral("order")] = std::move(jCats);
+
+    Impl::createIndexFile(*this, QJsonDocument(jIndex), dir, makeError);
+
+    return success;
+}
+
+bool
+Package::readMiscData(QDir const& projectDir)
+{
+    auto const makeError = [](){
+        return tr("Failed to save package data!");
+    };
+
+    QDir dir(projectDir);
 
     if (!dir.cd(MODULE_DIR) || !dir.exists())
     {
         gtInfo().verbose()
-            << tr("Module dir '%1' does not exists. Reading from module file instead...").arg(MODULE_DIR);
-        return GtPackage::readData(root);
+            << tr("Module dir '%1' does not exists.").arg(MODULE_DIR);
+        return false;
     }
 
     if (dir.isEmpty(QDir::Dirs | QDir::NoDotAndDotDot))
     {
         gtInfo().verbose()
-            << tr("Empty module '%1' dir. Reading from module file instead...").arg(MODULE_DIR);
-        return GtPackage::readData(root);
+            << tr("Empty module '%1' dir.arg(MODULE_DIR)");
+        return false;
     }
 
     QDirIterator iter{
@@ -438,65 +526,6 @@ Package::readData(const QDomElement& root)
 
     // apply
     Impl::applyIndex(*this, jDoc.object());
-
-    return success;
-}
-
-bool
-Package::saveData(QDomElement& root, QDomDocument& doc)
-{
-    assert(gtApp);
-
-    auto const makeError = [](){
-        return tr("Failed to save package data!");
-    };
-
-    auto* project = gtApp->currentProject();
-
-    if (!project)
-    {
-        gtError() << makeError()
-                  << tr("(project could not be accessed)");
-        GtPackage::saveData(root, doc);
-        return false;
-    }
-
-    QDir dir = project->path();
-
-    dir.mkdir(MODULE_DIR);
-    if (!dir.cd(MODULE_DIR))
-    {
-        gtError() << makeError()
-                  << tr("(module dir '%1' could not be created)").arg(MODULE_DIR);
-        GtPackage::saveData(root, doc);
-        return false;
-    }
-
-    auto const& categories = findDirectChildren<GraphCategory*>();
-
-    Impl::deleteCategoryDirs(dir, gt::objectNames(categories));
-
-    // order of categories
-    QJsonArray jCats;
-
-    bool success = true;
-
-    for (auto const* cat : categories)
-    {
-        if (!Impl::saveCategory(cat, dir, makeError))
-        {
-            success = false;
-            continue;
-        }
-
-        jCats.append(cat->uuid());
-    }
-
-    // contents of index file
-    QJsonObject jIndex;
-    jIndex[QStringLiteral("order")] = std::move(jCats);
-
-    Impl::createIndexFile(*this, QJsonDocument(jIndex), dir, makeError);
 
     return success;
 }
