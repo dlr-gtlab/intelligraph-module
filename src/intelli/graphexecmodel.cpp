@@ -6,7 +6,6 @@
  *  E-Mail: marius.broecker@dlr.de
  */
 
-
 #include <intelli/graphexecmodel.h>
 #include <intelli/private/graphexecmodel_impl.h>
 
@@ -81,15 +80,10 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 GraphExecutionModel*
 GraphExecutionModel::accessExecModel(Graph& graph)
 {
-    if (graph.parentGraph())
-    {
-        auto root = graph.findRoot<Graph*>(&graph);
-        if (!root) return {};
+    auto* root = graph.rootGraph();
+    if (!root) return {};
 
-        return root->findDirectChild<GraphExecutionModel*>();
-    }
-
-    return graph.findDirectChild<GraphExecutionModel*>();
+    return root->findDirectChild<GraphExecutionModel*>();
 }
 
 GraphExecutionModel const*
@@ -121,6 +115,72 @@ GraphExecutionModel::reset()
 
     endModification();
 }
+
+void
+GraphExecutionModel::beginReset()
+{
+    m_autoEvaluateRootGraph = false;
+
+    auto iter = m_data.keyBegin();
+    auto end  = m_data.keyEnd();
+    for (; iter != end; ++iter)
+    {
+    auto& entry = *m_data.find(*iter);
+    entry.state = DataState::RequiresReevaluation;
+    for (auto& entry : entry.portsIn ) entry.data.state = PortDataState::Outdated;
+    for (auto& entry : entry.portsOut) entry.data.state = PortDataState::Outdated;
+    }
+}
+
+void
+GraphExecutionModel::endReset()
+{
+    m_targetNodes.clear();
+    //    m_pendingNodes.clear();
+    m_queuedNodes.clear();
+    m_data.clear();
+
+    Graph& graph = this->graph();
+    setupConnections(graph);
+
+    auto const& nodes = graph.nodes();
+    for (auto* node : nodes)
+    {
+        onNodeAppended(node);
+    }
+}
+
+void
+GraphExecutionModel::beginModification()
+{
+    INTELLI_LOG(*this)
+        << tr("BEGIN MODIFICIATION...")
+        << m_modificationCount;
+
+    assert(m_modificationCount >= 0);
+    m_modificationCount++;
+}
+
+void
+GraphExecutionModel::endModification()
+{
+    m_modificationCount--;
+    assert(m_modificationCount >= 0);
+
+    INTELLI_LOG(*this)
+        << tr("...END MODIFICATION")
+        << m_modificationCount;
+
+    // TODO: explicitly reschedule the graph?
+    if (m_modificationCount != 0) return;
+}
+
+bool
+GraphExecutionModel::isBeingModified() const
+{
+    return m_modificationCount > 0;
+}
+
 
 NodeEvalState
 GraphExecutionModel::nodeEvalState(NodeUuid const& nodeUuid) const
@@ -169,74 +229,45 @@ GraphExecutionModel::isGraphEvaluated() const
 }
 
 bool
+GraphExecutionModel::isGraphEvaluated(Graph const& graph) const
+{
+    auto const& nodes = graph.nodes();
+    return std::all_of(nodes.begin(), nodes.end(),
+                       [this](Node const* node){
+       return isNodeEvaluated(node->uuid());
+   });
+}
+
+bool
 GraphExecutionModel::isNodeEvaluated(NodeUuid const& nodeUuid) const
 {
     return nodeEvalState(nodeUuid) == NodeEvalState::Valid;
 }
 
-void
-GraphExecutionModel::beginReset()
+bool
+GraphExecutionModel::isAutoEvaluatingNode(NodeUuid const& nodeUuid) const
 {
-    m_autoEvaluateGraph = false;
+    auto iter = Impl::findTargetNode(*this, nodeUuid);
+    if (iter == m_targetNodes.end()) return false;
 
-    auto iter = m_data.keyBegin();
-    auto end  = m_data.keyEnd();
-    for (; iter != end; ++iter)
-    {
-        auto& entry = *m_data.find(*iter);
-        entry.state = DataState::RequiresReevaluation;
-        for (auto& entry : entry.portsIn ) entry.data.state = PortDataState::Outdated;
-        for (auto& entry : entry.portsOut) entry.data.state = PortDataState::Outdated;
-    }
-}
-
-void
-GraphExecutionModel::endReset()
-{
-    m_targetNodes.clear();
-//    m_pendingNodes.clear();
-    m_queuedNodes.clear();
-    m_data.clear();
-
-    Graph& graph = this->graph();
-    setupConnections(graph);
-
-    auto const& nodes = graph.nodes();
-    for (auto* node : nodes)
-    {
-        onNodeAppended(node);
-    }
-}
-
-void
-GraphExecutionModel::beginModification()
-{
-    INTELLI_LOG(*this)
-        << tr("BEGIN MODIFICIATION...")
-        << m_modificationCount;
-
-    assert(m_modificationCount >= 0);
-    m_modificationCount++;
-}
-
-void
-GraphExecutionModel::endModification()
-{
-    m_modificationCount--;
-    assert(m_modificationCount >= 0);
-
-    INTELLI_LOG(*this)
-        << tr("...END MODIFICATION")
-        << m_modificationCount;
-
-    // TODO: explicitly reschedule the graph?
-    if (m_modificationCount != 0) return;
+    return iter->evalType == NodeEvaluationType::KeepEvaluated;
 }
 
 bool
-GraphExecutionModel::isBeingModified() const
+GraphExecutionModel::isAutoEvaluatingGraph() const
 {
-    return m_modificationCount > 0;
+    return isAutoEvaluatingGraph(this->graph());
+}
+
+bool
+GraphExecutionModel::isAutoEvaluatingGraph(Graph const& graph) const
+{
+    if (&this->graph() == &graph)
+    {
+        return m_autoEvaluateRootGraph;
+    }
+
+    return isAutoEvaluatingNode(graph.uuid());
 }
 
 void
@@ -271,44 +302,29 @@ GraphExecutionModel::setupConnections(Graph& graph)
             Qt::DirectConnection);
 }
 
-bool
-GraphExecutionModel::isAutoEvaluatingNode(NodeUuid const& nodeUuid) const
-{
-    auto iter = std::find_if(m_targetNodes.begin(), m_targetNodes.end(),
-                             [&nodeUuid](TargetNode const& target){
-        return target.nodeUuid == nodeUuid;
-    });
-    if (iter == m_targetNodes.end()) return false;
-
-    return iter->evalType == NodeEvaluationType::KeepEvaluated;
-}
-
-bool
-GraphExecutionModel::isAutoEvaluatingGraph() const
-{
-    return m_autoEvaluateGraph;
-}
-
 FutureEvaluated
 GraphExecutionModel::autoEvaluateGraph()
 {
-    m_autoEvaluateGraph = true;
+    return autoEvaluateGraph(this->graph());
+}
 
-    FutureEvaluated future{*this};
+FutureEvaluated
+GraphExecutionModel::autoEvaluateGraph(Graph& graph)
+{
+    assert(Impl::isGraphContained(*this, graph));
 
-    auto const& targetNodes = Impl::findLeafNodes(graph());
-
-    for (auto const& target : targetNodes)
+    if (&this->graph() == &graph)
     {
-        NodeEvalState evalState = Impl::scheduleTargetNode(
-            *this, target, NodeEvaluationType::KeepEvaluated
-        );
-
-        future.append(target, evalState);
-        if (!future.detach()) return future;
+        m_autoEvaluateRootGraph = true;
+        graph.setActive(true);
+    }
+    // append graph to target nodes
+    else if (!isAutoEvaluatingGraph(graph))
+    {
+        m_targetNodes.push_back({graph.uuid(), NodeEvaluationType::KeepEvaluated});
     }
 
-    return future;
+    return Impl::evaluateGraph(*this, graph, NodeEvaluationType::KeepEvaluated);
 }
 
 FutureEvaluated
@@ -320,21 +336,13 @@ GraphExecutionModel::autoEvaluateNode(NodeUuid const& nodeUuid)
 FutureEvaluated
 GraphExecutionModel::evaluateGraph()
 {
-    FutureEvaluated future{*this};
+    return evaluateGraph(this->graph());
+}
 
-    auto const& targetNodes = Impl::findLeafNodes(graph());
-
-    for (auto const& target : targetNodes)
-    {
-        NodeEvalState evalState = Impl::scheduleTargetNode(
-            *this, target, NodeEvaluationType::SingleShot
-        );
-
-        future.append(target, evalState);
-        if (!future.detach()) return future;
-    }
-
-    return future;
+FutureEvaluated
+GraphExecutionModel::evaluateGraph(Graph& graph)
+{
+    return Impl::evaluateGraph(*this, graph, NodeEvaluationType::SingleShot);
 }
 
 FutureEvaluated
@@ -346,21 +354,32 @@ GraphExecutionModel::evaluateNode(NodeUuid const& nodeUuid)
 void
 GraphExecutionModel::stopAutoEvaluatingGraph()
 {
-    m_autoEvaluateGraph = false;
-    for (auto& target : m_targetNodes)
+    return stopAutoEvaluatingGraph(this->graph());
+}
+
+void
+GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
+{
+    assert(Impl::isGraphContained(*this, graph));
+
+    if (&this->graph() == &graph)
     {
-        target.evalType = NodeEvaluationType::SingleShot;
+        m_autoEvaluateRootGraph = false;
+        graph.setActive(false);
+    }
+
+    auto const& nodes = graph.nodes();
+    for (auto* node : nodes)
+    {
+        stopAutoEvaluatingNode(node->uuid());
     }
 }
 
 void
-GraphExecutionModel::stopAutoEvaluatingNode(const NodeUuid& nodeUuid)
+GraphExecutionModel::stopAutoEvaluatingNode(NodeUuid const& nodeUuid)
 {
-    auto iter = std::find_if(m_targetNodes.begin(), m_targetNodes.end(),
-                             [nodeUuid](TargetNode const& target){
-        return target.nodeUuid == nodeUuid;
-    });
-    if (iter != m_targetNodes.end()) iter->evalType = NodeEvaluationType::SingleShot;
+    auto iter = Impl::findTargetNode(*this, nodeUuid);
+    if (iter != m_targetNodes.end()) m_targetNodes.erase(iter);
 }
 
 bool
@@ -625,17 +644,11 @@ GraphExecutionModel::onNodeEvaluatedHelper()
 
     assert(!Impl::isNodeEvaluating(*node));
 
-    // invoke the actual "onNodeEvaluated" method in the next cycle of
-    // Qt's event loop. That way, if a node is executed blockingly, the calling
-    // functions can unroll
-    QMetaObject::invokeMethod(
-        this, "onNodeEvaluatedAsync",
-        Qt::QueuedConnection, Q_ARG(QString, node->uuid())
-    );
+    onNodeEvaluated(node->uuid());
 }
 
 void
-GraphExecutionModel::onNodeEvaluatedAsync(QString nodeUuid)
+GraphExecutionModel::onNodeEvaluated(QString nodeUuid)
 {
     auto item = Impl::findData(*this, nodeUuid);
     if (!item)
@@ -677,10 +690,7 @@ GraphExecutionModel::onNodeEvaluatedAsync(QString nodeUuid)
         return;
     }
 
-    auto iter = std::find_if(m_targetNodes.begin(), m_targetNodes.end(),
-                             [nodeUuid](TargetNode const& target){
-        return target.nodeUuid == nodeUuid;
-    });
+    auto iter = Impl::findTargetNode(*this, nodeUuid);
     if (iter != m_targetNodes.end() &&
         iter->evalType == NodeEvaluationType::SingleShot)
     {
@@ -694,17 +704,7 @@ GraphExecutionModel::onNodeEvaluatedAsync(QString nodeUuid)
         INTELLI_LOG_SCOPE(*this)
             << tr("rescheduling target nodes...");
 
-        foreach (TargetNode const& target, m_targetNodes)
-        {
-            auto state = Impl::scheduleTargetNode(*this, target.nodeUuid, target.evalType);
-            if (state == NodeEvalState::Invalid)
-            {
-                emit nodeEvaluationFailed(target.nodeUuid, QPrivateSignal());
-
-                emit graphStalled(QPrivateSignal());
-            }
-        }
-
+        Impl::rescheduleTargetNodes(*this);
         Impl::evaluateNextInQueue(*this);
     }
 }
@@ -771,19 +771,7 @@ GraphExecutionModel::onNodeAppended(Node* node)
 
     connect(node, &Node::triggerNodeEvaluation, this, [this, nodeUuid](){
             invalidateNodeOutputs(nodeUuid);
-        foreach (TargetNode const& target, m_targetNodes)
-        {
-            if (target.evalType == NodeEvaluationType::KeepEvaluated)
-            {
-                auto state = Impl::scheduleTargetNode(*this, target.nodeUuid, target.evalType);
-                if (state == NodeEvalState::Invalid)
-                {
-                    emit nodeEvaluationFailed(target.nodeUuid, QPrivateSignal());
-
-                    emit graphStalled(QPrivateSignal());
-                }
-            }
-        }
+            Impl::rescheduleTargetNodes(*this);
     }, Qt::DirectConnection);
 
     exec::setNodeDataInterface(*node, *this);
@@ -956,8 +944,7 @@ intelli::debug(GraphExecutionModel const& model)
 
         text += QString{"  "}.repeated(indent) +
                 QStringLiteral("Node '%1' (%2):\n")
-                    .arg(node ? relativeNodePath(*node) : caption)
-                    .arg(nodeUuid);
+                    .arg(node ? relativeNodePath(*node) : caption, nodeUuid);
         text += QString{"  "}.repeated(indent + 1) +
                 QStringLiteral("STATE: ");
 

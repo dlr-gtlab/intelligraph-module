@@ -12,6 +12,7 @@
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
 #include "intelli/graph.h"
+#include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/icons.h"
@@ -251,7 +252,12 @@ NodeUI::executeNode(GtObject* obj)
     });
     Q_UNUSED(cleanup);
     
-    emit node->triggerNodeEvaluation();
+    auto model = GraphExecutionModel::accessExecModel(*graph);
+    if (!model) return;
+
+    auto const& nodeUuid = node->uuid();
+    model->invalidateNode(nodeUuid);
+    model->evaluateNode(nodeUuid).detach();
 }
 
 void

@@ -214,6 +214,14 @@ public:
     Graph const* parentGraph() const;
 
     /**
+     * @brief Returns the root graph of this graph. If no root is found it is
+     * assumed that this object is the root.
+     * @return Root graph
+     */
+    Graph* rootGraph();
+    Graph const* rootGraph() const;
+
+    /**
      * @brief Returns a list of all nodes in this graph
      * @return Nodes
      */

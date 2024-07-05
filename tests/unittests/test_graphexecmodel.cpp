@@ -15,6 +15,14 @@
 #include <gt_objectmementodiff.h>
 #include <gt_objectfactory.h>
 
+/* TODO:
+ * - Removing nodes/connections (especially in auto evaluation mode)
+ * - Appending nodes/connections (especially in auto evaluation mode)
+ * - stopAutoEvaluating for root graph
+ * - Auto evaluate subgraph only + isGraphEvaluated, isAutoEvaluatingGraph, stopAutoEvaluatingGraph
+ * - Evaluate multiple exclusive nodes
+ */
+
 using namespace intelli;
 
 constexpr auto maxTimeout = std::chrono::seconds(1);

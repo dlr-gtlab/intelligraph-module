@@ -15,6 +15,28 @@
 #include <gt_objectfactory.h>
 
 using namespace intelli;
+
+TEST(Graph, rootGraph)
+{
+    auto rootGraphPtr = std::make_unique<Graph>();
+    Graph* rootGraph = rootGraphPtr.get();
+    EXPECT_EQ(rootGraph->rootGraph(), rootGraph);
+
+    auto subGraphPtr = std::make_unique<Graph>();
+    Graph* subGraph = subGraphPtr.get();
+    rootGraph->appendNode(std::move(subGraphPtr));
+
+    EXPECT_EQ(rootGraph->rootGraph(), rootGraph);
+    EXPECT_EQ(subGraph->rootGraph(), rootGraph);
+
+    GtObject root;
+    ASSERT_TRUE(root.appendChild(rootGraph));
+
+    rootGraphPtr.release(); // root now owns rootGraph
+    EXPECT_EQ(rootGraph->rootGraph(), rootGraph);
+    EXPECT_EQ(subGraph->rootGraph(), rootGraph);
+}
+
 TEST(Graph, ancestors_and_descendants)
 {
     Graph graph;

@@ -269,16 +269,22 @@ GraphScene::reset()
 void
 GraphScene::beginReset()
 {
+    assert(m_graph);
+
     disconnect(m_graph);
+    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
+    if (model) disconnect(model);
 }
 
 void
 GraphScene::endReset()
 {
+    assert(m_graph);
+
     m_nodes.clear();
 
-    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
-    if (!model) model = new GraphExecutionModel(*m_graph);
+    auto* root = m_graph->rootGraph();
+    assert(root);
 
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
@@ -297,10 +303,19 @@ GraphScene::endReset()
     connect(m_graph, &Graph::connectionAppended, this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
     connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
 
+    auto* model = GraphExecutionModel::accessExecModel(*root);
+    if (!model) model = new GraphExecutionModel(*root);
+
     connect(model, &GraphExecutionModel::nodeEvalStateChanged,
             this, &GraphScene::onNodeEvalStateChanged, Qt::DirectConnection);
 
-    if (m_graph->isActive()) model->autoEvaluateGraph().detach();
+    // update node eval states
+    for (auto* node : nodes)
+    {
+        onNodeEvalStateChanged(node->uuid());
+    }
+
+    if (root->isActive()) model->autoEvaluateGraph(*m_graph).detach();
 }
 
 Graph&

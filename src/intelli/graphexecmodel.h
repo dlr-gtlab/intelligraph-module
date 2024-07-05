@@ -45,26 +45,40 @@ public:
 
     void reset();
 
+    GT_NO_DISCARD
     NodeEvalState nodeEvalState(NodeUuid const& nodeUuid) const;
 
+    GT_NO_DISCARD
     bool isGraphEvaluated() const;
+    GT_NO_DISCARD
+    bool isGraphEvaluated(Graph const& graph) const;
+    GT_NO_DISCARD
     bool isNodeEvaluated(NodeUuid const& nodeUuid) const;
 
     GT_NO_DISCARD
+    bool isAutoEvaluatingGraph() const;
+    GT_NO_DISCARD
+    bool isAutoEvaluatingGraph(Graph const& graph) const;
+    GT_NO_DISCARD
+    bool isAutoEvaluatingNode(NodeUuid const& nodeUuid) const;
+
+    GT_NO_DISCARD
     FutureEvaluated autoEvaluateGraph();
+    GT_NO_DISCARD
+    FutureEvaluated autoEvaluateGraph(Graph& graph);
     GT_NO_DISCARD
     FutureEvaluated autoEvaluateNode(NodeUuid const& nodeUuid);
 
     GT_NO_DISCARD
     FutureEvaluated evaluateGraph();
     GT_NO_DISCARD
+    FutureEvaluated evaluateGraph(Graph& graph);
+    GT_NO_DISCARD
     FutureEvaluated evaluateNode(NodeUuid const& nodeUuid);
 
     void stopAutoEvaluatingGraph();
+    void stopAutoEvaluatingGraph(Graph& graph);
     void stopAutoEvaluatingNode(NodeUuid const& nodeUuid);
-
-    bool isAutoEvaluatingNode(NodeUuid const& nodeUuid) const;
-    bool isAutoEvaluatingGraph() const;
 
     bool invalidateNode(NodeUuid const& nodeUuid);
     bool invalidateNodeOutputs(NodeUuid const& nodeUuid);
@@ -88,9 +102,6 @@ public:
      * @return Execution data
      */
     inline auto const& data() const { return m_data; }
-
-    auto& queue() const { return m_queuedNodes; }
-    auto& targets() const { return m_targetNodes; }
 
 signals:
 
@@ -152,9 +163,8 @@ private:
     /// indicator if the exec model is currently beeing modified and thus
     /// should halt execution
     int m_modificationCount = 0;
-    int m_indent = 0;
-    /// whether to auto evaluate the associated graph
-    bool m_autoEvaluateGraph = false;
+    /// whether to auto evaluate the root graph
+    bool m_autoEvaluateRootGraph = false;
 
     void beginReset();
 
@@ -193,7 +203,7 @@ private slots:
      * associated with `nodeUuid` has been evaluated.
      * @param nodeUuid Node that has been evaluated
      */
-    void onNodeEvaluatedAsync(QString nodeUuid);
+    void onNodeEvaluated(QString nodeUuid);
 
     void onNodeAppended(Node* node);
 

@@ -95,11 +95,10 @@ struct GraphExecutionModel::Impl
 
     /// Finds either all start (root) or end (leaf) nodes of the graph. This can
     /// be determined if there no ingoing/outgoing connections
-    static inline QVarLengthArray<NodeUuid, PRE_ALLOC>
-    findStartAndEndNodes(Graph const& graph, PortType type)
+    template<typename List>
+    static inline void
+    findStartAndEndNodes(Graph const& graph, PortType type, List& targetNodes)
     {
-        QVarLengthArray<NodeUuid, PRE_ALLOC> targetNodes;
-
         auto const& nodes = graph.nodes();
         for (auto const* node : nodes)
         {
@@ -108,21 +107,29 @@ struct GraphExecutionModel::Impl
                 targetNodes.push_back(node->uuid());
             }
         }
-        return targetNodes;
+
+        for (auto* subgraph : graph.graphNodes())
+        {
+            findStartAndEndNodes(*subgraph, type, targetNodes);
+        }
     }
 
     /// Finds all start/root nodes of the graph.
     static inline auto
     findRootNodes(Graph const& graph)
     {
-        return findStartAndEndNodes(graph, PortType::In);
+        QVarLengthArray<NodeUuid, PRE_ALLOC> targets;
+        findStartAndEndNodes(graph, PortType::In, targets);
+        return targets;
     }
 
     /// Finds all end/leaf nodes of the graph.
     static inline auto
     findLeafNodes(Graph const& graph)
     {
-        return findStartAndEndNodes(graph, PortType::Out);
+        QVarLengthArray<NodeUuid, PRE_ALLOC> targets;
+        findStartAndEndNodes(graph, PortType::Out, targets);
+        return targets;
     }
 
     /// Returns the port type for the given entry and port vector
@@ -133,6 +140,31 @@ struct GraphExecutionModel::Impl
         if (&e.portsIn == &p) return PortType::In;
         if (&e.portsOut == &p) return PortType::Out;
         return PortType::NoType;
+    }
+
+    template<typename ExecModel>
+    static inline auto
+    findTargetNode(ExecModel& model, NodeUuid const& nodeUuid)
+    {
+        return std::find_if(model.m_targetNodes.begin(),
+                            model.m_targetNodes.end(),
+                            [nodeUuid](TargetNode const& target){
+            return target.nodeUuid == nodeUuid;
+        });
+    }
+
+    static inline bool
+    isGraphContained(GraphExecutionModel const& model,
+                     Graph const& graph)
+    {
+        // TODO: gt::find_lowest_ancestor does not work here
+        auto* target = &model.graph();
+        auto* g = &graph;
+        while (g && g != target)
+        {
+            g = g->parentGraph();
+        }
+        return g == target;
     }
 
     /// Returns whether the node is evaluating
@@ -345,30 +377,30 @@ struct GraphExecutionModel::Impl
             switch (entry->nodeType)
             {
             case NodeType::GroupInput:
-                // check inputs of parent graph
-                {
-                    auto* graph = qobject_cast<const_t<IsConst, Graph>*>(node->parent());
-                    if (!graph) return false;
+            // check inputs of parent graph
+            {
+                auto* graph = qobject_cast<const_t<IsConst, Graph>*>(node->parent());
+                if (!graph) return false;
 
-                    auto item = findData(*model, graph->uuid());
-                    if (!item) return false;
+                auto item = findData(*model, graph->uuid());
+                if (!item) return false;
 
-                    return item.inputsValid(false);
-                }
+                return item.inputsValid(false);
+            }
             case NodeType::Group:
                 // check outputs of subgraph
-                {
-                    auto* graph = qobject_cast<const_t<IsConst, Graph>*>(node);
-                    if (!graph) return false;
+            {
+                auto* graph = qobject_cast<const_t<IsConst, Graph>*>(node);
+                if (!graph) return false;
 
-                    auto* output = graph->outputNode();
-                    if (!output) return false;
+                auto* output = graph->outputNode();
+                if (!output) return false;
 
-                    auto item = findData(*model, output->uuid());
-                    if (!item || !item.inputsValid() || !item.isEvaluated()) return false;
+                auto item = findData(*model, output->uuid());
+                if (!item || !item.inputsValid() || !item.isEvaluated()) return false;
 
-                    break;
-                }
+                break;
+            }
             case NodeType::GroupOutput:
             case NodeType::Normal:
                 break;
@@ -545,6 +577,30 @@ struct GraphExecutionModel::Impl
     }
 
     static inline FutureEvaluated
+    evaluateGraph(GraphExecutionModel& model,
+                  Graph const& graph,
+                  NodeEvaluationType evalType)
+    {
+        assert(isGraphContained(model, graph));
+
+        FutureEvaluated future{model};
+
+        auto const& targetNodes = Impl::findLeafNodes(graph);
+
+        for (auto const& target : targetNodes)
+        {
+            NodeEvalState evalState = scheduleTargetNode(
+                model, target, evalType
+            );
+
+            future.append(target, evalState);
+            if (!future.detach()) return future;
+        }
+
+        return future;
+    }
+
+    static inline FutureEvaluated
     evaluateNode(GraphExecutionModel& model,
                 NodeUuid const& nodeUuid,
                 NodeEvaluationType evalType)
@@ -557,6 +613,24 @@ struct GraphExecutionModel::Impl
             model, nodeUuid, evalState
         };
         return future;
+    }
+
+    static inline void
+    rescheduleTargetNodes(GraphExecutionModel& model)
+    {
+        foreach (TargetNode const& target, model.m_targetNodes)
+        {
+            if (target.evalType == NodeEvaluationType::KeepEvaluated)
+            {
+                auto state = scheduleTargetNode(model, target.nodeUuid, target.evalType);
+                if (state == NodeEvalState::Invalid)
+                {
+                    emit model.nodeEvaluationFailed(target.nodeUuid, QPrivateSignal());
+
+                    emit model.graphStalled(QPrivateSignal());
+                }
+            }
+        }
     }
 
     static inline NodeEvalState
@@ -820,27 +894,25 @@ struct GraphExecutionModel::Impl
                    .arg(relativeNodePath(*item.node))
                    .arg(item.node->id());
 
-        auto state = tryEvaluatingNode(model, item);
+        auto state = tryEvaluatingNode(model, item, model.m_queuedNodes.size() - 1);
         switch (state)
         {
-        case NodeEvalState::Evaluating:
-        case NodeEvalState::Valid:
-        case NodeEvalState::Invalid:
-            // node is evaluating or was evaluated
-            model.m_queuedNodes.removeLast();
-            break;
         case NodeEvalState::Paused:
             return NodeEvalState::Evaluating;
         case NodeEvalState::Outdated:
-            model.m_queuedNodes.removeLast();
             return NodeEvalState::Invalid;
+        case NodeEvalState::Evaluating:
+        case NodeEvalState::Valid:
+        case NodeEvalState::Invalid:
+            break;
         }
         return state;
     }
 
     static inline NodeEvalState
     tryEvaluatingNode(GraphExecutionModel& model,
-                      MutableDataItemHelper item)
+                      MutableDataItemHelper item,
+                      int idx)
     {
         assert(item);
         if (!item.isReadyForEvaluation())
@@ -892,6 +964,8 @@ struct GraphExecutionModel::Impl
         // mark node as evaluated
         item->state = DataState::Evaluated;
 
+        model.m_queuedNodes.remove(idx);
+
         if (!exec::triggerNodeEvaluation(*item.node, model))
         {
             gtError() << evaluteNodeError(model.graph())
@@ -936,23 +1010,18 @@ struct GraphExecutionModel::Impl
                 continue;
             }
 
-            auto state = tryEvaluatingNode(model, item);
+            auto state = tryEvaluatingNode(model, item, idx);
             switch (state)
             {
             case NodeEvalState::Evaluating:
                 scheduledNode = true;
                 break;
-                // fall through expected
-            case NodeEvalState::Valid:
-            case NodeEvalState::Invalid:
-                // node is evaluating or was evaluated
-                model.m_queuedNodes.remove(idx--);
-                break;
-            case NodeEvalState::Paused:
-                // node was not yet scheduled
-                break;
             case NodeEvalState::Outdated:
                 scheduleNode(model, nextNodeUuid, item);
+                break;
+            case NodeEvalState::Valid:
+            case NodeEvalState::Invalid:
+            case NodeEvalState::Paused:
                 break;
             }
         }

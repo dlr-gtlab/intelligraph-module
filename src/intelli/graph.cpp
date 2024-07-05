@@ -53,6 +53,24 @@ Graph::parentGraph() const
     return qobject_cast<Graph const*>(parent());
 }
 
+Graph*
+Graph::rootGraph()
+{
+    // recursive search
+    if (auto p = parentGraph())
+    {
+        return p->rootGraph();
+    }
+    return this;
+}
+
+Graph const*
+Graph::rootGraph() const
+{
+    return const_cast<Graph*>(this)->rootGraph();
+}
+
+
 QList<Node*>
 Graph::nodes()
 {
