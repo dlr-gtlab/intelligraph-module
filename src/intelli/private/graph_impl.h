@@ -303,11 +303,11 @@ struct Graph::Impl
                 graph->deleteConnection(conId);
             }
 
-            emit graph->nodeAboutToBeDeleted(nodeId);
+            emit graph->childNodeAboutToBeDeleted(nodeId);
 
             graph->m_data.erase(node);
-
-            emit graph->nodeDeleted(nodeId);
+            
+            emit graph->childNodeDeleted(nodeId);
         }
 
     private:

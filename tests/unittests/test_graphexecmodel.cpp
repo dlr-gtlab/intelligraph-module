@@ -8,12 +8,14 @@
 
 #include "test_helper.h"
 
+#include "intelli/memory.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
 
 #include <gt_objectmemento.h>
 #include <gt_objectmementodiff.h>
 #include <gt_objectfactory.h>
+#include <gt_eventloop.h>
 
 /* TODO:
  * - Removing nodes/connections (especially in auto evaluation mode)
@@ -21,6 +23,8 @@
  * - stopAutoEvaluating for root graph
  * - Auto evaluate subgraph only + isGraphEvaluated, isAutoEvaluatingGraph, stopAutoEvaluatingGraph
  * - Evaluate multiple exclusive nodes
+ * - Check evaluation of paused nodes
+ * - Waiting for node that is deleted
  */
 
 using namespace intelli;
@@ -578,6 +582,32 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__auto_evaluate_graph)
     debug(model);
 }
 
+TEST(GraphExecutionModel, graph_with_basic_group__auto_evaluate_graph)
+{
+    Graph graph;
+
+    test::buildGraphWithGroup(graph);
+
+    auto* subGraph = graph.findNode(group_id);
+    ASSERT_TRUE(subGraph);
+
+    GraphExecutionModel model(graph);
+
+    debug(model);
+
+    gtDebug() << "Evaluate...";
+    EXPECT_TRUE(model.autoEvaluateGraph().wait(maxTimeout));
+
+    gtDebug() << "Scheudling deletion of subgraph...";
+    subGraph->deleteLater();
+
+    gtDebug() << "Starting local event loop...";
+    GtEventLoop loop(directTimeout);
+    loop.exec();
+
+    debug(model);
+}
+
 TEST(GraphExecutionModel, evaluate_node_with_partial_inputs)
 {
     Graph graph;
@@ -1048,6 +1078,31 @@ TEST(GraphExecutionModel, destroy_while_running)
         model.evaluateGraph().detach();
 
         ASSERT_FALSE(model.isGraphEvaluated());
+    } // model should still be evaluating
+}
+
+/// Model is owned by root graph. Should not cause any problems when
+/// graph is beeing destroyed
+TEST(GraphExecutionModel, destroy_by_root_graph)
+{
+    {
+        auto graph = make_volatile<Graph>();
+
+        auto model = make_volatile<GraphExecutionModel>(*graph);
+        ASSERT_EQ(model->parent(), graph.get());
+
+        ASSERT_TRUE(test::buildGraphWithGroup(*graph));
+
+        graph->deleteLater();
+
+        ASSERT_TRUE(graph);
+        ASSERT_TRUE(model);
+
+        GtEventLoop loop(directTimeout);
+        loop.exec();
+
+        ASSERT_FALSE(graph);
+        ASSERT_FALSE(model);
     }
 }
 

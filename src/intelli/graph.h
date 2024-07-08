@@ -450,22 +450,42 @@ public:
     using Modification = gt::Finally<EndModificationFunctor>;
 
     /**
-     * @brief Scropped wrapper around `beginModification` and `endModification`
+     * @brief Scopped wrapper around `beginModification` and `endModification`
      * @return Scoped object which emits the begin and end modification signals
-     * resprectively, usd to signal that evaluation and similar processes should
-     * be halted.
+     * resprectively, used to signal that evaluation and similar processes
+     * should be halted.
      */
     GT_NO_DISCARD
     Modification modify();
 
+    /**
+     * @brief Tells the graph that is about to be modifed. Should be called
+     * before e.g. bulk deleting/inserting nodes and connections
+     */
     void emitBeginModification();
 
+    /**
+     * @brief Tells the graph that is no longer beeing modifed. Should be called
+     * after e.g. bulk deleting/inserting nodes and connections
+     */
     void emitEndModification();
 
 signals:
 
+    /**
+     * @brief Emitted just before ths object is deleted. Thus, specific memebers
+     * of this object are still accessable.
+     */
+    void graphAboutToBeDeleted(QPrivateSignal);
+
+    /**
+     * @brief Emitted once the graph is beeing modified.
+     */
     void beginModification(QPrivateSignal);
 
+    /**
+     * @brief Emitted once the graph is no longer beeing modified
+     */
     void endModification(QPrivateSignal);
 
     /**
@@ -517,7 +537,13 @@ signals:
      * @brief Emitted after a node was deleted
      * @param Node id of the deleted node
      */
-    void nodeDeleted(NodeId nodeId);
+    void childNodeAboutToBeDeleted(NodeId nodeId);
+
+    /**
+     * @brief Emitted after a node was deleted
+     * @param Node id of the deleted node
+     */
+    void childNodeDeleted(NodeId nodeId);
 
     /**
      * @brief Emitted once the position of a node was altered. Is only triggered
@@ -539,6 +565,8 @@ private:
 
     /// connection graph
     ConnectionGraph m_data;
+
+    size_t m_evaluationIndicator = 0;
     /// indicator if the connection model is currently beeing modified
     int m_modificationCount = 0;
 

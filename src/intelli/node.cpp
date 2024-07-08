@@ -93,6 +93,7 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
 Node::~Node()
 {
+    gtDebug() << "DELETED NODE" << id() << caption();
     emit nodeAboutToBeDeleted(id());
 }
 

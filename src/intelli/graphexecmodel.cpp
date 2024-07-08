@@ -275,13 +275,20 @@ GraphExecutionModel::setupConnections(Graph& graph)
 {
     disconnect(&graph);
 
+    connect(&graph, &Graph::graphAboutToBeDeleted,
+            this, [this, &graph](){
+        disconnect(&graph);
+        auto const& nodes = graph.nodes();
+        for (auto* node : nodes) onNodeDeleted(&graph, node->id());
+    }, Qt::DirectConnection);
+
     connect(&graph, &Graph::nodeAppended,
             this, &GraphExecutionModel::onNodeAppended,
             Qt::DirectConnection);
-    connect(&graph, &Graph::nodeAboutToBeDeleted,
-            this, [this, g = &graph](NodeId nodeId){
-                onNodeDeleted(g, nodeId);
-            }, Qt::DirectConnection);
+    connect(&graph, &Graph::childNodeAboutToBeDeleted,
+        this, [this, g = &graph](NodeId nodeId){
+            onNodeDeleted(g, nodeId);
+        }, Qt::DirectConnection);
     connect(&graph, &Graph::connectionAppended,
             this, &GraphExecutionModel::onConnectionAppended,
             Qt::DirectConnection);
@@ -690,23 +697,31 @@ GraphExecutionModel::onNodeEvaluated(QString nodeUuid)
         return;
     }
 
+    for (auto& t : m_targetNodes)
+    {
+        auto item = Impl::findData(*this, t.nodeUuid);
+        gtDebug() << "BEFORE" << item.node << t.nodeUuid;
+    }
+
     auto iter = Impl::findTargetNode(*this, nodeUuid);
     if (iter != m_targetNodes.end() &&
         iter->evalType == NodeEvaluationType::SingleShot)
     {
+        gtDebug() << "REMOVING SINGLE SHOT" << nodeUuid << item.node << (int)iter->evalType;
         m_targetNodes.erase(iter);
+    }
+
+    for (auto& t : m_targetNodes)
+    {
+        auto item = Impl::findData(*this, t.nodeUuid);
+        gtDebug() << "AFTER" << item.node << t.nodeUuid;
     }
 
     emit nodeEvaluated(nodeUuid, QPrivateSignal());
     emit item.node->evaluated();
 
-    {
-        INTELLI_LOG_SCOPE(*this)
-            << tr("rescheduling target nodes...");
-
-        Impl::rescheduleTargetNodes(*this);
-        Impl::evaluateNextInQueue(*this);
-    }
+    Impl::rescheduleTargetNodes(*this);
+    Impl::evaluateNextInQueue(*this);
 }
 
 void
@@ -771,6 +786,11 @@ GraphExecutionModel::onNodeAppended(Node* node)
 
     connect(node, &Node::triggerNodeEvaluation, this, [this, nodeUuid](){
             invalidateNodeOutputs(nodeUuid);
+            for (auto& t : m_targetNodes)
+            {
+                auto item = Impl::findData(*this, t.nodeUuid);
+                gtDebug() << "HERE" << item.node << t.nodeUuid;
+            }
             Impl::rescheduleTargetNodes(*this);
     }, Qt::DirectConnection);
 
@@ -798,7 +818,9 @@ GraphExecutionModel::onNodeDeleted(Graph* graph, NodeId nodeId)
 
     m_data.erase(item.entry);
 
-    // TODO: reschedule graph
+    // remove target node
+    auto iter = Impl::findTargetNode(*this, item.node->uuid());
+    if (iter != m_targetNodes.end()) m_targetNodes.erase(iter);
 }
 
 void
@@ -825,8 +847,6 @@ GraphExecutionModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex 
                .arg(portId);
 
     item.entry->ports(type).push_back({portId});
-    // TODO: reschedule graph
-
 }
 
 void
@@ -945,6 +965,8 @@ intelli::debug(GraphExecutionModel const& model)
         text += QString{"  "}.repeated(indent) +
                 QStringLiteral("Node '%1' (%2):\n")
                     .arg(node ? relativeNodePath(*node) : caption, nodeUuid);
+        if (!node) continue;
+
         text += QString{"  "}.repeated(indent + 1) +
                 QStringLiteral("STATE: ");
 

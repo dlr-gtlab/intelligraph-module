@@ -298,7 +298,7 @@ GraphScene::endReset()
     }
 
     connect(m_graph, &Graph::nodeAppended, this, &GraphScene::onNodeAppended, Qt::DirectConnection);
-    connect(m_graph, &Graph::nodeDeleted, this, &GraphScene::onNodeDeleted, Qt::DirectConnection);
+    connect(m_graph, &Graph::childNodeDeleted, this, &GraphScene::onNodeDeleted, Qt::DirectConnection);
 
     connect(m_graph, &Graph::connectionAppended, this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
     connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);

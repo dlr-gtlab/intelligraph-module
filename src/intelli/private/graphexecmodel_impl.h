@@ -618,17 +618,17 @@ struct GraphExecutionModel::Impl
     static inline void
     rescheduleTargetNodes(GraphExecutionModel& model)
     {
+        INTELLI_LOG_SCOPE(model)
+            << tr("rescheduling target nodes...");
+
         foreach (TargetNode const& target, model.m_targetNodes)
         {
-            if (target.evalType == NodeEvaluationType::KeepEvaluated)
+            auto state = scheduleTargetNode(model, target.nodeUuid, target.evalType);
+            if (state == NodeEvalState::Invalid)
             {
-                auto state = scheduleTargetNode(model, target.nodeUuid, target.evalType);
-                if (state == NodeEvalState::Invalid)
-                {
-                    emit model.nodeEvaluationFailed(target.nodeUuid, QPrivateSignal());
+                emit model.nodeEvaluationFailed(target.nodeUuid, QPrivateSignal());
 
-                    emit model.graphStalled(QPrivateSignal());
-                }
+                emit model.graphStalled(QPrivateSignal());
             }
         }
     }
@@ -649,12 +649,7 @@ struct GraphExecutionModel::Impl
                    .arg(item.node->id());
 
         // target node
-        auto iter = std::find_if(model.m_targetNodes.begin(),
-                                 model.m_targetNodes.end(),
-                                 [&nodeUuid](TargetNode const& node){
-            return node.nodeUuid == nodeUuid;
-        });
-
+        auto iter = findTargetNode(model, nodeUuid);
         if (iter != model.m_targetNodes.end())
         {
             INTELLI_LOG(model) << tr("node is already a target node!");
@@ -670,15 +665,30 @@ struct GraphExecutionModel::Impl
         }
 
         auto state = scheduleNode(model, nodeUuid, item);
-        if (state == NodeEvalState::Invalid)
+        switch (state)
         {
-            auto iter = std::find_if(model.m_targetNodes.begin(),
-                                     model.m_targetNodes.end(),
-                                     [&nodeUuid](TargetNode const& node){
-                return node.nodeUuid == nodeUuid;
-            });
+        case NodeEvalState::Invalid:
+        {
+            iter = findTargetNode(model, nodeUuid);
             assert(iter != model.m_targetNodes.end());
             model.m_targetNodes.erase(iter);
+            break;
+        }
+        case NodeEvalState::Valid:
+        {
+            iter = findTargetNode(model, nodeUuid);
+            // node may already be evaluated non-blockingly and be removed there
+            if (iter != model.m_targetNodes.end() &&
+                iter->evalType == NodeEvaluationType::SingleShot)
+            {
+                model.m_targetNodes.erase(iter);
+            }
+            break;
+        }
+        case NodeEvalState::Evaluating:
+        case NodeEvalState::Outdated:
+        case NodeEvalState::Paused:
+            break;
         }
         return state;
     }

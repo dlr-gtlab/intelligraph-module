@@ -39,7 +39,10 @@ Graph::Graph() :
     });
 }
 
-Graph::~Graph() = default;
+Graph::~Graph()
+{
+    emit graphAboutToBeDeleted(QPrivateSignal());
+}
 
 Graph*
 Graph::parentGraph()
