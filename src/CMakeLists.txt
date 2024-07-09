@@ -76,6 +76,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/exec/detachedexecutor.h
     intelli/node/abstractgroupprovider.h
     intelli/node/finddirectchild.h
+    intelli/node/genericcalculatorexec.h
     intelli/node/groupinputprovider.h
     intelli/node/groupoutputprovider.h
     intelli/node/logicdisplay.h
@@ -132,6 +133,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/stringlist.cpp
     intelli/data/string.cpp
     intelli/node/finddirectchild.cpp
+    intelli/node/genericcalculatorexec.cpp
     intelli/node/groupinputprovider.cpp
     intelli/node/groupoutputprovider.cpp
     intelli/node/logicdisplay.cpp

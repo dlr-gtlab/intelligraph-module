@@ -22,6 +22,7 @@
 #include "intelli/property/objectlink.h"
 #include "intelli/property/stringselection.h"
 #include "intelli/node/logicoperation.h"
+#include "intelli/node/genericcalculatorexec.h"
 #include "intelli/gui/ui/logicnodeui.h"
 #include "intelli/gui/connectionui.h"
 #include "intelli/gui/packageui.h"
@@ -32,7 +33,7 @@
 
 #include "intelli/calculators/graphexeccalculator.h"
 
-#include "gt_logging.h"
+#include <gt_logging.h>
 
 #include "gt_xmlexpr.h"
 #include "gt_xmlutilities.h"
@@ -151,8 +152,18 @@ GtIntelliGraphModule::upgradeRoutines() const
 QList<gt::SharedFunction>
 GtIntelliGraphModule::sharedFunctions() const
 {
-    QList<gt::SharedFunction> list;
+    auto calcWhiteList = gt::interface::makeSharedFunction(
+        QStringLiteral("CalculatorNode_addToWhiteList"),
+        GenericCalculatorExecNode::addToWhiteList,
+        tr("Allows to register calculators that can be executed using\n"
+           "the calculator execution node.Calculators must be registered\n"
+           "explicitly. Signature: ") +
+            gt::interface::getFunctionSignature(
+                GenericCalculatorExecNode::addToWhiteList)
+    );
 
+    QList<gt::SharedFunction> list;
+    list.append(calcWhiteList);
     return list;
 }
 

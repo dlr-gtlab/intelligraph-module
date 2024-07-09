@@ -33,6 +33,8 @@
 #include "intelli/node/propertyinput/objectinputnode.h"
 #include "intelli/node/propertyinput/stringinputnode.h"
 
+#include "intelli/node/genericcalculatorexec.h"
+
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodefactory.h"
 
@@ -52,32 +54,39 @@ intelli::initModule()
         GT_INTELLI_REGISTER_DATA(StringData);
         GT_INTELLI_REGISTER_DATA(StringListData);
 
-        GT_INTELLI_REGISTER_NODE(Graph, "Other")
-        GT_INTELLI_REGISTER_NODE(GroupInputProvider, "")
-        GT_INTELLI_REGISTER_NODE(GroupOutputProvider, "")
-        GT_INTELLI_REGISTER_NODE(NumberDisplayNode, "Number");
-        GT_INTELLI_REGISTER_NODE(NumberMathNode, "Number");
-        GT_INTELLI_REGISTER_NODE(NumberSourceNode, "Number")
-        GT_INTELLI_REGISTER_NODE(SleepyNode, "Number");
+        char const* hidden = "";
+        QString catOther = QObject::tr("Other");
+        QString catNumber = QObject::tr("Number");
+        QString catLogic = QObject::tr("Logic");
+        QString catObject = QObject::tr("Object");
+        QString catInput = QObject::tr("Input");
+        QString catProcess = QObject::tr("Process");
 
-        GT_INTELLI_REGISTER_NODE(LogicDisplayNode, "Logic");
-        GT_INTELLI_REGISTER_NODE(LogicNode, "Logic");
-        GT_INTELLI_REGISTER_NODE(LogicSourceNode, "Logic");
+        GT_INTELLI_REGISTER_NODE(Graph, catOther)
+        GT_INTELLI_REGISTER_NODE(GroupInputProvider, hidden)
+        GT_INTELLI_REGISTER_NODE(GroupOutputProvider, hidden)
+        GT_INTELLI_REGISTER_NODE(NumberDisplayNode, catNumber);
+        GT_INTELLI_REGISTER_NODE(NumberMathNode, catNumber);
+        GT_INTELLI_REGISTER_NODE(NumberSourceNode, catNumber)
+        GT_INTELLI_REGISTER_NODE(SleepyNode, catNumber);
 
-        GT_INTELLI_REGISTER_NODE(ObjectMementoNode, "Object");
-        GT_INTELLI_REGISTER_NODE(ObjectSourceNode, "Object");
-        GT_INTELLI_REGISTER_NODE(FindDirectChildNode, "Object")
+        GT_INTELLI_REGISTER_NODE(LogicDisplayNode, catLogic);
+        GT_INTELLI_REGISTER_NODE(LogicNode, catLogic);
+        GT_INTELLI_REGISTER_NODE(LogicSourceNode, catLogic);
 
-        GT_INTELLI_REGISTER_NODE(StringListInputNode, "Input");
-        GT_INTELLI_REGISTER_NODE(ExistingDirectorySourceNode, "Input");
+        GT_INTELLI_REGISTER_NODE(ObjectMementoNode, catObject);
+        GT_INTELLI_REGISTER_NODE(ObjectSourceNode, catObject);
+        GT_INTELLI_REGISTER_NODE(FindDirectChildNode, catObject)
 
+        GT_INTELLI_REGISTER_NODE(StringListInputNode, catInput);
+        GT_INTELLI_REGISTER_NODE(ExistingDirectorySourceNode, catInput);
+        GT_INTELLI_REGISTER_NODE(BoolInputNode, catInput);
+        GT_INTELLI_REGISTER_NODE(DoubleInputNode, catInput);
+        GT_INTELLI_REGISTER_NODE(StringInputNode, catInput);
+        GT_INTELLI_REGISTER_NODE(ObjectInputNode, catInput);
+        GT_INTELLI_REGISTER_NODE(IntInputNode, catInput);
 
-        GT_INTELLI_REGISTER_NODE(BoolInputNode, "Input");
-        GT_INTELLI_REGISTER_NODE(DoubleInputNode, "Input");
-        GT_INTELLI_REGISTER_NODE(StringInputNode, "Input");
-        GT_INTELLI_REGISTER_NODE(ObjectInputNode, "Input");
-        GT_INTELLI_REGISTER_NODE(IntInputNode, "Input");
-
+        GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
 
         return true;
     }();

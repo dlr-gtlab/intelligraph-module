@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Added the option to snap nodes to the grid. - #44
+- Added node to execute most calculators. Handle with care, as incompatible calculators may cause unforseen sideeffects. - #92
 
 ### Changed
 - Updated rendering of the grid to show minor and major grid lines. - #95

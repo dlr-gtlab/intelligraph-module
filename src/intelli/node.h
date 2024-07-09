@@ -543,15 +543,25 @@ private:
 
 } // namespace intelli
 
-inline gt::log::Stream&
-operator<<(gt::log::Stream& s, intelli::Node::PortInfo const& p)
+namespace gt
+{
+namespace log
+{
+
+inline Stream&
+operator<<(Stream& s, intelli::Node::PortInfo const& p)
 {
     {
-        gt::log::StreamStateSaver saver(s);
+        StreamStateSaver saver(s);
         s.nospace()
             << "Port[" << p.typeId << "/" << p.id() << "]";
     }
     return s.doLogSpace();
 }
+
+} // namespace log
+
+} // namespace gt
+
 
 #endif // GT_INTELLI_NODE_H
