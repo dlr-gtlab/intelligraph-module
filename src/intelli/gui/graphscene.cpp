@@ -1379,7 +1379,7 @@ void
 GraphScene::onNodeEvalStateChanged(NodeId nodeId)
 {
     auto* node = nodeObject(nodeId);
-    assert(node);
+    if (!node) return;
 
     auto exec = m_graph->executionModel();
     node->setNodeEvalState(exec->nodeEvalState(nodeId));
