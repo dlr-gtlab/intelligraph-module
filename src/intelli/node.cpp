@@ -406,6 +406,15 @@ Node::portId(PortType type, PortIndex idx) const noexcept(false)
     return ports.at(idx).m_id;
 }
 
+bool
+Node::isPortConnected(PortId portId) const
+{
+    auto* graph = qobject_cast<Graph const*>(parent());
+    if (!graph) return false;
+
+    return !graph->findConnectedNodes(id(), portId).empty();
+}
+
 void
 Node::eval()
 {

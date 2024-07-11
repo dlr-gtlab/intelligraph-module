@@ -31,11 +31,13 @@ set(PUBLIC_HEADERS
     intelli/nodeexecutor.h
     intelli/nodefactory.h
     intelli/data/bool.h
+    intelli/data/bytearray.h
     intelli/data/bytearraydata.h
     intelli/data/double.h
-    intelli/data/object.h
+    intelli/data/file.h
     intelli/data/int.h
     intelli/data/integer.h
+    intelli/data/object.h
     intelli/data/stringlist.h
     intelli/data/string.h
     intelli/gui/icons.h
@@ -73,8 +75,12 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/graphcategory.h
     intelli/module.h
     intelli/calculators/graphexeccalculator.h
-    intelli/exec/detachedexecutor.h
     intelli/node/abstractgroupprovider.h
+    intelli/exec/detachedexecutor.h
+    intelli/node/existingdirectorysource.h
+    intelli/node/fileinput.h
+    intelli/node/filereader.h
+    intelli/node/filewriter.h
     intelli/node/finddirectchild.h
     intelli/node/genericcalculatorexec.h
     intelli/node/groupinputprovider.h
@@ -87,9 +93,11 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/numbersource.h
     intelli/node/objectmemento.h
     intelli/node/objectsource.h
+    intelli/node/projectinfo.h
     intelli/node/sleepy.h
+    intelli/node/stringbuilder.h
     intelli/node/stringlistinput.h
-    intelli/node/existingdirectorysource.h
+    intelli/node/textdisplay.h
     intelli/gui/connectionui.h
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
@@ -127,11 +135,17 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/calculators/graphexeccalculator.cpp
     intelli/exec/detachedexecutor.cpp
     intelli/data/bool.cpp
+    intelli/data/bytearray.cpp
     intelli/data/double.cpp
     intelli/data/int.cpp
+    intelli/data/file.cpp
     intelli/data/object.cpp
     intelli/data/stringlist.cpp
     intelli/data/string.cpp
+    intelli/node/existingdirectorysource.cpp
+    intelli/node/fileinput.cpp
+    intelli/node/filereader.cpp
+    intelli/node/filewriter.cpp
     intelli/node/finddirectchild.cpp
     intelli/node/genericcalculatorexec.cpp
     intelli/node/groupinputprovider.cpp
@@ -144,9 +158,11 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/numbersource.cpp
     intelli/node/objectmemento.cpp
     intelli/node/objectsource.cpp
+    intelli/node/projectinfo.cpp
     intelli/node/sleepy.cpp
+    intelli/node/stringbuilder.cpp
     intelli/node/stringlistinput.cpp
-    intelli/node/existingdirectorysource.cpp
+    intelli/node/textdisplay.cpp
     intelli/node/propertyinput/boolinputnode.cpp
     intelli/node/propertyinput/doubleinputnode.cpp
     intelli/node/propertyinput/intinputnode.cpp

@@ -6,9 +6,18 @@
  *  Author: Jens Schmeink (AT-TWK)
  *  Tel.: +49 2203 601 2191
  */
-#ifndef BYTEARRAYDATA_H
-#define BYTEARRAYDATA_H
 
 #include <intelli/data/bytearray.h>
 
-#endif // BYTEARRAYDATA_H
+using namespace intelli;
+
+ByteArrayData::ByteArrayData(QByteArray ba) :
+    NodeData("byte_data"),
+    m_data(std::move(ba))
+{}
+
+QByteArray
+ByteArrayData::value() const
+{
+    return m_data;
+}

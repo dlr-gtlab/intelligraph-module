@@ -24,7 +24,9 @@ ExistingDirectorySourceNode::ExistingDirectorySourceNode():
     setFlag(GtObject::UserRenamable);
     setNodeFlag(Resizable);
 
-    m_out = addOutPort(typeId<StringData>());
+    PortInfo info = typeId<StringData>();
+    info.captionVisible = false;
+    m_out = addOutPort(std::move(info));
 
     connect(&m_value, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);

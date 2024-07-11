@@ -10,7 +10,6 @@
 #include <intelli/gui/graphics/connectionobject.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/style.h>
-#include <intelli/nodedatafactory.h>
 
 #include <gt_colors.h>
 
@@ -251,7 +250,7 @@ ConnectionGraphicsObject::paint(QPainter* painter,
             penWidth = style::connectionDraftPathWidth();
             penStyle = Qt::DashLine;
         }
-        else if (!NodeDataFactory::instance().canConvert(m_startType, m_endType))
+        else if (m_startType != m_endType)
         {
             QColor inColor  = style::typeIdColor(m_endType);
             QLinearGradient gradient(m_start, m_end);

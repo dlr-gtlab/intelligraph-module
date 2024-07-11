@@ -90,16 +90,6 @@ updateWidgetPalette(NodeGraphicsObject* o)
     w->setPalette(p);
 }
 
-/// Helper function to check whether the resize handle should exist
-static inline bool
-hasResizeHandle(NodeGraphicsObject* o)
-{
-    assert(o);
-
-    return o->m_node->nodeFlags() & NodeFlag::Resizable &&
-           o->m_proxyWidget && o->m_proxyWidget->widget();
-}
-
 }; // struct Impl;
 
 NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
@@ -185,6 +175,13 @@ NodeGraphicsObject::isHovered() const
     return m_hovered;
 }
 
+bool
+NodeGraphicsObject::hasResizeHandle() const
+{
+    return m_node->nodeFlags() & IsResizableMask &&
+           m_proxyWidget && m_proxyWidget->widget();
+}
+
 QRectF
 NodeGraphicsObject::boundingRect() const
 {
@@ -237,7 +234,7 @@ NodeGraphicsObject::embedCentralWidget()
         if (!factory) return nullptr;
 
         auto widget = factory(*m_node);
-        if (widget && (m_node->nodeFlags() & Resizable))
+        if (widget && (m_node->nodeFlags() & IsResizableMask))
         {
             auto size = m_node->size();
             if (size.isValid()) widget->resize(size);
@@ -345,7 +342,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
 
     // check for resize handle hit
-    if (Impl::hasResizeHandle(this))
+    if (hasResizeHandle())
     {
         auto pos = event->pos();
         bool hit = m_geometry->resizeHandleRect().contains(pos);
@@ -391,7 +388,7 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             auto change = Impl::prepareGeometryChange(this);
 
             QSize oldSize = w->size();
-            oldSize += QSize(diff.x(), diff.y());
+            oldSize += QSize(diff.x(), (m_node->nodeFlags() & ResizableHOnly) ? 0 : diff.y());
 
             w->resize(oldSize);
         }
@@ -473,8 +470,7 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
     auto finally = gt::finally(event, &QEvent::accept);
 
     // check for resize handle hit and change cursor
-    if (m_geometry->resizeHandleRect().contains(pos) &&
-        Impl::hasResizeHandle(this))
+    if (hasResizeHandle() && m_geometry->resizeHandleRect().contains(pos))
     {
         setCursor(QCursor(Qt::SizeFDiagCursor));
         return;

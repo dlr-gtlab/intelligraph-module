@@ -6,6 +6,9 @@
 namespace intelli
 {
 
+/**
+ * @brief Extracts the memento of an object and outputs it as a string
+ */
 class ObjectMementoNode : public Node
 {
     Q_OBJECT
@@ -13,6 +16,14 @@ class ObjectMementoNode : public Node
 public:
 
     Q_INVOKABLE ObjectMementoNode();
+
+protected:
+
+    void eval() override;
+
+private:
+
+    PortId m_in, m_out;
 };
 
 } // namespace intelli

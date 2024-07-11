@@ -90,6 +90,12 @@ public:
     bool isHovered() const;
 
     /**
+     * @brief Whether the resize handle should be displayed
+     * @return Has resize handle
+     */
+    bool hasResizeHandle() const;
+
+    /**
      * @brief Bounding rect of this object
      * @return Bounding rect
      */

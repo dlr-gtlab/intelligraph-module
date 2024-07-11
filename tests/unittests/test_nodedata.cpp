@@ -10,6 +10,11 @@
 
 #include "data/test_nodedata.h"
 
+#include <intelli/nodedatafactory.h>
+#include <intelli/data/file.h>
+
+#include <QFileInfo>
+
 using namespace intelli;
 
 TEST(NodeData, sanity_check)
@@ -42,4 +47,14 @@ TEST(NodeData, invoke_getter_with_args)
                                    Q_ARG(int, 2), Q_ARG(QString, "test"));
     ASSERT_TRUE(res.has_value());
     EXPECT_DOUBLE_EQ(res.value(), 42 * 2 * 4);
+}
+
+/// check that QFileInfo can be recieved using invoke method
+TEST(NodeData, invoke_getter_QFileInfo)
+{
+    auto data = NodeDataFactory::instance().makeData(typeId<FileData>());
+    ASSERT_TRUE(data);
+
+    auto res = data->invoke<QFileInfo>(QStringLiteral("value"));
+    ASSERT_TRUE(res.has_value());
 }

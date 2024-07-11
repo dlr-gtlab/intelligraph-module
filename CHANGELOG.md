@@ -8,10 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added the option to snap nodes to the grid. - #44
 - Added node to execute most calculators. Handle with care, as incompatible calculators may cause unforseen sideeffects. - #92
+- Added nodes for obtaining a file handle that can be used to read or write from/to a file. - #101
+- Added project info node to access prject specific properties. - #101
+- Added generic node to display text. - #101
 
 ### Changed
 - Updated rendering of the grid to show minor and major grid lines. - #95
 - Updated highlighting of nodes, connections, and ports when creating a draft connection to further emphasize compatibilities. - #94
+- Allowed nodes be resized horizontally only if desired. - #101
+- Changed the memento node to output a memento instead of displaying an objects memento. - #101
 
 ### Fixed
 - Fixed pop-up window when starting GTlab. - #93
