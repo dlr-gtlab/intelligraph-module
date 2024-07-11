@@ -110,20 +110,20 @@ signals:
      * is always emitted in the next event loop cycle.
      * @param nodeUuid Uuid of the evaluated node
      */
-    void nodeEvaluated(QString nodeUuid, QPrivateSignal);
+    void nodeEvaluated(QString const& nodeUuid, QPrivateSignal);
 
     /**
      * @brief Emitted once a node has failed to evaluate. This signal
      * may be emitted in the next event loop cycle.
      * @param nodeUuid Uuid of the evaluated node
      */
-    void nodeEvaluationFailed(QString nodeUuid, QPrivateSignal);
+    void nodeEvaluationFailed(QString const& nodeUuid, QPrivateSignal);
 
     /**
      * @brief Emitted once a node's eval state has changed.
      * @param nodeUuid Uuid of the affected node
      */
-    void nodeEvalStateChanged(QString nodeUuid, QPrivateSignal);
+    void nodeEvalStateChanged(QString const& nodeUuid, QPrivateSignal);
 
     /**
      * @brief Emitted once an internal error has occured, that may result due to
@@ -203,7 +203,7 @@ private slots:
      * associated with `nodeUuid` has been evaluated.
      * @param nodeUuid Node that has been evaluated
      */
-    void onNodeEvaluated(QString nodeUuid);
+    void onNodeEvaluated(QString const& nodeUuid);
 
     void onNodeAppended(Node* node);
 

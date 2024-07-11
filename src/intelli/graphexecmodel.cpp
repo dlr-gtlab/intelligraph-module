@@ -655,7 +655,7 @@ GraphExecutionModel::onNodeEvaluatedHelper()
 }
 
 void
-GraphExecutionModel::onNodeEvaluated(QString nodeUuid)
+GraphExecutionModel::onNodeEvaluated(QString const& nodeUuid)
 {
     auto item = Impl::findData(*this, nodeUuid);
     if (!item)
@@ -897,6 +897,7 @@ GraphExecutionModel::onConnectionAppended(Connection* con)
     setNodeData(findIn.node->uuid(), conId.inPort, std::move(data));
 
     // TODO: reschedule graph
+//    if (!isBeingModified())
 }
 
 void
