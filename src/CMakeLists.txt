@@ -14,6 +14,10 @@ option(
     _DEBUG_NODE_EXECUTION
     "Logs additional debugging information when execution graphs" OFF
 )
+option(
+    BUILD_INTELLIGRAPH_STANDALONE
+    "Whether to build intelligraph as a standalone library" OFF
+)
 
 set(PUBLIC_HEADERS
     intelli/connection.h
@@ -219,6 +223,11 @@ endif()
 if (_DEBUG_NODE_EXECUTION)
     target_compile_definitions(GTlabIntelliGraph PRIVATE
         GT_INTELLI_DEBUG_NODE_EXEC
+    )
+endif()
+if (BUILD_INTELLIGRAPH_STANDALONE)
+    target_compile_definitions(GTlabIntelliGraph PRIVATE
+        GT_INTELLI_STANDALONE
     )
 endif()
 

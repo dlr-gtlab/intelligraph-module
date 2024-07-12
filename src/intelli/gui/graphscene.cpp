@@ -443,8 +443,10 @@ GraphScene::createSceneMenu(QPointF scenePos)
         }
         node->setPos(scenePos);
 
+#ifndef GT_INTELLI_STANDALONE
         auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'").arg(node->caption()));
         Q_UNUSED(cmd);
+#endif
 
         m_graph->appendNode(std::move(node));
 
@@ -520,7 +522,11 @@ GraphScene::deleteSelectedObjects()
     auto modifyCmd = m_graph->modify();
     Q_UNUSED(modifyCmd);
 
+#ifndef GT_INTELLI_STANDALONE
     gtDataModel->deleteFromModel(objects);
+#else
+    qDeleteAll(objects);
+#endif
 }
 
 void
@@ -628,10 +634,10 @@ GraphScene::pasteObjects()
         node->setPos(node->pos() + offset);
     }
 
-    auto cmd = gtApp->startCommand(m_graph, tr("Paste objects"));
-    auto cleanup = gt::finally([&](){
-        gtApp->endCommand(cmd);
-    });
+#ifndef GT_INTELLI_STANDALONE
+    auto cmd = gtApp->makeCommand(m_graph, tr("Paste objects"));
+    Q_UNUSED(cmd);
+#endif
 
     // append objects
     auto newNodeIds = m_graph->appendObjects(uniqueNodes, uniqueConnections);
@@ -782,7 +788,10 @@ GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
             if (!m_graph->canAppendConnections(conId)) continue;
 
+#ifndef GT_INTELLI_STANDALONE
             auto cmd = gtApp->makeCommand(m_graph, tr("Append %1").arg(toString(conId)));
+            Q_UNUSED(cmd);
+#endif
             m_graph->appendConnection(std::make_unique<Connection>(conId));
             break;
         }
@@ -812,16 +821,7 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
     // create menu
     QMenu menu;
 
-    QList<GtObjectUI*> const& uis = gtApp->objectUI(node);
-    QVector<NodeUI*> nodeUis;
-    nodeUis.reserve(uis.size());
-    for (auto* ui : uis)
-    {
-        if (auto* nodeUi = qobject_cast<NodeUI*>(ui))
-        {
-            nodeUis.push_back(nodeUi);
-        }
-    }
+    auto const& nodeUis = NodeUI::registeredObjectUIs(*node);
 
     // add custom action
     QHash<QAction*, typename PortUIAction::ActionMethod> actions;
@@ -876,7 +876,11 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
 
     if (triggered == deleteAction)
     {
+#ifndef GT_INTELLI_STANDALONE
         gtDataModel->deleteFromModel(connections);
+#else
+        qDeleteAll(connections);
+#endif
         return;
     }
 
@@ -941,9 +945,14 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
         GtObjectList list;
         std::transform(selected.nodes.begin(), selected.nodes.end(),
                        std::back_inserter(list), [](NodeGraphicsObject* o) {
-             return &o->node();
-         });
+            return &o->node();
+        });
+
+#ifndef GT_INTELLI_STANDALONE
         return (void)gtDataModel->deleteFromModel(list);
+#else
+        return qDeleteAll(list);
+#endif
     }
 }
 
@@ -1229,11 +1238,12 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
 
     }
 
+#ifndef GT_INTELLI_STANDALONE
     // move group to graph
     auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'").arg(groupNodeName));
-    auto modifyCmd = m_graph->modify();
-
     Q_UNUSED(appCmd);
+#endif
+    auto modifyCmd = m_graph->modify();
     Q_UNUSED(modifyCmd);
 
     if (!m_graph->appendNode(std::move(tmpGraph)))
@@ -1330,13 +1340,11 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
 void
 GraphScene::onNodeAppended(Node* node)
 {
-    static NodeUI defaultUI;
     assert(node);
 
-    NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
-    if (!ui) ui = &defaultUI;
+    NodeUI const& ui = NodeUI::registeredDefaultObjectUI(*node);
 
-    auto entity = make_volatile<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *m_graph, *node, *ui);
+    auto entity = make_volatile<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *m_graph, *node, ui);
     // add to scene
     addItem(entity);
 
@@ -1540,8 +1548,12 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId
     QPointF oldEndPoint = getEndPoint(conId, type);
 
     // delete oldCon
+#ifndef GT_INTELLI_STANDALONE
     bool success = gtDataModel->deleteFromModel(m_graph->findConnection(conId));
     assert(success);
+#else
+    delete m_graph->findConnection(conId);
+#endif
 
     // make draft connection form outgoing node
     auto* draft = Impl::instantiateDraftConnection(*this,

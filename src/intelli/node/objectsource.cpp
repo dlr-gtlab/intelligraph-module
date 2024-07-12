@@ -11,10 +11,14 @@ using namespace intelli;
 
 // helper method to fetch the correct root object for retrieve object link
 auto getObject = [](Node* node) -> GtObject* {
+#ifndef GT_INTELLI_STANDALONE
     if (!gtApp) return node;
     auto* project = gtApp->currentProject();
     if (!project) return node;
     return project;
+#else
+    return node->findRoot();
+#endif
 };
 
 ObjectSourceNode::ObjectSourceNode() :

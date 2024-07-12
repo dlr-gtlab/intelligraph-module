@@ -49,6 +49,40 @@ inline BoolObjectMethod operator+(BoolObjectMethod fA, Functor fOther)
 
 using namespace intelli;
 
+NodeUI const&
+NodeUI::registeredDefaultObjectUI(Node& node)
+{
+    static const NodeUI defaultUI;
+
+#ifndef GT_INTELLI_STANDALONE
+    if (NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(&node))) return *ui;
+#endif
+
+    return defaultUI;
+}
+
+QVector<NodeUI const*>
+NodeUI::registeredObjectUIs(Node& node)
+{
+    QVector<NodeUI const*> nodeUis;
+
+#ifndef GT_INTELLI_STANDALONE
+    QList<GtObjectUI*> const& uis = gtApp->objectUI(&node);
+    nodeUis.reserve(uis.size());
+    for (auto* ui : uis)
+    {
+        if (auto* nodeUi = qobject_cast<NodeUI*>(ui))
+        {
+            nodeUis.push_back(nodeUi);
+        }
+    }
+#else
+    nodeUis.append(&registeredDefaultObjectUI(node));
+#endif
+
+    return nodeUis;
+}
+
 NodeUI::NodeUI(Option option)
 {
     setObjectName(QStringLiteral("IntelliGraphNodeUI"));
@@ -304,10 +338,11 @@ NodeUI::clearNodeGraph(GtObject* obj)
     auto graph = toGraph(obj);
     if (!graph) return;
 
-    auto cmd = gtApp->startCommand(graph, QStringLiteral("Clear '%1'")
+#ifndef GT_INTELLI_STANDALONE
+    auto cmd = gtApp->makeCommand(graph, QStringLiteral("Clear '%1'")
                                               .arg(graph->objectName()));
-    auto finally = gt::finally([&](){ gtApp->endCommand(cmd); });
-    
+    Q_UNUSED(cmd)
+#endif
     graph->clearGraph();
 }
 

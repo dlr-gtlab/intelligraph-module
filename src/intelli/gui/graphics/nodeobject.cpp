@@ -94,7 +94,7 @@ updateWidgetPalette(NodeGraphicsObject* o)
 NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
                                        Graph& graph,
                                        Node& node,
-                                       NodeUI& ui) :
+                                       NodeUI const& ui) :
     QGraphicsObject(nullptr),
     m_sceneData(&data),
     m_graph(&graph),

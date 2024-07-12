@@ -47,6 +47,33 @@
 
 using namespace intelli;
 
+// non namespace variants
+static const int meta_port_index = [](){
+    return qRegisterMetaType<PortIndex>("PortIndex");
+}();
+static const int meta_port_id = [](){
+    return qRegisterMetaType<PortId>("PortId");
+}();
+static const int meta_node_id = [](){
+    return qRegisterMetaType<NodeId>("NodeId");
+}();
+static const int meta_port_type = [](){
+    return qRegisterMetaType<PortType>("PortType");
+}();
+
+// namespace variants
+static const int ns_meta_port_index = [](){
+    return qRegisterMetaType<PortIndex>("intelli::PortIndex");
+}();
+static const int ns_meta_port_id = [](){
+    return qRegisterMetaType<PortId>("intelli::PortId");
+}();
+static const int ns_meta_node_id = [](){
+    return qRegisterMetaType<NodeId>("intelli::NodeId");
+}();
+static const int ns_meta_port_type = [](){
+    return qRegisterMetaType<PortType>("intelli::PortType");
+}();
 
 void
 intelli::initModule()
@@ -100,7 +127,6 @@ intelli::registerDefaultNodes()
         QString catObject = QObject::tr("Object");
         QString catString = QObject::tr("String");
         QString catInput = QObject::tr("Input");
-        QString catProcess = QObject::tr("Process");
         QString catFile = QObject::tr("File");
         QString catDisplay = QObject::tr("Display");
 
@@ -110,8 +136,8 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(NumberDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(NumberMathNode, catNumber);
-        GT_INTELLI_REGISTER_NODE(NumberSourceNode, catInput)
-        GT_INTELLI_REGISTER_NODE(SleepyNode, (gtApp && gtApp->devMode()) ? catOther : hidden);
+        GT_INTELLI_REGISTER_NODE(NumberSourceNode, catInput);
+        GT_INTELLI_REGISTER_NODE(SleepyNode, catOther);
 
         GT_INTELLI_REGISTER_NODE(LogicDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(LogicNode, catLogic);
@@ -127,18 +153,23 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(FileReaderNode, catFile);
         GT_INTELLI_REGISTER_NODE(FileWriterNode, catFile);
 
-        GT_INTELLI_REGISTER_NODE(ProjectInfoNode, catInput);
+        GT_INTELLI_REGISTER_NODE(StringBuilderNode, catString);
 
         GT_INTELLI_REGISTER_NODE(ExistingDirectorySourceNode, catInput);
         GT_INTELLI_REGISTER_NODE(BoolInputNode, catInput);
-        GT_INTELLI_REGISTER_NODE(DoubleInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(StringInputNode, catInput);
-        GT_INTELLI_REGISTER_NODE(ObjectInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(IntInputNode, catInput);
 
-        GT_INTELLI_REGISTER_NODE(StringBuilderNode, catString);
+#ifndef GT_INTELLI_STANDALONE
+        GT_INTELLI_REGISTER_NODE(DoubleInputNode, catInput);
+        GT_INTELLI_REGISTER_NODE(ObjectInputNode, catInput);
 
+        GT_INTELLI_REGISTER_NODE(ProjectInfoNode, catInput);
+
+        QString catProcess = QObject::tr("Process");
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
+#endif
+
         return true;
     }();
 

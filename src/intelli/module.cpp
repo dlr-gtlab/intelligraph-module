@@ -37,7 +37,6 @@
 
 #include "gt_xmlexpr.h"
 #include "gt_xmlutilities.h"
-#include "gt_coreapplication.h"
 
 #include <QThread>
 #include <QFileInfo>
@@ -47,34 +46,6 @@
 #include <QDomNodeList>
 
 using namespace intelli;
-
-// non namespace variants
-static const int meta_port_index = [](){
-    return qRegisterMetaType<PortIndex>("PortIndex");
-}();
-static const int meta_port_id = [](){
-    return qRegisterMetaType<PortId>("PortId");
-}();
-static const int meta_node_id = [](){
-    return qRegisterMetaType<NodeId>("NodeId");
-}();
-static const int meta_port_type = [](){
-    return qRegisterMetaType<PortType>("PortType");
-}();
-
-// namespace variants
-static const int ns_meta_port_index = [](){
-    return qRegisterMetaType<PortIndex>("intelli::PortIndex");
-}();
-static const int ns_meta_port_id = [](){
-    return qRegisterMetaType<PortId>("intelli::PortId");
-}();
-static const int ns_meta_node_id = [](){
-    return qRegisterMetaType<NodeId>("intelli::NodeId");
-}();
-static const int ns_meta_port_type = [](){
-    return qRegisterMetaType<PortType>("intelli::PortType");
-}();
 
 GtVersionNumber
 GtIntelliGraphModule::version()
@@ -92,8 +63,6 @@ void
 GtIntelliGraphModule::init()
 {
     intelli::initModule();
-
-    if (gtApp->batchMode()) return;
 }
 
 GtIntelliGraphModule::MetaInformation

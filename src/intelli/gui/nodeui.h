@@ -34,6 +34,21 @@ class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
 
 public:
 
+    /**
+     * @brief Returns the default node ui object for the given node. If no
+     * object ui was registered a fallback object ui is used.
+     * @param node Node to access default ui object from
+     * @return Reference to object ui.
+     */
+    static NodeUI const& registeredDefaultObjectUI(Node& node);
+
+    /**
+     * @brief Returns a list of all registered node ui objects.
+     * @param node Node to access ui objects from
+     * @return List of object uis.
+     */
+    static QVector<NodeUI const*> registeredObjectUIs(Node& node);
+
     /// Option enum, can be used to deactive certain default actions
     enum Option
     {

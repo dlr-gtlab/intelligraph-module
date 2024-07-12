@@ -54,7 +54,7 @@ public:
     NodeGraphicsObject(GraphSceneData& data,
                        Graph& graph,
                        Node& node,
-                       NodeUI& ui);
+                       NodeUI const& ui);
 
     /**
      * @brief Returns the associated node
