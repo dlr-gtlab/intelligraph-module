@@ -10,6 +10,8 @@
 #ifndef GT_INTELLI_SCENE_H
 #define GT_INTELLI_SCENE_H
 
+#include <intelli/exports.h>
+
 #include <intelli/memory.h>
 #include <intelli/graph.h>
 #include <intelli/gui/graphscenedata.h>
@@ -18,15 +20,12 @@
 
 #include <gt_graphicsscene.h>
 
-#include <map>
-
-
 namespace intelli
 {
 
 class GraphAdapterModel;
 
-class GraphScene : public GtGraphicsScene
+class GT_INTELLI_EXPORT GraphScene : public GtGraphicsScene
 {
     Q_OBJECT
 

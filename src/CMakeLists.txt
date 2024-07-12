@@ -16,6 +16,7 @@ option(
 )
 
 set(PUBLIC_HEADERS
+    intelli/connection.h
     intelli/core.h
     intelli/dynamicnode.h
     intelli/exports.h
@@ -40,13 +41,17 @@ set(PUBLIC_HEADERS
     intelli/data/object.h
     intelli/data/string.h
     intelli/gui/icons.h
+    intelli/gui/graphscene.h
     intelli/gui/graphscenedata.h
+    intelli/gui/graphview.h
     intelli/gui/nodegeometry.h
     intelli/gui/nodepainter.h
     intelli/gui/nodeui.h
     intelli/gui/portuiaction.h
     intelli/gui/style.h
     intelli/gui/graphics/nodeobject.h
+    intelli/gui/graphics/connectionobject.h
+    intelli/gui/graphics/nodeevalstateobject.h
     intelli/property/color.h
     intelli/property/objectlink.h
     intelli/property/stringselection.h
@@ -69,7 +74,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     ${PUBLIC_HEADERS}
     ${RCC_SOURCES}
     intelli/package.h
-    intelli/connection.h
     intelli/connectiongroup.h
     intelli/graphcategory.h
     intelli/module.h
@@ -98,11 +102,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/textdisplay.h
     intelli/gui/connectionui.h
     intelli/gui/grapheditor.h
-    intelli/gui/graphscene.h
-    intelli/gui/graphview.h
     intelli/gui/packageui.h
-    intelli/gui/graphics/connectionobject.h
-    intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/property_item/abstractnumberinputwidget.h
     intelli/gui/property_item/doubleinputwidget.h
     intelli/gui/property_item/editabledoublelabel.h
