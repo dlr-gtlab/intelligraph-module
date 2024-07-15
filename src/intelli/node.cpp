@@ -8,8 +8,8 @@
 
 #include "intelli/node.h"
 
-#include "intelli/graphexecmodel.h"
 #include "intelli/nodedatafactory.h"
+#include "intelli/graph.h"
 #include "intelli/nodeexecutor.h"
 #include "intelli/private/node_impl.h"
 #include "intelli/private/utils.h"
