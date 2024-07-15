@@ -52,7 +52,7 @@ using namespace intelli;
 NodeUI const&
 NodeUI::registeredDefaultObjectUI(Node& node)
 {
-    static const NodeUI defaultUI;
+    static NodeUI defaultUI;
 
 #ifndef GT_INTELLI_STANDALONE
     if (NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(&node))) return *ui;
@@ -121,6 +121,14 @@ NodeUI::NodeUI(Option option)
     addSingleAction(tr("Clear Intelli Graph"), clearNodeGraph)
         .setIcon(gt::gui::icon::clear())
         .setVisibilityMethod(toGraph);
+
+#ifdef GT_INTELLI_STANDALONE
+    addSingleAction(tr("Delete"), [](GtObject* obj){
+        delete toNode(obj);
+    })
+        .setIcon(gt::gui::icon::clear())
+        .setVisibilityMethod(toNode);
+#endif
 
     if ((option & NoDefaultPortActions)) return;
 

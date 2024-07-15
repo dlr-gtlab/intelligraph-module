@@ -926,11 +926,54 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     deleteAction->setIcon(gt::gui::icon::delete_());
     deleteAction->setEnabled(allDeletable);
 
+#ifdef GT_INTELLI_STANDALONE
+    QHash<QAction*, typename GtObjectUIAction::InvokableActionMethod> actions;
+#endif
+
     // add custom object menu
     if (selected.nodes.size() == 1)
     {
         menu.addSeparator();
+
+#ifndef GT_INTELLI_STANDALONE
         gt::gui::makeObjectContextMenu(menu, *node);
+#else
+        // add custom action
+        auto const& nodeUis = NodeUI::registeredObjectUIs(*node);
+
+        for (auto* nodeUi : nodeUis)
+        {
+            for (auto const& actionData : gt::container_const_cast(
+                     const_cast<NodeUI*>(nodeUi)->actions())
+                 )
+            {
+                if (actionData.isEmpty())
+                {
+                    menu.addSeparator();
+                    continue;
+                }
+
+                if (actionData.visibilityMethod() &&
+                    !actionData.visibilityMethod()(nullptr, node))
+                {
+                    continue;
+                }
+
+                auto* action = menu.addAction(actionData.text());
+                action->setIcon(actionData.icon());
+
+                if (actionData.verificationMethod() &&
+                    !actionData.verificationMethod()(nullptr, node))
+                {
+                    action->setEnabled(false);
+                }
+
+                actions.insert(action, actionData.method());
+            }
+        }
+
+        menu.addSeparator();
+#endif
         deleteAction->setVisible(false);
     }
 
@@ -952,6 +995,11 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
         return (void)gtDataModel->deleteFromModel(list);
 #else
         return qDeleteAll(list);
+    }
+    // call custom action
+    if (auto func = actions.value(triggered))
+    {
+        func(nullptr, node);
 #endif
     }
 }
