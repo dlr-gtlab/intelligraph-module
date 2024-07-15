@@ -162,18 +162,16 @@ struct GraphExecutionModel::Impl
                          nodeUuid);
     }
 
-    static inline bool
-    removeFromQueuedNodes(GraphExecutionModel& model, NodeUuid const& nodeUuid)
+    /*
+    template<typename ExecModel>
+    static inline auto
+    findPendingNode(ExecModel& model, NodeUuid const& nodeUuid)
     {
-        auto iter = findQueuedNode(model, nodeUuid);
-        if (iter != model.m_queuedNodes.end())
-        {
-            model.m_queuedNodes.erase(iter);
-            return true;
-        }
-        return false;
+        return std::find(model.m_pendingNodes.begin(),
+                         model.m_pendingNodes.end(),
+                         nodeUuid);
     }
-
+*/
     static inline bool
     removeFromTargetNodes(GraphExecutionModel& model,
                           NodeUuid const& nodeUuid)
@@ -182,6 +180,31 @@ struct GraphExecutionModel::Impl
         if (iter != model.m_targetNodes.end())
         {
             model.m_targetNodes.erase(iter);
+            return true;
+        }
+        return false;
+    }
+/*
+    static inline bool
+    removeFromPendingNodes(GraphExecutionModel& model, NodeUuid const& nodeUuid)
+    {
+        auto iter = findPendingNode(model, nodeUuid);
+        if (iter != model.m_pendingNodes.end())
+        {
+            model.m_pendingNodes.erase(iter);
+            return true;
+        }
+        return false;
+    }
+*/
+
+    static inline bool
+    removeFromQueuedNodes(GraphExecutionModel& model, NodeUuid const& nodeUuid)
+    {
+        auto iter = findQueuedNode(model, nodeUuid);
+        if (iter != model.m_queuedNodes.end())
+        {
+            model.m_queuedNodes.erase(iter);
             return true;
         }
         return false;
@@ -693,7 +716,31 @@ struct GraphExecutionModel::Impl
             }
         }
     }
+/*
+    static inline void
+    reschedulePendingNodes(GraphExecutionModel& model)
+    {
+        INTELLI_LOG_SCOPE(model)
+            << tr("rescheduling pending nodes...");
 
+        foreach (NodeUuid const& target, model.m_pendingNodes)
+        {
+            bool removed = removeFromPendingNodes(model, target);
+            assert(removed);
+
+            auto item = findData(model, target);
+            assert(item);
+
+            auto state = scheduleNode(model, target, item);
+            if (state == NodeEvalState::Invalid)
+            {
+                emit model.nodeEvaluationFailed(target, QPrivateSignal());
+
+                emit model.graphStalled(QPrivateSignal());
+            }
+        }
+    }
+*/
     static inline NodeEvalState
     scheduleTargetNode(GraphExecutionModel& model,
                        NodeUuid const& nodeUuid,
@@ -750,7 +797,39 @@ struct GraphExecutionModel::Impl
     {
         assert(item);
 
-        return queueNode(model, nodeUuid, item);
+/*
+        INTELLI_LOG_SCOPE(model)
+            << tr("scheduling node %1 (%2:%3)...")
+                   .arg(nodeUuid)
+                   .arg(item->nodeId, 2)
+                   .arg(item.node->caption());
+
+        // pending node
+        auto iter = findPendingNode(model, nodeUuid);
+        if (iter != model.m_pendingNodes.end())
+        {
+            INTELLI_LOG(model)
+                << tr("node is already scheduled!");
+            return NodeEvalState::Evaluating;
+        }
+
+        model.m_pendingNodes.push_back(nodeUuid);
+*/
+        auto state = queueNode(model, nodeUuid, item);
+/*
+        switch (state)
+        {
+        case NodeEvalState::Paused:
+        case NodeEvalState::Evaluating:
+        case NodeEvalState::Valid:
+        case NodeEvalState::Invalid:
+            removeFromPendingNodes(model, nodeUuid);
+            break;
+        case NodeEvalState::Outdated:
+            break;
+        }
+*/
+        return state;
     }
 
     static inline NodeEvalState
@@ -888,13 +967,13 @@ struct GraphExecutionModel::Impl
     queueNode(GraphExecutionModel& model,
               NodeUuid const& nodeUuid,
               MutableDataItemHelper item)
-    {
+    {        
+        assert(item);
+
         INTELLI_LOG_SCOPE(model)
             << tr("attempting to queue node '%1' (%2)!")
                    .arg(relativeNodePath(*item.node))
                    .arg(item.node->id());
-
-        assert(item);
 
         if (item.isEvaluating())
         {
@@ -907,7 +986,7 @@ struct GraphExecutionModel::Impl
         {
             INTELLI_LOG(model)
                 << tr("node is already evaluated!");
-            // TODO: should we check if the node is valid or outdated?
+            assert (model.nodeEvalState(nodeUuid) == NodeEvalState::Valid);
             return NodeEvalState::Valid;
         }
 

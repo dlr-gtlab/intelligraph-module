@@ -136,7 +136,7 @@ void
 GraphExecutionModel::endReset()
 {
     m_targetNodes.clear();
-    //    m_pendingNodes.clear();
+//    m_pendingNodes.clear();
     m_queuedNodes.clear();
     m_data.clear();
 
@@ -173,6 +173,7 @@ GraphExecutionModel::endModification()
 
     if (m_modificationCount != 0) return;
 
+    Impl::rescheduleTargetNodes(*this);
     Impl::evaluateNextInQueue(*this);
 }
 
@@ -555,6 +556,10 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
         }
 
         // TODO: trigger next nodes when auto evaluating
+        if (!isBeingModified())
+        {
+            Impl::rescheduleTargetNodes(*this);
+        }
         break;
     }
     case PortType::Out:
@@ -626,7 +631,6 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
         if (!setNodeData(nodeUuid, portId, std::move(item.second)))
         {
             return false;
-
         }
     }
 
@@ -674,12 +678,12 @@ GraphExecutionModel::onNodeEvaluated(QString const& nodeUuid)
 
     emit nodeEvalStateChanged(nodeUuid, QPrivateSignal());
 
+//    Impl::removeFromPendingNodes(*this, nodeUuid);
+
     if (item.requiresReevaluation())
     {
         INTELLI_LOG(*this)
             << tr("node requires reevaluation!");
-
-        // TODO: check if we need to do some more work here.
 
         emit item.node->evaluated();
 
@@ -697,23 +701,12 @@ GraphExecutionModel::onNodeEvaluated(QString const& nodeUuid)
         return;
     }
 
-//    for (auto& t : m_targetNodes)
-//    {
-//        auto item = Impl::findData(*this, t.nodeUuid);
-//        gtDebug() << "BEFORE" << item.node << t.nodeUuid;
-//    }
-
     Impl::removeFromTargetNodes(*this, nodeUuid, NodeEvaluationType::SingleShot);
-
-//    for (auto& t : m_targetNodes)
-//    {
-//        auto item = Impl::findData(*this, t.nodeUuid);
-//        gtDebug() << "AFTER" << item.node << t.nodeUuid;
-//    }
 
     emit nodeEvaluated(nodeUuid, QPrivateSignal());
     emit item.node->evaluated();
 
+//    Impl::reschedulePendingNodes(*this);
     Impl::rescheduleTargetNodes(*this);
     Impl::evaluateNextInQueue(*this);
 }
@@ -779,13 +772,8 @@ GraphExecutionModel::onNodeAppended(Node* node)
     disconnect(node);
 
     connect(node, &Node::triggerNodeEvaluation, this, [this, nodeUuid](){
-            invalidateNodeOutputs(nodeUuid);
-            for (auto& t : m_targetNodes)
-            {
-                auto item = Impl::findData(*this, t.nodeUuid);
-                gtDebug() << "HERE" << item.node << t.nodeUuid;
-            }
-            Impl::rescheduleTargetNodes(*this);
+        invalidateNodeOutputs(nodeUuid);
+        Impl::rescheduleTargetNodes(*this);
     }, Qt::DirectConnection);
 
     exec::setNodeDataInterface(*node, *this);
@@ -814,6 +802,7 @@ GraphExecutionModel::onNodeDeleted(Graph* graph, NodeId nodeId)
 
     Impl::removeFromTargetNodes(*this, item.node->uuid());
     Impl::removeFromQueuedNodes(*this, item.node->uuid());
+//    Impl::removeFromPendingNodes(*this, item.node->uuid());
 }
 
 void
@@ -863,8 +852,6 @@ GraphExecutionModel::onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, Po
                .arg(item.portEntry->id);
 
     item.entry->ports(type).erase(item.portEntry);
-
-    // TODO: reschedule graph
 }
 
 void
@@ -888,9 +875,6 @@ GraphExecutionModel::onConnectionAppended(Connection* con)
     // set node data
     auto data = nodeData(findOut.node->uuid(), conId.outPort);
     setNodeData(findIn.node->uuid(), conId.inPort, std::move(data));
-
-    // TODO: reschedule graph
-//    if (!isBeingModified())
 }
 
 void
@@ -908,8 +892,6 @@ GraphExecutionModel::onConnectionDeleted(ConnectionId conId)
 
     // set node data
     setNodeData(item.node->uuid(), conId.inPort, nullptr);
-
-    Impl::rescheduleTargetNodes(*this);
 }
 
 void
