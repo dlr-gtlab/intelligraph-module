@@ -1012,7 +1012,7 @@ GraphExecutionModel::setupConnections(Graph& graph)
                 onNodeDeleted(g, nodeId);
             }, Qt::DirectConnection);
     connect(&graph, &Graph::connectionAppended,
-            this, &GraphExecutionModel::onConnectedionAppended,
+            this, &GraphExecutionModel::onConnectionAppended,
             Qt::DirectConnection);
     connect(&graph, &Graph::connectionDeleted,
             this, &GraphExecutionModel::onConnectionDeleted,
@@ -1576,7 +1576,7 @@ GraphExecutionModel::onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, Po
 }
 
 void
-GraphExecutionModel::onConnectedionAppended(Connection* con)
+GraphExecutionModel::onConnectionAppended(Connection* con)
 {
     assert(con);
     ConnectionId conId = con->connectionId();

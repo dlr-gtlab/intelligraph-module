@@ -198,7 +198,7 @@ private slots:
 
     void onEndGraphModification();
 
-    void onConnectedionAppended(Connection* con);
+    void onConnectionAppended(Connection* con);
 
     void onConnectionDeleted(ConnectionId conId);
 };
