@@ -46,6 +46,11 @@ static NodeUuid group_uuid{};
 static NodeUuid group_input_uuid{};
 static NodeUuid group_output_uuid{};
 
+static NodeUuid group_A_uuid{};
+static NodeUuid group_B_uuid{};
+static NodeUuid group_C_uuid{};
+static NodeUuid group_D_uuid{};
+
 namespace test
 {
 
@@ -106,11 +111,11 @@ inline bool buildBasicGraph(Graph& graph)
 
 /** basic linear graph:
 
-  .---.      .---.      .---.
-  | A |--42--| B |--42--| C |      .---.
-  '---'      |   |      |   |--84--| D |
-          X--|'+'|--42--|'+'|      '---'
-             '---'      '---'
+  .---.      .---.         .---.
+  | A |--42--| B |      .--| C |      .---.
+  '---'      |   |--42--|  |   |--84--| D |
+          X--|'+'|      '--|'+'|      '---'
+             '---'         '---'
 
  */
 inline bool buildLinearGraph(Graph& graph)
@@ -161,6 +166,32 @@ inline bool buildLinearGraph(Graph& graph)
     return true;
 }
 
+/** graph with a group:
+
+  .---.          .-------.
+  | A |--26------| GROUP |--42--.
+  '---'          |   C   |      |
+             .---|       |--O   |  .---.
+             |   '-------'      '--| D |
+  .---.      |                     |   |--50
+  | B |---8--+---------------------| + |
+  '---'      |                     '---'
+             |                     .---.
+             '---------------------| E |
+                                   '---'
+
+Group C:
+   .---.                                        .---.
+   | A |---8----.  .---.                    '---| E |
+   '---'        '--| B |                    |   '---'
+                   |   |--34--.             |
+  .-----.       .--| + |      |  .---.      |  .-----.
+  |     |--26---'  '---'      '--| C |      |  |     |
+  | IN  |                        |   |--42--+--| OUT |
+  |     |---8--------------------| + |         |     |
+  '-----'                        '---'         '-----'
+
+*/
 inline bool buildGraphWithGroup(Graph& graph)
 {
     GraphBuilder builder(graph);
@@ -173,13 +204,15 @@ inline bool buildGraphWithGroup(Graph& graph)
         auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("B"));
         B_uuid = B.uuid();
 
-        auto group = builder.addGraph({
-                                          typeId<DoubleData>(),
-                                          typeId<DoubleData>()
-                                      }, {
-                                          typeId<DoubleData>()
-                                      }
-                                      );
+        auto group = builder.addGraph(
+            {
+                typeId<DoubleData>(), // forwards to 1. port of output
+                typeId<DoubleData>()  // forwards to 2. port of output
+            }, {
+                typeId<DoubleData>(), // connected to 1. port of D
+                typeId<DoubleData>()  // not connected to any port
+            }
+        );
         group.graph.setCaption(QStringLiteral("Group"));
         C_uuid = group.graph.uuid();
         group_uuid = C_uuid;
@@ -194,9 +227,13 @@ inline bool buildGraphWithGroup(Graph& graph)
         GraphBuilder groupBuilder(group.graph);
 
         auto& group_A = groupBuilder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("Group_A"));
+        group_A_uuid = group_A.uuid();
         auto& group_B = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("Group_B"));
+        group_B_uuid = group_B.uuid();
         auto& group_C = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("Group_C"));
+        group_C_uuid = group_C.uuid();
         auto& group_D = groupBuilder.addNode(QStringLiteral("intelli::NumberDisplayNode")).setCaption(QStringLiteral("Group_D"));
+        group_D_uuid = group_D.uuid();
 
         // square value 1
         builder.connect(A, PortIndex{0}, group.graph, PortIndex{0});
@@ -244,6 +281,11 @@ inline bool buildGraphWithGroup(Graph& graph)
         EXPECT_EQ(group.outNode.id(), group_output_id);
         EXPECT_EQ(group.inNode.uuid(), group_input_uuid);
         EXPECT_EQ(group.outNode.uuid(), group_output_uuid);
+
+        EXPECT_EQ(group_A.uuid(), group_A_uuid);
+        EXPECT_EQ(group_B.uuid(), group_B_uuid);
+        EXPECT_EQ(group_C.uuid(), group_C_uuid);
+        EXPECT_EQ(group_D.uuid(), group_D_uuid);
     }
     catch(std::logic_error const& e)
     {
@@ -266,9 +308,9 @@ inline bool buildGraphWithGroup(Graph& graph)
   .---.      |                     |   |--34
   | B |---8--+---------------------| + |
   '---'      |                     '---'
-             |                 .---.
-             '-----------------| E |
-                               '---'
+             |                     .---.
+             '---------------------| E |
+                                   '---'
 
 Group C:
   .-----.      .-----.

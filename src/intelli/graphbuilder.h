@@ -116,6 +116,16 @@ public:
      */
     ConnectionId connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) noexcept(false);
 
+    /**
+     * @brief Overload. Connects two nodes based on their id.
+     * @param from Node to begin the connection from
+     * @param outIdx Output port of starting node to begin the connection from
+     * @param to Node to end connection at
+     * @param inIdx Input port of the end node to end the connection at
+     * @return connectionId
+     */
+    ConnectionId connect(NodeId from, PortIndex outIdx, NodeId to, PortIndex inIdx) noexcept(false);
+
 private:
 
     Graph* m_graph;

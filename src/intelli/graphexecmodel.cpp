@@ -171,8 +171,9 @@ GraphExecutionModel::endModification()
         << tr("...END MODIFICATION")
         << m_modificationCount;
 
-    // TODO: explicitly reschedule the graph?
     if (m_modificationCount != 0) return;
+
+    Impl::evaluateNextInQueue(*this);
 }
 
 bool
@@ -385,8 +386,7 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
 void
 GraphExecutionModel::stopAutoEvaluatingNode(NodeUuid const& nodeUuid)
 {
-    auto iter = Impl::findTargetNode(*this, nodeUuid);
-    if (iter != m_targetNodes.end()) m_targetNodes.erase(iter);
+    Impl::removeFromTargetNodes(*this, nodeUuid);
 }
 
 bool
@@ -697,25 +697,19 @@ GraphExecutionModel::onNodeEvaluated(QString const& nodeUuid)
         return;
     }
 
-    for (auto& t : m_targetNodes)
-    {
-        auto item = Impl::findData(*this, t.nodeUuid);
-        gtDebug() << "BEFORE" << item.node << t.nodeUuid;
-    }
+//    for (auto& t : m_targetNodes)
+//    {
+//        auto item = Impl::findData(*this, t.nodeUuid);
+//        gtDebug() << "BEFORE" << item.node << t.nodeUuid;
+//    }
 
-    auto iter = Impl::findTargetNode(*this, nodeUuid);
-    if (iter != m_targetNodes.end() &&
-        iter->evalType == NodeEvaluationType::SingleShot)
-    {
-        gtDebug() << "REMOVING SINGLE SHOT" << nodeUuid << item.node << (int)iter->evalType;
-        m_targetNodes.erase(iter);
-    }
+    Impl::removeFromTargetNodes(*this, nodeUuid, NodeEvaluationType::SingleShot);
 
-    for (auto& t : m_targetNodes)
-    {
-        auto item = Impl::findData(*this, t.nodeUuid);
-        gtDebug() << "AFTER" << item.node << t.nodeUuid;
-    }
+//    for (auto& t : m_targetNodes)
+//    {
+//        auto item = Impl::findData(*this, t.nodeUuid);
+//        gtDebug() << "AFTER" << item.node << t.nodeUuid;
+//    }
 
     emit nodeEvaluated(nodeUuid, QPrivateSignal());
     emit item.node->evaluated();
@@ -818,9 +812,8 @@ GraphExecutionModel::onNodeDeleted(Graph* graph, NodeId nodeId)
 
     m_data.erase(item.entry);
 
-    // remove target node
-    auto iter = Impl::findTargetNode(*this, item.node->uuid());
-    if (iter != m_targetNodes.end()) m_targetNodes.erase(iter);
+    Impl::removeFromTargetNodes(*this, item.node->uuid());
+    Impl::removeFromQueuedNodes(*this, item.node->uuid());
 }
 
 void
@@ -916,7 +909,7 @@ GraphExecutionModel::onConnectionDeleted(ConnectionId conId)
     // set node data
     setNodeData(item.node->uuid(), conId.inPort, nullptr);
 
-    // TODO: reschedule graph
+    Impl::rescheduleTargetNodes(*this);
 }
 
 void

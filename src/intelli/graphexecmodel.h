@@ -156,8 +156,6 @@ private:
     GraphDataModel m_data;
     /// nodes that should be evaluated
     QVarLengthArray<TargetNode, PRE_ALLOC> m_targetNodes;
-    /// nodes that are scheduled but not ready yet
-//    QVarLengthArray<NodeUuid, PRE_ALLOC> m_pendingNodes;
     /// nodes that are ready and waiting for evaluation
     QVarLengthArray<NodeUuid, PRE_ALLOC> m_queuedNodes;
     /// indicator if the exec model is currently beeing modified and thus
@@ -246,7 +244,6 @@ public:
      * @param timeout Timeout to wait until the waiting process is aborted.
      * @return Success of evaluation/waiting process
      */
-    GT_NO_DISCARD
     GT_INTELLI_EXPORT
     bool wait(milliseconds timeout = milliseconds::max()) const;
 

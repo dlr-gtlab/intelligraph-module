@@ -153,6 +153,63 @@ struct GraphExecutionModel::Impl
         });
     }
 
+    template<typename ExecModel>
+    static inline auto
+    findQueuedNode(ExecModel& model, NodeUuid const& nodeUuid)
+    {
+        return std::find(model.m_queuedNodes.begin(),
+                         model.m_queuedNodes.end(),
+                         nodeUuid);
+    }
+
+    static inline bool
+    removeFromQueuedNodes(GraphExecutionModel& model, NodeUuid const& nodeUuid)
+    {
+        auto iter = findQueuedNode(model, nodeUuid);
+        if (iter != model.m_queuedNodes.end())
+        {
+            model.m_queuedNodes.erase(iter);
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool
+    removeFromTargetNodes(GraphExecutionModel& model,
+                          NodeUuid const& nodeUuid)
+    {
+        auto iter = findTargetNode(model, nodeUuid);
+        if (iter != model.m_targetNodes.end())
+        {
+            model.m_targetNodes.erase(iter);
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool
+    removeFromTargetNodes(GraphExecutionModel& model,
+                          NodeUuid const& nodeUuid,
+                          NodeEvaluationType evalType)
+    {
+        auto iter = findTargetNode(model, nodeUuid);
+        if (iter != model.m_targetNodes.end() && iter->evalType == evalType)
+        {
+            model.m_targetNodes.erase(iter);
+            return true;
+        }
+        return false;
+    }
+
+    template<typename ExecModel>
+    static inline auto
+    remove(ExecModel& model, NodeUuid const& nodeUuid)
+    {
+        return std::find(model.m_queuedNodes.begin(),
+                         model.m_queuedNodes.end(),
+                         nodeUuid);
+    }
+
     static inline bool
     isGraphContained(GraphExecutionModel const& model,
                      Graph const& graph)
@@ -499,6 +556,8 @@ struct GraphExecutionModel::Impl
         {
             item.entry->state = DataState::RequiresReevaluation;
 
+            removeFromQueuedNodes(model, nodeUuid);
+
             emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
 
             auto* graph = qobject_cast<Graph*>(item.node->parent());
@@ -538,6 +597,8 @@ struct GraphExecutionModel::Impl
         auto finally = gt::finally([&model, &nodeUuid](){
             emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
         });
+
+        removeFromQueuedNodes(model, nodeUuid);
 
         auto* node = model.graph().findNodeByUuid(nodeUuid);
         if (!node) return false;
@@ -668,23 +729,12 @@ struct GraphExecutionModel::Impl
         switch (state)
         {
         case NodeEvalState::Invalid:
-        {
-            iter = findTargetNode(model, nodeUuid);
-            assert(iter != model.m_targetNodes.end());
-            model.m_targetNodes.erase(iter);
+            removeFromTargetNodes(model, nodeUuid);
             break;
-        }
         case NodeEvalState::Valid:
-        {
-            iter = findTargetNode(model, nodeUuid);
-            // node may already be evaluated non-blockingly and be removed there
-            if (iter != model.m_targetNodes.end() &&
-                iter->evalType == NodeEvaluationType::SingleShot)
-            {
-                model.m_targetNodes.erase(iter);
-            }
+            // node was evaluated -> remove from target nodes
+            removeFromTargetNodes(model, nodeUuid, NodeEvaluationType::SingleShot);
             break;
-        }
         case NodeEvalState::Evaluating:
         case NodeEvalState::Outdated:
         case NodeEvalState::Paused:
@@ -699,25 +749,6 @@ struct GraphExecutionModel::Impl
                  MutableDataItemHelper item)
     {
         assert(item);
-
-        //    INTELLI_LOG(model) << tr("scheduling node %1 (%2:%3)...")
-        //                              .arg(nodeUuid)
-        //                              .arg(item->nodeId, 2)
-        //                              .arg(item.node->caption());
-        //    INTELLI_LOG_SCOPE(model)
-
-        //    // pending node
-        //    auto iter = std::find(model.m_pendingNodes.begin(),
-        //                          model.m_pendingNodes.end(),
-        //                          nodeUuid);
-        //    if (iter != model.m_pendingNodes.end())
-        //    {
-        //        INTELLI_LOG(model)
-        //            << tr("node is already scheduled!");
-        //        return NodeEvalState::Evaluating;
-        //    }
-
-        //    model.m_pendingNodes.push_back(nodeUuid);
 
         return queueNode(model, nodeUuid, item);
     }
@@ -880,9 +911,7 @@ struct GraphExecutionModel::Impl
             return NodeEvalState::Valid;
         }
 
-        auto iter = std::find(model.m_queuedNodes.begin(),
-                              model.m_queuedNodes.end(),
-                              nodeUuid);
+        auto iter = findQueuedNode(model, nodeUuid);
         if (iter != model.m_queuedNodes.end())
         {
             INTELLI_LOG(model)
@@ -897,6 +926,7 @@ struct GraphExecutionModel::Impl
             return state;
         }
 
+        int idx = model.m_queuedNodes.size();
         model.m_queuedNodes.push_back(nodeUuid);
 
         INTELLI_LOG(model)
@@ -904,7 +934,7 @@ struct GraphExecutionModel::Impl
                    .arg(relativeNodePath(*item.node))
                    .arg(item.node->id());
 
-        auto state = tryEvaluatingNode(model, item, model.m_queuedNodes.size() - 1);
+        auto state = tryEvaluatingNode(model, item, idx);
         switch (state)
         {
         case NodeEvalState::Paused:
@@ -930,6 +960,13 @@ struct GraphExecutionModel::Impl
             return NodeEvalState::Outdated;
         }
 
+        if (model.isBeingModified())
+        {
+            INTELLI_LOG(model)
+                << tr("executor is being modified!");
+            return NodeEvalState::Paused;
+        }
+
         // TODO: add proper support for exlusive nodes
         auto containsExclusiveNodes = false;
 
@@ -937,7 +974,7 @@ struct GraphExecutionModel::Impl
         if (containsExclusiveNodes)
         {
             INTELLI_LOG(model)
-                << tr("executor contains exclusive nodes");
+                << tr("executor contains exclusive nodes!");
             return NodeEvalState::Paused;
         }
 
@@ -974,6 +1011,8 @@ struct GraphExecutionModel::Impl
         // mark node as evaluated
         item->state = DataState::Evaluated;
 
+        assert(model.m_queuedNodes.size() > idx);
+        assert(model.m_queuedNodes.at(idx) == item.node->uuid());
         model.m_queuedNodes.remove(idx);
 
         if (!exec::triggerNodeEvaluation(*item.node, model))

@@ -176,6 +176,33 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
     return conId;
 }
 
+ConnectionId
+GraphBuilder::connect(NodeId from, PortIndex outIdx, NodeId to, PortIndex inIdx) noexcept(false)
+{
+    auto const buildError = [&](){
+        return std::string{
+            "GraphBuilder: Failed to connect node " +
+            gt::squoted(std::to_string(from)) + " and " +
+            gt::squoted(std::to_string(to))
+        };
+    };
+
+    Node* sourceNode = m_graph->findNode(from);
+    Node* targetNode = m_graph->findNode(to);
+
+    // check if nodes exist within the graph
+    if (!sourceNode || !targetNode)
+    {
+        throw std::logic_error{
+            buildError() +
+            ", nodes have not been added to the graph before! " +
+            gt::brackets(m_graph->caption().toStdString())
+        };
+    }
+
+    return connect(*sourceNode, outIdx, *targetNode, inIdx);
+}
+
 void
 intelli::setNodeProperty(Node& node, QString const& propertyId, QVariant value) noexcept(false)
 {
