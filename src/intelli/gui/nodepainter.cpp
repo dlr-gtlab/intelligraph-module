@@ -15,8 +15,6 @@
 #include "intelli/nodedatafactory.h"
 #include "intelli/graph.h"
 
-#include <gt_application.h>
-
 #include <gt_colors.h>
 
 #include <QPainter>
@@ -44,18 +42,24 @@ NodePainter::applyOutlineConfig(QPainter& painter) const
 {
     auto& object = this->object();
 
-    QColor penColor = style::nodeOutline();
-    double penWidth = style::nodeOutlineWidth();
+    auto& style = style::currentStyle().node;
+    QColor penColor = style.defaultOutline;
+    double penWidth = style.defaultOutlineWidth;
 
-    if (object.isHovered())
+    bool const selected = object.isSelected();
+    bool const hovered = object.isHovered();
+
+    if (selected)
     {
-        penWidth = style::nodeHoveredOutlineWidth();
-        penColor = style::nodeHoveredOutline();
+        penWidth = hovered ?
+                       style.hoveredOutlineWidth :
+                       style.selectedOutlineWidth ;
+        penColor = style.selectedOutline;
     }
-    if (object.isSelected())
+    else if (hovered)
     {
-        penWidth = style::nodeHoveredOutlineWidth();
-        penColor = style::nodeSelectedOutline();
+        penWidth = style.hoveredOutlineWidth;
+        penColor = style.hoveredOutline;
     }
 
     QPen pen(penColor, penWidth);
@@ -72,13 +76,13 @@ NodePainter::backgroundColor() const
     // apply tint if node is compatible
     if (highlights.isActive())
     {
-        QColor bg = style::nodeBackground();
+        auto& style = style::currentStyle().node;
+
+        QColor bg = style.background;
         if (!highlights.isNodeCompatible()) return bg;
 
-        int val = -20;
-        if (gtApp && gtApp->inDarkMode()) val *= -1;
-
-        return style::tint(bg, val, val, val);
+        int val = style.compatiblityTintModifier;
+        return style::tint(bg, val);
     }
 
     auto bg = customBackgroundColor();
@@ -91,7 +95,7 @@ NodePainter::customBackgroundColor() const
 {
     auto& node = this->node();
 
-    QColor bg = style::nodeBackground();
+    QColor bg = style::currentStyle().node.background;
 
     if (node.nodeFlags() & NodeFlag::Unique)
     {
@@ -112,9 +116,8 @@ NodePainter::drawBackground(QPainter& painter) const
 
     auto rect = geometry().innerRect();
 
-    painter.drawRoundedRect(rect,
-                            style::nodeRoundingRadius(),
-                            style::nodeRoundingRadius());
+    auto& style = style::currentStyle().node;
+    painter.drawRoundedRect(rect, style.roundingRadius, style.roundingRadius);
 }
 
 void
@@ -124,9 +127,8 @@ NodePainter::drawOutline(QPainter& painter) const
 
     auto rect = geometry().innerRect();
 
-    painter.drawRoundedRect(rect,
-                            style::nodeRoundingRadius(),
-                            style::nodeRoundingRadius());
+    auto& style = style::currentStyle().node;
+    painter.drawRoundedRect(rect, style.roundingRadius, style.roundingRadius);
 }
 
 void
@@ -190,18 +192,20 @@ NodePainter::drawPort(QPainter& painter,
     QSizeF offset = QSizeF{1, 1};
     if (isPortIncompatible) offset *= 3;
 
+    auto& style = style::currentStyle();
+    auto& nstyle = style.node;
+
     double penWidth = object().isHovered() ?
-                          style::nodeHoveredOutlineWidth() :
-                          style::nodeOutlineWidth();
+                          nstyle.hoveredOutlineWidth :
+                          nstyle.defaultOutlineWidth;
 
     QColor penColor = object().isSelected() ?
-                          style::nodeSelectedOutline() :
-                          style::nodeOutline();
+                          nstyle.selectedOutline :
+                          nstyle.defaultOutline;
 
     QBrush brush = isPortIncompatible ?
-                       style::connectionInactivePath() :
-                       style::typeIdColor(port.typeId);
-
+                       style.connection.inactiveOutline :
+                       style.connection.typeColor(port.typeId);
 
     QRectF p = geometry().portRect(type, idx);
     p.translate(offset.width() * 0.5, offset.height() * 0.5);
@@ -224,7 +228,9 @@ NodePainter::drawPortCaption(QPainter& painter,
     auto& factory = NodeDataFactory::instance();
 
     painter.setBrush(Qt::NoBrush);
-    painter.setPen(flags & PortConnected ? gt::gui::color::text() : gt::gui::color::disabled());
+    painter.setPen(flags & PortConnected ?
+                       gt::gui::color::text() :
+                       gt::gui::color::disabled());
 
     painter.drawText(geometry().portCaptionRect(type, idx),
                      port.caption.isEmpty() ? factory.typeName(port.typeId) : port.caption,
@@ -244,7 +250,8 @@ NodePainter::drawResizeHandle(QPainter& painter) const
     poly.append(rect.topRight());
 
     painter.setPen(Qt::NoPen);
-    painter.setBrush(gt::gui::color::lighten(style::nodeOutline(), -30));
+    painter.setBrush(gt::gui::color::lighten(
+        style::currentStyle().node.defaultOutline, -30));
     painter.drawPolygon(poly);
 }
 

@@ -144,7 +144,8 @@ NodeGeometry::computeInnerRect() const
         width += hspacing() + wSize.width();
     }
 
-    width = std::max(width, (int)(style::nodeEvalStateSize() + hspacing() + captionRect().width()));
+    auto& style = style::currentStyle().node;
+    width = std::max(width, (int)(style.evalStateSize + hspacing() + captionRect().width()));
 
     return QRectF(QPoint{0, 0}, QSize{width, height});
 }
@@ -167,7 +168,8 @@ NodeGeometry::boundingRect() const
 QRectF
 NodeGeometry::computeBoundingRect() const
 {
-    double xoffset = 1.0 * style::nodePortSize() + 1;
+    auto& style = style::currentStyle().node;
+    double xoffset = 1.0 * style.portRadius + 1;
     double yoffset = 0.5 * vspacing() + 1;
 
     auto rect = innerRect();
@@ -198,7 +200,8 @@ NodeGeometry::captionRect() const
     double xoffset = 0.5 * (innerRect.width() - caption.width());
 
     // make the caption as centered as possible
-    xoffset += (style::nodeEvalStateSize() / margin) * 0.5 * style::nodeEvalStateSize();
+    auto& style = style::currentStyle().node;
+    xoffset += (style.evalStateSize / margin) * 0.5 * style.evalStateSize;
 
     return caption.translated(xoffset, vspacing());
 }
@@ -206,9 +209,10 @@ NodeGeometry::captionRect() const
 QRectF
 NodeGeometry::evalStateRect() const
 {
+    auto& style = style::currentStyle().node;
     return QRectF{
         innerRect().topLeft(),
-        QSizeF{style::nodeEvalStateSize(), style::nodeEvalStateSize()}
+        QSizeF{style.evalStateSize, style.evalStateSize}
     };
 }
 
@@ -251,12 +255,14 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
         height += 1.5 * metrics.height();
     }
 
+    auto& style = style::currentStyle().node;
+
     double width = type == PortType::Out ? innerRect().width() : 0.0;
-    width -= style::nodePortSize();
+    width -= style.portRadius;
 
     return {
         QPointF(width, height),
-        QSizeF{style::nodePortSize() * 2, style::nodePortSize() * 2}
+        QSizeF{style.portRadius * 2, style.portRadius * 2}
     };
 }
 
@@ -278,7 +284,9 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
 
     if (port->captionVisible)
     {
-        width += metrics.horizontalAdvance(port->caption.isEmpty() ? factory.typeName(port->typeId) : port->caption);
+        width += metrics.horizontalAdvance(port->caption.isEmpty() ?
+                                               factory.typeName(port->typeId) :
+                                               port->caption);
         width += (width & 1);
     }
 
@@ -305,7 +313,8 @@ NodeGeometry::portHit(QRectF rect) const
     auto coord = rect.center();
 
     // estimate whether its a input or output port
-    PortType type = (coord.x() < (inner.x() + 0.5 * inner.width())) ? PortType::In : PortType::Out;
+    PortType type = (coord.x() < (inner.x() + 0.5 * inner.width())) ?
+                        PortType::In : PortType::Out;
 
     auto& node = this->node();
 

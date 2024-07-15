@@ -11,8 +11,6 @@
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/style.h>
 
-#include <gt_colors.h>
-
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
 #include <QGraphicsSceneHoverEvent>
@@ -32,8 +30,9 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection,
 
     setAcceptHoverEvents(true);
 
-    setZValue(style::zValue(connection.isDraft() ? ZValue::DraftConnection :
-                                                   ZValue::Connection));
+    setZValue(style::zValue(connection.isDraft() ?
+                                style::ZValue::DraftConnection :
+                                style::ZValue::Connection));
 }
 
 QRectF
@@ -48,7 +47,7 @@ ConnectionGraphicsObject::boundingRect() const
 
     QRectF commonRect = basicRect.united(c1c2Rect);
 
-    double const diam = style::nodePortSize() * 2;
+    double const diam = style::currentStyle().node.portRadius * 2;
     QPointF const cornerOffset(diam, diam);
 
     // Expand rect by port circle diameter
@@ -217,42 +216,43 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     bool isDraft  = m_connection.isDraft();
     bool isInactive = m_inactive;
 
-    auto const makePen = [this, &hovered, &selected, &isDraft, &isInactive](){
+    auto& style = style::currentStyle();
+    auto& cstyle = style.connection;
 
-        QColor outColor = style::typeIdColor(m_startType);
+    auto const makePen = [this, &cstyle, &hovered, &selected, &isDraft, &isInactive](){
 
-        double penWidth = style::connectionPathWidth();
-        Qt::PenStyle penStyle = Qt::SolidLine;
+        QColor outColor = cstyle.typeColor(m_startType);
         QBrush penBrush = outColor;
+
+        Qt::PenStyle penStyle = Qt::SolidLine;
+        double penWidth = cstyle.defaultOutlineWidth;
 
         if (isInactive)
         {
-            penBrush = style::connectionInactivePath();
+            penBrush = cstyle.inactiveOutline;
         }
         else if (hovered)
         {
-            penWidth = style::connectionHoveredPathWidth();
-            penBrush = style::connectionHoveredPath();
+            penWidth = cstyle.hoveredOutlineWidth;
+            penBrush = cstyle.hoveredOutline;
         }
         else if (selected)
         {
-            penWidth = style::connectionHoveredPathWidth();
-            penBrush = style::connectionSelectedPath();
+            penWidth = cstyle.selectedOutlineWidth;
+            penBrush = cstyle.selectedOutline;
         }
         else if (isDraft)
         {
-            PortType draftType = m_connection.draftType();
-            if (draftType == PortType::In)
+            if (m_connection.draftType() == PortType::In)
             {
-                penBrush = style::typeIdColor(m_endType);
+                penBrush = cstyle.typeColor(m_endType);
             }
 
-            penWidth = style::connectionDraftPathWidth();
             penStyle = Qt::DashLine;
         }
         else if (m_startType != m_endType)
         {
-            QColor inColor  = style::typeIdColor(m_endType);
+            QColor inColor  = cstyle.typeColor(m_endType);
             QLinearGradient gradient(m_start, m_end);
             gradient.setColorAt(0.1, outColor);
             gradient.setColorAt(0.9, inColor);
@@ -283,12 +283,12 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     // draw end points
     if (isDraft)
     {
-        double const pointRadius = style::nodePortSize();
+        double const portRadius = style.node.portRadius;
 
         painter->setPen(Qt::NoPen);
         painter->setBrush(pen.brush());
         painter->drawEllipse(m_connection.draftType() == PortType::Out ? m_end : m_start,
-                             pointRadius, pointRadius);
+                             portRadius, portRadius);
     }
 
 #ifdef GT_INTELLI_DEBUG_CONNECTION_GRAPHICS
@@ -320,7 +320,9 @@ ConnectionGraphicsObject::itemChange(GraphicsItemChange change, const QVariant& 
     switch (change)
     {
     case GraphicsItemChange::ItemSelectedChange:
-        setZValue(style::zValue(!value.toBool() ? ZValue::Connection : ZValue::ConnectionHovered));
+        setZValue(style::zValue(!value.toBool() ?
+                                    style::ZValue::Connection :
+                                    style::ZValue::ConnectionHovered));
         break;
     default:
         break;
@@ -366,7 +368,7 @@ void
 ConnectionGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
     m_hovered = true;
-    setZValue(style::zValue(ZValue::ConnectionHovered));
+    setZValue(style::zValue(style::ZValue::ConnectionHovered));
     update();
     event->accept();
 }
@@ -375,7 +377,7 @@ void
 ConnectionGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
     m_hovered = false;
-    setZValue(style::zValue(ZValue::Connection));
+    setZValue(style::zValue(style::ZValue::Connection));
     update();
     event->accept();
 }

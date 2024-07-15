@@ -10,8 +10,11 @@
 #include "intelli/gui/grapheditor.h"
 
 #include "intelli/gui/graphview.h"
+#include "intelli/gui/style.h"
 
 #include <gt_logging.h>
+
+#include <gt_application.h>
 
 #include <QVBoxLayout>
 
@@ -23,6 +26,30 @@ using namespace intelli;
 
 GraphEditor::GraphEditor() : m_view(nullptr)
 {
+    // update theme automatically
+
+    static auto initOnce = gtApp && [](){
+
+        auto const updateStyle = [](bool isDark){
+
+            auto const& currentStyle = style::currentStyle().id;
+            bool isDefault =
+                (currentStyle == style::styleId(style::DefaultStyle::Bright)) ||
+                (currentStyle == style::styleId(style::DefaultStyle::Dark));
+
+            if (isDefault) style::applyStyle(isDark ?
+                                      style::DefaultStyle::Dark :
+                                      style::DefaultStyle::Bright);
+        };
+
+        QObject::connect(gtApp, &GtApplication::themeChanged,
+                         gtApp, updateStyle);
+        updateStyle(gtApp->inDarkMode());
+
+        return 0;
+    }();
+    Q_UNUSED(initOnce);
+
     setObjectName(tr("IntelliGraph Editor"));
 }
 

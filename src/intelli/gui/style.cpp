@@ -9,30 +9,169 @@
 
 #include <intelli/gui/style.h>
 
-#include "gt_application.h"
-#include "gt_colors.h"
-#include "gt_utilities.h"
+#include <gt_utilities.h>
 
 #include <random>
 
-void
-intelli::applyTheme(Theme newTheme)
-{
-    static Theme theme = newTheme;
+using namespace intelli;
+using namespace intelli::style;
 
-    static auto connect_once = [](){
-        QObject::connect(gtApp, &GtApplication::themeChanged, gtApp, [](){
-            if (theme == Theme::System) applyTheme(theme);
-        });
+/// registered styles
+static auto& styles()
+{
+    static std::map<QString, StyleData> styles;
+
+    static auto initOnce = [](){
+
+        StyleData style;
+
+        /// dark
+        style.id = styleId(DefaultStyle::Dark);
+
+        style.view.background = QColor{21, 38, 53};
+        style.view.gridline = QColor{25, 25, 25, 255};
+
+        style.node.background = QColor{36, 49, 63};
+        style.node.defaultOutline = QColor{63, 73, 86};
+        style.node.selectedOutline = QColor{255, 165, 0};
+        style.node.hoveredOutline = style.node.defaultOutline;
+        style.node.compatiblityTintModifier = 20;
+
+        style.connection.defaultOutline = style.node.defaultOutline;
+        style.connection.selectedOutline = style.node.selectedOutline;
+        style.connection.hoveredOutline = Qt::lightGray;
+        style.connection.inactiveOutline = Qt::gray;
+
+        styles.emplace(style.id, style);
+
+        /// bright
+        style.id = styleId(DefaultStyle::Bright);
+
+        style.view.background = QColor{255, 255, 255};
+        style.view.gridline = QColor{200, 200, 255, 125};
+
+        style.node.background = QColor{245, 245, 245};
+        style.node.defaultOutline = QColor{"darkgray"};
+        style.node.selectedOutline = QColor{"deepskyblue"};
+        style.node.hoveredOutline = style.node.defaultOutline;
+
+        style.connection.defaultOutline = style.node.defaultOutline;
+        style.connection.selectedOutline = style.node.selectedOutline;
+
+        styles.emplace(style.id, style);
+
         return 0;
     }();
-    Q_UNUSED(connect_once);
+    Q_UNUSED(initOnce);
 
-    // apply system theme
-    if (theme == Theme::System)
+    return styles;
+}
+
+static StyleData& styleInstance()
+{
+    static StyleData& currentStyle = []() -> StyleData& {
+        return (styles().begin()->second);
+    }();
+    return currentStyle;
+}
+
+QColor
+StyleData::ConnectionData::typeColor(TypeId const& typeId) const
+{
+    if (typeId.isEmpty() || !useCustomTypeColors)
     {
-        theme = gtApp->inDarkMode() ? Theme::Dark : Theme::Bright;
+        return defaultOutline;
     }
+
+    auto iter = customTypeColors.find(typeId);
+    if (iter != customTypeColors.end())
+    {
+        return *iter;
+    }
+
+    if (!generateMissingTypeColors)
+    {
+        return defaultOutline;
+    }
+
+    return generateTypeColor(typeId);
+}
+
+void
+intelli::style::applyStyle(StyleId const& id)
+{
+    if (StyleData const* style = findStyle(id)) styleInstance() = *style;
+}
+
+void
+intelli::style::applyStyle(DefaultStyle style)
+{
+    applyStyle(styleId(style));
+}
+
+void
+intelli::style::registerStyle(StyleId const& id, StyleData style, bool apply)
+{
+    if (id.isEmpty()) return;
+
+    if (!findStyle(id))
+    {
+        style.id = id;
+        styles().insert({id, std::move(style)});
+    }
+
+    if (apply) applyStyle(id);
+}
+
+StyleData const&
+intelli::style::currentStyle()
+{
+    return styleInstance();
+}
+
+StyleData const*
+intelli::style::findStyle(StyleId const& id)
+{
+    auto const& styles = ::styles();
+    auto iter = styles.find(id);
+    if (iter == styles.end()) return nullptr;
+
+    return &(iter->second);
+}
+
+StyleData const*
+intelli::style::findStyle(DefaultStyle style)
+{
+    return findStyle(styleId(style));
+}
+
+StyleId const&
+intelli::style::styleId(DefaultStyle theme)
+{
+    static auto bright = QStringLiteral("DefaultBright");
+    static auto dark = QStringLiteral("DefaultDark");
+
+    switch (theme)
+    {
+    default:
+        gtError().medium()
+            << QObject::tr("Unknown default style '%1'").arg((int)theme);
+    case DefaultStyle::Bright:
+        return bright;
+    case DefaultStyle::Dark:
+        return dark;
+    }
+}
+
+QVector<StyleId>
+intelli::style::registeredStyles()
+{
+    QVector<StyleId> ids;
+    std::transform(styles().begin(), styles().end(), std::back_inserter(ids),
+                   [](auto const& iter){
+        return iter.first;
+    });
+    return ids;
 }
 
 QColor
@@ -56,64 +195,13 @@ intelli::style::invert(QColor const& color)
     return QColor{MAX - color.red(), MAX - color.green(), MAX - color.blue()};
 }
 
-
 QColor
-intelli::style::viewBackground()
-{
-    return gtApp->inDarkMode() ? QColor{21, 38, 53} : QColor{255, 255, 255};
-}
-
-QColor
-intelli::style::nodeBackground()
-{
-    return gtApp->inDarkMode() ? QColor{36, 49, 63} : QColor{245, 245, 245};
-}
-
-QColor
-intelli::style::nodeOutline()
-{
-    return gtApp->inDarkMode() ? QColor{63, 73, 86} : QColor{"darkgray"};
-}
-
-double
-intelli::style::nodeOutlineWidth()
-{
-    return 1.0;
-}
-
-QColor
-intelli::style::nodeSelectedOutline()
-{
-    return gtApp->inDarkMode() ? QColor{255, 165, 0} : QColor{"deepskyblue"};
-}
-
-double
-intelli::style::nodeSelectedOutlineWidth()
-{
-    return nodeOutlineWidth();
-}
-
-QColor
-intelli::style::nodeHoveredOutline()
-{
-    return nodeOutline();
-}
-
-double
-intelli::style::nodeHoveredOutlineWidth()
-{
-    return 1.5;
-}
-
-QColor
-intelli::style::typeIdColor(TypeId const& typeId)
+intelli::style::generateTypeColor(TypeId const& typeId)
 {
     static QHash<QString, QColor> cache;
 
-    if (typeId.isEmpty()) return Qt::darkCyan;
-
-    auto iter = cache.find(typeId);
-    if (iter != cache.end())
+    auto iter = cache.constFind(typeId);
+    if (iter != cache.constEnd())
     {
         return *iter;
     }
@@ -132,70 +220,4 @@ intelli::style::typeIdColor(TypeId const& typeId)
     QColor color = QColor::fromHsl(hue, sat, 160);
     cache.insert(typeId, color);
     return color;
-}
-
-double
-intelli::style::connectionPathWidth()
-{
-    return 3.0;
-}
-
-QColor
-intelli::style::connectionSelectedPath()
-{
-    return nodeSelectedOutline();
-}
-
-double
-intelli::style::connectionSelectedPathWidth()
-{
-    return 2 * connectionPathWidth();
-}
-
-QColor
-intelli::style::connectionDraftPath()
-{
-    return gt::gui::color::disabled();
-}
-
-QColor
-intelli::style::connectionInactivePath()
-{
-    return connectionDraftPath();
-}
-
-double
-intelli::style::connectionDraftPathWidth()
-{
-    return connectionPathWidth();
-}
-
-QColor
-intelli::style::connectionHoveredPath()
-{
-    return Qt::lightGray;
-}
-
-double
-intelli::style::connectionHoveredPathWidth()
-{
-    return 1 + connectionPathWidth();
-}
-
-double
-intelli::style::nodePortSize()
-{
-    return 5.0;
-}
-
-double
-intelli::style::nodeRoundingRadius()
-{
-    return 2.0;
-}
-
-double
-intelli::style::nodeEvalStateSize()
-{
-    return 20.0;
 }

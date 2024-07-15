@@ -218,7 +218,9 @@ GraphView::GraphView(QWidget* parent) :
     setDragMode(QGraphicsView::ScrollHandDrag);
     setRenderHint(QPainter::Antialiasing);
 
-    setBackgroundBrush(style::viewBackground());
+    auto& style = style::currentStyle().view;
+
+    setBackgroundBrush(style.background);
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -239,6 +241,8 @@ GraphView::GraphView(QWidget* parent) :
     /* GRID */
     auto* grid = new GtGrid(*this);
     setGrid(grid);
+    grid->setHorizontalGridLineColor(style.gridline);
+    grid->setVerticalGridLineColor(style.gridline);
     grid->setShowAxis(false);
     // controls minor and major lines
     grid->setGridHeight(s_major_grid_size);
