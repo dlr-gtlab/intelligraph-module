@@ -12,8 +12,6 @@
 #include <intelli/gui/nodepainter.h>
 #include <intelli/gui/style.h>
 
-#include <gt_application.h>
-#include <gt_colors.h>
 #include <gt_icons.h>
 
 #include <array>
@@ -30,7 +28,7 @@ NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent
     m_timeLine(1000),
     m_painter(&painter)
 {
-    setZValue(style::zValue(ZValue::NodeEvalState));
+    setZValue(style::zValue(style::ZValue::NodeEvalState));
 
     m_timeLine.setEasingCurve(QEasingCurve::Linear);
     m_timeLine.setLoopCount(0);
@@ -46,7 +44,9 @@ NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent
 QRectF
 NodeEvalStateGraphicsObject::boundingRect() const
 {
-    return QRectF{QPoint{0, 0}, QSizeF{style::nodeEvalStateSize(), style::nodeEvalStateSize()}};
+    auto& style = style::currentStyle();
+    return QRectF{QPoint{0, 0},
+                  QSizeF{style.node.evalStateSize, style.node.evalStateSize}};
 }
 
 void
@@ -129,10 +129,15 @@ NodeEvalStateGraphicsObject::paintIdleState(QPainter& painter)
     case NodeEvalState::Outdated:
         color = &colorsOutdated;
         break;
+    case NodeEvalState::Evaluating:
+    case NodeEvalState::Paused:
+        assert(!"code is unreachable");
+        break;
     }
 
-    bool lighter = gtApp && gtApp->inDarkMode();
-    *color = color->lighter(100 + (lighter ? 50 : 0));
+    QColor const& backgroundColor = m_painter->backgroundColor();
+    bool isBright = backgroundColor.lightness() > 125;
+    *color = style::tint(*color, isBright ? -15 : 50);
 
     QBrush brush(*color, Qt::SolidPattern);
     QPen pen(brush, 1, Qt::SolidLine);
@@ -179,7 +184,7 @@ NodeEvalStateGraphicsObject::paintRunningState(QPainter& painter)
     std::array<QColor, N> colors;
 
     QColor const& backgroundColor = m_painter->backgroundColor();
-    bool lighter = gtApp && gtApp->inDarkMode();
+    bool isBright = backgroundColor.lightness() > 125;
 
     // color gradient
     constexpr int colorIncrement = 100 / N;
@@ -187,7 +192,7 @@ NodeEvalStateGraphicsObject::paintRunningState(QPainter& painter)
     int offset = colorIncrement;
     for (QColor& color : colors)
     {
-        color = gt::gui::color::lighten(backgroundColor, lighter ? -offset : offset);
+        color = style::tint(backgroundColor, isBright ? -offset : offset);
         offset += colorIncrement;
     }
 

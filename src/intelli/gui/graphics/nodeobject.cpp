@@ -17,7 +17,6 @@
 
 #include <gt_application.h>
 #include <gt_guiutilities.h>
-#include <gt_colors.h>
 
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
@@ -113,7 +112,7 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
 
     setAcceptHoverEvents(true);
 
-    setZValue(style::zValue(ZValue::Node));
+    setZValue(style::zValue(style::ZValue::Node));
     setPos(m_node->pos());
 
     embedCentralWidget();
@@ -260,7 +259,7 @@ NodeGraphicsObject::embedCentralWidget()
 
         m_proxyWidget->setWidget(w.release());
         m_proxyWidget->setPreferredWidth(5);
-        m_proxyWidget->setZValue(style::zValue(ZValue::NodeWidget));
+        m_proxyWidget->setZValue(style::zValue(style::ZValue::NodeWidget));
 
         Impl::updateWidgetPalette(this);
     }
@@ -298,7 +297,9 @@ NodeGraphicsObject::itemChange(GraphicsItemChange change, const QVariant& value)
     switch (change)
     {
     case GraphicsItemChange::ItemSelectedChange:
-        setZValue(style::zValue(!value.toBool() ? ZValue::Node : ZValue::NodeHovered));
+        setZValue(style::zValue(!value.toBool() ?
+                                    style::ZValue::Node :
+                                    style::ZValue::NodeHovered));
         break;
     default:
         break;
@@ -318,7 +319,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     auto accept = gt::finally(event, &QEvent::accept);
 
     // bring this node forward
-    setZValue(style::zValue(ZValue::NodeHovered));
+    setZValue(style::zValue(style::ZValue::NodeHovered));
 
     QPointF coord = sceneTransform().inverted().map(event->scenePos());
 
@@ -444,7 +445,7 @@ NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
     if (!isSelected())
     {
-        setZValue(style::zValue(ZValue::Node));
+        setZValue(style::zValue(style::ZValue::Node));
     }
 
     event->accept();
@@ -454,7 +455,7 @@ NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 void
 NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
-    setZValue(style::zValue(ZValue::NodeHovered));
+    setZValue(style::zValue(style::ZValue::NodeHovered));
 
     m_hovered = true;
     update();
@@ -496,7 +497,7 @@ NodeGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
     if (!isSelected())
     {
-        setZValue(style::zValue(ZValue::Node));
+        setZValue(style::zValue(style::ZValue::Node));
     }
 
     m_hovered = false;

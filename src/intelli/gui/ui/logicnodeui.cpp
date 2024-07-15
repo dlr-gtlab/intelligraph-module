@@ -27,19 +27,23 @@ LogicNodeGeometry::LogicNodeGeometry(Node const& node) :
 QRectF
 LogicNodeGeometry::captionRect() const
 {
+    auto& style = style::currentStyle().node;
+
     QRectF inner = innerRect();
     QRectF rect = NodeGeometry::captionRect();
-    rect.moveTo({inner.topLeft().x() + style::nodeEvalStateSize(), -20});
+    rect.moveTo({inner.topLeft().x() + style.evalStateSize, -20});
     return rect;
 }
 
 QRectF
 LogicNodeGeometry::evalStateRect() const
 {
+    auto& style = style::currentStyle().node;
+
     QRectF rect = NodeGeometry::evalStateRect();
     QRectF caption = captionRect();
     double offset  = (rect.height() - caption.height()) * 0.5;
-    rect.moveTo(caption.topLeft() - QPointF{style::nodeEvalStateSize(), offset});
+    rect.moveTo(caption.topLeft() - QPointF{style.evalStateSize, offset});
     return rect;
 }
 
@@ -70,17 +74,19 @@ LogicNodeGeometry::portRect(PortType type, PortIndex idx) const
         break;
     }
 
+    auto& style = style::currentStyle().node;
+
     double percentage = 1.0 / (double)(n + 1);
     QPointF p = path.pointAtPercent(percentage + (double)idx * percentage);
-    p -= QPointF{style::nodePortSize(), style::nodePortSize()};
+    p -= QPointF{style.portRadius, style.portRadius};
 
     if (type == PortType::In && logicNode().operation() == LogicNode::XOR)
     {
-        p -= QPointF{0.5 * style::nodePortSize(), 0};
+        p -= QPointF{0.5 * style.portRadius, 0};
     }
 
     return {
-        p, QSizeF{style::nodePortSize() * 2, style::nodePortSize() * 2}
+        p, QSizeF{style.portRadius * 2, style.portRadius * 2}
     };
 }
 
@@ -128,7 +134,7 @@ LogicNodeGeometry::applyRightCurve(QPainterPath& path) const
     switch (logicNode().operation())
     {
     case LogicNode::NOT:
-        rightPos += QPointF{0.5 * rect.width() - style::nodePortSize(), 0};
+        rightPos += QPointF{0.5 * rect.width() - style::currentStyle().node.portRadius, 0};
         path.lineTo(rightPos);
         path.lineTo(end);
         break;
@@ -179,10 +185,12 @@ LogicNodeGeometry::computeInnerRect() const
 QRectF
 LogicNodeGeometry::computeBoundingRect() const
 {
+    auto& style = style::currentStyle().node;
+
     QRectF upper = evalStateRect().united(captionRect());
     upper.setHeight(upper.height() + 20);
-    QRectF lower = shape().boundingRect().translated(-style::nodePortSize(), 0);
-    lower.setWidth(lower.width() + 2 * style::nodePortSize());
+    QRectF lower = shape().boundingRect().translated(-style.portRadius, 0);
+    lower.setWidth(lower.width() + 2 * style.portRadius);
     return upper.united(lower);
 }
 
@@ -218,7 +226,8 @@ LogicNodePainter::drawOutline(QPainter& painter) const
 
     if (static_cast<LogicNode const&>(object().node()).operation() == LogicNode::XOR)
     {
-        painter.drawPath(path.translated(-style::nodePortSize(), 0));
+        auto& style = style::currentStyle().node;
+        painter.drawPath(path.translated(-style.portRadius, 0));
     }
 
     geo->applyRightCurve(path);
