@@ -16,6 +16,20 @@
 using namespace intelli;
 using namespace intelli::style;
 
+namespace intelli
+{
+
+// forward declarations
+class ByteArrayData;
+class StringData;
+class DoubleData;
+class IntData;
+class BoolData;
+class FileData;
+class ObjectData;
+
+} // namespace intelli
+
 /// registered styles
 static auto& styles()
 {
@@ -24,6 +38,18 @@ static auto& styles()
     static auto initOnce = [](){
 
         StyleData style;
+
+        /// custom type colors
+        auto& ctc = style.connection.customTypeColors;
+        ctc.insert(GT_LOG_TO_STR(intelli::ByteArrayData), QColor::fromHsv(195, 240, 255));
+        ctc.insert(GT_LOG_TO_STR(intelli::StringData), QColor::fromHsv(210, 240, 255));
+
+        ctc.insert(GT_LOG_TO_STR(intelli::DoubleData), QColor::fromHsv(270, 130, 240));
+        ctc.insert(GT_LOG_TO_STR(intelli::IntData), QColor::fromHsv(285, 200, 220));
+        ctc.insert(GT_LOG_TO_STR(intelli::BoolData), QColor::fromHsv(180, 200, 240));
+
+        ctc.insert(GT_LOG_TO_STR(intelli::FileData), QColor::fromHsv(30, 240, 200));
+        ctc.insert(GT_LOG_TO_STR(intelli::ObjectData), QColor::fromHsv(100, 170, 240));
 
         /// dark
         style.id = styleId(DefaultStyle::Dark);

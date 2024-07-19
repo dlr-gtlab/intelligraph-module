@@ -68,6 +68,30 @@ class GraphExecutionModel;
 struct NodeImpl;
 
 /**
+ * @brief Attempts to convert `data` to into the desired type. If
+ * no conversion exists or the conversion fails, a nullptr is returned.
+ * @param data Data to convert
+ * @param to Target type Id to convert the data into
+ * @return Converted data (may be null)
+ */
+GT_INTELLI_EXPORT NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to);
+
+/**
+ * @brief Convenience function that performs a conversion of `data` into the
+ * desired type `T`. If
+ * no conversion exists or the conversion fails, a nullptr is returned.
+ * @param data Data to convert
+ * @return Converted data of type `T` (may be null)
+ */
+template <typename T>
+std::shared_ptr<T const> convert(NodeDataPtr data)
+{
+    return std::static_pointer_cast<T const>(
+        convert(data, T::staticMetaObject.className())
+    );
+}
+
+/**
  * @brief Creates a base widget that has a simple layout attached. Can be used
  * for widgets, that have trouble resizing correctly.
  * @return Widget pointer (never null)
@@ -84,14 +108,15 @@ class GT_INTELLI_EXPORT Node : public GtObject
 
 public:
 
-    using NodeId      = intelli::NodeId;
-    using NodeFlag    = intelli::NodeFlag;
-    using NodeFlags   = intelli::NodeFlags;
-    using PortType    = intelli::PortType;
-    using PortId      = intelli::PortId;
-    using PortIndex   = intelli::PortIndex;
-    using Position    = intelli::Position;
-    using NodeDataPtr = intelli::NodeDataPtr;
+    using NodeId       = intelli::NodeId;
+    using NodeFlag     = intelli::NodeFlag;
+    using NodeFlags    = intelli::NodeFlags;
+    using NodeEvalMode = intelli::NodeEvalMode;
+    using PortType     = intelli::PortType;
+    using PortId       = intelli::PortId;
+    using PortIndex    = intelli::PortIndex;
+    using Position     = intelli::Position;
+    using NodeDataPtr  = intelli::NodeDataPtr;
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
@@ -520,7 +545,8 @@ protected:
     bool removePort(PortId id);
 
     /**
-     * @brief Returns the node data of the specified port
+     * @brief Returns the node data of the specified port. No conversion is
+     * performed.
      * @param id Port id (output or input)
      * @return Port data (may be null)
      */
@@ -537,14 +563,31 @@ protected:
 
     /**
      * @brief Overload that casts the node data of the specified port to the
-     * desired type.
+     * desired type. Cannot make use of conversions.
      * @param id Port id (output or input)
+     * @deprecated Remove pointer from template type to make use of conversions
      * @return Port data
      */
-    template <typename T, typename U = std::remove_pointer_t<T>>
+    template <typename T,
+              typename U = std::remove_pointer_t<T>,
+              std::enable_if_t<std::is_pointer<T>::value, bool> = true>
+    [[deprecated("remove pointer from template type: `nodeData<T>`")]]
     U const* nodeData(PortId id) const
     {
         return qobject_cast<U const*>(nodeData(id).get());
+    }
+
+    /**
+     * @brief Overload that casts the node data of the specified port to the
+     * desired type. Performs a conversion if necessary.
+     * @param id Port id (output or input)
+     * @return Port data
+     */
+    template <typename T,
+              std::enable_if_t<!std::is_pointer<T>::value, bool> = true>
+    std::shared_ptr<T const> nodeData(PortId id) const
+    {
+        return convert<T>(nodeData(id));
     }
 
 private:

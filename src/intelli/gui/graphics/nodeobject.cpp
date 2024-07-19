@@ -613,15 +613,10 @@ NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& typeId,
     auto& factory = NodeDataFactory::instance();
     for (auto& port : node.ports(type))
     {
-        std::pair<TypeId const&, TypeId const&> pair{
-            type == PortType::In  ? port.typeId : typeId,
-            type == PortType::Out ? port.typeId : typeId
-        };
-
         if (type == PortType::In &&
             !graph.findConnections(node.id(), port.id()).empty()) continue;
 
-        if (!factory.canConvert(pair.first, pair.second)) continue;
+        if (!factory.canConvert(port.typeId, typeId, type)) continue;
 
         m_compatiblePorts.append(port.id());
     }

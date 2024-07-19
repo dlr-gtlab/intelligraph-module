@@ -9,6 +9,7 @@
 #include "intelli/node.h"
 
 #include "intelli/graphexecmodel.h"
+#include "intelli/nodedatafactory.h"
 #include "intelli/nodeexecutor.h"
 #include "intelli/private/node_impl.h"
 #include "intelli/private/utils.h"
@@ -20,6 +21,13 @@
 #include <QVBoxLayout>
 
 using namespace intelli;
+
+NodeDataPtr
+intelli::convert(NodeDataPtr const& data, TypeId const& to)
+{
+    // forwarding call
+    return NodeDataFactory::instance().convert(data, to);
+}
 
 namespace
 {

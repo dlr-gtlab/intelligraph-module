@@ -29,7 +29,7 @@ NumberDisplayNode::NumberDisplayNode() :
         w->setFixedWidth(50);
 
         auto const updateText = [=, w_ = w.get()](){
-            auto* data = nodeData<DoubleData*>(in);
+            auto const& data = nodeData<DoubleData>(in);
             w_->setText(QString::number(data ? data->value() : 0));
         };
         

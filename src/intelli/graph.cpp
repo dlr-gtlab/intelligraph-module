@@ -116,7 +116,7 @@ canAppendConnection(Graph& graph, ConnectionId conId, MakeError makeError = {}, 
 
     // check if types are compatible
     auto& factory = NodeDataFactory::instance();
-    if (!factory.canConvert(inPort->typeId, outPort->typeId))
+    if (!factory.canConvert(outPort->typeId, inPort->typeId))
     {
         if (!silent)
         {
@@ -272,7 +272,7 @@ struct PortChanged
             PortInfo* otherPort = otherNode->port(conId.port(type));
             if (!otherPort) continue;
 
-            if (!factory.canConvert(port->typeId, otherPort->typeId))
+            if (!factory.canConvert(port->typeId, otherPort->typeId, invert(type)))
             {
                 if (cmd.isNull()) cmd = graph->modify();
                 graph->deleteConnection(conId);

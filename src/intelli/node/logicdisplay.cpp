@@ -31,7 +31,7 @@ LogicDisplayNode::LogicDisplayNode() :
         base->layout()->addWidget(w);
 
         auto update = [this, w](){
-            auto* data = nodeData<BoolData>(m_in);
+            auto const& data = nodeData<BoolData>(m_in);
             w->setValue(data ? data->value() : false);
         };
 

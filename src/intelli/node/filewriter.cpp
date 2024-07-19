@@ -10,7 +10,7 @@
 
 #include <intelli/node/filewriter.h>
 
-#include <intelli/data/string.h>
+#include <intelli/data/bytearray.h>
 #include <intelli/data/file.h>
 #include <intelli/data/bool.h>
 
@@ -24,7 +24,7 @@ FileWriterNode::FileWriterNode() :
     setNodeEvalMode(NodeEvalMode::Exclusive);
 
     m_inFile = addInPort({typeId<FileData>(), tr("file")}, Required);
-    m_inData = addInPort({typeId<StringData>(), tr("data")}, Required);
+    m_inData = addInPort({typeId<ByteArrayData>(), tr("data")}, Required);
     m_outSuccess = addOutPort({typeId<BoolData>(), tr("success")});
 }
 
@@ -44,7 +44,7 @@ FileWriterNode::eval()
     });
 
     auto const& fileData = nodeData<FileData>(m_inFile);
-    auto const& inData = nodeData<StringData>(m_inData);
+    auto const& inData = nodeData<ByteArrayData>(m_inData);
     if (!fileData || !inData) return;
 
     QFileInfo info = fileData->value();
@@ -52,5 +52,5 @@ FileWriterNode::eval()
 
     if (!file.open(QFile::Truncate | QFile::WriteOnly)) return;
 
-    success = file.write(inData->value().toUtf8());
+    success = file.write(inData->value());
 }
