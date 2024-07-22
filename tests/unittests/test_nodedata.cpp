@@ -58,3 +58,64 @@ TEST(NodeData, invoke_getter_QFileInfo)
     auto res = data->invoke<QFileInfo>(QStringLiteral("value"));
     ASSERT_TRUE(res.has_value());
 }
+
+/// check that QFileInfo can be recieved using invoke method
+TEST(NodeData, convert_same_type)
+{
+    auto doubleData = std::make_shared<DoubleData>(42);
+    NodeDataPtr doubleDataPtr= doubleData;
+
+    EXPECT_TRUE(NodeDataFactory::instance()
+                    .canConvert(typeId<DoubleData>(), typeId<DoubleData>()));
+
+    EXPECT_TRUE(intelli::convert(doubleData, typeId<DoubleData>()));
+    EXPECT_TRUE(intelli::convert<DoubleData>(doubleData));
+
+    EXPECT_TRUE(intelli::convert(doubleDataPtr, typeId<DoubleData>()));
+    EXPECT_TRUE(intelli::convert<DoubleData>(doubleDataPtr));
+}
+
+TEST(NodeData, convert_incompatible_type)
+{
+    auto doubleData = std::make_shared<DoubleData>(42);
+    NodeDataPtr doubleDataPtr= doubleData;
+
+    EXPECT_FALSE(NodeDataFactory::instance()
+                     .canConvert(typeId<TestNodeData>(), typeId<DoubleData>()));
+    EXPECT_FALSE(NodeDataFactory::instance()
+                     .canConvert(typeId<DoubleData>(), typeId<TestNodeData>()));
+
+    EXPECT_FALSE(intelli::convert(doubleData, typeId<TestNodeData>()));
+    EXPECT_FALSE(intelli::convert<TestNodeData>(doubleData));
+
+    EXPECT_FALSE(intelli::convert(doubleDataPtr, typeId<TestNodeData>()));
+    EXPECT_FALSE(intelli::convert<TestNodeData>(doubleDataPtr));
+}
+
+TEST(NodeData, convert_compatible_type)
+{
+    auto doubleData = std::make_shared<DoubleData>(42);
+    NodeDataPtr doubleDataPtr= doubleData;
+
+    ASSERT_FALSE(NodeDataFactory::instance()
+                     .canConvert(typeId<DoubleData>(), typeId<TestNodeData>()));
+    ASSERT_FALSE(NodeDataFactory::instance()
+                     .canConvert(typeId<TestNodeData>(), typeId<DoubleData>()));
+
+    EXPECT_FALSE(intelli::convert(doubleData, typeId<TestNodeData>()));
+    EXPECT_FALSE(intelli::convert<TestNodeData>(doubleData));
+
+    GT_INTELLI_REGISTER_INLINE_CONVERSION(DoubleData, TestNodeData, data->value())
+
+    EXPECT_TRUE(NodeDataFactory::instance()
+                     .canConvert(typeId<DoubleData>(), typeId<TestNodeData>()));
+    EXPECT_FALSE(NodeDataFactory::instance()
+                     .canConvert(typeId<TestNodeData>(), typeId<DoubleData>()));
+
+    ASSERT_TRUE(intelli::convert(doubleData, typeId<TestNodeData>()));
+    ASSERT_TRUE(intelli::convert<TestNodeData>(doubleData));
+    ASSERT_TRUE(intelli::convert(doubleData, typeId<TestNodeData>()));
+    ASSERT_TRUE(intelli::convert<TestNodeData>(doubleData));
+
+    EXPECT_EQ(intelli::convert<TestNodeData>(doubleDataPtr)->myDouble(), doubleData->value());
+}

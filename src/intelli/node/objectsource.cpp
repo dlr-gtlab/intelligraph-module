@@ -74,7 +74,7 @@ ObjectSourceNode::eval()
 
     m_object.revert();
     
-    auto* filterData = nodeData<StringListData*>(m_in);
+    auto filterData = nodeData<StringListData>(m_in);
     if (filterData)
     {
         m_object.setAllowedClasses(filterData->value());
@@ -87,6 +87,6 @@ ObjectSourceNode::eval()
     }
 
     m_object.setVal(linkedObject->uuid());
-    
+
     setNodeData(m_out, std::make_shared<ObjectData>(linkedObject));
 }

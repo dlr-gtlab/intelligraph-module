@@ -3,7 +3,7 @@
 #include <gt_objectmemento.h>
 
 #include <intelli/data/object.h>
-#include <intelli/data/string.h>
+#include <intelli/data/bytearray.h>
 
 #include <QLayout>
 
@@ -13,7 +13,7 @@ ObjectMementoNode::ObjectMementoNode() :
     Node("To Memento")
 {
     m_in  = addInPort(typeId<ObjectData>());
-    m_out = addOutPort({typeId<StringData>(), tr("memento")});
+    m_out = addOutPort({typeId<ByteArrayData>(), tr("memento")});
 }
 
 void
@@ -27,5 +27,5 @@ ObjectMementoNode::eval()
         return;
     }
 
-    setNodeData(m_out, std::make_shared<StringData>(data->object()->toMemento().toByteArray()));
+    setNodeData(m_out, std::make_shared<ByteArrayData>(data->object()->toMemento().toByteArray()));
 }

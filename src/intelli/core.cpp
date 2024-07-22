@@ -49,20 +49,52 @@
 
 using namespace intelli;
 
+
 void
 intelli::initModule()
 {
-    static auto _ = [](){
-        gtTrace().verbose() << QObject::tr("Initializing nodes...");
+    registerDefaultDataTypes();
+    registerDefaultNodes();
+}
 
-        GT_INTELLI_REGISTER_DATA(BoolData);
+void
+intelli::registerDefaultDataTypes()
+{
+    static auto _ = [](){
+        gtTrace().verbose() << QObject::tr("Registering default data types...");
+
+        // register data type
         GT_INTELLI_REGISTER_DATA(ByteArrayData);
+        GT_INTELLI_REGISTER_DATA(StringData);
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(IntData);
+        GT_INTELLI_REGISTER_DATA(BoolData);
         GT_INTELLI_REGISTER_DATA(ObjectData);
-        GT_INTELLI_REGISTER_DATA(StringData);
-        GT_INTELLI_REGISTER_DATA(StringListData);
         GT_INTELLI_REGISTER_DATA(FileData);
+        GT_INTELLI_REGISTER_DATA(StringListData);
+
+        // register conversions
+        gtTrace().verbose() << QObject::tr("Registering default conversions...");
+
+        GT_INTELLI_REGISTER_INLINE_CONVERSION(StringData, ByteArrayData, data->value().toUtf8());
+        GT_INTELLI_REGISTER_INLINE_CONVERSION(ByteArrayData, StringData, data->value());
+
+        GT_INTELLI_REGISTER_INLINE_CONVERSION(DoubleData, IntData, data->value());
+        GT_INTELLI_REGISTER_INLINE_CONVERSION(IntData, DoubleData, data->value());
+
+        GT_INTELLI_REGISTER_INLINE_CONVERSION(IntData, DoubleData, data->value());
+
+        return true;
+    }();
+
+    Q_UNUSED(_);
+}
+
+void
+intelli::registerDefaultNodes()
+{
+    static auto _ = [](){
+        gtTrace().verbose() << QObject::tr("Registering default nodes...");
 
         char const* hidden = "";
         QString catOther = QObject::tr("Other");
@@ -111,7 +143,6 @@ intelli::initModule()
         GT_INTELLI_REGISTER_NODE(StringBuilderNode, catString);
 
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
-
         return true;
     }();
 

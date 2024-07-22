@@ -11,6 +11,7 @@
 #include <intelli/node/textdisplay.h>
 
 #include <intelli/data/string.h>
+#include <intelli/data/bytearray.h>
 
 #include <gt_xmlhighlighter.h>
 #include <gt_pyhighlighter.h>
@@ -75,7 +76,7 @@ TextDisplayNode::TextDisplayNode() :
         // update text
         auto const updateText = [this, in, w](){
             w->clear();
-            if (auto* data = nodeData<StringData*>(in))
+            if (auto const& data = nodeData<StringData>(in))
             {
                 w->setPlainText(data->value());
             }

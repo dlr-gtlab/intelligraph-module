@@ -50,7 +50,7 @@ FileInputNode::FileInputNode() :
             {
                 w->setVisible(!connected);
                 setNodeFlag(ResizableHOnly, !connected);
-                b_->resize(connected ? QSize{1, 1} : size());
+                b_->resize(connected ? b_->minimumSize() : size());
 
                 emit nodeChanged();
             }
@@ -79,7 +79,7 @@ FileInputNode::FileInputNode() :
 
         connect(btn, &QPushButton::clicked, this, [this, b_ = b.get()](){
             QString dir;
-            if (auto dirData = nodeData<StringData>(m_inDir))
+            if (auto const& dirData = nodeData<StringData>(m_inDir))
             {
                 dir = dirData->value();
             }

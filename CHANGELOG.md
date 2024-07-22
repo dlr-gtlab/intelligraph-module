@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated highlighting of nodes, connections, and ports when creating a draft connection to further emphasize compatibilities. - #94
 - Allowed nodes be resized horizontally only if desired. - #101
 - Changed the memento node to output a memento instead of displaying an objects memento. - #101
+- It is now possible to register conversions for node data types. This allows to connect different node data types. - #77
 
 ### Fixed
 - Fixed pop-up window when starting GTlab. - #93
