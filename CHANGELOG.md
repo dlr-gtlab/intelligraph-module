@@ -6,11 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+### Changed
+### Fixed
+### Removed
+
+## [0.11.0] - 2024-07-22
+### Added
 - Added the option to snap nodes to the grid. - #44
-- Added node to execute most calculators. Handle with care, as incompatible calculators may cause unforseen sideeffects. - #92
-- Added nodes for obtaining a file handle that can be used to read or write from/to a file. - #101
-- Added project info node to access prject specific properties. - #101
-- Added generic node to display text. - #101
+- Added node to execute calculators. The calcualtors must be registered beforehand as not all calculators may work properly. - #92
+- Added nodes for obtaining a file handle that can be used to read from or write to a file. - #101
+- Added project info node to access project specific properties. - #101
+- Added generic node to display text. Supports multiple synatx highlighters. - #101
 
 ### Changed
 - Updated rendering of the grid to show minor and major grid lines. - #95
