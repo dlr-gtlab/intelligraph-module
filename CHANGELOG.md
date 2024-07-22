@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed compatible ports sometimes not beeing highlighted correctly when creating a draft connection. - #94
 - Updating the type of a port will now check if associated connections are still valid and remove incompatible connections. - #78
 
+### Removed
+- Removed `StringListData` and its node. - #80
+
 ## [0.10.4] - 2024-06-18
 ### Fixed
 - Fixed bad logging behaviour 

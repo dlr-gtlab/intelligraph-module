@@ -28,7 +28,7 @@ private:
     /// member to keep track of last object pointer to disconnect changed signals
     QPointer<GtObject> m_lastObject;
 
-    PortId m_in, m_out;
+    PortId m_out;
 };
 
 } // namespace intelli

@@ -4,7 +4,6 @@
 #include "intelli/data/bytearray.h"
 #include "intelli/data/double.h"
 #include "intelli/data/object.h"
-#include "intelli/data/stringlist.h"
 #include "intelli/data/string.h"
 #include "intelli/data/int.h"
 #include "intelli/data/file.h"
@@ -20,7 +19,6 @@
 
 #include "intelli/node/objectmemento.h"
 #include "intelli/node/objectsource.h"
-#include "intelli/node/stringlistinput.h"
 #include "intelli/node/finddirectchild.h"
 #include "intelli/node/existingdirectorysource.h"
 
@@ -71,7 +69,6 @@ intelli::registerDefaultDataTypes()
         GT_INTELLI_REGISTER_DATA(BoolData);
         GT_INTELLI_REGISTER_DATA(ObjectData);
         GT_INTELLI_REGISTER_DATA(FileData);
-        GT_INTELLI_REGISTER_DATA(StringListData);
 
         // register conversions
         gtTrace().verbose() << QObject::tr("Registering default conversions...");
@@ -132,7 +129,6 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(ProjectInfoNode, catInput);
 
-        GT_INTELLI_REGISTER_NODE(StringListInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(ExistingDirectorySourceNode, catInput);
         GT_INTELLI_REGISTER_NODE(BoolInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(DoubleInputNode, catInput);

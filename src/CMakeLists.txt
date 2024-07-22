@@ -1,6 +1,6 @@
 set(CMAKE_DEBUG_POSTFIX -d)
 
-set(INTELLIGRAPH_VERSION 0.10.4)
+set(INTELLIGRAPH_VERSION 0.11.0)
 
 option(
     _DEBUG_NODE_GRAPHICS
@@ -38,7 +38,6 @@ set(PUBLIC_HEADERS
     intelli/data/int.h
     intelli/data/integer.h
     intelli/data/object.h
-    intelli/data/stringlist.h
     intelli/data/string.h
     intelli/gui/icons.h
     intelli/gui/graphscenedata.h
@@ -96,7 +95,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/projectinfo.h
     intelli/node/sleepy.h
     intelli/node/stringbuilder.h
-    intelli/node/stringlistinput.h
     intelli/node/textdisplay.h
     intelli/gui/connectionui.h
     intelli/gui/grapheditor.h
@@ -140,7 +138,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/int.cpp
     intelli/data/file.cpp
     intelli/data/object.cpp
-    intelli/data/stringlist.cpp
     intelli/data/string.cpp
     intelli/node/existingdirectorysource.cpp
     intelli/node/fileinput.cpp
@@ -161,7 +158,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/projectinfo.cpp
     intelli/node/sleepy.cpp
     intelli/node/stringbuilder.cpp
-    intelli/node/stringlistinput.cpp
     intelli/node/textdisplay.cpp
     intelli/node/propertyinput/boolinputnode.cpp
     intelli/node/propertyinput/doubleinputnode.cpp

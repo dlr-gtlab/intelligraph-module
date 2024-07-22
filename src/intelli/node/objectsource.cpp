@@ -5,7 +5,6 @@
 #include "gt_project.h"
 
 #include "intelli/data/object.h"
-#include "intelli/data/stringlist.h"
 #include "gt_propertyobjectlinkeditor.h"
 
 using namespace intelli;
@@ -24,9 +23,9 @@ ObjectSourceNode::ObjectSourceNode() :
              getObject(this), gtObjectFactory->knownClasses())
 {
     registerProperty(m_object);
-    
-    m_in  = addInPort(typeId<StringListData>());
-    m_out = addOutPort(typeId<ObjectData>());
+
+    // to keep compatibility
+    m_out = addOutPort(PortInfo::customId(PortId(1), typeId<ObjectData>()));
 
     registerWidgetFactory([this]() {
         auto w = std::make_unique<GtPropertyObjectLinkEditor>();
@@ -73,12 +72,6 @@ ObjectSourceNode::eval()
     auto* linkedObject = m_object.linkedObject();
 
     m_object.revert();
-    
-    auto filterData = nodeData<StringListData>(m_in);
-    if (filterData)
-    {
-        m_object.setAllowedClasses(filterData->value());
-    }
 
     if (!linkedObject || !m_object.allowedClasses().contains(linkedObject->metaObject()->className()))
     {
