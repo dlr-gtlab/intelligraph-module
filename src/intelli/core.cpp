@@ -79,8 +79,6 @@ intelli::registerDefaultDataTypes()
         GT_INTELLI_REGISTER_INLINE_CONVERSION(DoubleData, IntData, data->value());
         GT_INTELLI_REGISTER_INLINE_CONVERSION(IntData, DoubleData, data->value());
 
-        GT_INTELLI_REGISTER_INLINE_CONVERSION(IntData, DoubleData, data->value());
-
         return true;
     }();
 

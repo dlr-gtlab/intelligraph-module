@@ -53,8 +53,8 @@ struct Graph::Impl
         }
 
         // check if nodes exist
-        auto* targetNode = graph.findNodeEntry(conId.inNodeId);
-        auto* sourceNode = graph.findNodeEntry(conId.outNodeId);
+        auto* targetNode = connection_model::find(graph.m_data, conId.inNodeId);
+        auto* sourceNode = connection_model::find(graph.m_data, conId.outNodeId);
 
         if (!targetNode || !sourceNode)
         {
@@ -134,7 +134,7 @@ struct Graph::Impl
                              NodeId nodeId,
                              PortType type)
     {
-        auto const* entry = graph.findNodeEntry(nodeId);
+        auto const* entry = connection_model::find(graph.m_data, nodeId);
         if (!entry) return false;
 
         for (auto& dependent : entry->ports(type))
@@ -328,11 +328,11 @@ struct Graph::Impl
         {
             using namespace connection_model;
 
-            auto ancestorConnection   = ConnectionDetail::fromConnection(conId.reversed());
-            auto descendantConnection = ConnectionDetail::fromConnection(conId);
+            auto inConnection  = ConnectionDetail<NodeId>::fromConnection(conId.reversed());
+            auto outConnection = ConnectionDetail<NodeId>::fromConnection(conId);
 
-            auto* targetNode = graph->findNodeEntry(conId.inNodeId);
-            auto* sourceNode = graph->findNodeEntry(conId.outNodeId);
+            auto* targetNode = connection_model::find(graph->m_data, conId.inNodeId);
+            auto* sourceNode = connection_model::find(graph->m_data, conId.outNodeId);
 
             if (!targetNode || !sourceNode)
             {
@@ -348,8 +348,8 @@ struct Graph::Impl
                    sourceNode->node->id() == conId.outNodeId &&
                    sourceNode->node->parent() == graph);
 
-            auto inIdx  = targetNode->ancestors.indexOf(ancestorConnection);
-            auto outIdx = sourceNode->descendants.indexOf(descendantConnection);
+            auto inIdx  = targetNode->predecessors.indexOf(inConnection);
+            auto outIdx = sourceNode->successors.indexOf(outConnection);
 
             if (inIdx < 0 || outIdx < 0)
             {
@@ -362,8 +362,8 @@ struct Graph::Impl
             emit targetNode->node->portDisconnected(conId.inPort);
             emit sourceNode->node->portDisconnected(conId.outPort);
 
-            targetNode->ancestors.remove(inIdx);
-            sourceNode->descendants.remove(outIdx);
+            targetNode->predecessors.remove(inIdx);
+            sourceNode->successors.remove(outIdx);
 
             emit graph->connectionDeleted(conId);
         }

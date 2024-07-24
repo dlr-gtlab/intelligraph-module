@@ -10,6 +10,7 @@
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
 #include "intelli/gui/style.h"
+#include "intelli/future.h"
 #include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
 

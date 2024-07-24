@@ -9,6 +9,7 @@
 
 #include "intelli/gui/graphscene.h"
 
+#include "intelli/future.h"
 #include "intelli/connection.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/nodefactory.h"

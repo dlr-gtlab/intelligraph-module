@@ -11,6 +11,7 @@
 
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
+#include "intelli/future.h"
 #include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"

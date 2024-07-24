@@ -187,19 +187,20 @@ constexpr inline T invalid() noexcept
  * Connection identificator that stores
  * out `NodeId`, out `PortIndex`, in `NodeId`, in `PortIndex`
  */
-struct ConnectionId
+template <typename NodeId_t>
+struct ConnectionId_t
 {
-    constexpr ConnectionId() {};
+    constexpr ConnectionId_t() {};
 
-    constexpr ConnectionId(NodeId _outNode, PortId _outPort,
-                           NodeId _inNode, PortId _inPort) :
+    constexpr ConnectionId_t(NodeId_t _outNode, PortId _outPort,
+                             NodeId_t _inNode, PortId _inPort) :
         outNodeId(_outNode), outPort(_outPort),
         inNodeId(_inNode), inPort(_inPort)
     {}
 
-    NodeId outNodeId;
+    NodeId_t outNodeId;
     PortId outPort;
-    NodeId inNodeId;
+    NodeId_t inNodeId;
     PortId inPort;
 
     /// Reverses the node and port ids, such that the out node becomes the
@@ -210,13 +211,13 @@ struct ConnectionId
     }
 
     /// Returns a new connection that has its node and port ids reversed
-    constexpr ConnectionId reversed() const noexcept
+    constexpr ConnectionId_t reversed() const noexcept
     {
         return { inNodeId, inPort, outNodeId, outPort };
     }
 
     /// Returns the node id associated with the port type
-    constexpr NodeId node(PortType type) const
+    constexpr NodeId_t node(PortType type) const
     {
         switch (type)
         {
@@ -227,7 +228,7 @@ struct ConnectionId
         case PortType::NoType:
             throw GTlabException(__FUNCTION__, "invalid port type!");
         }
-        return invalid<NodeId>();
+        return invalid<NodeId_t>();
     }
 
     /// Returns the port id associated with the port type
@@ -249,8 +250,8 @@ struct ConnectionId
     /// and port ids)
     constexpr bool isValid() const noexcept
     {
-        return inNodeId  != invalid<NodeId>() &&
-               outNodeId != invalid<NodeId>() &&
+        return inNodeId  != invalid<NodeId_t>() &&
+               outNodeId != invalid<NodeId_t>() &&
                inPort    != invalid<PortId>() &&
                outPort   != invalid<PortId>();
     }
@@ -264,13 +265,13 @@ struct ConnectionId
     /// Returns which side of the draft connection is valid
     constexpr PortType draftType() const noexcept
     {
-        if (outNodeId == invalid<NodeId>() && outPort == invalid<PortId>() &&
-            inNodeId  != invalid<NodeId>() && inPort  != invalid<PortId>())
+        if (outNodeId == invalid<NodeId_t>() && outPort == invalid<PortId>() &&
+            inNodeId  != invalid<NodeId_t>() && inPort  != invalid<PortId>())
         {
             return PortType::In;
         }
-        if (inNodeId  == invalid<NodeId>() && inPort  == invalid<PortId>() &&
-            outNodeId != invalid<NodeId>() && outPort != invalid<PortId>())
+        if (inNodeId  == invalid<NodeId_t>() && inPort  == invalid<PortId>() &&
+            outNodeId != invalid<NodeId_t>() && outPort != invalid<PortId>())
         {
             return PortType::Out;
         }
@@ -278,16 +279,19 @@ struct ConnectionId
     }
 
     // Overload comparison operators as needed
-    constexpr inline bool operator==(ConnectionId const& o) const noexcept {
+    constexpr inline bool operator==(ConnectionId_t const& o) const noexcept {
         return inNodeId == o.inNodeId &&
                inPort == o.inPort &&
                outNodeId == o.outNodeId &&
                outPort == o.outPort;
     }
-    constexpr inline bool operator!=(ConnectionId const& o) const noexcept {
+    constexpr inline bool operator!=(ConnectionId_t const& o) const noexcept {
         return !(*this == o);
     }
 };
+
+using ConnectionId = ConnectionId_t<NodeId>;
+using ConnectionUuid = ConnectionId_t<NodeUuid>;
 
 /// Enum for GraphicsObject::Type value
 enum class GraphicsItemType
@@ -392,11 +396,11 @@ inline auto ignoreSignal(Sender sender, SignalSender signalSender,
 namespace detail
 {
 
-template <>
-struct InvalidValue<ConnectionId>
+template <typename NodeId_t>
+struct InvalidValue<ConnectionId_t<NodeId_t>>
 {
     constexpr static ConnectionId get() {
-        return ConnectionId{ NodeId{}, PortId{}, NodeId{}, PortId{} };
+        return ConnectionId{ NodeId_t{}, PortId{}, NodeId_t{}, PortId{} };
     }
 };
 
@@ -457,8 +461,9 @@ operator<<(gt::log::Stream& s, intelli::StrongType<T, Tag, InitVal> const& t)
     return s << t.value();
 }
 
+template <typename T>
 inline gt::log::Stream&
-operator<<(gt::log::Stream& s, intelli::ConnectionId const& con)
+operator<<(gt::log::Stream& s, intelli::ConnectionId_t<T> const& con)
 {
     {
         gt::log::StreamStateSaver saver(s);

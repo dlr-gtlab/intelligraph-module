@@ -137,21 +137,6 @@ ConnectionGroup const& Graph::connectionGroup() const
     return const_cast<Graph*>(this)->connectionGroup();
 }
 
-ConnectionData*
-Graph::findNodeEntry(NodeId nodeId)
-{
-    auto iter = m_data.find(nodeId);
-    if (iter == m_data.end()) return {};
-
-    return &(*iter);
-}
-
-ConnectionData const*
-Graph::findNodeEntry(NodeId nodeId) const
-{
-    return const_cast<Graph*>(this)->findNodeEntry(nodeId);
-}
-
 GroupInputProvider*
 Graph::inputProvider()
 {
@@ -225,7 +210,7 @@ Graph::findDependentNodes(NodeId nodeId) const
 Node*
 Graph::findNode(NodeId nodeId)
 {
-    auto* entry = findNodeEntry(nodeId);
+    auto* entry = connection_model::find(m_data, nodeId);
     if (!entry) return {};
 
     assert(entry->node &&
@@ -276,21 +261,21 @@ Graph::findConnection(ConnectionId conId) const
 QVector<ConnectionId>
 Graph::findConnections(NodeId nodeId, PortType type) const
 {
-    auto* entry = findNodeEntry(nodeId);
+    auto* entry = connection_model::find(m_data, nodeId);
     if (!entry) return {};
 
     QVector<ConnectionId> connections;
 
     if (type != PortType::Out) // IN or NoType
     {
-        for (auto& con : entry->ancestors)
+        for (auto& con : entry->predecessors)
         {
             connections.append(con.toConnection(nodeId).reversed());
         }
     }
     if (type != PortType::In) // OUT or NoType
     {
-        for (auto& con : entry->descendants)
+        for (auto& con : entry->successors)
         {
             connections.append(con.toConnection(nodeId));
         }
@@ -302,12 +287,12 @@ Graph::findConnections(NodeId nodeId, PortType type) const
 QVector<ConnectionId>
 Graph::findConnections(NodeId nodeId, PortId portId) const
 {
-    auto* entry = findNodeEntry(nodeId);
+    auto* entry = connection_model::find(m_data, nodeId);
     if (!entry) return {};
 
     QVector<ConnectionId> connections;
 
-    for (auto& con : entry->ancestors)
+    for (auto& con : entry->predecessors)
     {
         if (con.sourcePort == portId)
         {
@@ -316,7 +301,7 @@ Graph::findConnections(NodeId nodeId, PortId portId) const
         // there should only exist one ingoing connection
         assert(connections.size() <= 1);
     }
-    for (auto& con : entry->descendants)
+    for (auto& con : entry->successors)
     {
         if (con.sourcePort == portId)
         {
@@ -492,7 +477,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     }
 
     // append node to model
-    m_data.insert(nodeId, ConnectionData{ node.get() });
+    m_data.insert(nodeId, ConnectionData<NodeId>{ node.get() });
 
     // setup connections
     connect(node.get(), &Node::portChanged,
@@ -547,17 +532,17 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     connection->updateObjectName();
 
     // check if nodes exist
-    auto* targetNode = findNodeEntry(conId.inNodeId);
-    auto* sourceNode = findNodeEntry(conId.outNodeId);
+    auto* targetNode = connection_model::find(m_data, conId.inNodeId);
+    auto* sourceNode = connection_model::find(m_data, conId.outNodeId);
     assert(targetNode);
     assert(sourceNode);
 
     // append connection to model
-    auto ancestorConnection   = ConnectionDetail::fromConnection(conId.reversed());
-    auto descendantConnection = ConnectionDetail::fromConnection(conId);
+    auto outConnection   = ConnectionDetail<NodeId>::fromConnection(conId.reversed());
+    auto inConnection = ConnectionDetail<NodeId>::fromConnection(conId);
 
-    targetNode->ancestors.append(ancestorConnection);
-    sourceNode->descendants.append(descendantConnection);
+    targetNode->predecessors.append(outConnection);
+    sourceNode->successors.append(inConnection);
 
     // setup connections
     connect(connection.get(), &QObject::destroyed,
@@ -907,7 +892,7 @@ debugGraphHelper(Graph const& graph)
             text += QStringLiteral("\tend\n");
         }
 
-        for (auto& desc : entry.descendants)
+        for (auto& desc : entry.successors)
         {
             auto otherEntry = data.find(desc.node);
             if (otherEntry == data.end()) continue;

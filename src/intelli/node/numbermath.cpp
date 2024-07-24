@@ -66,8 +66,8 @@ NumberMathNode::NumberMathNode() :
 void
 NumberMathNode::eval()
 {
-    auto* dataA = nodeData<DoubleData*>(m_inA);
-    auto* dataB = nodeData<DoubleData*>(m_inB);
+    auto dataA = nodeData<DoubleData>(m_inA);
+    auto dataB = nodeData<DoubleData>(m_inB);
     if (!dataA && !dataB)
     {
         setNodeData(m_out, nullptr);

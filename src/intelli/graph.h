@@ -78,10 +78,11 @@ enum class NodeIdPolicy
 namespace connection_model
 {
 
+template <typename NodeId_t>
 struct ConnectionDetail
 {
     /// target node
-    NodeId node;
+    NodeId_t node;
     /// target port
     PortId port;
     /// source port
@@ -92,7 +93,7 @@ struct ConnectionDetail
      * @param sourceNode Source (outgoing) node
      * @return Connection id
      */
-    ConnectionId toConnection(NodeId sourceNode) const
+    ConnectionId_t<NodeId_t> toConnection(NodeId_t sourceNode) const
     {
         return { sourceNode, sourcePort, node, port };
     }
@@ -102,12 +103,13 @@ struct ConnectionDetail
      * @param conId Source connection
      * @return Connection detail
      */
-    static ConnectionDetail fromConnection(ConnectionId conId)
+    static ConnectionDetail fromConnection(ConnectionId_t<NodeId_t> conId)
     {
         return { conId.inNodeId, conId.inPort, conId.outPort };
     }
 };
 
+template <typename NodeId_t>
 struct ConnectionData
 {
     static constexpr size_t PRE_ALLOC = 10;
@@ -115,17 +117,17 @@ struct ConnectionData
     /// pointer to node
     QPointer<Node> node;
     /// adjacency lists
-    QVarLengthArray<ConnectionDetail, PRE_ALLOC> ancestors = {}, descendants = {};
+    QVarLengthArray<ConnectionDetail<NodeId_t>, PRE_ALLOC> predecessors = {}, successors = {};
 
     /**
-     * @brief Returns the ancestors or descendants depending on the port type
+     * @brief Returns the predecessors or successors depending on the port type
      * @param type Port type
      * @return Port vector
      */
     auto& ports(PortType type)
     {
         assert(type != PortType::NoType);
-        return (type == PortType::In) ? ancestors : descendants;
+        return (type == PortType::In) ? predecessors : successors;
     }
     auto const& ports(PortType type) const
     {
@@ -133,14 +135,35 @@ struct ConnectionData
     }
 };
 
-inline bool operator==(ConnectionDetail const& a, ConnectionDetail const& b)
+template <typename T>
+using ConnectionModel = QHash<NodeId, ConnectionData<T>>;
+
+template <typename Model, typename NodeId_t>
+inline auto* find(Model& model, NodeId_t nodeId)
+{
+    using T = decltype(&(*model.begin()));
+
+    auto iter = model.find(nodeId);
+    if (iter == model.end()) return T(nullptr);
+    return &(*iter);
+}
+
+
+// operators
+template <typename T>
+inline bool operator==(ConnectionDetail<T> const& a, ConnectionDetail<T> const& b)
 {
     return a.node == b.node && a.port == b.port && a.sourcePort == b.sourcePort;
 }
 
-inline bool operator!=(ConnectionDetail const& a, ConnectionDetail const& b) { return !(a == b); }
+template <typename T>
+inline bool operator!=(ConnectionDetail<T> const& a, ConnectionDetail<T> const& b) { return !(a == b); }
 
-using ConnectionGraph = QHash<NodeId, ConnectionData>;
+// definitions
+
+using GlobalConnectionGraph = ConnectionModel<NodeUuid>;
+
+using ConnectionGraph = ConnectionModel<NodeId>;
 using DirectedAcyclicGraph [[deprecated]] = ConnectionGraph;
 
 [[deprecated("use `debug` overload")]]
@@ -155,6 +178,8 @@ GT_INTELLI_EXPORT void debug(Graph const& graph);
 
 using connection_model::ConnectionGraph;
 using DirectedAcyclicGraph [[deprecated]] = ConnectionGraph;
+
+using connection_model::GlobalConnectionGraph;
 
 /**
  * @brief The Graph class.
@@ -583,9 +608,6 @@ private:
 
     void restoreConnections();
     void restoreNodesAndConnections();
-
-    connection_model::ConnectionData* findNodeEntry(NodeId nodeId);
-    connection_model::ConnectionData const* findNodeEntry(NodeId nodeId) const;
 };
 
 } // namespace intelli
