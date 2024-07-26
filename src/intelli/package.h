@@ -12,9 +12,20 @@
 #include <intelli/exports.h>
 
 #include <gt_package.h>
+#include <gt_version.h>
+
+#include <QDir>
+
+/// Helper macro do add "override" for GTlab 2.1.x
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
+    #define ADD_OVERRIDE_2_1_X override
+#else
+    #define ADD_OVERRIDE_2_1_X
+#endif
 
 namespace intelli
 {
+
 
 /**
  * @generated 1.2.0
@@ -33,19 +44,34 @@ public:
     Q_INVOKABLE Package();
 
 protected:
+
     /**
      * @brief Module specific data read method.
      * @param Root data.
      * @return Returns true if data was successfully read.
      */
-    bool readData(const QDomElement& root);
+    bool readData(const QDomElement& root) override;
 
     /**
      * @brief Module specific data save method.
      * @param Root data.
      * @return Returns true if data was successfully read.
      */
-    bool saveData(QDomElement& root, QDomDocument& doc);
+    bool saveData(QDomElement& root, QDomDocument& doc) override;
+
+    /**
+     * @brief Reads the intelli graphs and their categories from the project dir
+     * @param projectDir Directory to read data from
+     * @return success
+     */
+    bool readMiscData(QDir const& projectDir) ADD_OVERRIDE_2_1_X;
+
+    /**
+     * @brief Saves the intelli graphs and their categories to separate files
+     * @param projectDir Directory to save data to
+     * @return success
+     */
+    bool saveMiscData(QDir const& projectDir) ADD_OVERRIDE_2_1_X;
 
 private:
 
