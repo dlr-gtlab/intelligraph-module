@@ -75,7 +75,7 @@ ConnectionGraphicsObject::endPoint(PortType type) const
     case PortType::NoType:
         break;
     }
-    throw GTlabException(__FUNCTION__, "invalid port type!");
+    throw LogicError("invalid port type!");
 }
 
 void
@@ -93,7 +93,7 @@ ConnectionGraphicsObject::setEndPoint(PortType type, QPointF pos)
         break;
     case PortType::NoType:
     default:
-        throw GTlabException(__FUNCTION__, "invalid port type!");
+        throw LogicError("invalid port type!");
     }
 
     update();

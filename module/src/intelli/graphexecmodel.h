@@ -228,7 +228,7 @@ public:
     FutureGraphEvaluated() = default;
 
     GT_INTELLI_EXPORT
-    bool wait(std::chrono::milliseconds timeout = max_timeout);
+    bool wait(std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
 
     bool detach() { return hasStarted(); }
 
@@ -255,13 +255,13 @@ public:
     FutureNodeEvaluated() = default;
 
     GT_INTELLI_EXPORT
-    bool wait(std::chrono::milliseconds timeout = max_timeout);
+    bool wait(std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
 
     GT_INTELLI_EXPORT
-    NodeDataSet get(PortId port, std::chrono::milliseconds timeout = max_timeout);
+    NodeDataSet get(PortId port, std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
 
     GT_INTELLI_EXPORT
-    NodeDataSet get(PortType type, PortIndex idx, std::chrono::milliseconds timeout = max_timeout);
+    NodeDataSet get(PortType type, PortIndex idx, std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
 
     bool detach() { return hasStarted(); }
 

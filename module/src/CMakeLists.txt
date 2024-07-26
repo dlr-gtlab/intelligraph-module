@@ -197,12 +197,13 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
 )
 
 target_link_libraries(GTlabIntelliGraph
-  PUBLIC
-  Qt5::Core
-  GTlab::Logging
-  GTlab::Gui
-  PRIVATE
-  Qt5::Concurrent
+    PUBLIC
+    Qt5::Core
+    GTlab::Logging
+    GTlab::Gui
+    IntelliGraphLib
+    PRIVATE
+    Qt5::Concurrent
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 
@@ -262,7 +263,7 @@ write_basic_package_version_file(
 
 file(GENERATE
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfig.cmake"
-  INPUT  "${PROJECT_SOURCE_DIR}/cmake/GTlabIntelliGraphConfig.in"
+  INPUT  "${PROJECT_SOURCE_DIR}/../cmake/GTlabIntelliGraphConfig.in"
 )
 
 install(EXPORT  GTlabIntelliGraph-targets

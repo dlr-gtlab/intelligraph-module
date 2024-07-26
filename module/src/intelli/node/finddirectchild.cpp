@@ -10,6 +10,7 @@
 #include "intelli/node/finddirectchild.h"
 
 #include "intelli/data/object.h"
+#include "intelli/globals.h"
 
 #include <gt_lineedit.h>
 
