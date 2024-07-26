@@ -13,11 +13,11 @@ namespace intelli
 /// Helper struct to "hide" implementation details and template functions
 struct Graph::Impl
 {
-    template<typename MakeError = QString(*)()>
+    template <typename MakeError = QString(*)()>
     static inline bool
     canAppendConnection(Graph& graph,
                         ConnectionId conId,
-                        MakeError makeError = {},
+                        MakeError const& makeError = {},
                         bool silent = true)
     {
         if (!conId.isValid())
@@ -53,8 +53,8 @@ struct Graph::Impl
         }
 
         // check if nodes exist
-        auto* targetNode = connection_model::find(graph.m_data, conId.inNodeId);
-        auto* sourceNode = connection_model::find(graph.m_data, conId.outNodeId);
+        auto* targetNode = connection_model::find(graph.m_local, conId.inNodeId);
+        auto* sourceNode = connection_model::find(graph.m_local, conId.outNodeId);
 
         if (!targetNode || !sourceNode)
         {
@@ -128,13 +128,40 @@ struct Graph::Impl
         return true;
     }
 
+    template<typename MakeError>
+    static inline bool
+    canAppendNode(Graph const& graph,
+                  Node& node,
+                  MakeError const& makeError,
+                  bool silent = false)
+    {
+        // check if node is unique
+        if (!(node.nodeFlags() & NodeFlag::Unique)) return true;
+
+        auto const& nodes = graph.nodes();
+        for (auto const& entry : graph.m_local)
+        {
+            assert(entry.node);
+            if (entry.node->modelName() == node.modelName())
+            {
+                if (!silent)
+                {
+                    gtWarning() << makeError()
+                                << tr("(node is unique and already exists)");
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+
     static inline bool
     accumulateDependentNodes(Graph const& graph,
                              QVector<NodeId>& nodes,
                              NodeId nodeId,
                              PortType type)
     {
-        auto const* entry = connection_model::find(graph.m_data, nodeId);
+        auto const* entry = connection_model::find(graph.m_local, nodeId);
         if (!entry) return false;
 
         for (auto& dependent : entry->ports(type))
@@ -287,8 +314,8 @@ struct Graph::Impl
 
         void operator()(NodeId nodeId)
         {
-            auto node = graph->m_data.find(nodeId);
-            if (node == graph->m_data.end())
+            auto node = graph->m_local.find(nodeId);
+            if (node == graph->m_local.end())
             {
                 gtWarning() << tr("Failed to delete node") << nodeId
                             << tr("(node was not found!)");
@@ -304,8 +331,8 @@ struct Graph::Impl
             }
 
             emit graph->childNodeAboutToBeDeleted(nodeId);
-
-            graph->m_data.erase(node);
+            
+            graph->m_local.erase(node);
             
             emit graph->childNodeDeleted(nodeId);
         }
@@ -315,38 +342,72 @@ struct Graph::Impl
         Graph* graph = nullptr;
     };
 
-    /// Functor to handle connection deletion
-    struct ConnectionDeleted
+    template <typename NodeId_t>
+    struct GetModel
     {
-        ConnectionDeleted(Graph* g, ConnectionId id) : graph(g), conId(id)
+        ConnectionGraph& operator()(Graph* graph) { return graph->m_local; }
+    };
+    template <>
+    struct GetModel<NodeUuid>
+    {
+        GlobalConnectionGraph& operator()(Graph* graph) { return *graph->m_global; }
+    };
+    template <typename NodeId_t>
+    struct GetGraph
+    {
+        Graph* operator()(Node* node) { return static_cast<Graph*>(node->parent()); }
+    };
+    template <>
+    struct GetGraph<NodeUuid>
+    {
+        Graph* operator()(Node* node) { return static_cast<Graph*>(node->parent())->rootGraph(); }
+    };
+
+    template <typename NodeId_t>
+    struct GetNodeId
+    {
+        NodeId operator()(Node* node) { return node->id(); }
+    };
+    template <>
+    struct GetNodeId<NodeUuid>
+    {
+        NodeUuid operator()(Node* node) { return node->uuid(); }
+    };
+
+    /// Common base class to handle deletion of a connection
+    template <typename NodeId_t>
+    struct ConnectionDeletedCommon
+    {
+        ConnectionDeletedCommon(Graph* g, ConnectionId_t<NodeId_t> id) :
+            graph(g), conId(id)
         {
             assert(graph);
             assert(conId.isValid());
         }
 
-        void operator()()
+        bool operator()()
         {
             using namespace connection_model;
 
-            auto inConnection  = ConnectionDetail<NodeId>::fromConnection(conId.reversed());
-            auto outConnection = ConnectionDetail<NodeId>::fromConnection(conId);
+            auto inConnection  = ConnectionDetail<NodeId_t>::fromConnection(conId.reversed());
+            auto outConnection = ConnectionDetail<NodeId_t>::fromConnection(conId);
 
-            auto* targetNode = connection_model::find(graph->m_data, conId.inNodeId);
-            auto* sourceNode = connection_model::find(graph->m_data, conId.outNodeId);
+            auto* targetNode = connection_model::find(GetModel<NodeId_t>{}(graph), conId.inNodeId);
+            auto* sourceNode = connection_model::find(GetModel<NodeId_t>{}(graph), conId.outNodeId);
 
             if (!targetNode || !sourceNode)
             {
                 gtWarning() << tr("Failed to delete connection %1").arg(toString(conId))
                             << tr("(in-node or out-node was not found!)");
-                return;
+                return false;
             }
 
             assert(targetNode->node &&
-                   targetNode->node->id() == conId.inNodeId &&
-                   targetNode->node->parent()  == graph);
+                   GetNodeId<NodeId_t>{}(targetNode->node) == conId.inNodeId &&
+                   GetGraph<NodeId_t>{}(targetNode->node) == graph);
             assert(sourceNode->node &&
-                   sourceNode->node->id() == conId.outNodeId &&
-                   sourceNode->node->parent() == graph);
+                   GetNodeId<NodeId_t>{}(sourceNode->node) == conId.outNodeId &&
+                   GetGraph<NodeId_t>{}(sourceNode->node) == graph);
 
             auto inIdx  = targetNode->predecessors.indexOf(inConnection);
             auto outIdx = sourceNode->successors.indexOf(outConnection);
@@ -356,22 +417,50 @@ struct Graph::Impl
                 gtWarning() << tr("Failed to delete connection %1").arg(toString(conId))
                             << tr("(in-connection and out-connection was not found!)")
                             << "in:" << (inIdx >= 0) << "and out:" << (outIdx >= 0);
-                return;
+                return false;
             }
 
-            emit targetNode->node->portDisconnected(conId.inPort);
-            emit sourceNode->node->portDisconnected(conId.outPort);
+            if (std::is_same<NodeId, NodeId_t>::value)
+            {
+                emit targetNode->node->portDisconnected(conId.inPort);
+                emit sourceNode->node->portDisconnected(conId.outPort);
+            }
 
             targetNode->predecessors.remove(inIdx);
             sourceNode->successors.remove(outIdx);
 
-            emit graph->connectionDeleted(conId);
+            return true;
         }
 
-    private:
+    protected:
 
         Graph* graph = nullptr;
-        ConnectionId conId;
+        ConnectionId_t<NodeId_t> conId;
+    };
+
+    /// Functor to handle deletion of a "global" connection
+    struct GlobalConnectionDeleted : public ConnectionDeletedCommon<NodeUuid>
+    {
+        using ConnectionDeletedCommon<NodeUuid>::ConnectionDeletedCommon;
+
+        void operator()()
+        {
+            return (void)ConnectionDeletedCommon<NodeUuid>::operator()();
+        }
+    };
+
+    /// Functor to handle deletion of a "local" connection
+    struct ConnectionDeleted : public ConnectionDeletedCommon<NodeId>
+    {
+        using ConnectionDeletedCommon<NodeId>::ConnectionDeletedCommon;
+
+        void operator()()
+        {
+            if (ConnectionDeletedCommon<NodeId>::operator()())
+            {
+                emit graph->connectionDeleted(conId);
+            }
+        }
     };
 
 }; // struct Impl

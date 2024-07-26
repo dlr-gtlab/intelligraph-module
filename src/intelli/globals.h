@@ -167,6 +167,12 @@ struct InvalidValue
     constexpr static T get() { return std::numeric_limits<T>::max(); }
 };
 
+template<>
+struct InvalidValue<NodeUuid>
+{
+    static NodeUuid get() { return NodeUuid{}; }
+};
+
 template<typename T, typename Tag, T InitVal>
 struct InvalidValue<StrongType<T, Tag, InitVal>>
 {
@@ -178,7 +184,7 @@ struct InvalidValue<StrongType<T, Tag, InitVal>>
 } // namespace detail
 
 template<typename T>
-constexpr inline T invalid() noexcept
+inline T invalid() noexcept
 {
     return detail::InvalidValue<T>::get();
 }
@@ -399,8 +405,8 @@ namespace detail
 template <typename NodeId_t>
 struct InvalidValue<ConnectionId_t<NodeId_t>>
 {
-    constexpr static ConnectionId get() {
-        return ConnectionId{ NodeId_t{}, PortId{}, NodeId_t{}, PortId{} };
+    constexpr static ConnectionId_t<NodeId_t> get() {
+        return { NodeId_t{}, PortId{}, NodeId_t{}, PortId{} };
     }
 };
 

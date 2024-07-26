@@ -136,7 +136,7 @@ struct ConnectionData
 };
 
 template <typename T>
-using ConnectionModel = QHash<NodeId, ConnectionData<T>>;
+using ConnectionModel = QHash<T, ConnectionData<T>>;
 
 template <typename Model, typename NodeId_t>
 inline auto* find(Model& model, NodeId_t nodeId)
@@ -229,6 +229,8 @@ public:
      */
     ConnectionId connectionId(NodeId outNodeId, PortIndex outPortIdx,
                               NodeId inNodeId, PortIndex inPortIdx) const;
+
+    ConnectionUuid connectionUuid(ConnectionId conId) const;
 
     /**
      * @brief Returns the parent graph of this node (null if the graph is a
@@ -448,15 +450,20 @@ public:
      * and their connections
      * @return DAG
      */
-    [[deprecated("use `data` instead")]]
-    ConnectionGraph const& dag() const { return m_data; }
+    [[deprecated("use `localConnectionModel` instead")]]
+    ConnectionGraph const& dag() const { return m_local; }
 
     /**
-     * @brief Gives access to the internal graph model used to manage the nodes
-     * and their connections
-     * @return Graph model
+     * @brief Returns the local connection model.
+     * @return Local connection model
      */
-    inline auto const& data() const { return m_data; }
+    inline ConnectionGraph const& localConnectionModel() const { return m_local; }
+
+    /**
+     * @brief Returns the global connection model.
+     * @return Global connection model
+     */
+    inline GlobalConnectionGraph const& globalConnectionModel() const { return *m_global; }
 
     /**
      * @brief initializes the input and output of this graph
@@ -588,8 +595,10 @@ private:
 
     struct Impl;
 
-    /// connection graph
-    ConnectionGraph m_data;
+    /// local connection graph
+    ConnectionGraph m_local;
+    /// shred global connection graph
+    std::shared_ptr<GlobalConnectionGraph> m_global = nullptr;
 
     size_t m_evaluationIndicator = 0;
     /// indicator if the connection model is currently beeing modified
@@ -608,6 +617,9 @@ private:
 
     void restoreConnections();
     void restoreNodesAndConnections();
+
+    void appendGlobalConnection(Connection& con, ConnectionId conId, Node& targetNode);
+    void appendGlobalConnection(Connection& con, ConnectionUuid conUuid);
 };
 
 } // namespace intelli
