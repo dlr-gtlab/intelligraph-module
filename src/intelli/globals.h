@@ -13,12 +13,11 @@
 #include <gt_exceptions.h>
 #include <gt_platform.h>
 
-#include <chrono>
 #include <utility>
 #include <stdlib.h>
 
+#include <QPoint>
 #include <QPointF>
-#include <QRegExp>
 
 namespace intelli
 {
@@ -46,6 +45,8 @@ inline QPoint quantize(QPointF point, int stepSize)
 
     return QPoint{divX.quot * stepSize, divY.quot * stepSize};
 };
+
+using Position = QPointF;
 
 /**
  * @brief Denotes the possible port types
@@ -142,16 +143,10 @@ private:
     T m_value = InitValue;
 };
 
-using NodeUuid = QString;
+using NodeUuid  = QString;
 using NodeId    = StrongType<unsigned, struct NodeId_, std::numeric_limits<unsigned>::max()>;
 using PortIndex = StrongType<unsigned, struct PortIndex_, std::numeric_limits<unsigned>::max()>;
 using PortId    = StrongType<unsigned, struct PortId_, std::numeric_limits<unsigned>::max()>;
-
-using Position = QPointF;
-
-using NodeDataPtr = std::shared_ptr<const NodeData>;
-
-using NodeDataPtrList = std::vector<std::pair<PortId, NodeDataPtr>>;
 
 using TypeName = QString;
 
@@ -164,13 +159,7 @@ namespace detail
 template<typename T>
 struct InvalidValue
 {
-    constexpr static T get() { return std::numeric_limits<T>::max(); }
-};
-
-template<>
-struct InvalidValue<NodeUuid>
-{
-    static NodeUuid get() { return NodeUuid{}; }
+    constexpr static T get() { return {}; }
 };
 
 template<typename T, typename Tag, T InitVal>
@@ -184,7 +173,7 @@ struct InvalidValue<StrongType<T, Tag, InitVal>>
 } // namespace detail
 
 template<typename T>
-inline T invalid() noexcept
+constexpr inline T invalid() noexcept
 {
     return detail::InvalidValue<T>::get();
 }
@@ -296,7 +285,7 @@ struct ConnectionId_t
     }
 };
 
-using ConnectionId = ConnectionId_t<NodeId>;
+using ConnectionId   = ConnectionId_t<NodeId>;
 using ConnectionUuid = ConnectionId_t<NodeUuid>;
 
 /// Enum for GraphicsObject::Type value
@@ -326,6 +315,10 @@ enum class PortDataState
     /// Port data is valid and up-to-date
     Valid,
 };
+
+using NodeDataPtr = std::shared_ptr<const NodeData>;
+
+using NodeDataPtrList = std::vector<std::pair<PortId, NodeDataPtr>>;
 
 struct NodeDataSet
 {
@@ -399,19 +392,6 @@ inline auto ignoreSignal(Sender sender, SignalSender signalSender,
     };
 }
 
-namespace detail
-{
-
-template <typename NodeId_t>
-struct InvalidValue<ConnectionId_t<NodeId_t>>
-{
-    constexpr static ConnectionId_t<NodeId_t> get() {
-        return { NodeId_t{}, PortId{}, NodeId_t{}, PortId{} };
-    }
-};
-
-} // namespace detail
-
 template <typename T, typename Tag, T InitVal>
 constexpr inline bool
 operator+=(StrongType<T, Tag, InitVal> const& a,
@@ -442,21 +422,6 @@ constexpr inline bool StrongType<T, Tag, InitValue>::isValid() const noexcept
 
 namespace gt
 {
-namespace re
-{
-
-namespace intelli
-{
-
-inline QRegExp forClassNames()
-{
-    return QRegExp(R"(^([a-zA-Z_][a-zA-Z0-9_]*::)*[a-zA-Z_][a-zA-Z0-9_]*$)");
-}
-
-} // namespace intelli
-
-} // namespace re
-
 namespace log
 {
 
