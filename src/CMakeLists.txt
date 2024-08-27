@@ -23,6 +23,7 @@ set(PUBLIC_HEADERS
     intelli/globals.h
     intelli/graph.h
     intelli/graphbuilder.h
+    intelli/graphconnectionmodel.h
     intelli/graphexecmodel.h
     intelli/memory.h
     intelli/node.h

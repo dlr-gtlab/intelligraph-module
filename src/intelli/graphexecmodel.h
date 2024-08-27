@@ -150,10 +150,15 @@ private:
         NodeEvaluationType evalType;
     };
 
+    struct EvalData
+    {
+
+    };
+
     /// assoicated graph
     QPointer<Graph> m_graph;
 
-    GlobalConnectionGraph m_model;
+    QHash<NodeUuid, EvalData> m_data2;
 
     /// data model for all nodes and their ports
     GraphDataModel m_data;

@@ -354,11 +354,11 @@ NodeGraphicsObject*
 GraphScene::nodeObject(NodeId nodeId)
 {
     auto iter = std::find_if(m_nodes.begin(), m_nodes.end(),
-                             [nodeId](NodeEntry const& e){ return e.nodeId == nodeId; });
-    if (iter == m_nodes.end())
-    {
-        return nullptr;
-    }
+                             [nodeId](NodeEntry const& e){
+        return e.nodeId == nodeId;
+    });
+    if (iter == m_nodes.end()) return nullptr;
+
     return iter->object;
 }
 
@@ -372,11 +372,11 @@ ConnectionGraphicsObject*
 GraphScene::connectionObject(ConnectionId conId)
 {
     auto iter = std::find_if(m_connections.begin(), m_connections.end(),
-                             [conId](ConnectionEntry const& e){ return e.conId == conId; });
-    if (iter == m_connections.end())
-    {
-        return nullptr;
-    }
+                             [conId](ConnectionEntry const& e){
+        return e.conId == conId;
+    });
+    if (iter == m_connections.end()) return nullptr;
+
     return iter->object;
 }
 

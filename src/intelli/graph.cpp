@@ -991,9 +991,6 @@ debugGraphHelper(Graph const& graph)
 } // namespace intelli
 
 void
-intelli::connection_model::debugGraph(ConnectionGraph const&) { }
-
-void
 intelli::debug(Graph const& graph)
 {
     QString text = QStringLiteral("flowchart LR\n");
