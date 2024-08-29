@@ -66,7 +66,7 @@ TEST(GraphExecutionModel, linear_graph__evaluate_first_node)
 
     gtTrace() << "Validate results...";
     /// RESULTS
-    auto dataA = model.nodeData(A_uuid, PortId(0)).as<DoubleData>();
+    auto dataA = model.nodeData(A_uuid, PortType::Out, PortIndex(0)).as<DoubleData>();
     ASSERT_TRUE(dataA);
     EXPECT_DOUBLE_EQ(dataA->value(), EXPECTED_VALUE);
 
@@ -141,7 +141,7 @@ TEST(GraphExecutionModel, linear_graph__evaluate_last_node_and_dependencies)
     debug(model);
 
     gtTrace() << "Validate results...";
-    auto dataD = model.nodeData(D_uuid, PortId(0)).as<DoubleData>();
+    auto dataD = model.nodeData(D_uuid, PortType::In, PortIndex(0)).as<DoubleData>();
     ASSERT_TRUE(dataD);
     EXPECT_EQ(dataD->value(), EXPECTED_VALUE);
 
@@ -198,7 +198,7 @@ TEST(GraphExecutionModel, linear_graph__auto_evaluate_graph)
     gtTrace() << "Validate results...";
 
     {
-        auto dataD = model.nodeData(D_uuid, PortId(0)).as<DoubleData>();
+        auto dataD = model.nodeData(D_uuid, PortType::In, PortIndex(0)).as<DoubleData>();
         ASSERT_TRUE(dataD);
         EXPECT_EQ(dataD->value(), EXPECTED_VALUE);
 
@@ -220,7 +220,7 @@ TEST(GraphExecutionModel, linear_graph__auto_evaluate_graph)
     gtTrace() << "Validate results...";
 
     {
-        auto dataD = model.nodeData(D_uuid, PortId(0)).as<DoubleData>();
+        auto dataD = model.nodeData(D_uuid, PortType::In, PortIndex(0)).as<DoubleData>();
         ASSERT_TRUE(dataD);
         EXPECT_EQ(dataD->value(), EXPECTED_VALUE);
 
@@ -279,8 +279,8 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__evaluate_group_node)
     debug(model);
 
     gtTrace() << "Validate results...";
-    PortId group_input1  = group->portId(PortType::In, PortIndex(0));
-    PortId group_input2  = group->portId(PortType::In, PortIndex(1));
+    PortId group_input1 = group->portId(PortType::In, PortIndex(0));
+    PortId group_input2 = group->portId(PortType::In, PortIndex(1));
     PortId group_output1 = group->portId(PortType::Out, PortIndex(0));
     PortId group_output2 = group->portId(PortType::Out, PortIndex(1));
 
@@ -398,13 +398,13 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__evaluate_graph)
     EXPECT_TRUE(test::comparePortData<double>(
         graph, model, group_uuid, {group_input2, group_output2}, PortDataState::Valid, EXPECTED_VALUE_B));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(0)}, PortDataState::Valid, EXPECTED_VALUE_A));
+        graph, model, group_input_uuid, {group_input1}, PortDataState::Valid, EXPECTED_VALUE_A));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_B));
+        graph, model, group_input_uuid, {group_input2}, PortDataState::Valid, EXPECTED_VALUE_B));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(0)}, PortDataState::Valid, EXPECTED_VALUE_A));
+        graph, model, group_output_uuid, {group_output1}, PortDataState::Valid, EXPECTED_VALUE_A));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_B));
+        graph, model, group_output_uuid, {group_output2}, PortDataState::Valid, EXPECTED_VALUE_B));
 
     // D was evaluated correctly
     EXPECT_TRUE(test::comparePortData<double>(
@@ -436,13 +436,13 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__evaluate_graph)
     EXPECT_TRUE(test::comparePortData<double>(
         graph, model, group_uuid, {group_output2}, PortDataState::Outdated, EXPECTED_VALUE_B));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(0)}, PortDataState::Outdated, EXPECTED_VALUE_A));
+        graph, model, group_input_uuid, {group_input1}, PortDataState::Outdated, EXPECTED_VALUE_A));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_B));
+        graph, model, group_input_uuid, {group_input2}, PortDataState::Valid, EXPECTED_VALUE_B));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(0)}, PortDataState::Outdated, EXPECTED_VALUE_A));
+        graph, model, group_output_uuid, {group_output1}, PortDataState::Outdated, EXPECTED_VALUE_A));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_B));
+        graph, model, group_output_uuid, {group_output2}, PortDataState::Valid, EXPECTED_VALUE_B));
 
     // D was evaluated correctly
     EXPECT_TRUE(test::comparePortData<double>(
@@ -517,13 +517,13 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__auto_evaluate_graph)
     EXPECT_TRUE(test::comparePortData<double>(
         graph, model, group_uuid, {group_input2, group_output2}, PortDataState::Valid, EXPECTED_VALUE_B));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(0)}, PortDataState::Valid, EXPECTED_VALUE_A));
+        graph, model, group_input_uuid, {group_input1}, PortDataState::Valid, EXPECTED_VALUE_A));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_B));
+        graph, model, group_input_uuid, {group_input2}, PortDataState::Valid, EXPECTED_VALUE_B));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(0)}, PortDataState::Valid, EXPECTED_VALUE_A));
+        graph, model, group_output_uuid, {group_output1}, PortDataState::Valid, EXPECTED_VALUE_A));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_B));
+        graph, model, group_output_uuid, {group_output2}, PortDataState::Valid, EXPECTED_VALUE_B));
 
     // D was evaluated correctly
     EXPECT_TRUE(test::comparePortData<double>(
@@ -558,13 +558,13 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__auto_evaluate_graph)
     EXPECT_TRUE(test::comparePortData<double>(
         graph, model, group_uuid, {group_output2}, PortDataState::Outdated, EXPECTED_VALUE_B));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(0)}, PortDataState::Outdated, EXPECTED_VALUE_A));
+        graph, model, group_input_uuid, {group_input1}, PortDataState::Outdated, EXPECTED_VALUE_A));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_B));
+        graph, model, group_input_uuid, {group_input2}, PortDataState::Valid, EXPECTED_VALUE_B));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(0)}, PortDataState::Outdated, EXPECTED_VALUE_A));
+        graph, model, group_output_uuid, {group_output1}, PortDataState::Outdated, EXPECTED_VALUE_A));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_B));
+        graph, model, group_output_uuid, {group_output2}, PortDataState::Valid, EXPECTED_VALUE_B));
 
     // D was evaluated correctly
     EXPECT_TRUE(test::comparePortData<double>(
@@ -1004,7 +1004,7 @@ TEST(GraphExecutionModel, auto_evaluate_subgraph_only)
     EXPECT_FALSE(model.isGraphEvaluated(graph));
 }
 
-TEST(GraphExecutionModel, stop_auto_evaluation)
+TEST(GraphExecutionModel, stop_auto_evaluating_graph)
 {
     Graph graph;
 
@@ -1031,7 +1031,6 @@ TEST(GraphExecutionModel, stop_auto_evaluation)
     EXPECT_TRUE(test::compareNodeEvalState(
         graph, model, {A_uuid}, NodeEvalState::Evaluating));
 
-
     // Waiting for all nodes fails because the graph is stopped inbetween
     EXPECT_FALSE(future.wait(maxTimeout));
 
@@ -1040,12 +1039,53 @@ TEST(GraphExecutionModel, stop_auto_evaluation)
 
     // Node A is evaluated
     EXPECT_TRUE(test::compareNodeEvalState(
-        graph, model, {A_uuid, B_uuid}, NodeEvalState::Valid));
-    // Node B may be evaluated
+        graph, model, {A_uuid}, NodeEvalState::Valid));
 
     // All other nodes still have to be evaluated
     EXPECT_TRUE(test::compareNodeEvalState(
-        graph, model, {C_uuid, D_uuid}, NodeEvalState::Outdated));
+        graph, model, {B_uuid, C_uuid, D_uuid}, NodeEvalState::Outdated));
+}
+
+TEST(GraphExecutionModel, stop_auto_evaluating_node)
+{
+    Graph graph;
+
+    gtTrace() << "Setup...";
+    GraphExecutionModel model(graph);
+
+    ASSERT_TRUE(test::buildLinearGraph(graph));
+
+    debug(graph);
+    debug(model);
+
+    gtTrace() << "Evaluate...";
+    auto future = model.autoEvaluateNode(C_uuid);
+
+    // abort execution once node A is finished
+    model.evaluateNode(A_uuid).then([&model](bool success){
+        gtTrace() << "Stopping auto evaluation...";
+        model.stopAutoEvaluatingNode(C_uuid);
+    });
+
+    EXPECT_TRUE(model.isAutoEvaluatingNode(C_uuid));
+
+    // A is not yet evaluated
+    EXPECT_TRUE(test::compareNodeEvalState(
+        graph, model, {A_uuid}, NodeEvalState::Evaluating));
+
+    // Waiting for all nodes fails because the graph is stopped inbetween
+    EXPECT_FALSE(future.wait(maxTimeout));
+
+    EXPECT_FALSE(model.isAutoEvaluatingNode(C_uuid));
+    EXPECT_FALSE(model.isGraphEvaluated());
+
+    // Node A is evaluated
+    EXPECT_TRUE(test::compareNodeEvalState(
+        graph, model, {A_uuid}, NodeEvalState::Valid));
+
+    // All other nodes still have to be evaluated
+    EXPECT_TRUE(test::compareNodeEvalState(
+        graph, model, {B_uuid, C_uuid, D_uuid}, NodeEvalState::Outdated));
 }
 
 #if 0

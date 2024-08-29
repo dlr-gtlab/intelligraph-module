@@ -22,15 +22,6 @@ class Graph;
 namespace data_model
 {
 
-enum class NodeType
-{
-    Normal = 0,
-    // dependent on group output provider
-    Group,
-    GroupInput,
-    GroupOutput
-};
-
 struct PortDataItem
 {
     /// referenced port
@@ -49,6 +40,8 @@ struct DataItem
     QVarLengthArray<PortDataItem, PRE_ALLOC> portsIn{}, portsOut{};
     /// internal evalution state
     NodeEvalState state = NodeEvalState::Outdated;
+
+    bool isPending = false;
 
     /**
      * @brief Returns the ancestors or descendants depending on the port type

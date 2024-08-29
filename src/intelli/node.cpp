@@ -398,8 +398,6 @@ Node::portId(PortType type, PortIndex idx) const noexcept(false)
     if (idx >= ports.size()) return PortId{};
 
     auto& port = ports.at(idx);
-    if (!port.visible) gtWarning() << "Hidden port!" << port << type << idx;
-
     return port.m_id;
 }
 

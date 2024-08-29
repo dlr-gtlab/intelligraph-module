@@ -17,6 +17,7 @@
 #include <intelli/connection.h>
 
 #include <gt_eventloop.h>
+#include <gt_algorithms.h>
 
 using namespace intelli;
 
@@ -128,6 +129,7 @@ GraphExecutionModel::beginReset()
     for (; iter != end; ++iter)
     {
         auto& entry = *m_data.find(*iter);
+        entry.isPending = false;
         entry.state = NodeEvalState::Outdated;
         for (auto& entry : entry.portsIn ) entry.data.state = PortDataState::Outdated;
         for (auto& entry : entry.portsOut) entry.data.state = PortDataState::Outdated;
@@ -293,7 +295,7 @@ GraphExecutionModel::autoEvaluateGraph()
 FutureEvaluated
 GraphExecutionModel::autoEvaluateGraph(Graph& graph)
 {
-    assert(Impl::isGraphContained(*this, graph));
+    assert(Impl::containsGraph(*this, graph));
 
     if (&this->graph() == &graph)
     {
@@ -342,7 +344,7 @@ GraphExecutionModel::stopAutoEvaluatingGraph()
 void
 GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
 {
-    assert(Impl::isGraphContained(*this, graph));
+    assert(Impl::containsGraph(*this, graph));
 
     if (&this->graph() == &graph)
     {
@@ -350,17 +352,27 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
         graph.setActive(false);
     }
 
-    auto const& nodes = graph.nodes();
-    for (auto* node : nodes)
+    // unschedule all target nodes
+    for (auto& conData : graph.localConnectionModel())
     {
-        stopAutoEvaluatingNode(node->uuid());
-    }
+        assert(conData.node);
+        auto const& nodeUuid = conData.node->uuid();
+        Impl::unscheduleNodeRecursively(*this, nodeUuid);
+        Impl::removeFromTargetNodes(*this, nodeUuid);
+    };
+
+    // we may have unscheduled nodes that are required for other target nodes
+    Impl::rescheduleTargetNodes(*this);
 }
 
 void
 GraphExecutionModel::stopAutoEvaluatingNode(NodeUuid const& nodeUuid)
 {
+    Impl::unscheduleNodeRecursively(*this, nodeUuid);
     Impl::removeFromTargetNodes(*this, nodeUuid);
+
+    // we may have unscheduled nodes that are required for other target nodes
+    Impl::rescheduleTargetNodes(*this);
 }
 
 bool
@@ -641,11 +653,27 @@ GraphExecutionModel::onNodeEvaluated(QString const& nodeUuid)
     emit nodeEvaluated(nodeUuid, QPrivateSignal());
     emit item.node->evaluated();
 
-    if (!isBeingModified())
-    {
-        Impl::rescheduleTargetNodes(*this);
-        Impl::evaluateNextInQueue(*this);
-    }
+    if (isBeingModified()) return;
+
+    // TODO:
+    // Impl::rescheduleTargetNodes(*this);
+
+    auto& conModel = graph().globalConnectionModel();
+    auto* conData = connection_model::find(conModel, nodeUuid);
+
+    bool success = connection_model::visitSuccessors(conData, [this](auto& successor){
+        auto nextNode = Impl::findData(*this, successor.node);
+        assert(nextNode);
+
+        if (nextNode->isPending)
+        {
+            return Impl::queueNode(*this, successor.node, nextNode) != NodeEvalState::Invalid;
+        }
+        return true;
+    });
+
+    assert(success);
+    Impl::evaluateNextInQueue(*this);
 }
 
 void
@@ -805,6 +833,10 @@ GraphExecutionModel::onConnectionAppended(Connection* con)
     auto findIn = Impl::findData(*this, con->inNodeId(), makeError);
     if (!findIn) return;
 
+    INTELLI_LOG(*this)
+        << tr("Connection appended: updated execution model! ('%1')")
+               .arg(toString(conId));
+
     // set node data
     auto data = nodeData(findOut.node->uuid(), conId.outPort);
     setNodeData(findIn.node->uuid(), conId.inPort, std::move(data));
@@ -823,8 +855,15 @@ GraphExecutionModel::onConnectionDeleted(ConnectionId conId)
     auto item = Impl::findData(*this, conId.inNodeId, makeError);
     if (!item) return;
 
+    INTELLI_LOG(*this)
+        << tr("Connection deleted: updated execution model! ('%1')")
+               .arg(toString(conId));
+
     // set node data
-    setNodeData(item.node->uuid(), conId.inPort, nullptr);
+    NodeDataSet data{};
+    data.state = PortDataState::Valid;
+
+    setNodeData(item.node->uuid(), conId.inPort, data);
 }
 
 void

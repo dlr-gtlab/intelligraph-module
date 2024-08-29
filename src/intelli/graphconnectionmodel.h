@@ -83,7 +83,8 @@ template <typename T>
 using ConnectionModel = QHash<T, ConnectionData<T>>;
 
 template <typename Model, typename NodeId_t>
-inline auto* find(Model& model, NodeId_t nodeId)
+inline auto*
+find(Model& model, NodeId_t nodeId)
 {
     using T = decltype(&(*model.begin()));
 
@@ -92,36 +93,67 @@ inline auto* find(Model& model, NodeId_t nodeId)
     return &(*iter);
 }
 
+struct TraverseRecursively{};
+
 template <typename ConnectionData_t, typename Lambda>
-bool visit(ConnectionData_t* data, PortId sourcePort, PortType type, Lambda const& lambda)
+inline bool
+visit(ConnectionData_t* data, PortId sourcePort, PortType type, Lambda const& lambda)
+{
+    return visit(data, type, [sourcePort, type, &lambda](auto& con){
+        if (con.sourcePort == sourcePort)
+        {
+            return lambda(con);
+        }
+        return true;
+    });
+}
+
+template <typename ConnectionData_t, typename Lambda>
+inline bool
+visit(ConnectionData_t* data, PortType type, Lambda const& lambda)
 {
     if (!data) return false;
 
     bool success = true;
     for (auto& con : data->ports(type))
     {
-        if (sourcePort == con.sourcePort)
-        {
-            success &= lambda(con);
-        }
+        success &= lambda(con);
     }
+
     return success;
 }
 
 template <typename ConnectionData_t, typename Lambda>
-bool visitSuccessors(ConnectionData_t* data, PortId sourcePort, Lambda const& lambda)
+inline bool
+visitSuccessors(ConnectionData_t* data, PortId sourcePort, Lambda const& lambda)
 {
     return visit(data, sourcePort, PortType::Out, lambda);
 }
 
 template <typename ConnectionData_t, typename Lambda>
-bool visitPredeccessors(ConnectionData_t* data, PortId sourcePort, Lambda const& lambda)
+inline bool
+visitSuccessors(ConnectionData_t* data, Lambda const& lambda)
+{
+    return visit(data, PortType::Out, lambda);
+}
+
+template <typename ConnectionData_t, typename Lambda>
+inline bool
+visitPredeccessors(ConnectionData_t* data, PortId sourcePort, Lambda const& lambda)
 {
     return visit(data, sourcePort, PortType::In, lambda);
 }
 
+template <typename ConnectionData_t, typename Lambda>
+inline bool
+visitPredeccessors(ConnectionData_t* data, Lambda const& lambda)
+{
+    return visit(data, PortType::In, lambda);
+}
+
 template <typename ConnectionData_t>
-bool hasConnections(ConnectionData_t* data, PortId sourcePort, PortType type)
+inline bool
+hasConnections(ConnectionData_t* data, PortId sourcePort, PortType type)
 {
     size_t count = 0;
     visit(data, sourcePort, type, [&count](auto&){ ++count; return true; });
@@ -129,19 +161,29 @@ bool hasConnections(ConnectionData_t* data, PortId sourcePort, PortType type)
 }
 
 template <typename ConnectionData_t>
-bool hasSuccessors(ConnectionData_t* data, PortId sourcePort)
+inline bool
+hasSuccessors(ConnectionData_t* data, PortId sourcePort)
 {
     return hasConnections(data, sourcePort, PortType::Out);
 }
 
 template <typename ConnectionData_t>
-bool hasPredecessors(ConnectionData_t* data, PortId sourcePort)
+inline bool
+hasPredecessors(ConnectionData_t* data, PortId sourcePort)
 {
     return hasConnections(data, sourcePort, PortType::In);
 }
 
 template <typename ConnectionData_t>
-bool hasPredecessors(ConnectionData_t* data)
+inline bool
+hasSuccessors(ConnectionData_t* data)
+{
+    return data && !data->successors.empty();
+}
+
+template <typename ConnectionData_t>
+inline bool
+hasPredecessors(ConnectionData_t* data)
 {
     return data && !data->predecessors.empty();
 }

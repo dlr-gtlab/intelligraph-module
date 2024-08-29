@@ -243,8 +243,8 @@ FutureEvaluated::areNodesEvaluated() const
 {
     bool allValid = std::all_of(m_targets.begin(), m_targets.end(),
                                 [](TargetNode const& target){
-                                    return target.evalState == NodeEvalState::Valid;
-                                });
+        return target.evalState == NodeEvalState::Valid;
+    });
     return allValid;
 }
 
@@ -253,8 +253,8 @@ FutureEvaluated::haveNodesFailed() const
 {
     bool anyInvalid = std::any_of(m_targets.begin(), m_targets.end(),
                                   [](TargetNode const& target){
-                                      return target.evalState == NodeEvalState::Invalid;
-                                  });
+        return target.evalState == NodeEvalState::Invalid;
+    });
     return anyInvalid;
 }
 
