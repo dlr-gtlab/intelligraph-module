@@ -151,9 +151,9 @@ GraphExecCalculator::run()
 
     GraphExecutionModel model(*graph);
 
+    /// TODO: enable custom timeout
     bool success = model.evaluateGraph().wait(std::chrono::minutes{5});
 
-    /// TODO:
-    /// Add monitoring information if possible
+    /// TODO: Add monitoring information if possible
     return success;
 }

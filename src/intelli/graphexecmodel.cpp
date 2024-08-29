@@ -254,9 +254,11 @@ GraphExecutionModel::setupConnections(Graph& graph)
 
     connect(&graph, &Graph::graphAboutToBeDeleted,
             this, [this, &graph](){
+            gtDebug() << "deleting graph" << graph.objectName();
         disconnect(&graph);
         auto const& nodes = graph.nodes();
         for (auto* node : nodes) onNodeDeleted(&graph, node->id());
+        // TODO: graphs are deleted in wrong order
     }, Qt::DirectConnection);
 
     connect(&graph, &Graph::nodeAppended,

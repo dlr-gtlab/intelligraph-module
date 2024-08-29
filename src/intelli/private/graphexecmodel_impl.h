@@ -775,7 +775,9 @@ struct GraphExecutionModel::Impl
         }
 
         // iterate over all dependencies
+#ifdef _DEBUG
         int validNodes = 0;
+#endif
         for (auto& predecessor : conData->predecessors)
         {
             auto dependency = findData(model, predecessor.node);
@@ -801,10 +803,14 @@ struct GraphExecutionModel::Impl
             }
         }
 
-        // all nodes are valid yet the target node is not ready
-        // -> something went wrong
-        assert(validNodes != conData->predecessors.size());
         item->isPending = true;
+
+#ifdef _DEBUG
+        // if all predecessors have been evaluated but this node is not ready
+        // something went wrong
+        assert(conData->predecessors.empty() ||
+               validNodes != conData->predecessors.size());
+#endif
 
         return NodeEvalState::Outdated;
     }
@@ -832,7 +838,7 @@ struct GraphExecutionModel::Impl
         {
             INTELLI_LOG(model)
                 << tr("node is already evaluated!");
-            assert (model.nodeEvalState(nodeUuid) == NodeEvalState::Valid);
+            assert(model.nodeEvalState(nodeUuid) == NodeEvalState::Valid);
             return NodeEvalState::Valid;
         }
 
@@ -916,11 +922,6 @@ struct GraphExecutionModel::Impl
             return NodeEvalState::Paused;
         }
 
-        bool isBlocking =
-            item.node->nodeEvalMode() == NodeEvalMode::ForwardInputsToOutputs ||
-            item.node->nodeEvalMode() == NodeEvalMode::ExclusiveBlocking ||
-            item.node->nodeEvalMode() == NodeEvalMode::Blocking;
-
         INTELLI_LOG(model)
             << tr("triggering node evaluation...");
 
@@ -965,13 +966,6 @@ struct GraphExecutionModel::Impl
 
             return NodeEvalState::Invalid;
         }
-
-//        if (isBlocking)
-//        {
-//            item->state = NodeEvalState::Valid;
-//            emit model.nodeEvalStateChanged(item.node->uuid(), QPrivateSignal());
-//            return NodeEvalState::Valid;
-//        }
 
         return item->state;
     }

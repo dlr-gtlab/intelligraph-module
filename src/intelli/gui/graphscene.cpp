@@ -915,7 +915,7 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     // retrieve selected nodes
     auto selected = Impl::findSelectedItems(*this, Impl::NodesOnly);
     // selection should not be empty
-    assert (!selected.nodes.empty());
+    assert(!selected.nodes.empty());
 
     bool allDeletable = std::all_of(selected.nodes.begin(),
                                     selected.nodes.end(),

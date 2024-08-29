@@ -37,7 +37,8 @@ public:
                           QStringList iwl = {},
                           QStringList owl = {}) :
         DynamicNode(modelName, std::move(iwl), std::move(owl),
-                    Type == PortType::In ? DynamicOutputOnly : DynamicInputOnly)
+                    providerType == PortType::In ? DynamicOutputOnly :
+                                                   DynamicInputOnly)
     {
         setFlag(UserDeletable, false);
 
@@ -65,7 +66,7 @@ public:
 
     PortId insertPort(PortInfo data, int idx = -1)
     {
-        return insertPort(DynamicPort, invert(Type), std::move(data), idx);
+        return insertPort(DynamicPort, invert(providerType), std::move(data), idx);
     }
 
     static constexpr PortId virtualPortId(PortId portId)
@@ -106,23 +107,6 @@ protected:
         PortId portId =
             DynamicNode::insertPort(option, type, port, idx);
 
-        if (!portId.isValid()) return PortId{};
-
-        //        assert(portId == m_nextPortId);
-
-//        port = PortInfo::customId(virtualPortId(m_nextPortId), std::move(port));
-//        PortId virtualPortId =
-//            DynamicNode::insertPort(StaticPort, invert(type), std::move(port), idx);
-
-//        if (!virtualPortId.isValid())
-//        {
-//            bool success = removePort(portId);
-//            assert(success);
-//            return PortId{};
-//        }
-//        assert(!isMainPort(virtualPortId));
-
-//        m_nextPortId += NextPortIdOffset;
         return portId;
     }
 
@@ -135,13 +119,17 @@ private slots:
     void onPortInserted(PortType actualType, PortIndex idx)
     {
         // port is virtual -> ignore
-        if (Type == actualType) return;
+        if (providerType == actualType) return;
 
-        PortId portId = this->portId(actualType, idx);
-
-        auto* port = this->port(portId);
-        if (!port) return;
+        PortId portId  = this->portId(actualType, idx);
+        PortInfo* port = this->port(portId);
+        assert(port);
         assert(isMainPort(portId));
+
+        auto onFailure = gt::finally([this, portId](){
+            bool success = removePort(portId);
+            assert(success);
+        });
 
         // update next port id
         m_nextPortId = std::max(m_nextPortId, portId);
@@ -150,32 +138,38 @@ private slots:
         auto* graph = findParent<Graph*>();
         if (!graph) return;
 
-        bool success = true;
-        success = actualType == PortType::Out ?
-                      graph->insertInPort( *port, idx) :
-                      graph->insertOutPort(*port, idx);
+        bool success = actualType == PortType::Out ?
+                           graph->insertInPort( *port, idx) :
+                           graph->insertOutPort(*port, idx);
         assert(success);
 
-        // generate virtual port for connection parent graph and this graph
+        // generate virtual port for connecting parent graph and this provider
+        success = generateVirtualPort(graph, port, idx);
+        if (success) onFailure.clear();
+    }
+
+    bool generateVirtualPort(Graph* graph, PortInfo* port, PortIndex idx)
+    {
         PortInfo virtualPort = PortInfo::customId(virtualPortId(m_nextPortId), *port);
         virtualPort.visible = false;
         PortId virtualPortId =
-            DynamicNode::insertPort(StaticPort, invert(actualType), virtualPort, idx);
+            DynamicNode::insertPort(StaticPort, providerType, virtualPort, idx);
 
-        if (!virtualPortId.isValid())
-        {
-            success = removePort(portId);
-            assert(success);
-            return;
-        }
+        if (!virtualPortId.isValid()) return false;
+
         assert(!isMainPort(virtualPortId));
+
+        // update next port id
         m_nextPortId += NextPortIdOffset;
 
-        // append virtual port to graph
-        success = actualType == PortType::Out ?
-                      graph->insertOutPort(std::move(virtualPort), -1) :
-                      graph->insertInPort( std::move(virtualPort), -1);
-        assert(success);
+        // append virtual port to graph (only for output provider)
+        if (providerType == PortType::Out)
+        {
+            bool success = graph->insertInPort(std::move(virtualPort), -1);
+            assert(success);
+        }
+
+        return true;
     }
 
     /**
@@ -204,9 +198,9 @@ private slots:
         // update all ports
         virtualPort->assign(*port);
         virtualPort->visible = false;
-        graphPort->assign(*port);
         graphVirtualPort->assign(*port);
         graphVirtualPort->visible = false;
+        graphPort->assign(*port);
 
         emit this->portChanged(virtualPortId);
         emit graph->portChanged(portId);
