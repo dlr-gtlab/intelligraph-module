@@ -10,6 +10,7 @@
 #ifndef GT_INTELLI_CONNECTIONGRAPHICSOBJECT_H
 #define GT_INTELLI_CONNECTIONGRAPHICSOBJECT_H
 
+#include <intelli/exports.h>
 #include <intelli/connection.h>
 
 #include <QGraphicsObject>
@@ -25,7 +26,7 @@ namespace intelli
  * to apply different shapes to the connection.
  * The `pos` of this object is not representative of its actual position.
  */
-class ConnectionGraphicsObject : public QGraphicsObject
+class GT_INTELLI_EXPORT ConnectionGraphicsObject : public QGraphicsObject
 {
     Q_OBJECT
 

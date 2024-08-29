@@ -10,6 +10,8 @@
 #ifndef GT_INTELLI_VIEW_H
 #define GT_INTELLI_VIEW_H
 
+#include <intelli/exports.h>
+
 #include <gt_graphicsview.h>
 
 class QMenu;
@@ -21,7 +23,7 @@ namespace intelli
 
 class GraphScene;
 
-class GraphView : public GtGraphicsView
+class GT_INTELLI_EXPORT GraphView : public GtGraphicsView
 {
     Q_OBJECT
 

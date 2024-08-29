@@ -14,8 +14,13 @@ option(
     _DEBUG_NODE_EXECUTION
     "Logs additional debugging information when execution graphs" OFF
 )
+option(
+    BUILD_INTELLIGRAPH_STANDALONE
+    "Whether to build intelligraph as a standalone library" OFF
+)
 
 set(PUBLIC_HEADERS
+    intelli/connection.h
     intelli/core.h
     intelli/dynamicnode.h
     intelli/exports.h
@@ -40,13 +45,17 @@ set(PUBLIC_HEADERS
     intelli/data/object.h
     intelli/data/string.h
     intelli/gui/icons.h
+    intelli/gui/graphscene.h
     intelli/gui/graphscenedata.h
+    intelli/gui/graphview.h
     intelli/gui/nodegeometry.h
     intelli/gui/nodepainter.h
     intelli/gui/nodeui.h
     intelli/gui/portuiaction.h
     intelli/gui/style.h
     intelli/gui/graphics/nodeobject.h
+    intelli/gui/graphics/connectionobject.h
+    intelli/gui/graphics/nodeevalstateobject.h
     intelli/property/color.h
     intelli/property/objectlink.h
     intelli/property/stringselection.h
@@ -69,7 +78,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     ${PUBLIC_HEADERS}
     ${RCC_SOURCES}
     intelli/package.h
-    intelli/connection.h
     intelli/connectiongroup.h
     intelli/graphcategory.h
     intelli/module.h
@@ -98,11 +106,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/textdisplay.h
     intelli/gui/connectionui.h
     intelli/gui/grapheditor.h
-    intelli/gui/graphscene.h
-    intelli/gui/graphview.h
     intelli/gui/packageui.h
-    intelli/gui/graphics/connectionobject.h
-    intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/property_item/abstractnumberinputwidget.h
     intelli/gui/property_item/doubleinputwidget.h
     intelli/gui/property_item/editabledoublelabel.h
@@ -193,12 +197,13 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
 )
 
 target_link_libraries(GTlabIntelliGraph
-  PUBLIC
-  Qt5::Core
-  GTlab::Logging
-  GTlab::Gui
-  PRIVATE
-  Qt5::Concurrent
+    PUBLIC
+    Qt5::Core
+    GTlab::Logging
+    GTlab::Gui
+    IntelliGraphLib
+    PRIVATE
+    Qt5::Concurrent
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 
@@ -219,6 +224,11 @@ endif()
 if (_DEBUG_NODE_EXECUTION)
     target_compile_definitions(GTlabIntelliGraph PRIVATE
         GT_INTELLI_DEBUG_NODE_EXEC
+    )
+endif()
+if (BUILD_INTELLIGRAPH_STANDALONE)
+    target_compile_definitions(GTlabIntelliGraph PRIVATE
+        GT_INTELLI_STANDALONE
     )
 endif()
 
@@ -253,7 +263,7 @@ write_basic_package_version_file(
 
 file(GENERATE
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfig.cmake"
-  INPUT  "${PROJECT_SOURCE_DIR}/cmake/GTlabIntelliGraphConfig.in"
+  INPUT  "${PROJECT_SOURCE_DIR}/../cmake/GTlabIntelliGraphConfig.in"
 )
 
 install(EXPORT  GTlabIntelliGraph-targets

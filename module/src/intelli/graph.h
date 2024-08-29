@@ -37,7 +37,7 @@ GT_INTELLI_EXPORT
 GtMdiItem* show(Graph& graph);
 
 /**
- * @brief Opens the graph in a graph editor. Movees the ownership to the graph
+ * @brief Opens the graph in a graph editor. Moves the ownership to the graph
  * editor.
  * @param graph Graph to open
  * @return pointer to mdi item

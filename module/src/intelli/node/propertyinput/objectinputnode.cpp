@@ -18,10 +18,14 @@ namespace intelli
 {
 // helper method to fetch the correct root object for retrieve object link
 auto getObject = []() -> GtObject* {
+#ifndef GT_INTELLI_STANDALONE
     if (!gtApp) return nullptr;
     auto* project = gtApp->currentProject();
     if (!project) return nullptr;
     return project;
+#else
+    return nullptr;
+#endif
 };
 
 ObjectInputNode::ObjectInputNode() :

@@ -89,8 +89,10 @@ FileInputNode::FileInputNode() :
 
             if (!fileName.isEmpty())
             {
+#ifndef GT_INTELLI_STANDALONE
                 auto cmd = gtApp->makeCommand(this, tr("File Input changed"));
                 Q_UNUSED(cmd);
+#endif
                 m_fileChooser.setVal(fileName);
             }
         });

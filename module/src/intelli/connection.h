@@ -24,7 +24,7 @@ namespace intelli
  * Represents a connection between two nodes and their resprective output and
  * input ports
  */
-class GT_INTELLI_TEST_EXPORT Connection : public GtObject
+class GT_INTELLI_EXPORT Connection : public GtObject
 {
     Q_OBJECT
 
