@@ -92,6 +92,59 @@ inline auto* find(Model& model, NodeId_t nodeId)
     return &(*iter);
 }
 
+template <typename ConnectionData_t, typename Lambda>
+bool visit(ConnectionData_t* data, PortId sourcePort, PortType type, Lambda const& lambda)
+{
+    if (!data) return false;
+
+    bool success = true;
+    for (auto& con : data->ports(type))
+    {
+        if (sourcePort == con.sourcePort)
+        {
+            success &= lambda(con);
+        }
+    }
+    return success;
+}
+
+template <typename ConnectionData_t, typename Lambda>
+bool visitSuccessors(ConnectionData_t* data, PortId sourcePort, Lambda const& lambda)
+{
+    return visit(data, sourcePort, PortType::Out, lambda);
+}
+
+template <typename ConnectionData_t, typename Lambda>
+bool visitPredeccessors(ConnectionData_t* data, PortId sourcePort, Lambda const& lambda)
+{
+    return visit(data, sourcePort, PortType::In, lambda);
+}
+
+template <typename ConnectionData_t>
+bool hasConnections(ConnectionData_t* data, PortId sourcePort, PortType type)
+{
+    size_t count = 0;
+    visit(data, sourcePort, type, [&count](auto&){ ++count; return true; });
+    return count;
+}
+
+template <typename ConnectionData_t>
+bool hasSuccessors(ConnectionData_t* data, PortId sourcePort)
+{
+    return hasConnections(data, sourcePort, PortType::Out);
+}
+
+template <typename ConnectionData_t>
+bool hasPredecessors(ConnectionData_t* data, PortId sourcePort)
+{
+    return hasConnections(data, sourcePort, PortType::In);
+}
+
+template <typename ConnectionData_t>
+bool hasPredecessors(ConnectionData_t* data)
+{
+    return data && !data->predecessors.empty();
+}
 
 // operators
 template <typename T>
@@ -104,13 +157,13 @@ template <typename T>
 inline bool operator!=(ConnectionDetail<T> const& a, ConnectionDetail<T> const& b) { return !(a == b); }
 
 // definitions
-using GlobalConnectionGraph = ConnectionModel<NodeUuid>;
-using ConnectionGraph = ConnectionModel<NodeId>;
+using GlobalConnectionModel = ConnectionModel<NodeUuid>;
+using LocalConnectionModel  = ConnectionModel<NodeId>;
 
 } // namespace connection_model
 
-using connection_model::ConnectionGraph;
-using connection_model::GlobalConnectionGraph;
+using connection_model::LocalConnectionModel;
+using connection_model::GlobalConnectionModel;
 
 } // namespace intelli;
 

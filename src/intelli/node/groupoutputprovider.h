@@ -24,9 +24,7 @@ public:
 
 protected:
 
-#if 0
-    bool handleNodeEvaluation(GraphExecutionModel& model) override;
-#endif
+    void eval();
 };
 
 } // namespace intelli

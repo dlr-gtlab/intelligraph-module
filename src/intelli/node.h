@@ -28,11 +28,11 @@ enum NodeFlag
     Unique      = 1 << 2,
 
     /// Indicates that the widget should be placed so that its size can be maximized
-    MaximizeWidget = 1 << 3,
+    MaximizeWidget = 1 << 4,
     /// Indicates node is resizeable
-    Resizable   = 1 << 4,
+    Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
-    ResizableHOnly = 1 << 5,
+    ResizableHOnly = 1 << 6,
 
     /// Indicates that the node is evaluating (will be set automatically)
     Evaluating  = 1 << 7,
@@ -54,12 +54,15 @@ enum class NodeEvalMode
     /// Indicates that the node should be evaluated in the main thread, thus
     /// blocking the GUI. Should only be used if node evaluates instantly.
     Blocking,
-    /// Indicates the the node should be evaluated exclusively to other nodes in
+    /// Indicates that the node should be evaluated exclusively to other nodes in
     /// a separate thread
     ExclusiveDetached,
-    /// Indicates the the node should be evaluated exclusively to other nodes in
+    /// Indicates that the node should be evaluated exclusively to other nodes in
     /// the main thread
     ExclusiveBlocking,
+    /// Inidcates that the inputs of the node should be forwarded to the outputs
+    /// of the node
+    ForwardInputsToOutputs,
     /// Default behaviour
     Default = Detached,
     /// deprecated
@@ -156,18 +159,18 @@ public:
 
         /// creates a PortInfo struct with a custom port id
         template<typename ...T>
-        static PortInfo customId(PortId id, T&&... args)
+        static PortInfo customId(PortId newPortId, T&&... args)
         {
             PortInfo pd(std::forward<T>(args)...);
-            pd.m_id = id;
+            pd.m_id = newPortId;
             return pd;
         }
 
         /// creates a copy of this object but resets the id parameter
-        PortInfo copy() const
+        PortInfo copy(PortId newPortId = PortId{}) const
         {
             PortInfo pd(*this);
-            pd.m_id = invalid<PortId>();
+            pd.m_id = newPortId;
             return pd;
         }
 

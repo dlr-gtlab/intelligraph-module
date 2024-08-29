@@ -346,19 +346,19 @@ public:
      * @return DAG
      */
     [[deprecated("use `localConnectionModel` instead")]]
-    ConnectionGraph const& dag() const { return m_local; }
+    LocalConnectionModel const& dag() const { return m_local; }
 
     /**
      * @brief Returns the local connection model.
      * @return Local connection model
      */
-    inline ConnectionGraph const& localConnectionModel() const { return m_local; }
+    inline LocalConnectionModel const& localConnectionModel() const { return m_local; }
 
     /**
      * @brief Returns the global connection model.
      * @return Global connection model
      */
-    inline GlobalConnectionGraph const& globalConnectionModel() const { return *m_global; }
+    inline GlobalConnectionModel const& globalConnectionModel() const { return *m_global; }
 
     /**
      * @brief initializes the input and output of this graph
@@ -491,9 +491,9 @@ private:
     struct Impl;
 
     /// local connection graph
-    ConnectionGraph m_local;
+    LocalConnectionModel m_local;
     /// shred global connection graph
-    std::shared_ptr<GlobalConnectionGraph> m_global = nullptr;
+    std::shared_ptr<GlobalConnectionModel> m_global = nullptr;
 
     size_t m_evaluationIndicator = 0;
     /// indicator if the connection model is currently beeing modified

@@ -31,17 +31,10 @@ enum class NodeType
     GroupOutput
 };
 
-enum class DataState
-{
-    RequiresReevaluation,
-    Evaluated,
-    FailedEvaluation
-};
-
 struct PortDataItem
 {
     /// referenced port
-    PortId id;
+    PortId portId;
     /// actual data at port
     NodeDataSet data{nullptr};
 };
@@ -50,16 +43,12 @@ struct DataItem
 {
     static constexpr size_t PRE_ALLOC = 8;
 
-    explicit DataItem(NodeId _nodeId) : nodeId{_nodeId} {}
+    explicit DataItem() {}
 
-    /// node id
-    NodeId nodeId{};
     /// in and out ports
     QVarLengthArray<PortDataItem, PRE_ALLOC> portsIn{}, portsOut{};
     /// internal evalution state
-    DataState state = DataState::RequiresReevaluation;
-    /// node type used for finding dependencies
-    NodeType nodeType = NodeType::Normal;
+    NodeEvalState state = NodeEvalState::Outdated;
 
     /**
      * @brief Returns the ancestors or descendants depending on the port type
@@ -90,7 +79,7 @@ struct DataItem
         {
             auto portIter = std::find_if(ports->begin(), ports->end(),
                                          [portId](PortDataItem const& port){
-                return port.id == portId;
+                                             return port.portId == portId;
             });
 
             if (portIter != ports->end())

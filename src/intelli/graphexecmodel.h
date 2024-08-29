@@ -150,21 +150,12 @@ private:
         NodeEvaluationType evalType;
     };
 
-    struct EvalData
-    {
-
-    };
-
     /// assoicated graph
     QPointer<Graph> m_graph;
-
-    QHash<NodeUuid, EvalData> m_data2;
-
     /// data model for all nodes and their ports
     GraphDataModel m_data;
     /// nodes that should be evaluated
     QVarLengthArray<TargetNode, PRE_ALLOC> m_targetNodes;
-//    QVarLengthArray<NodeUuid, PRE_ALLOC> m_pendingNodes;
     /// nodes that are ready and waiting for evaluation
     QVarLengthArray<NodeUuid, PRE_ALLOC> m_queuedNodes;
     /// indicator if the exec model is currently beeing modified and thus

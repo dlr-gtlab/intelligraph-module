@@ -24,7 +24,7 @@ using namespace intelli::connection_model;
 
 Graph::Graph() :
     Node("Graph"),
-    m_global(std::make_shared<GlobalConnectionGraph>())
+    m_global(std::make_shared<GlobalConnectionModel>())
 {
     // we create the node connections here in this group object. This way
     // merging mementos has the correct order (first the connections are removed
@@ -588,12 +588,13 @@ Graph::appendGlobalConnection(Connection& con, ConnectionId conId, Node& targetN
     // forwards inputs of graph node to subgraph
     if (auto* graph = qobject_cast<Graph*>(&targetNode))
     {
+        appendGlobalConnection(con, conUuid);
+
         auto inputProvider = graph->inputProvider();
         assert(inputProvider);
-        PortIndex portIdx = graph->portIndex(PortType::In, conId.inPort);
 
         conUuid.inNodeId = inputProvider->uuid();
-        conUuid.inPort   = inputProvider->portId(PortType::Out, portIdx);
+        conUuid.inPort   = GroupInputProvider::virtualPortId(conId.inPort);
     }
 
     appendGlobalConnection(con, conUuid);
@@ -603,11 +604,11 @@ Graph::appendGlobalConnection(Connection& con, ConnectionId conId, Node& targetN
     {
         auto parentGraph = qobject_cast<Graph*>(output->parent());
         assert(parentGraph);
-        PortIndex portIdx = output->portIndex(PortType::In, conId.inPort);
 
-        conUuid.reverse();
-        conUuid.inNodeId = parentGraph->uuid();
-        conUuid.inPort   = parentGraph->portId(PortType::In, portIdx);
+        conUuid.outNodeId = output->uuid();
+        conUuid.outPort   = GroupOutputProvider::virtualPortId(conUuid.inPort);
+        conUuid.inNodeId  = parentGraph->uuid();
+        conUuid.inPort    = conUuid.outPort;
 
         appendGlobalConnection(con, conUuid);
     }
@@ -792,9 +793,12 @@ Graph::initInputOutputProviders()
 void
 Graph::eval()
 {
-    for (auto const& port : ports(PortType::Out))
+    for (auto& port : ports(PortType::Out))
     {
-        setNodeData(port.id(), nodeData(port.id()));
+        if (port.visible)
+        {
+            setNodeData(port.id(), nodeData(port.id() + PortId(2)));
+        }
     }
 }
 

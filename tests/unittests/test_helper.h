@@ -36,43 +36,43 @@ constexpr NodeId group_B_id{3};
 constexpr NodeId group_C_id{4};
 constexpr NodeId group_D_id{5};
 
-static NodeUuid A_uuid{};
-static NodeUuid B_uuid{};
-static NodeUuid C_uuid{};
-static NodeUuid D_uuid{};
-static NodeUuid E_uuid{};
+static NodeUuid A_uuid = QStringLiteral("A-UUID");
+static NodeUuid B_uuid = QStringLiteral("B-UUID");
+static NodeUuid C_uuid = QStringLiteral("C-UUID");
+static NodeUuid D_uuid = QStringLiteral("D-UUID");
+static NodeUuid E_uuid = QStringLiteral("E-UUID");
 
-static NodeUuid group_uuid{};
-static NodeUuid group_input_uuid{};
-static NodeUuid group_output_uuid{};
+static NodeUuid group_uuid = QStringLiteral("C-UUID");
+static NodeUuid group_input_uuid = QStringLiteral("C-IN-UUID");
+static NodeUuid group_output_uuid = QStringLiteral("C-OUT-UUID");
 
-static NodeUuid group_A_uuid{};
-static NodeUuid group_B_uuid{};
-static NodeUuid group_C_uuid{};
-static NodeUuid group_D_uuid{};
+static NodeUuid group_A_uuid = QStringLiteral("C-A-UUID");
+static NodeUuid group_B_uuid = QStringLiteral("C-B-UUID");
+static NodeUuid group_C_uuid = QStringLiteral("C-C-UUID");
+static NodeUuid group_D_uuid = QStringLiteral("C-D-UUID");
 
 namespace test
 {
 
 inline bool buildBasicGraph(Graph& graph)
 {
+    auto modification = graph.modify();
+
     GraphBuilder builder(graph);
     graph.setCaption(QStringLiteral("Root"));
 
     try
     {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
-        A_uuid = A.uuid();
-        auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("B"));
-        B_uuid = B.uuid();
-
-        auto& C = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("C"));
-        C_uuid = C.uuid();
-        auto& D = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("D"));
-        D_uuid = D.uuid();
-
-        auto& E = builder.addNode(QStringLiteral("intelli::NumberDisplayNode")).setCaption(QStringLiteral("E"));
-        E_uuid = E.uuid();
+        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid)
+                      .setCaption(QStringLiteral("A"));
+        auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), B_uuid)
+                      .setCaption(QStringLiteral("B"));
+        auto& C = builder.addNode(QStringLiteral("intelli::NumberMathNode"), C_uuid)
+                      .setCaption(QStringLiteral("C"));
+        auto& D = builder.addNode(QStringLiteral("intelli::NumberMathNode"), D_uuid)
+                      .setCaption(QStringLiteral("D"));
+        auto& E = builder.addNode(QStringLiteral("intelli::NumberDisplayNode"), E_uuid)
+                      .setCaption(QStringLiteral("E"));
 
         // square value 1
         builder.connect(A, PortIndex{0}, C, PortIndex{0});
@@ -97,6 +97,11 @@ inline bool buildBasicGraph(Graph& graph)
         EXPECT_EQ(C.id(), C_id);
         EXPECT_EQ(D.id(), D_id);
         EXPECT_EQ(E.id(), E_id);
+        EXPECT_EQ(A.uuid(), A_uuid);
+        EXPECT_EQ(B.uuid(), B_uuid);
+        EXPECT_EQ(C.uuid(), C_uuid);
+        EXPECT_EQ(D.uuid(), D_uuid);
+        EXPECT_EQ(E.uuid(), E_uuid);
     }
     catch(std::logic_error const& e)
     {
@@ -120,19 +125,21 @@ inline bool buildBasicGraph(Graph& graph)
  */
 inline bool buildLinearGraph(Graph& graph)
 {
+    auto modification = graph.modify();
+
     GraphBuilder builder(graph);
     graph.setCaption(QStringLiteral("Root"));
 
     try
     {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
-        A_uuid = A.uuid();
-        auto& B = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("B"));
-        B_uuid = B.uuid();
-        auto& C = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("C"));
-        C_uuid = C.uuid();
-        auto& D = builder.addNode(QStringLiteral("intelli::NumberDisplayNode")).setCaption(QStringLiteral("D"));
-        D_uuid = D.uuid();
+        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid)
+                      .setCaption(QStringLiteral("A"));
+        auto& B = builder.addNode(QStringLiteral("intelli::NumberMathNode"), B_uuid)
+                      .setCaption(QStringLiteral("B"));
+        auto& C = builder.addNode(QStringLiteral("intelli::NumberMathNode"), C_uuid)
+                      .setCaption(QStringLiteral("C"));
+        auto& D = builder.addNode(QStringLiteral("intelli::NumberDisplayNode"), D_uuid)
+                      .setCaption(QStringLiteral("D"));
 
         builder.connect(A, PortIndex(0), B, PortIndex(0));
 
@@ -194,15 +201,17 @@ Group C:
 */
 inline bool buildGraphWithGroup(Graph& graph)
 {
+    auto modification = graph.modify();
+
     GraphBuilder builder(graph);
     graph.setCaption(QStringLiteral("Root"));
 
     try
     {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
-        A_uuid = A.uuid();
-        auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("B"));
-        B_uuid = B.uuid();
+        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid)
+                      .setCaption(QStringLiteral("A"));
+        auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), B_uuid)
+                      .setCaption(QStringLiteral("B"));
 
         auto group = builder.addGraph(
             {
@@ -211,29 +220,28 @@ inline bool buildGraphWithGroup(Graph& graph)
             }, {
                 typeId<DoubleData>(), // connected to 1. port of D
                 typeId<DoubleData>()  // not connected to any port
-            }
+            },
+            C_uuid,
+            group_input_uuid,
+            group_output_uuid
         );
         group.graph.setCaption(QStringLiteral("Group"));
-        C_uuid = group.graph.uuid();
-        group_uuid = C_uuid;
-        group_input_uuid = group.inNode.uuid();
-        group_output_uuid = group.outNode.uuid();
 
-        auto& D = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("D"));
-        D_uuid = D.uuid();
-        auto& E = builder.addNode(QStringLiteral("intelli::NumberDisplayNode")).setCaption(QStringLiteral("E"));
-        E_uuid = E.uuid();
+        auto& D = builder.addNode(QStringLiteral("intelli::NumberMathNode"), D_uuid)
+                      .setCaption(QStringLiteral("D"));
+        auto& E = builder.addNode(QStringLiteral("intelli::NumberDisplayNode"), E_uuid)
+                      .setCaption(QStringLiteral("E"));
 
         GraphBuilder groupBuilder(group.graph);
 
-        auto& group_A = groupBuilder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("Group_A"));
-        group_A_uuid = group_A.uuid();
-        auto& group_B = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("Group_B"));
-        group_B_uuid = group_B.uuid();
-        auto& group_C = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("Group_C"));
-        group_C_uuid = group_C.uuid();
-        auto& group_D = groupBuilder.addNode(QStringLiteral("intelli::NumberDisplayNode")).setCaption(QStringLiteral("Group_D"));
-        group_D_uuid = group_D.uuid();
+        auto& group_A = groupBuilder.addNode(QStringLiteral("intelli::NumberSourceNode"), group_A_uuid)
+                            .setCaption(QStringLiteral("Group_A"));
+        auto& group_B = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode"), group_B_uuid)
+                            .setCaption(QStringLiteral("Group_B"));
+        auto& group_C = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode"), group_C_uuid)
+                            .setCaption(QStringLiteral("Group_C"));
+        auto& group_D = groupBuilder.addNode(QStringLiteral("intelli::NumberDisplayNode"), group_D_uuid)
+                            .setCaption(QStringLiteral("Group_D"));
 
         // square value 1
         builder.connect(A, PortIndex{0}, group.graph, PortIndex{0});
@@ -303,7 +311,7 @@ inline bool buildGraphWithGroup(Graph& graph)
   .---.          .-------.
   | A |--26------| GROUP |--26--.
   '---'          |   C   |      |
-             .---|       |--O   |  .---.
+             .---|       |--8   |  .---.
              |   '-------'      '--| D |
   .---.      |                     |   |--34
   | B |---8--+---------------------| + |
@@ -322,15 +330,17 @@ Group C:
  */
 inline bool buildGraphWithForwardingGroup(Graph& graph)
 {
+    auto modification = graph.modify();
+
     GraphBuilder builder(graph);
     graph.setCaption(QStringLiteral("Root"));
 
     try
     {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
-        A_uuid = A.uuid();
-        auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("B"));
-        B_uuid = B.uuid();
+        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid)
+                      .setCaption(QStringLiteral("A"));
+        auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), B_uuid)
+                      .setCaption(QStringLiteral("B"));
 
         auto group = builder.addGraph(
             {
@@ -339,18 +349,17 @@ inline bool buildGraphWithForwardingGroup(Graph& graph)
             }, {
                 typeId<DoubleData>(), // connected to 1. port of D
                 typeId<DoubleData>()  // not connected to any port
-            }
+            },
+            C_uuid,
+            group_input_uuid,
+            group_output_uuid
         );
         group.graph.setCaption(QStringLiteral("C"));
-        C_uuid = group.graph.uuid();
-        group_uuid = C_uuid;
-        group_input_uuid = group.inNode.uuid();
-        group_output_uuid = group.outNode.uuid();
 
-        auto& D = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("D"));
-        D_uuid = D.uuid();
-        auto& E = builder.addNode(QStringLiteral("intelli::NumberDisplayNode")).setCaption(QStringLiteral("E"));
-        E_uuid = E.uuid();
+        auto& D = builder.addNode(QStringLiteral("intelli::NumberMathNode"), D_uuid)
+                      .setCaption(QStringLiteral("D"));
+        auto& E = builder.addNode(QStringLiteral("intelli::NumberDisplayNode"), E_uuid)
+                      .setCaption(QStringLiteral("E"));
 
         {
             GraphBuilder groupBuilder(group.graph);

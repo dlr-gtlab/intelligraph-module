@@ -345,12 +345,12 @@ struct Graph::Impl
     template <typename NodeId_t>
     struct GetModel
     {
-        ConnectionGraph& operator()(Graph* graph) { return graph->m_local; }
+        LocalConnectionModel& operator()(Graph* graph) { return graph->m_local; }
     };
     template <>
     struct GetModel<NodeUuid>
     {
-        GlobalConnectionGraph& operator()(Graph* graph) { return *graph->m_global; }
+        GlobalConnectionModel& operator()(Graph* graph) { return *graph->m_global; }
     };
     template <typename NodeId_t>
     struct GetGraph

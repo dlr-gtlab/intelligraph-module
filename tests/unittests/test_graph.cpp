@@ -37,7 +37,7 @@ TEST(Graph, rootGraph)
     EXPECT_EQ(subGraph->rootGraph(), rootGraph);
 }
 
-TEST(Graph, ancestors_and_descendants)
+TEST(Graph, predessecors_and_successors)
 {
     Graph graph;
 
@@ -52,12 +52,12 @@ TEST(Graph, ancestors_and_descendants)
     auto* D = graph.findNode(D_id);
     auto* E = graph.findNode(E_id);
 
-    EXPECT_NE(A, nullptr);
-    EXPECT_NE(B, nullptr);
-    EXPECT_NE(C, nullptr);
-    EXPECT_NE(D, nullptr);
-    EXPECT_NE(E, nullptr);
-    
+    ASSERT_NE(A, nullptr);
+    ASSERT_NE(B, nullptr);
+    ASSERT_NE(C, nullptr);
+    ASSERT_NE(D, nullptr);
+    ASSERT_NE(E, nullptr);
+
     debug(graph);
 
     EXPECT_EQ(graph.findDependencies(A->id()).size(), 0);
@@ -74,6 +74,66 @@ TEST(Graph, ancestors_and_descendants)
 
     EXPECT_EQ(graph.findDependencies(E->id()), (QVector<NodeId>{B->id()}));
     EXPECT_EQ(graph.findDependentNodes(E->id()).size(), 0);
+}
+
+/// Check successor and predecessor nodes of group input and output nodes in
+/// a graph where input and output nodes are connected to each other
+TEST(Graph, predessecors_and_successors_in_graph_with_forwarding_group)
+{
+    Graph graph;
+
+    ASSERT_TRUE(test::buildGraphWithForwardingGroup(graph));
+
+    auto* A = graph.findNode(A_id);
+    auto* B = graph.findNode(B_id);
+    auto* C = graph.findNode(C_id);
+    auto* D = graph.findNode(D_id);
+    auto* E = graph.findNode(E_id);
+    auto* IN  = graph.findNodeByUuid(group_input_uuid);
+    auto* OUT = graph.findNodeByUuid(group_output_uuid);
+
+    ASSERT_NE(A, nullptr);
+    ASSERT_NE(B, nullptr);
+    ASSERT_NE(C, nullptr);
+    ASSERT_NE(D, nullptr);
+    ASSERT_NE(E, nullptr);
+
+    ASSERT_NE(IN,  nullptr);
+    ASSERT_NE(OUT, nullptr);
+
+    debug(graph);
+
+    auto& conModel = graph.globalConnectionModel();
+
+    auto* inNodeData = connection_model::find(conModel, IN->uuid());
+    ASSERT_NE(inNodeData, nullptr);
+
+    EXPECT_EQ(inNodeData->successors.size(), 2);
+    EXPECT_EQ(inNodeData->successors.at(0).node, OUT->uuid());
+    EXPECT_EQ(inNodeData->successors.at(0).port, OUT->portId(PortType::In, PortIndex(0)));
+    EXPECT_EQ(inNodeData->successors.at(1).node, OUT->uuid());
+    EXPECT_EQ(inNodeData->successors.at(1).port, OUT->portId(PortType::In, PortIndex(1)));
+
+    EXPECT_EQ(inNodeData->predecessors.size(), 2);
+    EXPECT_EQ(inNodeData->predecessors.at(0).node, A->uuid());
+    EXPECT_EQ(inNodeData->predecessors.at(0).port, A->portId(PortType::Out, PortIndex(0)));
+    EXPECT_EQ(inNodeData->predecessors.at(1).node, B->uuid());
+    EXPECT_EQ(inNodeData->predecessors.at(1).port, B->portId(PortType::Out, PortIndex(0)));
+
+    auto* outNodeData = connection_model::find(conModel, OUT->uuid());
+    ASSERT_NE(outNodeData, nullptr);
+
+    EXPECT_EQ(outNodeData->successors.size(), 2);
+    EXPECT_EQ(outNodeData->successors.at(0).node, C->uuid());
+    EXPECT_EQ(outNodeData->successors.at(0).port, outNodeData->successors.at(0).sourcePort);
+    EXPECT_EQ(outNodeData->successors.at(1).node, C->uuid());
+    EXPECT_EQ(outNodeData->successors.at(1).port, outNodeData->successors.at(1).sourcePort);
+
+    EXPECT_EQ(outNodeData->predecessors.size(), 2);
+    EXPECT_EQ(outNodeData->predecessors.at(0).node, IN->uuid());
+    EXPECT_EQ(outNodeData->predecessors.at(0).port, IN->portId(PortType::Out, PortIndex(0)));
+    EXPECT_EQ(outNodeData->predecessors.at(1).node, IN->uuid());
+    EXPECT_EQ(outNodeData->predecessors.at(1).port, IN->portId(PortType::Out, PortIndex(1)));
 }
 
 TEST(Graph, remove_connections_on_node_deletion)

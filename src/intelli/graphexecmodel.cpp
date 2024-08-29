@@ -48,7 +48,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
             INTELLI_LOG(*this)
                 << tr("node '%1' (%2) evaluated!")
                        .arg(relativeNodePath(*item.node))
-                       .arg(item->nodeId);
+                       .arg(item.node->id());
         }
     }, Qt::DirectConnection);
 
@@ -60,7 +60,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
             INTELLI_LOG_WARN(*this)
                 << tr("node '%1' (%2) failed to evaluate!")
                        .arg(relativeNodePath(*item.node))
-                       .arg(item->nodeId);
+                       .arg(item.node->id());
         }
     }, Qt::DirectConnection);
 
@@ -128,7 +128,7 @@ GraphExecutionModel::beginReset()
     for (; iter != end; ++iter)
     {
         auto& entry = *m_data.find(*iter);
-        entry.state = DataState::RequiresReevaluation;
+        entry.state = NodeEvalState::Outdated;
         for (auto& entry : entry.portsIn ) entry.data.state = PortDataState::Outdated;
         for (auto& entry : entry.portsOut) entry.data.state = PortDataState::Outdated;
     }
@@ -137,11 +137,9 @@ GraphExecutionModel::beginReset()
 void
 GraphExecutionModel::endReset()
 {
-#if 0
     m_targetNodes.clear();
     m_queuedNodes.clear();
     m_data.clear();
-#endif
 
     Graph& graph = this->graph();
     setupConnections(graph);
@@ -186,42 +184,13 @@ GraphExecutionModel::isBeingModified() const
     return m_modificationCount > 0;
 }
 
-
 NodeEvalState
 GraphExecutionModel::nodeEvalState(NodeUuid const& nodeUuid) const
 {
     auto find = Impl::findData(*this, nodeUuid);
     if (!find) return NodeEvalState::Invalid;
 
-    // paused
-    if (!find.node->isActive())
-    {
-        return NodeEvalState::Paused;
-    }
-
-    // evaluating
-    if (find.isEvaluating())
-    {
-        return NodeEvalState::Evaluating;
-    }
-
-    if (find.isEvaluated())
-    {
-        assert(!find.requiresReevaluation());
-
-        if (find->state == DataState::FailedEvaluation)
-        {
-            return NodeEvalState::Invalid;
-        }
-        if (find.node->ports(PortType::Out).empty() && !find.inputsValid())
-        {
-            return NodeEvalState::Invalid;
-        }
-
-        return NodeEvalState::Valid;
-    }
-
-    return NodeEvalState::Outdated;
+    return find->state;
 }
 
 bool
@@ -241,6 +210,7 @@ GraphExecutionModel::isGraphEvaluated(Graph const& graph) const
                        [this](Node const* node){
        return isNodeEvaluated(node->uuid());
    });
+
 }
 
 bool
@@ -291,9 +261,9 @@ GraphExecutionModel::setupConnections(Graph& graph)
             this, &GraphExecutionModel::onNodeAppended,
             Qt::DirectConnection);
     connect(&graph, &Graph::childNodeAboutToBeDeleted,
-        this, [this, g = &graph](NodeId nodeId){
-            onNodeDeleted(g, nodeId);
-        }, Qt::DirectConnection);
+            this, [this, g = &graph](NodeId nodeId){
+        onNodeDeleted(g, nodeId);
+    }, Qt::DirectConnection);
     connect(&graph, &Graph::connectionAppended,
             this, &GraphExecutionModel::onConnectionAppended,
             Qt::DirectConnection);
@@ -516,6 +486,9 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
                .arg(portId)
                .arg(toString(item->data.ptr), toString(item->data.state));
 
+    auto& conModel = graph().globalConnectionModel();
+    auto* conData = connection_model::find(conModel, nodeUuid);
+
     switch (item.portType)
     {
     case PortType::In:
@@ -524,42 +497,8 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
 
         emit item.node->inputDataRecieved(portId);
 
-        switch (item.entry->nodeType)
-        {
-        // forward to input provider as outputs
-        case NodeType::Group:
-        {
-            auto* graph = qobject_cast<Graph*>(item.node);
-            if(!graph) break; // node may no longer be accessible
-
-            auto* input = graph->inputNode();
-            if(!input) break;
-
-            auto portIdx = graph->portIndex(PortType::In, portId);
-            setNodeData(input->uuid(), input->portId(PortType::Out, portIdx), item->data);
-            break;
-        }
-        // forward to parent graph as outputs
-        case NodeType::GroupOutput:
-        {
-            auto* output = qobject_cast<GroupOutputProvider*>(item.node);
-            if(!output) break; // node may no longer be accessible
-
-            auto* graph = qobject_cast<Graph*>(output->parent());
-            if(!graph) break;
-
-            auto portIdx = output->portIndex(PortType::In, portId);
-            setNodeData(graph->uuid(), graph->portId(PortType::Out, portIdx), item->data);
-            break;
-        }
-        // no forwarding required
-        case NodeType::GroupInput:
-        case NodeType::Normal:
-            break;
-        }
-
         // TODO: trigger next nodes when auto evaluating
-        if (!isBeingModified())
+        if (!item.isEvaluating() && !isBeingModified())
         {
             Impl::rescheduleTargetNodes(*this);
         }
@@ -567,23 +506,17 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
     }
     case PortType::Out:
     {
-        if (//item.entry->nodeType != NodeType::GroupInput &&
-            (item.requiresReevaluation() ||
-             (item.entry->nodeType != NodeType::GroupInput && !item.inputsValid())))
+        // TODO: check if correct
+        if (item.requiresReevaluation())
         {
             item->data.state = PortDataState::Outdated;
             emit nodeEvalStateChanged(nodeUuid, QPrivateSignal());
         }
 
-        // forward data to target nodes
-        auto const* graph = qobject_cast<Graph const*>(item.node->parent());
-
-        auto const& connections = graph->findConnections(item.node->id(), portId);
-
-        for (ConnectionId con : connections)
-        {
-            setNodeData(*graph, con.inNodeId, con.inPort, item->data);
-        }
+        connection_model::visitSuccessors(conData, item->portId,
+                                          [this, &item](auto& successor){
+            return setNodeData(successor.node, successor.port, item->data);
+        });
         break;
     }
     case PortType::NoType:
@@ -602,7 +535,7 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
     auto item = Impl::findPortData(*this, nodeUuid, type, portIdx, setNodeDataError);
     if (!item) return false;
 
-    return setNodeData(nodeUuid, item.portEntry->id, std::move(data));
+    return setNodeData(nodeUuid, item.portEntry->portId, std::move(data));
 }
 
 bool
@@ -677,11 +610,7 @@ GraphExecutionModel::onNodeEvaluated(QString const& nodeUuid)
     INTELLI_LOG_SCOPE(*this)
         << tr("(ASYNC) node '%1' (%2) evaluated!")
                .arg(relativeNodePath(*item.node))
-               .arg(item->nodeId);
-
-    emit nodeEvalStateChanged(nodeUuid, QPrivateSignal());
-
-//    Impl::removeFromPendingNodes(*this, nodeUuid);
+               .arg(item.node->id());
 
     if (item.requiresReevaluation())
     {
@@ -695,7 +624,7 @@ GraphExecutionModel::onNodeEvaluated(QString const& nodeUuid)
             INTELLI_LOG(*this)
                 << tr("failed to reevaluate node '%1' (%2)!")
                        .arg(relativeNodePath(*item.node))
-                       .arg(item->nodeId);
+                       .arg(item.node->id());
 
             emit nodeEvaluationFailed(nodeUuid, QPrivateSignal());
 
@@ -706,17 +635,24 @@ GraphExecutionModel::onNodeEvaluated(QString const& nodeUuid)
 
     Impl::removeFromTargetNodes(*this, nodeUuid, NodeEvaluationType::SingleShot);
 
+    item->state = NodeEvalState::Valid;
+    emit nodeEvalStateChanged(nodeUuid, QPrivateSignal());
+
     emit nodeEvaluated(nodeUuid, QPrivateSignal());
     emit item.node->evaluated();
 
-//    Impl::reschedulePendingNodes(*this);
-    Impl::rescheduleTargetNodes(*this);
-    Impl::evaluateNextInQueue(*this);
+    if (!isBeingModified())
+    {
+        Impl::rescheduleTargetNodes(*this);
+        Impl::evaluateNextInQueue(*this);
+    }
 }
 
 void
 GraphExecutionModel::onNodeAppended(Node* node)
 {
+    assert(node);
+
     auto const appendPorts = [](auto& target, auto const& ports){
         target.reserve(ports.size());
 
@@ -727,14 +663,8 @@ GraphExecutionModel::onNodeAppended(Node* node)
         }
     };
 
-    assert(node);
-
-    NodeType type = NodeType::Normal;
-
     if (auto* g = qobject_cast<Graph*>(node))
     {
-        type = NodeType::Group;
-
         setupConnections(*g);
 
         auto const& nodes = g->nodes();
@@ -743,8 +673,7 @@ GraphExecutionModel::onNodeAppended(Node* node)
             onNodeAppended(n);
         }
     }
-    else if (qobject_cast<GroupInputProvider*>(node))  type = NodeType::GroupInput;
-    else if (qobject_cast<GroupOutputProvider*>(node)) type = NodeType::GroupOutput;
+
 
     NodeId nodeId = node->id();
     assert(nodeId != invalid<NodeId>());
@@ -759,10 +688,9 @@ GraphExecutionModel::onNodeAppended(Node* node)
         return;
     }
 
-    DataItem entry{nodeId};
+    DataItem entry{};
     appendPorts(entry.portsIn, node->ports(PortType::In));
     appendPorts(entry.portsOut, node->ports(PortType::Out));
-    entry.nodeType = type;
 
     INTELLI_LOG(*this)
         << tr("Node %1 (%2:%3) appended!")
@@ -776,7 +704,10 @@ GraphExecutionModel::onNodeAppended(Node* node)
 
     connect(node, &Node::triggerNodeEvaluation, this, [this, nodeUuid](){
         invalidateNodeOutputs(nodeUuid);
-        Impl::rescheduleTargetNodes(*this);
+        if (!isBeingModified())
+        {
+            Impl::rescheduleTargetNodes(*this);
+        }
     }, Qt::DirectConnection);
 
     exec::setNodeDataInterface(*node, *this);
@@ -799,13 +730,12 @@ GraphExecutionModel::onNodeDeleted(Graph* graph, NodeId nodeId)
     INTELLI_LOG(*this)
         << tr("Node deleted - updated execution model! ('%1' (%2))")
                .arg(relativeNodePath(*item.node))
-               .arg(item->nodeId);
+               .arg(nodeId);
 
     m_data.erase(item.entry);
 
     Impl::removeFromTargetNodes(*this, item.node->uuid());
     Impl::removeFromQueuedNodes(*this, item.node->uuid());
-//    Impl::removeFromPendingNodes(*this, item.node->uuid());
 }
 
 void
@@ -828,7 +758,7 @@ GraphExecutionModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex 
     INTELLI_LOG(*this)
         << tr("Port inserted: updated execution model! ('%1' (%2), port %4)")
                .arg(relativeNodePath(*item.node))
-               .arg(item->nodeId)
+               .arg(item.node->id())
                .arg(portId);
 
     item.entry->ports(type).push_back({portId});
@@ -852,7 +782,7 @@ GraphExecutionModel::onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, Po
         << tr("Port deleted: updated execution model! ('%1' (%2), port %4)")
                .arg(relativeNodePath(*item.node))
                .arg(item.node->id())
-               .arg(item.portEntry->id);
+               .arg(item.portEntry->portId);
 
     item.entry->ports(type).erase(item.portEntry);
 }
@@ -947,20 +877,9 @@ intelli::debug(GraphExecutionModel const& model)
         if (!node) continue;
 
         text += QString{"  "}.repeated(indent + 1) +
-                QStringLiteral("STATE: ");
-
-        switch (entry.state)
-        {
-        case DataState::RequiresReevaluation:
-            text += QStringLiteral("RequiresReevaluation\n");
-            break;
-        case DataState::Evaluated:
-            text += QStringLiteral("Evaluated\n");
-            break;
-        case DataState::FailedEvaluation:
-            text += QStringLiteral("FailedEvaluation\n");
-            break;
-        }
+                QStringLiteral("STATE: ") +
+                toString(entry.state) +
+                QStringLiteral("\n");
 
         for (auto* ports : {&entry.portsIn, &entry.portsOut})
         {
@@ -969,9 +888,9 @@ intelli::debug(GraphExecutionModel const& model)
                 text +=
                     QString{"  "}.repeated(indent + 1) +
                     QStringLiteral("Port: %1 (%3) - %2 - %4\n")
-                        .arg(port.id)
+                        .arg(port.portId)
                         .arg(toString(port.data.ptr),
-                             toString(node->portType(port.id)),
+                             toString(node->portType(port.portId)),
                              toString(port.data.state));
             }
         }

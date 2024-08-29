@@ -25,19 +25,6 @@ public:
 protected:
 
     void eval();
-
-#if 0
-    bool handleNodeEvaluation(NodeDataInterface& model) override;
-
-private slots:
-
-    void onDdependenciesEvaluated();
-
-signals:
-
-    void dependenciesEvaluated();
-#endif
-
 };
 
 } // namespace intelli

@@ -397,7 +397,10 @@ Node::portId(PortType type, PortIndex idx) const noexcept(false)
 
     if (idx >= ports.size()) return PortId{};
 
-    return ports.at(idx).m_id;
+    auto& port = ports.at(idx);
+    if (!port.visible) gtWarning() << "Hidden port!" << port << type << idx;
+
+    return port.m_id;
 }
 
 bool
@@ -423,6 +426,7 @@ Node::handleNodeEvaluation(NodeDataInterface& model)
     case NodeEvalMode::ExclusiveDetached:
     case NodeEvalMode::Detached:
         return exec::detachedEvaluation(*this, model);
+    case NodeEvalMode::ForwardInputsToOutputs:
     case NodeEvalMode::ExclusiveBlocking:
     case NodeEvalMode::Blocking:
         return exec::blockingEvaluation(*this, model);

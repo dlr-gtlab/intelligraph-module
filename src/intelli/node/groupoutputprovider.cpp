@@ -18,37 +18,16 @@ GroupOutputProvider::GroupOutputProvider() :
     setPos({250, 0});
 }
 
-#if 0
-bool
-GroupOutputProvider::handleNodeEvaluation(GraphExecutionModel& model)
+void
+GroupOutputProvider::eval()
 {
-    Graph* graph = qobject_cast<Graph*>(parentObject());
-    if (!graph) return false;
+    auto const& inPorts  = ports(PortType::In);
+    auto const& outPorts = ports(PortType::Out);
 
-    emit computingStarted();
-    auto finally = gt::finally([graph, this](){
-        emit computingFinished();
-        emit graph->computingFinished();
-    });
+    assert(inPorts.size() == outPorts.size());
 
-    NodeId graphId = graph->id();
-
-    GraphExecutionModel* parentModel = NodeExecutor::accessExecModel(*graph);
-    if (!parentModel)
+    for (auto& port : inPorts)
     {
-        gtWarning() << tr("Failed to set output data of graph node %1! "
-                          "(execution model of graph node not found)")
-                           .arg(graphId);
-        return false;
+        setNodeData(virtualPortId(port.id()), nodeData(port.id()));
     }
-
-    if (!parentModel->setNodeData(
-            graphId, PortType::Out, model.nodeData(id(), PortType::In)))
-    {
-        gtWarning() << tr("Failed to set output data of graph node %1!")
-                           .arg(graphId);
-        return false;
-    }
-    return true;
 }
-#endif

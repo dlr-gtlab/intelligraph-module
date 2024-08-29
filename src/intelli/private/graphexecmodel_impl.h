@@ -4,6 +4,7 @@
 #include <intelli/graphexecmodel.h>
 #include <intelli/graph.h>
 #include <intelli/node.h>
+#include <intelli/future.h>
 #include <intelli/dynamicnode.h>
 #include <intelli/nodeexecutor.h>
 
@@ -99,37 +100,30 @@ struct GraphExecutionModel::Impl
     static inline void
     findStartAndEndNodes(Graph const& graph, PortType type, List& targetNodes)
     {
-        auto const& nodes = graph.nodes();
-        for (auto const* node : nodes)
+        auto& conModel = graph.globalConnectionModel();
+        for (auto& entry : conModel)
         {
-            if (graph.findConnections(node->id(), type).empty())
+            if (entry.ports(type).empty())
             {
-                targetNodes.push_back(node->uuid());
+                targetNodes.push_back(entry.node->uuid());
             }
-        }
-
-        for (auto* subgraph : graph.graphNodes())
-        {
-            findStartAndEndNodes(*subgraph, type, targetNodes);
         }
     }
 
     /// Finds all start/root nodes of the graph.
-    static inline auto
-    findRootNodes(Graph const& graph)
+    template<typename List>
+    static inline void
+    findRootNodes(Graph const& graph, List& targetNodes)
     {
-        QVarLengthArray<NodeUuid, PRE_ALLOC> targets;
-        findStartAndEndNodes(graph, PortType::In, targets);
-        return targets;
+        findStartAndEndNodes(graph, PortType::In, targetNodes);
     }
 
     /// Finds all end/leaf nodes of the graph.
-    static inline auto
-    findLeafNodes(Graph const& graph)
+    template<typename List>
+    static inline void
+    findLeafNodes(Graph const& graph, List& targetNodes)
     {
-        QVarLengthArray<NodeUuid, PRE_ALLOC> targets;
-        findStartAndEndNodes(graph, PortType::Out, targets);
-        return targets;
+        findStartAndEndNodes(graph, PortType::Out, targetNodes);
     }
 
     /// Returns the port type for the given entry and port vector
@@ -162,16 +156,6 @@ struct GraphExecutionModel::Impl
                          nodeUuid);
     }
 
-    /*
-    template<typename ExecModel>
-    static inline auto
-    findPendingNode(ExecModel& model, NodeUuid const& nodeUuid)
-    {
-        return std::find(model.m_pendingNodes.begin(),
-                         model.m_pendingNodes.end(),
-                         nodeUuid);
-    }
-*/
     static inline bool
     removeFromTargetNodes(GraphExecutionModel& model,
                           NodeUuid const& nodeUuid)
@@ -184,19 +168,6 @@ struct GraphExecutionModel::Impl
         }
         return false;
     }
-/*
-    static inline bool
-    removeFromPendingNodes(GraphExecutionModel& model, NodeUuid const& nodeUuid)
-    {
-        auto iter = findPendingNode(model, nodeUuid);
-        if (iter != model.m_pendingNodes.end())
-        {
-            model.m_pendingNodes.erase(iter);
-            return true;
-        }
-        return false;
-    }
-*/
 
     static inline bool
     removeFromQueuedNodes(GraphExecutionModel& model, NodeUuid const& nodeUuid)
@@ -347,6 +318,7 @@ struct GraphExecutionModel::Impl
                            .arg(portId);
             return {};
         }
+        assert(type != PortType::NoType);
 
         return { item, portEntry, type };
     }
@@ -436,67 +408,34 @@ struct GraphExecutionModel::Impl
     template<bool IsConst>
     struct DataItemHelper
     {
-        const_t<IsConst, GraphExecutionModel>* model = {};
+        const_t<IsConst, GraphExecutionModel>* execModel = {};
         get_iterator_t<IsConst, GraphDataModel> entry = {};
         const_t<IsConst, Node>* node = {};
 
-        operator bool() const { return model; }
+        operator bool() const { return execModel; }
 
         bool requiresReevaluation() const
         {
-            return entry->state == DataState::RequiresReevaluation ||
-                   entry->state == DataState::FailedEvaluation;
+            return entry->state == NodeEvalState::Outdated ||
+                   entry->state == NodeEvalState::Invalid;
         }
 
-        bool inputsValid(bool recurisve = true) const
+        bool inputsValid() const
         {
-            auto graph = qobject_cast<Graph const*>(node->parent());
-            assert(graph);
-
-            if (recurisve)
-            switch (entry->nodeType)
-            {
-            case NodeType::GroupInput:
-            // check inputs of parent graph
-            {
-                auto* graph = qobject_cast<const_t<IsConst, Graph>*>(node->parent());
-                if (!graph) return false;
-
-                auto item = findData(*model, graph->uuid());
-                if (!item) return false;
-
-                return item.inputsValid(false);
-            }
-            case NodeType::Group:
-                // check outputs of subgraph
-            {
-                auto* graph = qobject_cast<const_t<IsConst, Graph>*>(node);
-                if (!graph) return false;
-
-                auto* output = graph->outputNode();
-                if (!output) return false;
-
-                auto item = findData(*model, output->uuid());
-                if (!item || !item.inputsValid() || !item.isEvaluated()) return false;
-
-                break;
-            }
-            case NodeType::GroupOutput:
-            case NodeType::Normal:
-                break;
-            }
+            auto& conModel = execModel->graph().globalConnectionModel();
+            auto* conData = connection_model::find(conModel, node->uuid());
 
             bool valid =
                 std::all_of(entry->portsIn.begin(), entry->portsIn.end(),
-                            [graph, this](PortDataItem const& entry){
-                auto const& cons = graph->findConnections(node->id(), entry.id);
-                auto* port = node->port(entry.id);
+                        [conData, this](PortDataItem const& entry){
 
-                bool hasConnections = !cons.empty();
+                bool isConnected = connection_model::hasPredecessors(conData, entry.portId);
                 bool isPortDataValid = entry.data.state == PortDataState::Valid;
-                bool hasPortRequiredData = port && (port->optional || entry.data.ptr);
 
-                return (!hasConnections || isPortDataValid) && hasPortRequiredData;
+                auto* port = node->port(entry.portId);
+                bool hasRequiredData = port && (port->optional || entry.data.ptr);
+
+                return (!isConnected || isPortDataValid) && hasRequiredData;
             });
 
             return valid;
@@ -510,8 +449,8 @@ struct GraphExecutionModel::Impl
         bool isEvaluated() const
         {
             return !isEvaluating() &&
-                   (entry->state == DataState::Evaluated ||
-                    entry->state == DataState::FailedEvaluation);
+                   (entry->state == NodeEvalState::Valid ||
+                    entry->state == NodeEvalState::Invalid);
         }
 
         bool isReadyForEvaluation() const
@@ -561,48 +500,50 @@ struct GraphExecutionModel::Impl
 
         item->data.state = PortDataState::Outdated;
 
-        switch (item.entry->nodeType)
+        if (item.node->nodeEvalMode() != NodeEvalMode::ForwardInputsToOutputs)
         {
-        case NodeType::Group:
-        {
-            auto* graph = qobject_cast<Graph*>(item.node);
-            if (!graph) return false;
-            auto* input = graph->inputNode();
-            if (!input) return false;
-
-            PortId inputPortId = input->portId(PortType::Out, graph->portIndex(PortType::In, portId));
-            Impl::invalidateNodeHelper(model, input->uuid(), inputPortId);
-
-            break;
+            return Impl::invalidateNodeHelper(model, nodeUuid, item);
         }
-        case NodeType::GroupInput:
+
+        // node is forwarding data from input to respective output
+        item.entry->state = NodeEvalState::Outdated;
+        emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
+
+        PortType type = item.node->portType(portId);
+        assert(type != PortType::NoType);
+
+        bool success = false;
+
+        switch (type)
         {
-            item.entry->state = DataState::RequiresReevaluation;
-
-            removeFromQueuedNodes(model, nodeUuid);
-
-            emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
-
-            auto* graph = qobject_cast<Graph*>(item.node->parent());
-            if (!graph) return false;
-
-            bool success = true;
-            auto const& connections = graph->findConnections(item.node->id(), portId);
-            for (ConnectionId conId : connections)
+        // invalidate respective output port
+        case PortType::In:
+        {
+            // TODO: check if correct
+            PortIndex idx = item.node->portIndex(PortType::In, item->portId);
+            if (idx < 0 || (size_t)item.entry->portsOut.size() <= idx)
             {
-                Node const* inNode = graph->findNode(conId.inNodeId);
-                if (!inNode) { success = false; continue; }
-                success &= Impl::invalidateNodeHelper(model, inNode->uuid(), conId.inPort);
+                break;
             }
-
-            return success;
-        }
-        case NodeType::GroupOutput:
-        case NodeType::Normal:
+            success = invalidateNodeHelper(model, nodeUuid, item.node->portId(PortType::Out, idx));
             break;
         }
-
-        return Impl::invalidateNodeHelper(model, nodeUuid, item);
+        // invalidate all outgoing connections of this port only
+        case PortType::Out:
+        {
+            auto& conModel = model.graph().globalConnectionModel();
+            auto* conData  = connection_model::find(conModel, nodeUuid);
+            success = connection_model::visitSuccessors(conData, portId,
+                                                     [&model](auto& con){
+                Impl::invalidateNodeHelper(model, con.node, con.port);
+                return true;
+            });
+            break;
+        }
+        case PortType::NoType:
+            break;
+        }
+        return success;
     }
 
     static inline bool
@@ -610,12 +551,12 @@ struct GraphExecutionModel::Impl
                          NodeUuid const& nodeUuid,
                          MutableDataItemHelper item)
     {
-        item->state = DataState::RequiresReevaluation;
-
         INTELLI_LOG_SCOPE(model)
             << tr("invalidating node '%1' (%2)...")
                    .arg(relativeNodePath(*item.node))
                    .arg(item.node->id());
+
+        item->state = NodeEvalState::Outdated;
 
         auto finally = gt::finally([&model, &nodeUuid](){
             emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
@@ -623,38 +564,20 @@ struct GraphExecutionModel::Impl
 
         removeFromQueuedNodes(model, nodeUuid);
 
-        auto* node = model.graph().findNodeByUuid(nodeUuid);
-        if (!node) return false;
-        auto* graph = qobject_cast<Graph*>(node->parent());
-        if (!graph) return false;
-
         bool success = true;
-
-        switch (item->nodeType)
-        {
-        case NodeType::GroupOutput:
-            success &= model.invalidateNode(graph->uuid());
-            break;
-        case NodeType::Group:
-        case NodeType::GroupInput:
-        case NodeType::Normal:
-            break;
-        }
-
         for (auto& port : item->portsOut)
         {
             if (port.data.state != PortDataState::Valid) continue;
 
             port.data.state = PortDataState::Outdated;
 
-            // item connected nodes and invalidate them aswell
-            auto const& connections = graph->findConnections(node->id(), port.id);
-            for (ConnectionId conId : connections)
-            {
-                Node const* inNode = graph->findNode(conId.inNodeId);
-                if (!inNode) { success = false; continue; }
-                success &= Impl::invalidateNodeHelper(model, inNode->uuid(), conId.inPort);
-            }
+            // find and invalidate connected nodes
+            auto* conData = connection_model::find(model.graph().globalConnectionModel(), nodeUuid);
+            success &= connection_model::visitSuccessors(conData, port.portId,
+                                                         [&model](auto& con){
+                Impl::invalidateNodeHelper(model, con.node, con.port);
+                return true;
+            });
         }
 
         return success;
@@ -669,7 +592,8 @@ struct GraphExecutionModel::Impl
 
         FutureEvaluated future{model};
 
-        auto const& targetNodes = Impl::findLeafNodes(graph);
+        QVarLengthArray<NodeUuid, PRE_ALLOC> targetNodes;
+        Impl::findLeafNodes(graph, targetNodes);
 
         for (auto const& target : targetNodes)
         {
@@ -702,45 +626,32 @@ struct GraphExecutionModel::Impl
     static inline void
     rescheduleTargetNodes(GraphExecutionModel& model)
     {
+        if (model.m_targetNodes.empty()) return;
+
         INTELLI_LOG_SCOPE(model)
             << tr("rescheduling target nodes...");
 
         foreach (TargetNode const& target, model.m_targetNodes)
         {
+            // only reschedule if target node is not running already
+            switch (model.nodeEvalState(target.nodeUuid))
+            {
+            case NodeEvalState::Valid:
+            case NodeEvalState::Evaluating:
+                continue;
+            default:
+                break;
+            }
+
             auto state = scheduleTargetNode(model, target.nodeUuid, target.evalType);
             if (state == NodeEvalState::Invalid)
             {
                 emit model.nodeEvaluationFailed(target.nodeUuid, QPrivateSignal());
-
                 emit model.graphStalled(QPrivateSignal());
             }
         }
     }
-/*
-    static inline void
-    reschedulePendingNodes(GraphExecutionModel& model)
-    {
-        INTELLI_LOG_SCOPE(model)
-            << tr("rescheduling pending nodes...");
 
-        foreach (NodeUuid const& target, model.m_pendingNodes)
-        {
-            bool removed = removeFromPendingNodes(model, target);
-            assert(removed);
-
-            auto item = findData(model, target);
-            assert(item);
-
-            auto state = scheduleNode(model, target, item);
-            if (state == NodeEvalState::Invalid)
-            {
-                emit model.nodeEvaluationFailed(target, QPrivateSignal());
-
-                emit model.graphStalled(QPrivateSignal());
-            }
-        }
-    }
-*/
     static inline NodeEvalState
     scheduleTargetNode(GraphExecutionModel& model,
                        NodeUuid const& nodeUuid,
@@ -772,7 +683,7 @@ struct GraphExecutionModel::Impl
             model.m_targetNodes.push_back({ nodeUuid, evalType });
         }
 
-        auto state = scheduleNode(model, nodeUuid, item);
+        auto state = queueNode(model, nodeUuid, item);
         switch (state)
         {
         case NodeEvalState::Invalid:
@@ -791,134 +702,32 @@ struct GraphExecutionModel::Impl
     }
 
     static inline NodeEvalState
-    scheduleNode(GraphExecutionModel& model,
-                 NodeUuid const& nodeUuid,
-                 MutableDataItemHelper item)
-    {
-        assert(item);
-
-/*
-        INTELLI_LOG_SCOPE(model)
-            << tr("scheduling node %1 (%2:%3)...")
-                   .arg(nodeUuid)
-                   .arg(item->nodeId, 2)
-                   .arg(item.node->caption());
-
-        // pending node
-        auto iter = findPendingNode(model, nodeUuid);
-        if (iter != model.m_pendingNodes.end())
-        {
-            INTELLI_LOG(model)
-                << tr("node is already scheduled!");
-            return NodeEvalState::Evaluating;
-        }
-
-        model.m_pendingNodes.push_back(nodeUuid);
-*/
-        auto state = queueNode(model, nodeUuid, item);
-/*
-        switch (state)
-        {
-        case NodeEvalState::Paused:
-        case NodeEvalState::Evaluating:
-        case NodeEvalState::Valid:
-        case NodeEvalState::Invalid:
-            removeFromPendingNodes(model, nodeUuid);
-            break;
-        case NodeEvalState::Outdated:
-            break;
-        }
-*/
-        return state;
-    }
-
-    static inline NodeEvalState
     scheduleDependencies(GraphExecutionModel& model,
                          NodeUuid const& nodeUuid,
                          MutableDataItemHelper item)
     {
         assert(item && !item.isReadyForEvaluation());
 
-        auto* graph = qobject_cast<Graph*>(item.node->parent());
-        if (!graph)
-        {
-            gtError() << evaluteNodeError(model.graph())
-                      << tr("failed to access parent graph of node '%1' (%2)!")
-                             .arg(relativeNodePath(*item.node))
-                             .arg(item.node->id());
-            return NodeEvalState::Invalid;
-        }
-
         INTELLI_LOG_SCOPE(model)
             << tr("node '%1' (%2) is not ready for evaluation, checking dependencies...")
                    .arg(relativeNodePath(*item.node))
                    .arg(item.node->id());
 
-        QVarLengthArray<NodeUuid, PRE_ALLOC> dependencyUuids;
+        auto& conModel = model.graph().globalConnectionModel();
 
-        auto const appendUuids = [&dependencyUuids](Graph const& graph,
-                                                    auto const& dependencyIds){
-            std::transform(dependencyIds.begin(), dependencyIds.end(),
-                           std::back_inserter(dependencyUuids),
-                           [&graph](NodeId nodeId){
-                Node const* node = graph.findNode(nodeId);
-                assert(node);
-                return node->uuid();
-            });
-        };
-
-        appendUuids(*graph, graph->findConnectedNodes(item->nodeId, PortType::In));
-
-        // find special dependencies...
-        switch (item->nodeType)
+        auto conData = connection_model::find(conModel, nodeUuid);
+        if (!conData)
         {
-        case NodeType::GroupInput:
-        // find inputs of parent graph
-        {
-            auto* parentGraph = qobject_cast<Graph*>(graph->parent());
-            if (!parentGraph)
-            {
-                gtError() << evaluteNodeError(model.graph())
-                          << tr("failed to access root graph of node '%1' (%2)!")
-                                 .arg(relativeNodePath(*item.node))
-                                 .arg(item.node->id());
-                return NodeEvalState::Invalid;
-            }
-            appendUuids(*parentGraph, parentGraph->findConnectedNodes(graph->id(), PortType::In));
-            break;
-        }
-        case NodeType::Group:
-        // find outputs of subgraph
-        {
-            graph = qobject_cast<Graph*>(item.node);
-            if (!graph)
-            {
-                gtError() << evaluteNodeError(model.graph())
-                          << tr("failed to access graph '%1' (%2)!")
-                                 .arg(relativeNodePath(*item.node))
-                                 .arg(item.node->id());
-                return NodeEvalState::Invalid;
-            }
-            auto* output = graph->outputNode();
-            if (!output)
-            {
-                gtError() << evaluteNodeError(model.graph())
-                          << tr("failed to access output node of graph '%1' (%2)!")
-                                 .arg(relativeNodePath(*item.node))
-                                 .arg(item.node->id());
-                return NodeEvalState::Invalid;
-            }
-            appendUuids(*graph, std::array<NodeId, 1>{output->id()});
-            break;
-        }
-        case NodeType::GroupOutput:
-        case NodeType::Normal:
-            break;
+            gtError() << evaluteNodeError(model.graph())
+                      << tr("node '%1' (%2) not found in connection model!")
+                             .arg(relativeNodePath(*item.node))
+                             .arg(item.node->id());
+            return NodeEvalState::Invalid;
         }
 
-        if (dependencyUuids.empty())
+        if (conData->predecessors.empty())
         {
-            gtError() << evaluteNodeError(*graph)
+            gtError() << evaluteNodeError(model.graph())
                       << tr("node '%1' (%2) is not ready and has no dependencies!")
                              .arg(relativeNodePath(*item.node))
                              .arg(item.node->id());
@@ -926,27 +735,26 @@ struct GraphExecutionModel::Impl
         }
 
         int validNodes = 0;
-        for (NodeUuid const& dependencyUuid : dependencyUuids)
+        for (auto& predecessor : conData->predecessors)
         {
-            assert (!dependencyUuid.isEmpty());
-
-            auto dependency = findData(model, dependencyUuid);
+            auto dependency = findData(model, predecessor.node);
             if (!dependency)
             {
-                gtError() << evaluteNodeError(*graph)
+                gtError() << evaluteNodeError(model.graph())
                           << tr("node dependency %1 not found!")
-                                 .arg(dependencyUuid);
+                                 .arg(predecessor.node);
                 return NodeEvalState::Invalid;
             }
 
-            if (model.nodeEvalState(dependencyUuid) == NodeEvalState::Valid)
+            if (model.nodeEvalState(predecessor.node) == NodeEvalState::Valid)
             {
                 validNodes++;
             }
 
-            auto state = scheduleNode(model, dependencyUuid, dependency);
+            auto state = queueNode(model, predecessor.node, dependency);
             if (state == NodeEvalState::Invalid)
             {
+                // TODO
                 gtDebug() << "DEPENDENCY" << dependency.node << "FAILED, from" << item.node;
                 return NodeEvalState::Invalid;
             }
@@ -954,8 +762,9 @@ struct GraphExecutionModel::Impl
 
         // all nodes are valid yet the target node is not ready
         // -> something went wrong
-        if (validNodes == dependencyUuids.size())
+        if (validNodes == conData->predecessors.size())
         {
+            // TODO
             gtDebug() << "DEPENDENCIES ARE READY, NOT TARGET" << item.node;
             return NodeEvalState::Invalid;
         }
@@ -1058,8 +867,8 @@ struct GraphExecutionModel::Impl
         }
 
         bool isExclusive =
-            item.node->nodeEvalMode() == NodeEvalMode::ExclusiveBlocking ||
-            item.node->nodeEvalMode() == NodeEvalMode::ExclusiveDetached;
+            (item.node->nodeEvalMode() == NodeEvalMode::ExclusiveBlocking ||
+             item.node->nodeEvalMode() == NodeEvalMode::ExclusiveDetached);
 
         if (isExclusive)
         {
@@ -1069,6 +878,7 @@ struct GraphExecutionModel::Impl
         }
 
         bool isBlocking =
+            item.node->nodeEvalMode() == NodeEvalMode::ForwardInputsToOutputs ||
             item.node->nodeEvalMode() == NodeEvalMode::ExclusiveBlocking ||
             item.node->nodeEvalMode() == NodeEvalMode::Blocking;
 
@@ -1087,13 +897,13 @@ struct GraphExecutionModel::Impl
                          &model, &GraphExecutionModel::onNodeEvaluatedHelper,
                          Qt::DirectConnection);
 
-        // mark node as evaluated
-        item->state = DataState::Evaluated;
-
         assert(model.m_queuedNodes.size() > idx);
         assert(model.m_queuedNodes.at(idx) == item.node->uuid());
         model.m_queuedNodes.remove(idx);
 
+        item->state = NodeEvalState::Evaluating;
+
+        // trigger node evaluation
         if (!exec::triggerNodeEvaluation(*item.node, model))
         {
             gtError() << evaluteNodeError(model.graph())
@@ -1101,16 +911,30 @@ struct GraphExecutionModel::Impl
 
             disconnect();
 
-            item->state = DataState::FailedEvaluation;
-
+            item->state = NodeEvalState::Invalid;
             emit model.nodeEvalStateChanged(item.node->uuid(), QPrivateSignal());
+
+            auto& conModel = model.graph().globalConnectionModel();
+            auto* conData = connection_model::find(conModel, item.node->uuid());
+            assert(conData);
+            for (auto& successor : conData->successors)
+            {
+                auto item = findData(model, successor.node);
+                item->state = NodeEvalState::Invalid;
+                emit model.nodeEvalStateChanged(successor.node, QPrivateSignal());
+            }
 
             return NodeEvalState::Invalid;
         }
 
-        emit model.nodeEvalStateChanged(item.node->uuid(), QPrivateSignal());
+        if (isBlocking)
+        {
+            item->state = NodeEvalState::Valid;
+            emit model.nodeEvalStateChanged(item.node->uuid(), QPrivateSignal());
+            return NodeEvalState::Valid;
+        }
 
-        return (isBlocking) ? NodeEvalState::Valid : NodeEvalState::Evaluating;
+        return NodeEvalState::Evaluating;
     }
 
     static inline bool
@@ -1145,7 +969,7 @@ struct GraphExecutionModel::Impl
                 scheduledNode = true;
                 break;
             case NodeEvalState::Outdated:
-                scheduleNode(model, nextNodeUuid, item);
+                queueNode(model, nextNodeUuid, item);
                 break;
             case NodeEvalState::Valid:
             case NodeEvalState::Invalid:

@@ -164,7 +164,7 @@ TEST(GraphExecutionModel, linear_graph__evaluate_last_node_and_dependencies)
     debug(model);
 }
 
-TEST(GraphExecutionModel, lineaer_graph__auto_evaluate_graph)
+TEST(GraphExecutionModel, linear_graph__auto_evaluate_graph)
 {
     constexpr double EXPECTED_VALUE = 84.0;
 
@@ -230,9 +230,9 @@ TEST(GraphExecutionModel, lineaer_graph__auto_evaluate_graph)
     }
 }
 
-/// A basic graph which contains a group node (subgraph). This group node
-/// is however setup in such a way, that the ports of the input provider are
-/// directly connected to the output ports of the output provider. Thus any
+/// A basic graph which contains a group node (subgraph) is tested. However,
+/// this group node is setup in such a way, that the ports of the input provider
+/// are directly connected to the output ports of the output provider. Thus any
 /// input data of the group node should be forwarded to the output.
 TEST(GraphExecutionModel, graph_with_forwarding_group__evaluate_group_node)
 {
@@ -254,6 +254,8 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__evaluate_group_node)
     debug(graph);
     debug(model);
 
+    ASSERT_FALSE(A_uuid.isEmpty());
+
     // all nodes should be outdated
     EXPECT_TRUE(test::compareNodeEvalState(
         graph, model,
@@ -266,14 +268,19 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__evaluate_group_node)
         {A_uuid, B_uuid, group_uuid, D_uuid, E_uuid, group_input_uuid, group_output_uuid},
         PortDataState::Outdated, {nullptr}));
 
+    for (auto& x : graph.globalConnectionModel().find(B_uuid)->successors)
+    {
+        gtDebug() << "SUCCESSOR" << x.node << x.port;
+    }
+
     gtTrace() << "Evaluate...";
     EXPECT_TRUE(model.evaluateNode(group_uuid).wait(maxTimeout));
 
     debug(model);
 
     gtTrace() << "Validate results...";
-    PortId group_input1 = group->portId(PortType::In, PortIndex(0));
-    PortId group_input2 = group->portId(PortType::In, PortIndex(1));
+    PortId group_input1  = group->portId(PortType::In, PortIndex(0));
+    PortId group_input2  = group->portId(PortType::In, PortIndex(1));
     PortId group_output1 = group->portId(PortType::Out, PortIndex(0));
     PortId group_output2 = group->portId(PortType::Out, PortIndex(1));
 
@@ -291,13 +298,13 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__evaluate_group_node)
     EXPECT_TRUE(test::comparePortData<double>(
         graph, model, B_uuid, PortDataState::Valid, EXPECTED_VALUE_IN2));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(0)}, PortDataState::Valid, EXPECTED_VALUE_IN1));
+        graph, model, group_input_uuid, {group_input1}, PortDataState::Valid, EXPECTED_VALUE_IN1));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_input_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_IN2));
+        graph, model, group_input_uuid, {group_input2}, PortDataState::Valid, EXPECTED_VALUE_IN2));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(0)}, PortDataState::Valid, EXPECTED_VALUE_OUT1));
+        graph, model, group_output_uuid, {group_output1}, PortDataState::Valid, EXPECTED_VALUE_OUT1));
     EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, group_output_uuid, {PortId(1)}, PortDataState::Valid, EXPECTED_VALUE_OUT2));
+        graph, model, group_output_uuid, {group_output2}, PortDataState::Valid, EXPECTED_VALUE_OUT2));
 
     // node E should also have recieved the input data from B
     EXPECT_TRUE(test::comparePortData<double>(

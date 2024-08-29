@@ -32,8 +32,29 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
                        std::vector<PortInfo> const& outPorts,
                        Position pos) noexcept(false)
 {
+    return addGraph(inPorts, outPorts, {}, {}, {}, pos);
+}
+
+GraphBuilder::GraphData
+GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
+                       std::vector<PortInfo> const& outPorts,
+                       NodeUuid const& graphUuid,
+                       NodeUuid const& inNodeUuid,
+                       NodeUuid const& outNodeUuid,
+                       Position pos) noexcept(false)
+{
     auto graph = std::make_unique<Graph>();
-    graph->initInputOutputProviders();
+    if (!graphUuid.isEmpty()) graph->setUuid(graphUuid);
+
+    // custom uuids for input and utput provider
+    auto inputPtr  = std::make_unique<GroupInputProvider>();
+    auto outputPtr = std::make_unique<GroupOutputProvider>();
+    if (!inNodeUuid.isEmpty()) inputPtr->setUuid(inNodeUuid);
+    if (!outNodeUuid.isEmpty()) outputPtr->setUuid(outNodeUuid);
+    graph->appendNode(std::move(inputPtr));
+    graph->appendNode(std::move(outputPtr));
+
+    graph->initInputOutputProviders();    
     graph->setActive(true);
 
     auto* input = graph->inputProvider();
@@ -52,11 +73,11 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
     auto success = true;
     for (auto& port : inPorts)
     {
-        success &= input->insertPort(std::move(port));
+        success &= input->insertPort(std::move(port)).isValid();
     }
     for (auto& port : outPorts)
     {
-        success &= output->insertPort(std::move(port));
+        success &= output->insertPort(std::move(port)).isValid();
     }
 
     if (!success)
@@ -85,9 +106,18 @@ GraphBuilder::addNode(QString const& className, Position pos) noexcept(false)
 }
 
 Node&
-GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos)
+GraphBuilder::addNode(QString const& className, NodeUuid const& nodeUuid, Position pos) noexcept(false)
+{
+    auto node = NodeFactory::instance().makeNode(className);
+
+    return addNodeHelper(std::move(node), pos, nodeUuid);
+}
+
+Node&
+GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos, NodeUuid const& nodeUuid)
 {
     if (node && !pos.isNull()) node->setPos(pos);
+    if (node && !nodeUuid.isEmpty()) node->setUuid(nodeUuid);
 
     auto* ptr = m_graph->appendNode(std::move(node));
 

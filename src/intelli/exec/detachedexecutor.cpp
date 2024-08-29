@@ -34,7 +34,7 @@ class DummyDataModel : public NodeDataInterface
 public:
 
     DummyDataModel(Node& node) :
-        m_node(&node), m_data(node.id())
+        m_node(&node)
     {
         auto const& inPorts  = node.ports(PortType::In);
         auto const& outPorts = node.ports(PortType::Out);
@@ -65,7 +65,7 @@ public:
 
         for (auto& port : *ports)
         {
-            data.push_back({port.id, port.data});
+            data.push_back({port.portId, port.data});
         }
         return data;
     }
@@ -85,7 +85,7 @@ public:
         {
             for (auto const& p : *ports)
             {
-                if (p.id == portId) return p.data;
+                if (p.portId == portId) return p.data;
             }
         }
 
@@ -145,7 +145,7 @@ public:
         {
             for (auto& p : *ports)
             {
-                if (p.id == portId)
+                if (p.portId == portId)
                 {
                     p.data = std::move(data);
                     return true;

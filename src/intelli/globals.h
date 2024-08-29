@@ -119,6 +119,11 @@ public:
     constexpr inline StrongType&
     operator/=(StrongType const& o) noexcept { m_value /= o.m_value; return *this; }
 
+    constexpr inline StrongType
+    operator+(StrongType const& o) noexcept { return StrongType{m_value + o.m_value}; }
+    constexpr inline StrongType
+    operator-(StrongType const& o) noexcept { return StrongType{m_value - o.m_value}; }
+
     // pre increment
     constexpr inline StrongType&
     operator++() noexcept { ++m_value; return *this; }
@@ -411,6 +416,16 @@ template <typename T, typename Tag, T InitVal>
 constexpr inline bool
 operator/=(StrongType<T, Tag, InitVal> const& a,
            StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator+(StrongType<T, Tag, InitVal> const& a,
+          StrongType<T, Tag, InitVal> const& b) noexcept{ return a.operator+(b); }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator-(StrongType<T, Tag, InitVal> const& a,
+          StrongType<T, Tag, InitVal> const& b) noexcept { return a.operator-(b); }
 
 template <typename T, typename Tag, T InitValue>
 constexpr inline bool StrongType<T, Tag, InitValue>::isValid() const noexcept

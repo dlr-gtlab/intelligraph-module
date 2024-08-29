@@ -17,9 +17,9 @@ endif()
 add_definitions(-DGTlabIntelliGraphTest)
 
 add_executable(IntelliGraphUnitTests
+    main.cpp
     test_helper.h
 
-    main.cpp
     test_dynamicnode.cpp
     test_globals.cpp
     test_graph.cpp

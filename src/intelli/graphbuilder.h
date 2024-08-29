@@ -66,6 +66,12 @@ public:
     GraphData addGraph(std::vector<PortInfo> const& inPorts,
                        std::vector<PortInfo> const& outPorts,
                        Position pos = {}) noexcept(false);
+    GraphData addGraph(std::vector<PortInfo> const& inPorts,
+                       std::vector<PortInfo> const& outPorts,
+                       NodeUuid const& graphUuid,
+                       NodeUuid const& inNodeUuid,
+                       NodeUuid const& outNodeUUuid,
+                       Position pos = {}) noexcept(false);
 
     /**
      * @brief Adds the node to the intelli graph beeing built. The node is not
@@ -76,6 +82,7 @@ public:
      * @return Pointer to node (never null)
      */
     Node& addNode(QString const& className, Position pos = {}) noexcept(false);
+    Node& addNode(QString const& className, NodeUuid const& nodeUuid, Position pos = {}) noexcept(false);
 
     /**
      * @brief Overloads. Deduces class name by template type.
@@ -86,7 +93,13 @@ public:
               gt::trait::enable_if_base_of<Node, Derived> = true>
     Derived& addNode(Position pos = {}) noexcept(false)
     {
-        return static_cast<Derived&>(addNode(QString{Derived::staticMetaObject.className()}, pos));
+        return addNode<Derived>(NodeUuid{}, pos);
+    }
+    template <typename Derived,
+              gt::trait::enable_if_base_of<Node, Derived> = true>
+    Derived& addNode(NodeUuid const& nodeUuid, Position pos = {}) noexcept(false)
+    {
+        return static_cast<Derived&>(addNode(QString{Derived::staticMetaObject.className()}, nodeUuid, pos));
     }
 
     /**
@@ -130,7 +143,7 @@ private:
 
     Graph* m_graph;
 
-    Node& addNodeHelper(std::unique_ptr<Node> node, Position pos = {});
+    Node& addNodeHelper(std::unique_ptr<Node> node, Position pos = {}, NodeUuid const& nodeUuid = {});
 };
 
 } // namespace intelli
