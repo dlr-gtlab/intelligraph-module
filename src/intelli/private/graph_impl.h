@@ -403,11 +403,9 @@ struct Graph::Impl
             }
 
             assert(targetNode->node &&
-                   GetNodeId<NodeId_t>{}(targetNode->node) == conId.inNodeId &&
-                   GetGraph<NodeId_t>{}(targetNode->node) == graph);
+                   GetNodeId<NodeId_t>{}(targetNode->node) == conId.inNodeId);
             assert(sourceNode->node &&
-                   GetNodeId<NodeId_t>{}(sourceNode->node) == conId.outNodeId &&
-                   GetGraph<NodeId_t>{}(sourceNode->node) == graph);
+                   GetNodeId<NodeId_t>{}(sourceNode->node) == conId.outNodeId);
 
             auto inIdx  = targetNode->predecessors.indexOf(inConnection);
             auto outIdx = sourceNode->successors.indexOf(outConnection);

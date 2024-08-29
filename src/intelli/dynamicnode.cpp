@@ -191,6 +191,7 @@ DynamicNode::insertPort(PortOption option, PortType type, PortInfo port, int idx
     int actualPortIdx = gt::clamp(idx, offset, (int)allPorts.size());
 
     PortId portId = Node::insertPort(type, port, actualPortIdx);
+    if (!portId.isValid()) return portId;
 
     int dynamicPortIdx = gt::clamp(idx, 0, (int)dynamicPorts.size());
 

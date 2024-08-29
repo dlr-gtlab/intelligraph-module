@@ -9,7 +9,6 @@
  */
 
 #include <intelli/future.h>
-#include <intelli/graphexecmodel.h>
 
 #include <intelli/private/utils.h>
 
@@ -17,10 +16,10 @@
 
 using namespace intelli;
 
-struct FutureEvaluated::Impl
+struct ExecFuture::Impl
 {
     static inline void
-    setupEventLoop(FutureEvaluated const& future, GtEventLoop& loop)
+    setupEventLoop(ExecFuture const& future, GtEventLoop& loop)
     {
         loop.connectFailed(future.m_model.data(), &GraphExecutionModel::internalError);
 
@@ -43,10 +42,10 @@ struct FutureEvaluated::Impl
     /// evaluated. Exploits GtEventLoop structure.
     struct Observer : public GtEventLoop
     {
-        FutureEvaluated future;
+        ExecFuture future;
         CallbackFunctor functor;
-
-        Observer(FutureEvaluated const& future_,
+        
+        Observer(ExecFuture const& future_,
                  CallbackFunctor functor_) :
             GtEventLoop(0), // event loop wont be executed
             future(future_),
@@ -57,22 +56,22 @@ struct FutureEvaluated::Impl
     };
 };
 
-FutureEvaluated::FutureEvaluated(GraphExecutionModel& model) :
+ExecFuture::ExecFuture(GraphExecutionModel& model) :
     m_model(&model)
 {
     assert(m_model);
 }
 
-FutureEvaluated::FutureEvaluated(GraphExecutionModel& model,
+ExecFuture::ExecFuture(GraphExecutionModel& model,
                                  NodeUuid nodeUuid,
                                  NodeEvalState evalState) :
-    FutureEvaluated(model)
+    ExecFuture(model)
 {
     append(std::move(nodeUuid), evalState);
 }
 
 bool
-FutureEvaluated::wait(milliseconds timeout) const
+ExecFuture::wait(milliseconds timeout) const
 {
     GT_INTELLI_PROFILE();
 
@@ -94,22 +93,21 @@ FutureEvaluated::wait(milliseconds timeout) const
     // Perform blocking wait
     GtEventLoop::State state = loop.exec();
 
-    // Reset all targets, so that a subsequent `wait()` has to refetch all
-    // their states
+    // Reset all targets, so that a subsequent `wait()` has to refetch all states
     resetTargets();
 
     return state == GtEventLoop::Success;
 }
 
 NodeDataSet
-FutureEvaluated::get(NodeUuid const& nodeUuid,
+ExecFuture::get(NodeUuid const& nodeUuid,
                      PortId portId,
                      milliseconds timeout) const
 {
     if (portId == invalid<PortId>()) return {};
 
     // create a local future to only wait for the one node
-    FutureEvaluated future(const_cast<GraphExecutionModel&>(*m_model));
+    ExecFuture future(const_cast<GraphExecutionModel&>(*m_model));
     future.append(nodeUuid, NodeEvalState::Outdated);
 
     if (!future.wait(timeout)) return {};
@@ -120,7 +118,7 @@ FutureEvaluated::get(NodeUuid const& nodeUuid,
 }
 
 NodeDataSet
-FutureEvaluated::get(NodeUuid const& nodeUuid,
+ExecFuture::get(NodeUuid const& nodeUuid,
                      PortType type,
                      PortIndex portIdx,
                      milliseconds timeout) const
@@ -132,8 +130,8 @@ FutureEvaluated::get(NodeUuid const& nodeUuid,
     return get(nodeUuid, node->portId(type, portIdx), timeout);
 }
 
-FutureEvaluated const&
-FutureEvaluated::then(CallbackFunctor functor) const
+ExecFuture const&
+ExecFuture::then(CallbackFunctor functor) const
 {
     auto observer = std::make_unique<Impl::Observer>(*this, std::move(functor));
 
@@ -170,14 +168,14 @@ FutureEvaluated::then(CallbackFunctor functor) const
 }
 
 bool
-FutureEvaluated::detach() const
+ExecFuture::detach() const
 {
     updateTargets();
     return areNodesEvaluated() || !haveNodesFailed();
 }
 
-FutureEvaluated&
-FutureEvaluated::join(FutureEvaluated const& other)
+ExecFuture&
+ExecFuture::join(ExecFuture const& other)
 {
     if (m_model != other.m_model)
     {
@@ -193,8 +191,8 @@ FutureEvaluated::join(FutureEvaluated const& other)
     return *this;
 }
 
-FutureEvaluated&
-FutureEvaluated::append(NodeUuid nodeUuid, NodeEvalState evalState)
+ExecFuture&
+ExecFuture::append(NodeUuid nodeUuid, NodeEvalState evalState)
 {
     switch (evalState)
     {
@@ -239,7 +237,7 @@ FutureEvaluated::append(NodeUuid nodeUuid, NodeEvalState evalState)
 }
 
 bool
-FutureEvaluated::areNodesEvaluated() const
+ExecFuture::areNodesEvaluated() const
 {
     bool allValid = std::all_of(m_targets.begin(), m_targets.end(),
                                 [](TargetNode const& target){
@@ -249,7 +247,7 @@ FutureEvaluated::areNodesEvaluated() const
 }
 
 bool
-FutureEvaluated::haveNodesFailed() const
+ExecFuture::haveNodesFailed() const
 {
     bool anyInvalid = std::any_of(m_targets.begin(), m_targets.end(),
                                   [](TargetNode const& target){
@@ -259,7 +257,7 @@ FutureEvaluated::haveNodesFailed() const
 }
 
 void
-FutureEvaluated::updateTargets() const
+ExecFuture::updateTargets() const
 {
     for (auto& target : m_targets)
     {
@@ -277,7 +275,7 @@ FutureEvaluated::updateTargets() const
 }
 
 void
-FutureEvaluated::resetTargets() const
+ExecFuture::resetTargets() const
 {
     for (auto& target : m_targets)
     {

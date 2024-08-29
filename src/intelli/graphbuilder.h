@@ -7,10 +7,11 @@
  */
 
 
-#ifndef GRAPHBUILDER_H
-#define GRAPHBUILDER_H
+#ifndef GT_INTELLI_GRAPHBUILDER_H
+#define GT_INTELLI_GRAPHBUILDER_H
 
 #include <intelli/node.h>
+#include <intelli/dynamicnode.h>
 
 #include <gt_typetraits.h>
 
@@ -52,8 +53,8 @@ public:
     struct GraphData
     {
         Graph& graph;
-        Node& inNode;
-        Node& outNode;
+        DynamicNode& inNode;
+        DynamicNode& outNode;
     };
 
     /**
@@ -148,4 +149,4 @@ private:
 
 } // namespace intelli
 
-#endif // GRAPHBUILDER_H
+#endif // GT_INTELLI_GRAPHBUILDER_H

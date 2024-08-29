@@ -79,7 +79,7 @@ static const int ns_meta_port_type = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber(0, 11, 0);
+    return GtVersionNumber(0, 12, 0);
 }
 
 QString
@@ -115,6 +115,7 @@ bool upgrade_to_0_3_1(QDomElement& root, QString const& file);
 bool upgrade_to_0_5_0(QDomElement& root, QString const& file);
 bool upgrade_to_0_8_0(QDomElement& root, QString const& file);
 bool upgrade_to_0_10_1(QDomElement& root, QString const& file);
+bool upgrade_to_0_12_0(QDomElement& root, QString const& file);
 
 QList<gt::VersionUpgradeRoutine>
 GtIntelliGraphModule::upgradeRoutines() const
@@ -145,6 +146,11 @@ GtIntelliGraphModule::upgradeRoutines() const
     to_0_10_1.target = GtVersionNumber{0, 10, 1};
     to_0_10_1.f = upgrade_to_0_10_1;
     routines << to_0_10_1;
+
+    gt::VersionUpgradeRoutine to_0_12_0;
+    to_0_10_1.target = GtVersionNumber{0, 12, 0};
+    to_0_10_1.f = upgrade_to_0_12_0;
+//    routines << to_0_12_0;
 
     return routines;
 }
@@ -439,6 +445,15 @@ rename_dynamicport_structs(QDomElement& root,
     }
 
     return true;
+}
+
+bool upgrade_to_0_12_0(QDomElement& root, QString const& file)
+{
+    return upgradeModuleFiles(root, file, std::bind(rename_dynamicport_structs,
+                                                    std::placeholders::_1,
+                                                    std::placeholders::_2,
+                                                    QStringLiteral("PortInfoIn"),
+                                                    QStringLiteral("PortInfoOut")));
 }
 
 bool upgrade_to_0_10_1(QDomElement& root, QString const& file)

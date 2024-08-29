@@ -37,6 +37,30 @@ TEST(Graph, rootGraph)
     EXPECT_EQ(subGraph->rootGraph(), rootGraph);
 }
 
+TEST(Graph, input_and_output_provider)
+{
+    Graph graph;
+
+    GraphBuilder builder(graph);
+    auto sub = builder.addGraph({}, {});
+    PortId inPort1  = sub.inNode.addOutPort(typeId<DoubleData>());
+    PortId inPort2  = sub.inNode.addOutPort(typeId<DoubleData>());
+    EXPECT_TRUE(inPort1.isValid());
+    EXPECT_TRUE(inPort2.isValid());
+
+    PortId outPort1 = sub.outNode.addInPort(typeId<DoubleData>());
+    EXPECT_TRUE(outPort1.isValid());
+
+    EXPECT_EQ(sub.inNode.ports( PortType::In).size(),
+              sub.inNode.ports( PortType::Out).size());
+    EXPECT_EQ(sub.outNode.ports( PortType::In).size(),
+              sub.outNode.ports( PortType::Out).size());
+
+    EXPECT_EQ(sub.graph.ports(PortType::In).size(),
+              (sub.inNode.ports(PortType::In).size() +
+               sub.outNode.ports(PortType::Out).size()));
+}
+
 TEST(Graph, predessecors_and_successors)
 {
     Graph graph;

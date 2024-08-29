@@ -110,7 +110,8 @@ struct GraphExecutionModel::Impl
         }
 
         // recursive
-        for (auto* subgraph : graph.graphNodes())
+        auto const& subgraphs = graph.graphNodes();
+        for (auto* subgraph : subgraphs)
         {
             findStartAndEndNodes(*subgraph, type, targetNodes);
         }
@@ -522,10 +523,9 @@ struct GraphExecutionModel::Impl
 
         switch (type)
         {
-        // invalidate respective output port
         case PortType::In:
         {
-            // TODO: check if correct
+            // invalidate oppositte output port
             PortIndex idx = item.node->portIndex(PortType::In, item->portId);
             if (idx < 0 || (size_t)item.entry->portsOut.size() <= idx)
             {
@@ -534,9 +534,9 @@ struct GraphExecutionModel::Impl
             success = invalidateNodeHelper(model, nodeUuid, item.node->portId(PortType::Out, idx));
             break;
         }
-        // invalidate all outgoing connections of this port only
         case PortType::Out:
         {
+            // invalidate all outgoing connections of this port only
             auto& conModel = model.graph().globalConnectionModel();
             auto* conData  = connection_model::find(conModel, nodeUuid);
             success = connection_model::visitSuccessors(conData, portId,
@@ -589,14 +589,14 @@ struct GraphExecutionModel::Impl
         return success;
     }
 
-    static inline FutureEvaluated
+    static inline ExecFuture
     evaluateGraph(GraphExecutionModel& model,
                   Graph const& graph,
                   NodeEvaluationType evalType)
     {
         assert(containsGraph(model, graph));
 
-        FutureEvaluated future{model};
+        ExecFuture future{model};
 
         QVarLengthArray<NodeUuid, PRE_ALLOC> targetNodes;
         findLeafNodes(graph, targetNodes);
@@ -614,7 +614,7 @@ struct GraphExecutionModel::Impl
         return future;
     }
 
-    static inline FutureEvaluated
+    static inline ExecFuture
     evaluateNode(GraphExecutionModel& model,
                  NodeUuid const& nodeUuid,
                  NodeEvaluationType evalType)
@@ -623,7 +623,7 @@ struct GraphExecutionModel::Impl
             model, nodeUuid, evalType
             );
 
-        FutureEvaluated future{
+        ExecFuture future{
             model, nodeUuid, evalState
         };
         return future;
@@ -742,7 +742,7 @@ struct GraphExecutionModel::Impl
         if (item->isPending)
         {
             INTELLI_LOG_SCOPE(model)
-                << tr("node '%1' (%2) is not ready for evaluation and was already checked!")
+                << tr("node '%1' (%2) is not ready for evaluation!")
                        .arg(relativeNodePath(*item.node))
                        .arg(item.node->id());
             return NodeEvalState::Evaluating;
@@ -787,29 +787,23 @@ struct GraphExecutionModel::Impl
                 return NodeEvalState::Invalid;
             }
 
+#ifdef _DEBUG
             if (model.nodeEvalState(predecessor.node) == NodeEvalState::Valid)
             {
                 validNodes++;
             }
+#endif
 
             auto state = queueNode(model, predecessor.node, dependency);
             if (state == NodeEvalState::Invalid)
             {
-                // TODO
-                gtDebug() << "DEPENDENCY" << dependency.node << "FAILED, from" << item.node;
                 return NodeEvalState::Invalid;
             }
         }
 
         // all nodes are valid yet the target node is not ready
         // -> something went wrong
-        if (validNodes == conData->predecessors.size())
-        {
-            // TODO
-            gtDebug() << "DEPENDENCIES ARE READY, NOT TARGET" << item.node;
-            return NodeEvalState::Invalid;
-        }
-
+        assert(validNodes != conData->predecessors.size());
         item->isPending = true;
 
         return NodeEvalState::Outdated;

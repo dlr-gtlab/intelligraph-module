@@ -58,36 +58,14 @@ public:
                 Qt::DirectConnection);
     }
 
+    PortId addPort(PortInfo port, int idx = -1)
+    {
+        return insertPort(std::move(port));
+    }
+
     PortId insertPort(PortInfo data, int idx = -1)
     {
-        // visible output port (input provider) and input port (output provider)
-        data = data.copy(m_nextPortId);
-
-        PortId portId = (Type == PortType::In ? insertOutPort(data, idx) :
-                                                insertInPort(data, idx));
-        if (!portId.isValid())
-        {
-            return PortId{};
-        }
-        assert(isMainPort(portId));
-
-        // hidden input port (input provider) and output port (output provider)
-        data = data.copy(virtualPortId(m_nextPortId));
-        data.visible = false;
-
-        PortId virtualPortId = (Type == PortType::In ? insertInPort(data, idx) :
-                                                       insertOutPort(data, idx));
-        if (!virtualPortId.isValid())
-        {
-            bool success = removePort(portId);
-            assert(success);
-            return PortId{};
-        }
-
-        assert(!isMainPort(virtualPortId));
-
-        m_nextPortId += NextPortIdOffset;
-        return portId;
+        return insertPort(DynamicPort, invert(Type), std::move(data), idx);
     }
 
     static constexpr PortId virtualPortId(PortId portId)
@@ -113,6 +91,41 @@ public:
         return ((portId - InitialPortId) % NextPortIdOffset) == 0;
     }
 
+protected:
+
+    PortId insertPort(PortOption option, PortType type, PortInfo port, int idx) final
+    {
+        // no static ports allowed
+        if (option == StaticPort) return PortId{};
+        // no custom port ids allowed
+        if (port.id().isValid()) return PortId{};
+        // invalid port type
+        if (type == providerType) return PortId{};
+
+        port = PortInfo::customId(m_nextPortId, std::move(port));
+        PortId portId =
+            DynamicNode::insertPort(option, type, port, idx);
+
+        if (!portId.isValid()) return PortId{};
+
+        //        assert(portId == m_nextPortId);
+
+//        port = PortInfo::customId(virtualPortId(m_nextPortId), std::move(port));
+//        PortId virtualPortId =
+//            DynamicNode::insertPort(StaticPort, invert(type), std::move(port), idx);
+
+//        if (!virtualPortId.isValid())
+//        {
+//            bool success = removePort(portId);
+//            assert(success);
+//            return PortId{};
+//        }
+//        assert(!isMainPort(virtualPortId));
+
+//        m_nextPortId += NextPortIdOffset;
+        return portId;
+    }
+
 private slots:
 
     /**
@@ -121,22 +134,48 @@ private slots:
      */
     void onPortInserted(PortType actualType, PortIndex idx)
     {
-        if (Type == PortType::In && Type == actualType) return;
+        // port is virtual -> ignore
+        if (Type == actualType) return;
 
-        PortId portId = this->portId(invert(Type), idx);
-        if (Type == actualType) portId = virtualPortId(portId);
+        PortId portId = this->portId(actualType, idx);
 
         auto* port = this->port(portId);
         if (!port) return;
+        assert(isMainPort(portId));
 
+        // update next port id
+        m_nextPortId = std::max(m_nextPortId, portId);
+
+        // append main port to graph
         auto* graph = findParent<Graph*>();
         if (!graph) return;
 
-        bool isHidden = !port->visible;
+        bool success = true;
+        success = actualType == PortType::Out ?
+                      graph->insertInPort( *port, idx) :
+                      graph->insertOutPort(*port, idx);
+        assert(success);
 
-        actualType == PortType::Out ?
-            graph->insertInPort( std::move(*port), isHidden ? -1 : idx) :
-            graph->insertOutPort(std::move(*port), isHidden ? -1 : idx);
+        // generate virtual port for connection parent graph and this graph
+        PortInfo virtualPort = PortInfo::customId(virtualPortId(m_nextPortId), *port);
+        virtualPort.visible = false;
+        PortId virtualPortId =
+            DynamicNode::insertPort(StaticPort, invert(actualType), virtualPort, idx);
+
+        if (!virtualPortId.isValid())
+        {
+            success = removePort(portId);
+            assert(success);
+            return;
+        }
+        assert(!isMainPort(virtualPortId));
+        m_nextPortId += NextPortIdOffset;
+
+        // append virtual port to graph
+        success = actualType == PortType::Out ?
+                      graph->insertOutPort(std::move(virtualPort), -1) :
+                      graph->insertInPort( std::move(virtualPort), -1);
+        assert(success);
     }
 
     /**
@@ -145,19 +184,33 @@ private slots:
      */
     void onPortChanged(PortId portId)
     {
-        if (Type == PortType::In && !isMainPort(portId)) return;
+        bool isVirtual = !isMainPort(portId);
+        if (isVirtual) return;
 
-        auto* graph = findParent<Graph*>();
-        if (!graph) return;
+        PortId virtualPortId = this->virtualPortId(portId);
 
         auto* port = this->port(portId);
         if (!port) return;
 
-        auto* graphPort  = graph->port(portId);
-        if (!graphPort) return;
+        auto* graph = findParent<Graph*>();
+        if (!graph) return;
 
-        *graphPort = *port;
+        auto* virtualPort = this->port(virtualPortId);
+        auto* graphPort   = graph->port(portId);
+        auto* graphVirtualPort  = graph->port(virtualPortId);
+
+        if (!virtualPort || !graphPort || !graphVirtualPort) return;
+
+        // update all ports
+        virtualPort->assign(*port);
+        virtualPort->visible = false;
+        graphPort->assign(*port);
+        graphVirtualPort->assign(*port);
+        graphVirtualPort->visible = false;
+
+        emit this->portChanged(virtualPortId);
         emit graph->portChanged(portId);
+        emit graph->portChanged(virtualPortId);
     }
 
     /**
@@ -166,8 +219,6 @@ private slots:
      */
     void onPortDeleted(PortType actualType, PortIndex idx)
     {
-        if (Type == PortType::In && Type == actualType) return;
-
         auto* graph = findParent<Graph*>();
         if (!graph) return;
 

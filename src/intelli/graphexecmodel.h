@@ -20,7 +20,7 @@ class Connection;
 class Graph;
 class Node;
 
-class FutureEvaluated;
+class ExecFuture;
 
 /**
  * @brief The GraphExecutionModel class.
@@ -63,18 +63,18 @@ public:
     bool isAutoEvaluatingNode(NodeUuid const& nodeUuid) const;
 
     GT_NO_DISCARD
-    FutureEvaluated autoEvaluateGraph();
+        ExecFuture autoEvaluateGraph();
     GT_NO_DISCARD
-    FutureEvaluated autoEvaluateGraph(Graph& graph);
+            ExecFuture autoEvaluateGraph(Graph& graph);
     GT_NO_DISCARD
-    FutureEvaluated autoEvaluateNode(NodeUuid const& nodeUuid);
+                ExecFuture autoEvaluateNode(NodeUuid const& nodeUuid);
 
     GT_NO_DISCARD
-    FutureEvaluated evaluateGraph();
+                    ExecFuture evaluateGraph();
     GT_NO_DISCARD
-    FutureEvaluated evaluateGraph(Graph& graph);
+                        ExecFuture evaluateGraph(Graph& graph);
     GT_NO_DISCARD
-    FutureEvaluated evaluateNode(NodeUuid const& nodeUuid);
+                            ExecFuture evaluateNode(NodeUuid const& nodeUuid);
 
     void stopAutoEvaluatingGraph();
     void stopAutoEvaluatingGraph(Graph& graph);

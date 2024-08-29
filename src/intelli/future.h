@@ -13,6 +13,7 @@
 
 #include <intelli/exports.h>
 #include <intelli/nodedatamodel.h>
+#include <intelli/graphexecmodel.h>
 
 #include <gt_platform.h>
 
@@ -24,7 +25,7 @@
 namespace intelli
 {
 
-class FutureEvaluated
+class ExecFuture
 {
     friend class GraphExecutionModel;
 
@@ -72,7 +73,7 @@ public:
                 milliseconds timeout = milliseconds::max()) const;
 
     GT_INTELLI_EXPORT
-    FutureEvaluated const& then(CallbackFunctor functor) const;
+        ExecFuture const& then(CallbackFunctor functor) const;
 
     /**
      * @brief Does not wait for the evaluation of all target nodes. Returns
@@ -91,7 +92,7 @@ public:
      * @return returns a new future
      */
     GT_INTELLI_EXPORT
-    FutureEvaluated& join(FutureEvaluated const& other);
+        ExecFuture& join(ExecFuture const& other);
 
 private:
 
@@ -114,7 +115,7 @@ private:
      * @param nodeUuid Node to register
      * @param evalState Current node eval state
      */
-    FutureEvaluated(GraphExecutionModel& model,
+    ExecFuture(GraphExecutionModel& model,
                     NodeUuid nodeUuid,
                     NodeEvalState evalState);
 
@@ -122,7 +123,7 @@ private:
      * @brief Constructs an empty future object from the model
      * @param model Source exection model
      */
-    explicit FutureEvaluated(GraphExecutionModel& model);
+    explicit ExecFuture(GraphExecutionModel& model);
 
     /**
      * @brief Registers the node to this future.
@@ -130,7 +131,7 @@ private:
      * @param evalState Current node eval state
      * @return this
      */
-    FutureEvaluated& append(NodeUuid nodeUuid, NodeEvalState evalState);
+    ExecFuture& append(NodeUuid nodeUuid, NodeEvalState evalState);
 
     /**
      * @brief Returns whether all nodes have finished their evaluation

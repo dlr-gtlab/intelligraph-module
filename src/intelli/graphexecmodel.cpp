@@ -286,13 +286,13 @@ GraphExecutionModel::setupConnections(Graph& graph)
             Qt::DirectConnection);
 }
 
-FutureEvaluated
+ExecFuture
 GraphExecutionModel::autoEvaluateGraph()
 {
     return autoEvaluateGraph(this->graph());
 }
 
-FutureEvaluated
+ExecFuture
 GraphExecutionModel::autoEvaluateGraph(Graph& graph)
 {
     assert(Impl::containsGraph(*this, graph));
@@ -311,25 +311,25 @@ GraphExecutionModel::autoEvaluateGraph(Graph& graph)
     return Impl::evaluateGraph(*this, graph, NodeEvaluationType::KeepEvaluated);
 }
 
-FutureEvaluated
+ExecFuture
 GraphExecutionModel::autoEvaluateNode(NodeUuid const& nodeUuid)
 {
     return Impl::evaluateNode(*this, nodeUuid, NodeEvaluationType::KeepEvaluated);
 }
 
-FutureEvaluated
+ExecFuture
 GraphExecutionModel::evaluateGraph()
 {
     return evaluateGraph(this->graph());
 }
 
-FutureEvaluated
+ExecFuture
 GraphExecutionModel::evaluateGraph(Graph& graph)
 {
     return Impl::evaluateGraph(*this, graph, NodeEvaluationType::SingleShot);
 }
 
-FutureEvaluated
+ExecFuture
 GraphExecutionModel::evaluateNode(NodeUuid const& nodeUuid)
 {
     return Impl::evaluateNode(*this, nodeUuid, NodeEvaluationType::SingleShot);
@@ -509,7 +509,6 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
 
         emit item.node->inputDataRecieved(portId);
 
-        // TODO: trigger next nodes when auto evaluating
         if (!item.isEvaluating() && !isBeingModified())
         {
             Impl::rescheduleTargetNodes(*this);
@@ -518,7 +517,6 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
     }
     case PortType::Out:
     {
-        // TODO: check if correct
         if (item.requiresReevaluation())
         {
             item->data.state = PortDataState::Outdated;
@@ -655,9 +653,7 @@ GraphExecutionModel::onNodeEvaluated(QString const& nodeUuid)
 
     if (isBeingModified()) return;
 
-    // TODO:
-    // Impl::rescheduleTargetNodes(*this);
-
+    // schedule next nodes marked for evaluation
     auto& conModel = graph().globalConnectionModel();
     auto* conData = connection_model::find(conModel, nodeUuid);
 

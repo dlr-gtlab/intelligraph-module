@@ -157,6 +157,12 @@ public:
             optional(_optional)
         {}
 
+        PortInfo(PortInfo const& other) = default;
+        PortInfo(PortInfo&& other) = default;
+        PortInfo& operator=(PortInfo const& other) = delete;
+        PortInfo& operator=(PortInfo&& other) = default;
+        ~PortInfo() = default;
+
         /// creates a PortInfo struct with a custom port id
         template<typename ...T>
         static PortInfo customId(PortId newPortId, T&&... args)
@@ -166,12 +172,31 @@ public:
             return pd;
         }
 
+        /// Performs a copy assignment using `other` but keeps old id
+        void assign(PortInfo other)
+        {
+            PortInfo tmp(std::move(other));
+            tmp.m_id = m_id;
+            swap(tmp);
+        }
+
         /// creates a copy of this object but resets the id parameter
-        PortInfo copy(PortId newPortId = PortId{}) const
+        PortInfo copy() const
         {
             PortInfo pd(*this);
-            pd.m_id = newPortId;
+            pd.m_id = invalid<PortId>();
             return pd;
+        }
+
+        void swap(PortInfo& other) noexcept
+        {
+            using std::swap;
+            swap(typeId, other.typeId);
+            swap(caption, other.caption);
+            swap(captionVisible, other.captionVisible);
+            swap(visible, other.visible);
+            swap(optional, other.optional);
+            swap(m_id, other.m_id);
         }
 
         // type id for port data (classname)
@@ -193,6 +218,7 @@ public:
 
     private:
 
+        /// read only PortId
         PortId m_id{};
         
         friend class Node;
@@ -604,6 +630,8 @@ private:
     // hide object name setter
     using GtObject::setObjectName;
 };
+
+inline void swap(Node::PortInfo& a, Node::PortInfo& b) noexcept { a.swap(b); }
 
 } // namespace intelli
 
