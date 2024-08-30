@@ -1253,10 +1253,6 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
 
     }
 
-    // remove old nodes and connections. Connections must be deleted before
-    // appending new connections
-    qDeleteAll(selectedNodes);
-
     // move group to graph
     auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'").arg(groupNodeName));
     auto modifyCmd = m_graph->modify();
@@ -1269,6 +1265,10 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         gtError() << tr("Failed to group nodes! (Appending group node failed)");
         return;
     }
+
+    // remove old nodes and connections. Connections must be deleted before
+    // appending new connections
+    qDeleteAll(selectedNodes);
 
     // helper function to create ingoing and outgoing connections
     auto const makeConnections = [this, groupNode](ConnectionId conId,

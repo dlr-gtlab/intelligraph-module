@@ -277,19 +277,21 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
 {
     assert(type != PortType::NoType && idx != invalid<PortIndex>());
 
-    QFontMetrics metrics{QFont()};
-
-    auto& factory = NodeDataFactory::instance();
-
     auto& node = this->node();
     auto* port = node.port(node.portId(type, idx));
     assert(port);
+
+    if (!port->visible) return {};
+
+    QFontMetrics metrics{QFont()};
 
     int height = metrics.height();
     int width = 0;
 
     if (port->captionVisible)
     {
+        auto& factory = NodeDataFactory::instance();
+
         width += metrics.horizontalAdvance(port->caption.isEmpty() ?
                                                factory.typeName(port->typeId) :
                                                port->caption);
@@ -327,6 +329,8 @@ NodeGeometry::portHit(QRectF rect) const
     // check each port
     for (auto& port : node.ports(type))
     {
+        if (!port.visible) continue;
+
         auto pRect = this->portRect(type, node.portIndex(type, port.id()));
         if (pRect.intersects(rect))
         {

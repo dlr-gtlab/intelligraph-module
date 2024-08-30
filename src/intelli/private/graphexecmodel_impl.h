@@ -707,6 +707,8 @@ struct GraphExecutionModel::Impl
             model.m_targetNodes.push_back({ nodeUuid, evalType });
         }
 
+        if (model.isBeingModified()) return NodeEvalState::Outdated;
+
         auto state = queueNode(model, nodeUuid, item);
         switch (state)
         {

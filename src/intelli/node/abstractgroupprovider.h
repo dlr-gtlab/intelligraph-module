@@ -85,7 +85,7 @@ public:
      */
     static constexpr bool isMainPort(PortId portId)
     {
-        return ((portId - (size_t)Type + 1) % 4) == 0;
+        return ((portId - ((size_t)Type + 1)) % 4) == 0;
     }
 
 protected:
