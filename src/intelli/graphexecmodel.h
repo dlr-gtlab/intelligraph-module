@@ -216,9 +216,9 @@ private slots:
 
     void onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, PortIndex idx);
 
-    void onConnectionAppended(Connection* con);
+    void onConnectionAppended(ConnectionUuid conUuid);
 
-    void onConnectionDeleted(ConnectionId conId);
+    void onConnectionDeleted(ConnectionUuid conUuid);
 
     void onGraphDeleted();
 

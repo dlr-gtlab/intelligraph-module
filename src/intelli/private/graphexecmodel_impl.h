@@ -804,6 +804,12 @@ struct GraphExecutionModel::Impl
 #ifndef NDEBUG
         // if all predecessors have been evaluated but this node is not ready
         // something went wrong
+        if (!conData->predecessors.empty() &&
+            validNodes == conData->predecessors.size())
+        {
+            debug(model);
+            debug(model.graph());
+        }
         assert(conData->predecessors.empty() ||
                validNodes != conData->predecessors.size());
 #endif

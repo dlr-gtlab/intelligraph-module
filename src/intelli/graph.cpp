@@ -671,12 +671,15 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionUuid conUuid)
     globalTargetNode->predecessors.append(inConnection);
     globalSourceNode->successors.append(outConnection);
 
-    if (!guard) return;
+    if (guard)
+    {
+        // setup connections
+        connect(guard, &QObject::destroyed,
+                this, Impl::GlobalConnectionDeleted(this, conUuid),
+                Qt::DirectConnection);
+    }
 
-    // setup connections
-    connect(guard, &QObject::destroyed,
-            this, Impl::GlobalConnectionDeleted(this, conUuid),
-            Qt::DirectConnection);
+    emit globalConnectionAppended(conUuid);
 }
 
 QVector<NodeId>

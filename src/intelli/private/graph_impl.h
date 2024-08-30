@@ -494,7 +494,10 @@ struct Graph::Impl
 
         void operator()()
         {
-            ConnectionDeletedCommon<NodeUuid>::operator()();
+            if (ConnectionDeletedCommon<NodeUuid>::operator()())
+            {
+                emit graph->globalConnectionDeleted(conId);
+            }
         }
     };
 

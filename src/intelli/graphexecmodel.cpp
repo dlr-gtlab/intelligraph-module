@@ -125,12 +125,16 @@ GraphExecutionModel::setupConnections(Graph& graph)
             this, [this, g = &graph](NodeId nodeId){
         onNodeDeleted(g, nodeId);
     }, Qt::DirectConnection);
-    connect(&graph, &Graph::connectionAppended,
-            this, &GraphExecutionModel::onConnectionAppended,
-            Qt::DirectConnection);
-    connect(&graph, &Graph::connectionDeleted,
-            this, &GraphExecutionModel::onConnectionDeleted,
-            Qt::DirectConnection);
+
+    if (&this->graph() == &graph)
+    {
+        connect(&graph, &Graph::globalConnectionAppended,
+                this, &GraphExecutionModel::onConnectionAppended,
+                Qt::DirectConnection);
+        connect(&graph, &Graph::globalConnectionDeleted,
+                this, &GraphExecutionModel::onConnectionDeleted,
+                Qt::DirectConnection);
+    }
     connect(&graph, &Graph::nodePortInserted,
             this, &GraphExecutionModel::onNodePortInserted,
             Qt::DirectConnection);
@@ -817,6 +821,7 @@ GraphExecutionModel::onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, Po
     item.entry->ports(type).erase(item.portEntry);
 }
 
+#if 0
 void
 GraphExecutionModel::onConnectionAppended(Connection* con)
 {
@@ -859,7 +864,7 @@ GraphExecutionModel::onConnectionAppended(Connection* con)
 }
 
 void
-GraphExecutionModel::onConnectionDeleted(ConnectionId conId)
+GraphExecutionModel::onConnectionDeleted(ConnectioId conId)
 {
     assert(conId.isValid());
 
@@ -883,6 +888,86 @@ GraphExecutionModel::onConnectionDeleted(ConnectionId conId)
     data.state = PortDataState::Valid;
 
     setNodeData(itemIn.node->uuid(), conId.inPort, data);
+
+    // update auto evaluating nodes
+    NodeUuid const& outNodeUuid = itemOut.node->uuid();
+
+    auto* graph = Graph::accessGraph(*itemOut.node);
+    if (!isAutoEvaluatingGraph(*graph)) return;
+
+    auto& conModel = graph->globalConnectionModel();
+    auto* conData  = connection_model::find(conModel, outNodeUuid);
+    if (!connection_model::hasPredecessors(conData))
+    {
+        Impl::scheduleTargetNode(*this, outNodeUuid, NodeEvaluationType::KeepEvaluated);
+    }
+}
+#endif
+
+void
+GraphExecutionModel::onConnectionAppended(ConnectionUuid conUuid)
+{
+    assert(conUuid.isValid());
+
+    auto const makeError = [](Graph const& graph){
+        return graph.objectName() + QStringLiteral(": ") +
+               tr("Connection appended: cannot update execution model") + ',';
+    };
+
+    auto itemOut = Impl::findData(*this, conUuid.outNodeId, makeError);
+    if (!itemOut) return;
+
+    auto itemIn = Impl::findData(*this, conUuid.inNodeId, makeError);
+    if (!itemIn) return;
+
+    INTELLI_LOG(*this)
+        << tr("Connection appended: updated execution model! ('%1')")
+               .arg(toString(conUuid));
+
+    // set node data
+    auto data = nodeData(itemOut.node->uuid(), conUuid.outPort);
+    setNodeData(itemIn.node->uuid(), conUuid.inPort, std::move(data));
+
+    // update auto evaluating nodes
+    NodeUuid const& outNodeUuid = itemOut.node->uuid();
+
+    auto* graph = Graph::accessGraph(*itemOut.node);
+    if (!isAutoEvaluatingGraph(*graph) ||
+        !isAutoEvaluatingNode(outNodeUuid)) return;
+
+    auto& conModel = graph->globalConnectionModel();
+    auto* conData  = connection_model::find(conModel, outNodeUuid);
+    if (!connection_model::hasPredecessors(conData))
+    {
+        stopAutoEvaluatingNode(outNodeUuid);
+    }
+}
+
+void
+GraphExecutionModel::onConnectionDeleted(ConnectionUuid conUuid)
+{
+    assert(conUuid.isValid());
+
+    auto const makeError = [](Graph const& graph){
+        return graph.objectName() + QStringLiteral(": ") +
+               tr("Connection deleted: cannot update execution model") + ',';
+    };
+
+    auto itemOut = Impl::findData(*this, conUuid.outNodeId, makeError);
+    if (!itemOut) return;
+
+    auto itemIn = Impl::findData(*this, conUuid.inNodeId, makeError);
+    if (!itemIn) return;
+
+    INTELLI_LOG(*this)
+        << tr("Connection deleted: updated execution model! ('%1')")
+               .arg(toString(conUuid));
+
+    // set node data
+    NodeDataSet data{nullptr};
+    data.state = PortDataState::Valid;
+
+    setNodeData(itemIn.node->uuid(), conUuid.inPort, data);
 
     // update auto evaluating nodes
     NodeUuid const& outNodeUuid = itemOut.node->uuid();

@@ -428,12 +428,14 @@ signals:
      * @param Pointer to connection object
      */
     void connectionAppended(Connection* connection);
+    void globalConnectionAppended(ConnectionUuid connectionUuid);
 
     /**
      * @brief Emitted after a conections was deleted
      * @param Connection id of the deleted connection
      */
     void connectionDeleted(ConnectionId connectionId);
+    void globalConnectionDeleted(ConnectionUuid connectionUuid);
 
     /**
      * @brief Forwards the `portInserted` signal of node, so that
