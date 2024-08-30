@@ -21,14 +21,9 @@ namespace intelli
 template <PortType Type>
 class AbstractGroupProvider : public DynamicNode
 {
-    static constexpr PortId InitialPortId{(size_t)Type + 1};
-    static constexpr PortId VirtualPortIdOffset{2};
-    static constexpr PortId NextPortIdOffset{2 * VirtualPortIdOffset};
-    static constexpr bool GenerateVirtualPort{Type == PortType::Out};
-
     /// Input and output provider will have mutually exclusive port ids
     /// The initial offset is calculated like this
-    PortId m_nextPortId{InitialPortId};
+    PortId m_nextPortId{(size_t)Type + 1};
 
 public:
 
@@ -73,13 +68,13 @@ public:
     static constexpr PortId virtualPortId(PortId portId)
     {
         assert(isMainPort(portId));
-        return portId + VirtualPortIdOffset;
+        return portId + PortId(2);
     }
 
     static constexpr PortId mainPortId(PortId portId)
     {
         assert(!isMainPort(portId));
-        return portId - VirtualPortIdOffset;
+        return portId - PortId(2);
     }
 
     /**
@@ -90,7 +85,7 @@ public:
      */
     static constexpr bool isMainPort(PortId portId)
     {
-        return ((portId - InitialPortId) % NextPortIdOffset) == 0;
+        return ((portId - (size_t)Type + 1) % 4) == 0;
     }
 
 protected:
@@ -161,9 +156,9 @@ private slots:
         assert(!isMainPort(virtualPortId));
 
         // update next port id
-        m_nextPortId += NextPortIdOffset;
+        m_nextPortId += PortId(4);
 
-        if (GenerateVirtualPort)
+        if (Type == PortType::Out)
         {
             bool success = graph->insertInPort(std::move(virtualPort), -1);
             assert(success);
@@ -201,7 +196,7 @@ private slots:
         emit this->portChanged(virtualPortId);
         emit graph->portChanged(portId);
 
-        if (GenerateVirtualPort)
+        if (Type == PortType::Out)
         {
             auto* graphVirtualPort  = graph->port(virtualPortId);
             if (!graphVirtualPort) return;
