@@ -76,7 +76,10 @@ NodeGeometry::portHeightExtent() const
         auto n = node().ports(type).size();
         if (n == 0) continue;
 
-        height = std::max(height, (int)(portCaptionRect(type, PortIndex::fromValue(n - 1)).bottomLeft().y() + vspacing()));
+        for (PortIndex idx{0}; idx < n; ++idx)
+        {
+            height = std::max(height, (int)(portCaptionRect(type, idx).bottomLeft().y() + vspacing()));
+        }
     }
 
     return height;

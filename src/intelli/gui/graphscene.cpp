@@ -1178,9 +1178,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     // move selected nodes to subgraph and update their id
     for (auto* node : qAsConst(selectedNodes))
     {
-        auto newNode = gt::unique_qobject_cast<Node>(
-            node->toMemento().toObject(*gtObjectFactory)
-        );
+            auto newNode = gt::unique_qobject_cast<Node>(std::unique_ptr<GtObject>(node->copy()));
 
         if (!newNode)
         {

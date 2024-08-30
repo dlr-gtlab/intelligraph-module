@@ -1024,10 +1024,10 @@ debugGraphHelper(Graph const& graph)
             auto otherEntry = data.find(con.node);
             if (otherEntry == data.end()) continue;
 
-            QString entry = QStringLiteral("\t") + printableCaption(otherEntry->node) +
-                            QStringLiteral(" --") + QString::number(con.port) +
-                            QStringLiteral(" : ") + QString::number(con.sourcePort) +
-                            QStringLiteral("--> ") + caption +
+            QString entry = QStringLiteral("\t") + caption +
+                            QStringLiteral(" --") + QString::number(con.sourcePort) +
+                            QStringLiteral(" : ") + QString::number(con.port) +
+                            QStringLiteral("--> ") + printableCaption(otherEntry->node) +
                             QStringLiteral("\n");
             if (text.contains(entry)) continue;
 
