@@ -273,8 +273,10 @@ GraphScene::beginReset()
     assert(m_graph);
 
     disconnect(m_graph);
-    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
-    if (model) disconnect(model);
+    if (auto* model = GraphExecutionModel::accessExecModel(*m_graph))
+    {
+        model->disconnect(this);
+    }
 }
 
 void
@@ -286,6 +288,9 @@ GraphScene::endReset()
 
     auto* root = m_graph->rootGraph();
     assert(root);
+
+    auto* model = GraphExecutionModel::accessExecModel(*root);
+    if (!model) model = new GraphExecutionModel(*root);
 
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
@@ -303,9 +308,6 @@ GraphScene::endReset()
 
     connect(m_graph, &Graph::connectionAppended, this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
     connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
-
-    auto* model = GraphExecutionModel::accessExecModel(*root);
-    if (!model) model = new GraphExecutionModel(*root);
 
     connect(model, &GraphExecutionModel::nodeEvalStateChanged,
             this, &GraphScene::onNodeEvalStateChanged, Qt::DirectConnection);
@@ -983,7 +985,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         return;
     }
 
-#ifdef _DEBUG
+#ifndef NDEBUG
     // timmer to track elapsed time
     QElapsedTimer timer;
     timer.start();
@@ -1010,7 +1012,9 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
             };
 
             // if ingoing node is not part of nodes to group it is an outside connection
-            if(std::find_if(selectedNodeObjects.begin(), selectedNodeObjects.end(), findNodeFunctor) == selectedNodeObjects.end())
+            if(std::find_if(selectedNodeObjects.begin(),
+                             selectedNodeObjects.end(),
+                             findNodeFunctor) == selectedNodeObjects.end())
             {
                 connectionsOut.push_back(conId);
                 continue;
@@ -1020,7 +1024,9 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
             conId.reverse();
 
             // if outgoing node is not part of nodes to group it is an outside connection
-            if(std::find_if(selectedNodeObjects.begin(), selectedNodeObjects.end(), findNodeFunctor) == selectedNodeObjects.end())
+            if(std::find_if(selectedNodeObjects.begin(),
+                             selectedNodeObjects.end(),
+                             findNodeFunctor) == selectedNodeObjects.end())
             {
                 // revert reverse
                 conId.reverse();
@@ -1099,7 +1105,8 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
 
         for (auto begin = connections.begin(); begin != connections.end(); ++begin)
         {
-            auto iter = std::find_if(begin + 1, connections.end(), [conId = *begin](ConnectionId other){
+            auto iter = std::find_if(begin + 1, connections.end(),
+                                     [conId = *begin](ConnectionId other){
                 return conId.outNodeId == other.outNodeId && conId.outPort == other.outPort;
             });
             if (iter == connections.end()) continue;
@@ -1149,8 +1156,8 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         dtypeOut.size() != connectionsOut.size()) return;
 
     // setup input and output ports
-    for (QString const& typeId : dtypeIn ) inputProvider->insertPort(typeId);
-    for (QString const& typeId : dtypeOut) outputProvider->insertPort(typeId);
+    for (QString const& typeId : dtypeIn ) inputProvider->addPort(typeId);
+    for (QString const& typeId : dtypeOut) outputProvider->addPort(typeId);
 
     {
 
@@ -1201,12 +1208,17 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         NodeId newId = movedNode->id();
         if (newId == oldId) continue;
 
-#ifdef _DEBUG
+#ifndef NDEBUG
         gtTrace().verbose() << "Updating node id from" << oldId << "to" << newId << "...";
 #endif
 
         // helper function to update the old node ids without overriding each entry multiple times
-        auto const updateConnections = [](auto& connections, auto& map, size_t& index, NodeId oldId, NodeId newId, PortType type){
+        auto const updateConnections = [](auto& connections,
+                                          auto& map,
+                                          size_t& index,
+                                          NodeId oldId,
+                                          NodeId newId,
+                                          PortType type){
             index = 0;
             if (type == PortType::In)  for (ConnectionId& conId : connections)
             {
@@ -1234,12 +1246,16 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         updateConnections(connectionsIn,        updatedIngoingConnectionsMap,        index, oldId, newId, PortType::In);
         updateConnections(connectionsOutShared, updatedSharedOutgoingConnectionsMap, index, oldId, newId, PortType::Out);
         updateConnections(connectionsOut,       updatedOutgoingConnectionsMap,       index, oldId, newId, PortType::Out);
-        // ingoing and outgoing connections msut be tracked individually here
+        // ingoing and outgoing connections must be tracked individually here
         updateConnections(connectionsInternal,  updatedInternalInConnectionsMap,     index, oldId, newId, PortType::In);
         updateConnections(connectionsInternal,  updatedInternalOutConnectionsMap,    index, oldId, newId, PortType::Out);
     }
 
     }
+
+    // remove old nodes and connections. Connections must be deleted before
+    // appending new connections
+    qDeleteAll(selectedNodes);
 
     // move group to graph
     auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'").arg(groupNodeName));
@@ -1254,12 +1270,12 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         return;
     }
 
-    // remove old nodes and connections. Connections must be deleted before
-    // appending new connections
-    qDeleteAll(selectedNodes);
-
     // helper function to create ingoing and outgoing connections
-    auto const makeConnections = [this, groupNode](ConnectionId conId, auto* provider, PortIndex index, PortType type, bool addToMainGraph = true){
+    auto const makeConnections = [this, groupNode](ConnectionId conId,
+                                                   auto* provider,
+                                                   PortIndex index,
+                                                   PortType type,
+                                                   bool addToMainGraph = true){
         if (type == PortType::Out) conId.reverse();
 
         // create connection in parent graph
@@ -1287,7 +1303,11 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     };
 
     // create connections that share the same node and port
-    auto const makeSharedConnetions = [makeConnections](auto& shared, ConnectionId conId, auto* provider, PortIndex index, PortType type){
+    auto const makeSharedConnetions = [makeConnections](auto& shared,
+                                                        ConnectionId conId,
+                                                        auto* provider,
+                                                        PortIndex index,
+                                                        PortType type){
         bool success = true;
         while (success)
         {

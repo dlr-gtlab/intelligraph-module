@@ -69,7 +69,7 @@ SleepyNode::eval()
     {
         GtEventLoop eventloop(intervalMs);
         eventloop.exec();
-        gtDebug() << "Sending update" << i << "of" << updates;
+        gtDebug().verbose() << "Sending update" << i << "of" << updates;
         emit timePassed((int)((i / (double)updates) * 100));
     }
 

@@ -858,15 +858,23 @@ TEST(GraphExecutionModel, auto_evaluate_graph_and_append_node_and_connection)
 
         gtTrace() << "Append node E...";
         GraphBuilder builder(graph);
-        auto& E = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption("E");
-        E_uuid = E.uuid();
-        ASSERT_EQ(E.id(), E_id);
+        auto& E = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), E_uuid)
+                      .setCaption("E");
+
+        // E is not connected -> auto evaluate
+        EXPECT_TRUE(model.isAutoEvaluatingNode(E_uuid));
 
         gtTrace() << "Append connection...";
         builder.connect(E_id, PortIndex(0), C_id, PortIndex(0));
 
+        // E is now connected -> do not auto evaluate anymore
+        EXPECT_FALSE(model.isAutoEvaluatingNode(E_uuid));
+
         gtTrace() << "Set value of E...";
         setNodeProperty(E, QStringLiteral("value"), 12);
+
+        debug(graph);
+        debug(model);
     }
 
     gtTrace() << "Awaiting results...";
@@ -1324,15 +1332,15 @@ TEST(GraphExecutionModel, destroy_while_running)
 
 /// Model is owned by root graph. Should not cause any problems when
 /// graph is beeing destroyed
-TEST(GraphExecutionModel, destroy_by_root_graph)
+TEST(GraphExecutionModel, destroy_when_deleting_root_graph)
 {
     {
         auto graph = make_volatile<Graph>();
 
+        ASSERT_TRUE(test::buildGraphWithGroup(*graph));
+
         auto model = make_volatile<GraphExecutionModel>(*graph);
         ASSERT_EQ(model->parent(), graph.get());
-
-        ASSERT_TRUE(test::buildGraphWithGroup(*graph));
 
         graph->deleteLater();
 

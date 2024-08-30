@@ -37,6 +37,8 @@ Connection::Connection(GtObject* parent) :
     updateObjectName();
 }
 
+Connection::~Connection() = default;
+
 Connection::Connection(ConnectionId conId, GtObject* parent) :
     Connection(parent)
 {

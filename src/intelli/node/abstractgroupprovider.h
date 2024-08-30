@@ -24,6 +24,7 @@ class AbstractGroupProvider : public DynamicNode
     static constexpr PortId InitialPortId{(size_t)Type + 1};
     static constexpr PortId VirtualPortIdOffset{2};
     static constexpr PortId NextPortIdOffset{2 * VirtualPortIdOffset};
+    static constexpr bool GenerateVirtualPort{Type == PortType::Out};
 
     /// Input and output provider will have mutually exclusive port ids
     /// The initial offset is calculated like this
@@ -136,7 +137,7 @@ private slots:
 
         // append main port to graph
         auto* graph = findParent<Graph*>();
-        if (!graph) return;
+        assert(graph);
 
         bool success = actualType == PortType::Out ?
                            graph->insertInPort( *port, idx) :
@@ -162,8 +163,7 @@ private slots:
         // update next port id
         m_nextPortId += NextPortIdOffset;
 
-        // append virtual port to graph (only for output provider)
-        if (providerType == PortType::Out)
+        if (GenerateVirtualPort)
         {
             bool success = graph->insertInPort(std::move(virtualPort), -1);
             assert(success);
@@ -187,24 +187,30 @@ private slots:
         if (!port) return;
 
         auto* graph = findParent<Graph*>();
-        if (!graph) return;
+        assert(graph);
 
         auto* virtualPort = this->port(virtualPortId);
         auto* graphPort   = graph->port(portId);
-        auto* graphVirtualPort  = graph->port(virtualPortId);
-
-        if (!virtualPort || !graphPort || !graphVirtualPort) return;
+        if (!virtualPort || !graphPort) return;
 
         // update all ports
         virtualPort->assign(*port);
         virtualPort->visible = false;
-        graphVirtualPort->assign(*port);
-        graphVirtualPort->visible = false;
         graphPort->assign(*port);
 
         emit this->portChanged(virtualPortId);
         emit graph->portChanged(portId);
-        emit graph->portChanged(virtualPortId);
+
+        if (GenerateVirtualPort)
+        {
+            auto* graphVirtualPort  = graph->port(virtualPortId);
+            if (!graphVirtualPort) return;
+
+            graphVirtualPort->assign(*port);
+            graphVirtualPort->visible = false;
+
+            emit graph->portChanged(virtualPortId);
+        }
     }
 
     /**

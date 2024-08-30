@@ -36,6 +36,7 @@ class GT_INTELLI_EXPORT GraphExecutionModel : public QObject,
 public:
 
     GraphExecutionModel(Graph& graph);
+    ~GraphExecutionModel();
 
     static GraphExecutionModel* accessExecModel(Graph& graph);
     static GraphExecutionModel const* accessExecModel(Graph const& graph);
@@ -63,18 +64,18 @@ public:
     bool isAutoEvaluatingNode(NodeUuid const& nodeUuid) const;
 
     GT_NO_DISCARD
-        ExecFuture autoEvaluateGraph();
+    ExecFuture autoEvaluateGraph();
     GT_NO_DISCARD
-            ExecFuture autoEvaluateGraph(Graph& graph);
+    ExecFuture autoEvaluateGraph(Graph& graph);
     GT_NO_DISCARD
-                ExecFuture autoEvaluateNode(NodeUuid const& nodeUuid);
+    ExecFuture autoEvaluateNode(NodeUuid const& nodeUuid);
 
     GT_NO_DISCARD
-                    ExecFuture evaluateGraph();
+    ExecFuture evaluateGraph();
     GT_NO_DISCARD
-                        ExecFuture evaluateGraph(Graph& graph);
+    ExecFuture evaluateGraph(Graph& graph);
     GT_NO_DISCARD
-                            ExecFuture evaluateNode(NodeUuid const& nodeUuid);
+    ExecFuture evaluateNode(NodeUuid const& nodeUuid);
 
     void stopAutoEvaluatingGraph();
     void stopAutoEvaluatingGraph(Graph& graph);
@@ -186,22 +187,26 @@ private:
      */
     bool isBeingModified() const;
 
+    /**
+     * @brief Setups connections between the given graph and this exec model.
+     * Required for updates to nodes and connections
+     * @param graph Grap to subscribe to
+     */
     void setupConnections(Graph& graph);
+
+    /**
+     * @brief Removes the graph (and any subgraph) from this model.
+     * Used internally
+     * @param graph Graph to remove
+     */
+    void removeGraphFromModel(Graph* graph);
 
 private slots:
 
     /**
      * @brief Method is directly invoked once a node has been evaluated.
-     * The node evaluated is given by `sender()`.
      */
-    void onNodeEvaluatedHelper();
-
-    /**
-     * @brief Method is invoked in the next event loop cycle once the node
-     * associated with `nodeUuid` has been evaluated.
-     * @param nodeUuid Node that has been evaluated
-     */
-    void onNodeEvaluated(QString const& nodeUuid);
+    void onNodeEvaluated();
 
     void onNodeAppended(Node* node);
 
@@ -211,13 +216,15 @@ private slots:
 
     void onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, PortIndex idx);
 
-    void onBeginGraphModification();
-
-    void onEndGraphModification();
-
     void onConnectionAppended(Connection* con);
 
     void onConnectionDeleted(ConnectionId conId);
+
+    void onGraphDeleted();
+
+    void onBeginGraphModification();
+
+    void onEndGraphModification();
 };
 
 /// Outputs internal data of the graph exectuion model

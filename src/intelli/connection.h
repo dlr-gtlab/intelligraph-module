@@ -31,6 +31,7 @@ class GT_INTELLI_TEST_EXPORT Connection : public GtObject
 public:
 
     Q_INVOKABLE Connection(GtObject* parent = nullptr);
+    ~Connection();
 
     Connection(ConnectionId conId, GtObject* parent = nullptr);
 

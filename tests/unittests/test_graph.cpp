@@ -37,6 +37,8 @@ TEST(Graph, rootGraph)
     EXPECT_EQ(subGraph->rootGraph(), rootGraph);
 }
 
+/// input and output provider generate "virtual" (i.e. hidden) ports to simplify
+/// interconnecting parent graph
 TEST(Graph, input_and_output_provider)
 {
     Graph graph;
@@ -334,7 +336,7 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
     Graph graph;
     graph.setFactory(gtObjectFactory);
     
-    ASSERT_TRUE(test::buildBasicGraph(graph));
+    ASSERT_TRUE(test::buildGraphWithGroup(graph));
 
     EXPECT_EQ(graph.connections().size(), 5);
     EXPECT_EQ(graph.nodes().size(), 5);
@@ -350,6 +352,8 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
     EXPECT_NE(C, nullptr);
     EXPECT_NE(D, nullptr);
     EXPECT_NE(E, nullptr);
+
+    debug(graph);
 
     auto const checkConnectionsOfNodeC = [&graph](){
         gtDebug() << "checking connections of node C...";
@@ -374,6 +378,7 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
 
     // delete node c
 
+    gtDebug() << "Deleting node C...";
     ASSERT_TRUE(graph.deleteNode(C_id));
 
     EXPECT_EQ(graph.connections().size(), 2);
@@ -395,6 +400,7 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
 
     // revert memento diff
 
+    gtDebug() << "Reverting diff...";
     GtObjectMementoDiff diff(mementoBefore, mementoAfter);
 
     ASSERT_TRUE(graph.revertDiff(diff));
@@ -415,6 +421,7 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
 
     // apply memento diff
 
+    gtDebug() << "Applying diff...";
     ASSERT_TRUE(graph.applyDiff(diff));
 
     EXPECT_EQ(graph.connections().size(), 2);
@@ -429,6 +436,8 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
 
     // Node C does no longer exists -> its connections have been deleted as well
     EXPECT_EQ(graph.findConnections(C_id).size(), 0);
+
+    debug(graph);
 }
 
 // the connections are inside an object group, thus chaning the connections
@@ -440,7 +449,7 @@ TEST(Graph, restore_connections_only_on_memento_diff)
     Graph graph;
     graph.setFactory(gtObjectFactory);
     
-    ASSERT_TRUE(test::buildBasicGraph(graph));
+    ASSERT_TRUE(test::buildGraphWithGroup(graph));
 
     EXPECT_EQ(graph.connections().size(), 5);
     EXPECT_EQ(graph.nodes().size(), 5);

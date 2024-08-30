@@ -430,10 +430,11 @@ inline bool compareNodeEvalState(Graph const& graph,
     bool success = true;
     for (auto const& uuid : uuids)
     {
-        if (model.nodeEvalState(uuid) != targetState)
+        auto state = model.nodeEvalState(uuid);
+        if (state != targetState)
         {
-            gtError() << QObject::tr("model.nodeEvalState(%1) != %2")
-                             .arg(uuid, toString(targetState));
+            gtError() << QObject::tr("model.nodeEvalState(%1): %2 != %3")
+                             .arg(uuid, toString(state), toString(targetState));
             success = false;
         }
     }
@@ -476,14 +477,14 @@ struct PortDataComparator
         auto value = data->invoke<T>("value");
         if (!value.has_value())
         {
-            gtError() << QObject::tr("model.nodeData(%1:%4).ptr (%2) != %3 (types do not match)")
+            gtError() << QObject::tr("model.nodeData(%1:%4).ptr: %2 != %3 (types do not match)")
                              .arg(uuid, toString(data), toString(QVariant::fromValue(target))).arg(portId);
             return false;
         }
 
         if (!ValueComparator<T>()(value.value(), target))
         {
-            gtError() << QObject::tr("model.nodeData(%1:%4).ptr (%2) != %3")
+            gtError() << QObject::tr("model.nodeData(%1:%4).ptr: %2 != %3")
                              .arg(uuid).arg(value.value()).arg(target).arg(portId);
             return false;
         }
@@ -500,7 +501,7 @@ struct PortDataComparator<std::nullptr_t>
     {
         if (data)
         {
-            gtError() << QObject::tr("model.nodeData(%1:%3).ptr (%2) != NULL")
+            gtError() << QObject::tr("model.nodeData(%1:%3).ptr: %2 != NULL")
                              .arg(uuid, toString(data)).arg(portId);
             return false;
         }
@@ -536,8 +537,9 @@ inline bool comparePortData(Graph const& graph,
         auto data = model.nodeData(uuid, portId);
         if (data.state != targetState)
         {
-            gtError() << QObject::tr("model.nodeData(%1:%3).state != %2")
-                             .arg(uuid, toString(targetState)).arg(portId);
+            gtError() << QObject::tr("model.nodeData(%1:%4).state: %2 != %3")
+                             .arg(uuid, toString(data.state), toString(targetState))
+                             .arg(portId);
             success = false;
         }
 

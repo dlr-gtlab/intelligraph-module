@@ -241,6 +241,7 @@ NodeGeometry::widgetPosition() const
     return QPointF{xOffset, yOffset};
 }
 
+// TODO: what if port index is out of bounds?
 QRectF
 NodeGeometry::portRect(PortType type, PortIndex idx) const
 {
@@ -255,9 +256,9 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
     for (PortIndex i{0}; i < idx; ++i)
     {
         auto* port = node.port(node.portId(type, idx));
-        assert(port);
+        bool visible = !port || port->visible;
 
-        height += port->visible * 1.5 * metrics.height();
+        height += visible * 1.5 * metrics.height();
     }
 
     auto& style = style::currentStyle().node;

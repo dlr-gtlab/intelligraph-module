@@ -66,19 +66,19 @@ inline QString setNodeDataError(Graph const& graph)
 {
     return graph.objectName() + QStringLiteral(": ") +
            QObject::tr("Failed to set node data") + ',';
-};
+}
 
 inline QString getNodeDataError(Graph const& graph)
 {
     return graph.objectName() + QStringLiteral(": ") +
            QObject::tr("Failed to access node data") + ',';
-};
+}
 
 inline QString evaluteNodeError(Graph const& graph)
 {
     return graph.objectName() + QStringLiteral(": ") +
            QObject::tr("Evaluate node: cannot evaluate node") + ',';
-};
+}
 
 /// Helper struct to "hide" implementation details and template functions
 struct GraphExecutionModel::Impl
@@ -202,15 +202,6 @@ struct GraphExecutionModel::Impl
         return false;
     }
 
-    template<typename ExecModel>
-    static inline auto
-    remove(ExecModel& model, NodeUuid const& nodeUuid)
-    {
-        return std::find(model.m_queuedNodes.begin(),
-                         model.m_queuedNodes.end(),
-                         nodeUuid);
-    }
-
     static inline bool
     containsGraph(GraphExecutionModel const& model,
                      Graph const& graph)
@@ -257,8 +248,7 @@ struct GraphExecutionModel::Impl
                     << makeError(graph)
                     << QObject::tr("entry for node '%1' (%2) not found!")
                            .arg(relativeNodePath(*node))
-                           .arg(node->id())
-                           .arg(node->caption());
+                           .arg(node->id());
             return {};
         }
 
@@ -568,7 +558,10 @@ struct GraphExecutionModel::Impl
             emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
         });
 
-        removeFromQueuedNodes(model, nodeUuid);
+        if (!item.isReadyForEvaluation())
+        {
+            removeFromQueuedNodes(model, nodeUuid);
+        }
 
         bool success = true;
         for (auto& port : item->portsOut)
@@ -621,7 +614,7 @@ struct GraphExecutionModel::Impl
     {
         NodeEvalState evalState = scheduleTargetNode(
             model, nodeUuid, evalType
-            );
+        );
 
         ExecFuture future{
             model, nodeUuid, evalState
@@ -767,15 +760,18 @@ struct GraphExecutionModel::Impl
 
         if (conData->predecessors.empty())
         {
-            gtError() << evaluteNodeError(model.graph())
-                      << tr("node '%1' (%2) is not ready and has no dependencies!")
-                             .arg(relativeNodePath(*item.node))
-                             .arg(item.node->id());
+            INTELLI_LOG_WARN(model)
+                << evaluteNodeError(model.graph())
+                << tr("node '%1' (%2) is not ready and has no dependencies!")
+                       .arg(relativeNodePath(*item.node))
+                       .arg(item.node->id());
             return NodeEvalState::Invalid;
         }
 
+        item->isPending = true;
+
         // iterate over all dependencies
-#ifdef _DEBUG
+#ifndef NDEBUG
         int validNodes = 0;
 #endif
         for (auto& predecessor : conData->predecessors)
@@ -789,7 +785,7 @@ struct GraphExecutionModel::Impl
                 return NodeEvalState::Invalid;
             }
 
-#ifdef _DEBUG
+#ifndef NDEBUG
             if (model.nodeEvalState(predecessor.node) == NodeEvalState::Valid)
             {
                 validNodes++;
@@ -803,9 +799,7 @@ struct GraphExecutionModel::Impl
             }
         }
 
-        item->isPending = true;
-
-#ifdef _DEBUG
+#ifndef NDEBUG
         // if all predecessors have been evaluated but this node is not ready
         // something went wrong
         assert(conData->predecessors.empty() ||
@@ -840,6 +834,13 @@ struct GraphExecutionModel::Impl
                 << tr("node is already evaluated!");
             assert(model.nodeEvalState(nodeUuid) == NodeEvalState::Valid);
             return NodeEvalState::Valid;
+        }
+
+        if (!item.node->isActive())
+        {
+            INTELLI_LOG(model)
+                << tr("node is paused!");
+            return NodeEvalState::Paused;
         }
 
         auto iter = findQueuedNode(model, nodeUuid);
@@ -928,13 +929,13 @@ struct GraphExecutionModel::Impl
         // disconnect old signal if still present
         auto disconnect = [exec = &model, node = item.node](){
             QObject::disconnect(node, &Node::computingFinished,
-                                exec, &GraphExecutionModel::onNodeEvaluatedHelper);
+                                exec, &GraphExecutionModel::onNodeEvaluated);
         };
         disconnect();
 
         // subscribe to when node finished its execution
         QObject::connect(item.node, &Node::computingFinished,
-                         &model, &GraphExecutionModel::onNodeEvaluatedHelper,
+                         &model, &GraphExecutionModel::onNodeEvaluated,
                          Qt::DirectConnection);
 
         assert(model.m_queuedNodes.size() > idx);

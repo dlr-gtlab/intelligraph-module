@@ -93,7 +93,6 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
 Node::~Node()
 {
-    gtDebug() << "DELETED NODE" << id() << caption();
     emit nodeAboutToBeDeleted(id());
 }
 
@@ -404,7 +403,7 @@ Node::portId(PortType type, PortIndex idx) const noexcept(false)
 bool
 Node::isPortConnected(PortId portId) const
 {
-    auto* graph = qobject_cast<Graph const*>(parent());
+    auto* graph = Graph::accessGraph(*this);
     if (!graph) return false;
 
     return !graph->findConnectedNodes(id(), portId).empty();

@@ -128,6 +128,14 @@ public:
     ConnectionUuid connectionUuid(ConnectionId conId) const;
 
     /**
+     * @brief Access the graph of the given node
+     * @param node Graph of the node
+     * @return Graph
+     */
+    static Graph* accessGraph(Node& node);
+    static Graph const* accessGraph(Node const& node);
+
+    /**
      * @brief Returns the parent graph of this node (null if the graph is a
      * root graph node)
      * @return Parent graph
@@ -500,6 +508,12 @@ private:
     int m_modificationCount = 0;
 
     /**
+     * @brief Whether this model is currently undergoing modification.
+     * @return Is being modified
+     */
+    bool isBeingModified() const;
+
+    /**
      * @brief Returns the group object in which all connections are stored
      * (should never be null)
      * @return Object group
@@ -513,8 +527,8 @@ private:
     void restoreConnections();
     void restoreNodesAndConnections();
 
-    void appendGlobalConnection(Connection& con, ConnectionId conId, Node& targetNode);
-    void appendGlobalConnection(Connection& con, ConnectionUuid conUuid);
+    void appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targetNode);
+    void appendGlobalConnection(Connection* guard, ConnectionUuid conUuid);
 };
 
 } // namespace intelli

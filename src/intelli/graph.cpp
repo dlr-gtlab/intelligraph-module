@@ -43,18 +43,40 @@ Graph::Graph() :
 Graph::~Graph()
 {
     emit graphAboutToBeDeleted(QPrivateSignal());
+
+    auto change = modify();
+    Q_UNUSED(change);
+
+    // remove connections
+    auto& conGroup = this->connectionGroup();
+    delete& conGroup;
+
+    auto const& nodes = this->nodes();
+    qDeleteAll(nodes);
+}
+
+Graph*
+intelli::Graph::accessGraph(Node& node)
+{
+    return qobject_cast<Graph*>(node.parent());
+}
+
+Graph const*
+intelli::Graph::accessGraph(Node const& node)
+{
+    return qobject_cast<Graph const*>(node.parent());
 }
 
 Graph*
 Graph::parentGraph()
 {
-    return qobject_cast<Graph*>(parent());
+    return accessGraph(*this);
 }
 
 Graph const*
 Graph::parentGraph() const
 {
-    return qobject_cast<Graph const*>(parent());
+    return accessGraph(*this);
 }
 
 Graph*
@@ -479,23 +501,35 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 
     node->updateObjectName();
 
+
+    // append nodes of subgraph
     if (auto* graph = qobject_cast<Graph*>(node.get()))
     {
         // merge connection models
-        gt::for_each_key(graph->m_global->begin(),
-                         graph->m_global->end(),
-                         [this, graph](auto const& key){
-            this->m_global->insert(key, graph->m_global->value(key));
-        });
+        if (this->m_global != graph->m_global)
+        {
+            gt::for_each_key(graph->m_global->begin(),
+                             graph->m_global->end(),
+                             [this, graph](NodeUuid const& key){
+                this->m_global->insert(key, graph->m_global->value(key));
+            });
+        }
+
         graph->m_global = this->m_global;
 
         // init input output providers of sub graph
         graph->initInputOutputProviders();
     }
 
-    // append node to model
+    // register node in local model
     m_local.insert(node->id(), ConnectionData<NodeId>{ node.get() });
-    m_global->insert(node->uuid(), ConnectionData<NodeUuid>{ node.get() });
+
+    // register node in global model if not present already (avoid overwrite)
+    NodeUuid const& nodeUuid = node->uuid();
+    if (!connection_model::find(*m_global, nodeUuid))
+    {
+        m_global->insert(nodeUuid, ConnectionData<NodeUuid>{ node.get() });
+    }
 
     // setup connections
     connect(node.get(), &Node::portChanged,
@@ -553,11 +587,11 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     assert(targetNode);
     assert(sourceNode);
 
-    auto outConnection = ConnectionDetail<NodeId>::fromConnection(conId.reversed());
-    auto inConnection  = ConnectionDetail<NodeId>::fromConnection(conId);
+    auto inConnection  = ConnectionDetail<NodeId>::fromConnection(conId.reversed());
+    auto outConnection = ConnectionDetail<NodeId>::fromConnection(conId);
 
-    targetNode->predecessors.append(outConnection);
-    sourceNode->successors.append(inConnection);
+    targetNode->predecessors.append(inConnection);
+    sourceNode->successors.append(outConnection);
 
     // setup connections
     connect(connection.get(), &QObject::destroyed,
@@ -565,7 +599,7 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
             Qt::DirectConnection);
 
     // append to global connection model
-    appendGlobalConnection(*connection, conId, *targetNode->node);
+    appendGlobalConnection(connection.get(), conId, *targetNode->node);
 
     // notify
     emit connectionAppended(connection.get());
@@ -577,7 +611,7 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
 }
 
 void
-Graph::appendGlobalConnection(Connection& con, ConnectionId conId, Node& targetNode)
+Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targetNode)
 {
     auto* root = rootGraph();
     assert(root);
@@ -585,37 +619,44 @@ Graph::appendGlobalConnection(Connection& con, ConnectionId conId, Node& targetN
     auto conUuid = connectionUuid(conId);
     assert(conUuid.isValid());
 
+    appendGlobalConnection(guard, conUuid);
+
     // forwards inputs of graph node to subgraph
     if (auto* graph = qobject_cast<Graph*>(&targetNode))
     {
-        appendGlobalConnection(con, conUuid);
-
-        auto inputProvider = graph->inputProvider();
+        auto* inputProvider = graph->inputProvider();
         assert(inputProvider);
 
         conUuid.inNodeId = inputProvider->uuid();
         conUuid.inPort   = GroupInputProvider::virtualPortId(conId.inPort);
-    }
 
-    appendGlobalConnection(con, conUuid);
+        appendGlobalConnection(nullptr, conUuid);
+    }
 
     // forwards outputs of subgraph to graph node
     if (auto* output = qobject_cast<GroupOutputProvider*>(&targetNode))
     {
-        auto parentGraph = qobject_cast<Graph*>(output->parent());
+        Graph* parentGraph = accessGraph(*output);
         assert(parentGraph);
+
+        // graph is being restored (memento diff)
+        if (!this->parentGraph())
+        {
+            assert(isBeingModified());
+            m_global->insert(uuid(), ConnectionData<NodeUuid>{ this });
+        }
 
         conUuid.outNodeId = output->uuid();
         conUuid.outPort   = GroupOutputProvider::virtualPortId(conUuid.inPort);
         conUuid.inNodeId  = parentGraph->uuid();
         conUuid.inPort    = conUuid.outPort;
 
-        appendGlobalConnection(con, conUuid);
+        appendGlobalConnection(nullptr, std::move(conUuid));
     }
 }
 
 void
-Graph::appendGlobalConnection(Connection& con, ConnectionUuid conUuid)
+Graph::appendGlobalConnection(Connection* guard, ConnectionUuid conUuid)
 {
     assert(conUuid.isValid());
 
@@ -624,14 +665,16 @@ Graph::appendGlobalConnection(Connection& con, ConnectionUuid conUuid)
     assert(globalTargetNode);
     assert(globalSourceNode);
 
-    auto outConnection = ConnectionDetail<NodeUuid>::fromConnection(conUuid.reversed());
-    auto inConnection  = ConnectionDetail<NodeUuid>::fromConnection(conUuid);
+    auto inConnection  = ConnectionDetail<NodeUuid>::fromConnection(conUuid.reversed());
+    auto outConnection = ConnectionDetail<NodeUuid>::fromConnection(conUuid);
 
-    globalTargetNode->predecessors.append(outConnection);
-    globalSourceNode->successors.append(inConnection);
+    globalTargetNode->predecessors.append(inConnection);
+    globalSourceNode->successors.append(outConnection);
+
+    if (!guard) return;
 
     // setup connections
-    connect(&con, &QObject::destroyed,
+    connect(guard, &QObject::destroyed,
             this, Impl::GlobalConnectionDeleted(this, conUuid),
             Qt::DirectConnection);
 }
@@ -707,6 +750,12 @@ Graph::deleteConnection(ConnectionId connectionId)
     return false;
 }
 
+bool
+Graph::isBeingModified() const
+{
+    return m_modificationCount > 0;
+}
+
 void
 Graph::onObjectDataMerged()
 {
@@ -716,7 +765,14 @@ Graph::onObjectDataMerged()
 void
 Graph::restoreNode(Node* node)
 {
-    if (findNode(node->id())) return;
+    if (findNode(node->id()))
+    {
+        if (auto* subgraph = qobject_cast<Graph*>(node))
+        {
+            assert(subgraph->m_global == m_global);
+        }
+        return;
+    }
 
     std::unique_ptr<Node> ptr{node};
     static_cast<QObject*>(node)->setParent(nullptr);
@@ -921,7 +977,10 @@ namespace intelli
 inline QString
 printableCaption(Node const* node)
 {
-    if (!node) return QStringLiteral("id{NULL}");
+    if (!node)
+    {
+        return QStringLiteral("id{NULL}");
+    }
 
     QString uuid = node->uuid();
     uuid.remove('{');
@@ -942,7 +1001,7 @@ printableCaption(Node const* node)
     caption.replace('[', '_');
     caption.replace(' ', '_');
     return QStringLiteral("id_%1(%2)").arg(uuid, caption);
-};
+}
 
 QString
 debugGraphHelper(Graph const& graph)
@@ -955,37 +1014,39 @@ debugGraphHelper(Graph const& graph)
     auto end   = data.keyValueEnd();
     for (auto iter = begin; iter != end; ++iter)
     {
-//        auto& nodeId = iter->first;
         auto& entry = iter->second;
-
-//        assert(entry.node && entry.node->id() == nodeId);
 
         QString const& caption = printableCaption(entry.node);
         text += QStringLiteral("\t") + caption + QStringLiteral("\n");
 
-//        if (auto* g = qobject_cast<Graph const*>(entry.node))
-//        if (auto* input  = g->inputProvider())
-//        if (auto* output = g->outputProvider())
-//        {
-//            text += QStringLiteral("\t") + caption + QStringLiteral("-.->") + printableCaption(input)  + QStringLiteral("\n");
-//            text += QStringLiteral("\t") + printableCaption(output) + QStringLiteral("-.->") + caption + QStringLiteral("\n");
-//            text += QStringLiteral("\tsubgraph ") + g->caption() + QStringLiteral("\n");
-//            text += debugGraphHelper(*g);
-//            text += QStringLiteral("\tend\n");
-//        }
-
-        for (auto& desc : entry.successors)
+        for (auto& con : entry.successors)
         {
-            auto otherEntry = data.find(desc.node);
+            auto otherEntry = data.find(con.node);
             if (otherEntry == data.end()) continue;
 
-//            assert(otherEntry->node && otherEntry->node->id() == desc.node);
+            QString entry = QStringLiteral("\t") + printableCaption(otherEntry->node) +
+                            QStringLiteral(" --") + QString::number(con.port) +
+                            QStringLiteral(" : ") + QString::number(con.sourcePort) +
+                            QStringLiteral("--> ") + caption +
+                            QStringLiteral("\n");
+            if (text.contains(entry)) continue;
 
-            text += QStringLiteral("\t") + caption +
-                    QStringLiteral(" --") + QString::number(desc.sourcePort) +
-                    QStringLiteral(" : ") + QString::number(desc.port) +
-                    QStringLiteral("--> ") + printableCaption(otherEntry->node) +
-                    QStringLiteral("\n");
+            text += entry;
+        }
+
+        for (auto& con : entry.predecessors)
+        {
+            auto otherEntry = data.find(con.node);
+            if (otherEntry == data.end()) continue;
+
+            QString entry = QStringLiteral("\t") + printableCaption(otherEntry->node) +
+                            QStringLiteral(" --") + QString::number(con.port) +
+                            QStringLiteral(" : ") + QString::number(con.sourcePort) +
+                            QStringLiteral("--> ") + caption +
+                            QStringLiteral("\n");
+            if (text.contains(entry)) continue;
+
+            text += entry;
         }
     }
 
