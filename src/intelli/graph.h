@@ -125,6 +125,12 @@ public:
     ConnectionId connectionId(NodeId outNodeId, PortIndex outPortIdx,
                               NodeId inNodeId, PortIndex inPortIdx) const;
 
+    /**
+     * @brief Converts the connection id into a connection uuid (used for the
+     * global connection model)
+     * @param conId Connection id to convert
+     * @return
+     */
     ConnectionUuid connectionUuid(ConnectionId conId) const;
 
     /**
@@ -136,7 +142,7 @@ public:
     static Graph const* accessGraph(Node const& node);
 
     /**
-     * @brief Returns the parent graph of this node (null if the graph is a
+     * @brief Returns the parent graph of this graph (null if the graph is a
      * root graph node)
      * @return Parent graph
      */
@@ -146,7 +152,7 @@ public:
     /**
      * @brief Returns the root graph of this graph. If no root is found it is
      * assumed that this object is the root.
-     * @return Root graph
+     * @return Root graph (should never be null)
      */
     Graph* rootGraph();
     Graph const* rootGraph() const;
@@ -175,6 +181,7 @@ public:
      * @brief Returns a list of all connection ids in this graph
      * @return Connection ids
      */
+    [[deprecated]]
     QVector<ConnectionId> connectionIds() const;
     
     /**

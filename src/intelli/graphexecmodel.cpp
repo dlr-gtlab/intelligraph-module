@@ -505,9 +505,6 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
                .arg(portId)
                .arg(toString(item->data.ptr), toString(item->data.state));
 
-    auto& conModel = graph().globalConnectionModel();
-    auto* conData = connection_model::find(conModel, nodeUuid);
-
     switch (item.portType)
     {
     case PortType::In:
@@ -530,9 +527,14 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
             emit nodeEvalStateChanged(nodeUuid, QPrivateSignal());
         }
 
-        connection_model::visitSuccessors(conData, item->portId,
+        auto& conModel = graph().globalConnectionModel();
+        auto* conData = connection_model::find(conModel, nodeUuid);
+
+        assert(conData);
+
+        connection_model::visitSuccessors(*conData, item->portId,
                                           [this, &item](auto& successor){
-            return setNodeData(successor.node, successor.port, item->data);
+            setNodeData(successor.node, successor.port, item->data);
         });
         break;
     }
@@ -659,19 +661,18 @@ GraphExecutionModel::onNodeEvaluated()
     // schedule next nodes marked for evaluation
     auto& conModel = graph().globalConnectionModel();
     auto* conData = connection_model::find(conModel, nodeUuid);
+    assert(conData);
 
-    bool success = connection_model::visitSuccessors(conData, [this](auto& successor){
+    connection_model::visitSuccessors(*conData, [this](auto& successor){
         auto nextNode = Impl::findData(*this, successor.node);
         assert(nextNode);
 
         if (nextNode->isPending)
         {
-            return Impl::queueNode(*this, successor.node, nextNode) != NodeEvalState::Invalid;
+            Impl::queueNode(*this, successor.node, nextNode);
         }
-        return true;
     });
 
-    assert(success);
     Impl::evaluateNextInQueue(*this);
 }
 

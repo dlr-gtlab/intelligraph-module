@@ -792,12 +792,26 @@ Graph::restoreNode(Node* node)
 void
 Graph::restoreConnection(Connection* connection)
 {
-    if (findConnections(connection->inNodeId(), PortType::In).contains(connection->connectionId()))
+    assert(connection);
+    auto conId = connection->connectionId();
+
+    auto* conData = connection_model::find(m_local, connection->inNodeId());
+    assert(conData);
+    if (connection_model::containsConnection(*conData, connection->inNodeId(), conId, PortType::In))
     {
-        assert(findConnections(connection->outNodeId(), PortType::Out).contains(connection->connectionId()));
+#ifndef NDEBUG
+        conData = connection_model::find(m_local, connection->outNodeId());
+        assert(conData);
+        assert(connection_model::containsConnection(*conData, connection->outNodeId(), conId, PortType::Out));
+#endif
         return;
+
     }
-    assert(!findConnections(connection->outNodeId(), PortType::Out).contains(connection->connectionId()));
+#ifndef NDEBUG
+    conData = connection_model::find(m_local, connection->outNodeId());
+    assert(conData);
+    assert(!connection_model::containsConnection(*conData, connection->outNodeId(), conId, PortType::Out));
+#endif
 
     std::unique_ptr<Connection> ptr{connection};
     ptr->setParent(nullptr);

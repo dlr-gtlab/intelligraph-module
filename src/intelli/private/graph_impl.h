@@ -167,15 +167,17 @@ struct Graph::Impl
         }
 
         // check if input port is already connected
-        auto const& cons = graph.findConnections(conId.inNodeId, conId.inPort);
-        if (!cons.empty())
+        auto& conModel = graph.localConnectionModel();
+        auto* conData = connection_model::find(conModel, conId.inNodeId);
+        assert(conData);
+
+        bool connected = connection_model::hasConnections(*conData, conId.inPort);
+        if (connected)
         {
-            assert (cons.size() == 1);
             if (!silent)
             {
                 gtWarning() << makeError()
-                            << tr("(in-port is already connected to '%1')")
-                                   .arg(toString(cons.first()));
+                            << tr("(in-port is already connected)");
             }
             return {};
         }
@@ -392,21 +394,19 @@ struct Graph::Impl
             Q_UNUSED(change);
 
             // remove local connections
-            connection_model::visitPredeccessors(&localIter.value(), [this, nodeId](auto& con){
-                return graph->deleteConnection(con.toConnection(nodeId).reversed());
+            connection_model::visitPredecessors(*localIter, [this, nodeId](auto& con){
+                graph->deleteConnection(con.toConnection(nodeId).reversed());
             });
-            connection_model::visitSuccessors(&localIter.value(), [this, nodeId](auto& con){
-                return graph->deleteConnection(con.toConnection(nodeId));
+            connection_model::visitSuccessors(*localIter, [this, nodeId](auto& con){
+                graph->deleteConnection(con.toConnection(nodeId));
             });
 
             // remove remaining global connections
-            connection_model::visitPredeccessors(&globalIter.value(), [this, &nodeUuid](auto& con){
+            connection_model::visitPredecessors(*globalIter, [this, &nodeUuid](auto& con){
                 GlobalConnectionDeleted{graph, con.toConnection(nodeUuid).reversed()}();
-                return true;
             });
-            connection_model::visitSuccessors(&globalIter.value(), [this, &nodeUuid](auto& con){
+            connection_model::visitSuccessors(*globalIter, [this, &nodeUuid](auto& con){
                 GlobalConnectionDeleted{graph, con.toConnection(nodeUuid)}();
-                return true;
             });
 
             emit graph->childNodeAboutToBeDeleted(nodeId);

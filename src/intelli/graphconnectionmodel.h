@@ -41,6 +41,11 @@ struct ConnectionDetail
     {
         return { sourceNode, sourcePort, node, port };
     }
+    ConnectionId_t<NodeId_t> toConnection(NodeId_t sourceNode, PortType type) const
+    {
+        return type == PortType::In ? toConnection(sourceNode).reversed() :
+                                      toConnection(sourceNode);
+    }
 
     /**
      * @brief Constructs an object from an outgoing connection
@@ -96,64 +101,72 @@ find(Model& model, NodeId_t nodeId)
 struct TraverseRecursively{};
 
 template <typename ConnectionData_t, typename Lambda>
-inline bool
-visit(ConnectionData_t* data, PortId sourcePort, PortType type, Lambda const& lambda)
+inline void
+visit(ConnectionData_t& data, PortId sourcePort, PortType type, Lambda const& lambda)
 {
     return visit(data, type, [sourcePort, type, &lambda](auto& con){
         if (con.sourcePort == sourcePort)
         {
-            return lambda(con);
+            lambda(con);
         }
-        return true;
     });
 }
 
 template <typename ConnectionData_t, typename Lambda>
-inline bool
-visit(ConnectionData_t* data, PortType type, Lambda const& lambda)
+inline void
+visit(ConnectionData_t& data, PortType type, Lambda const& lambda)
 {
-    if (!data) return false;
-
-    bool success = true;
-    for (auto& con : data->ports(type))
+    static_assert(!std::is_pointer<ConnectionData_t>::value,
+                  "expected ConnectionData_t& but got ConnectionData_t*");
+    for (auto& con : data.ports(type))
     {
-        success &= lambda(con);
+        lambda(con);
     }
+}
 
-    return success;
+template <typename ConnectionData_t, typename NodeId_t, typename Lambda>
+inline void
+visitConnections(ConnectionData_t& data, NodeId_t sourceNode, PortType type, Lambda const& lambda)
+{
+    static_assert(!std::is_pointer<ConnectionData_t>::value,
+                  "expected ConnectionData_t& but got ConnectionData_t*");
+    for (auto& con : data.ports(type))
+    {
+        lambda(con.toConnection(sourceNode, type));
+    }
 }
 
 template <typename ConnectionData_t, typename Lambda>
-inline bool
-visitSuccessors(ConnectionData_t* data, PortId sourcePort, Lambda const& lambda)
+inline void
+visitSuccessors(ConnectionData_t& data, PortId sourcePort, Lambda const& lambda)
 {
     return visit(data, sourcePort, PortType::Out, lambda);
 }
 
 template <typename ConnectionData_t, typename Lambda>
-inline bool
-visitSuccessors(ConnectionData_t* data, Lambda const& lambda)
+inline void
+visitSuccessors(ConnectionData_t& data, Lambda const& lambda)
 {
     return visit(data, PortType::Out, lambda);
 }
 
 template <typename ConnectionData_t, typename Lambda>
-inline bool
-visitPredeccessors(ConnectionData_t* data, PortId sourcePort, Lambda const& lambda)
+inline void
+visitPredecessors(ConnectionData_t& data, PortId sourcePort, Lambda const& lambda)
 {
     return visit(data, sourcePort, PortType::In, lambda);
 }
 
 template <typename ConnectionData_t, typename Lambda>
-inline bool
-visitPredeccessors(ConnectionData_t* data, Lambda const& lambda)
+inline void
+visitPredecessors(ConnectionData_t& data, Lambda const& lambda)
 {
     return visit(data, PortType::In, lambda);
 }
 
 template <typename ConnectionData_t>
 inline bool
-hasConnections(ConnectionData_t* data, PortId sourcePort, PortType type)
+hasConnections(ConnectionData_t& data, PortId sourcePort, PortType type)
 {
     size_t count = 0;
     visit(data, sourcePort, type, [&count](auto&){ ++count; return true; });
@@ -162,30 +175,54 @@ hasConnections(ConnectionData_t* data, PortId sourcePort, PortType type)
 
 template <typename ConnectionData_t>
 inline bool
-hasSuccessors(ConnectionData_t* data, PortId sourcePort)
+hasConnections(ConnectionData_t& data, PortId sourcePort)
+{
+    return hasConnections(data, sourcePort, PortType::In) &&
+           hasConnections(data, sourcePort, PortType::Out);
+}
+
+template <typename ConnectionData_t>
+inline bool
+hasSuccessors(ConnectionData_t& data, PortId sourcePort)
 {
     return hasConnections(data, sourcePort, PortType::Out);
 }
 
 template <typename ConnectionData_t>
 inline bool
-hasPredecessors(ConnectionData_t* data, PortId sourcePort)
+hasPredecessors(ConnectionData_t& data, PortId sourcePort)
 {
     return hasConnections(data, sourcePort, PortType::In);
 }
 
 template <typename ConnectionData_t>
 inline bool
-hasSuccessors(ConnectionData_t* data)
+hasSuccessors(ConnectionData_t& data)
 {
-    return data && !data->successors.empty();
+    return !data->successors.empty();
 }
 
 template <typename ConnectionData_t>
 inline bool
-hasPredecessors(ConnectionData_t* data)
+hasPredecessors(ConnectionData_t& data)
 {
-    return data && !data->predecessors.empty();
+    return !data->predecessors.empty();
+}
+
+template <typename ConnectionData_t, typename NodeId_t>
+inline bool
+containsConnection(ConnectionData_t& data,
+                   NodeId_t const& sourceNode,
+                   ConnectionId_t<NodeId_t> const& conId,
+                   PortType type)
+{
+    static_assert(!std::is_pointer<ConnectionData_t>::value,
+                  "expected ConnectionData_t& but got ConnectionData_t*");
+    for (auto& con : data.ports(type))
+    {
+        if (con.toConnection(sourceNode, type) == conId) return true;
+    }
+    return false;
 }
 
 // operators

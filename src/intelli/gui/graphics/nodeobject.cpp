@@ -613,8 +613,16 @@ NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& typeId,
     auto& factory = NodeDataFactory::instance();
     for (auto& port : node.ports(type))
     {
-        if (type == PortType::In &&
-            !graph.findConnections(node.id(), port.id()).empty()) continue;
+        if (type == PortType::In)
+        {
+            auto& conModel = graph.localConnectionModel();
+            auto* conData = connection_model::find(conModel, node.id());
+            assert(conData);
+            if (connection_model::hasConnections(*conData, port.id()))
+            {
+                continue;
+            }
+        }
 
         if (!factory.canConvert(port.typeId, typeId, type)) continue;
 

@@ -150,7 +150,11 @@ NodePainter::drawPorts(QPainter& painter) const
 
             if (!port->visible) continue;
 
-            bool connected = !graph.findConnections(node.id(), port->id()).empty();
+            auto& conModel = graph.localConnectionModel();
+            auto* conData = connection_model::find(conModel, node.id());
+            assert(conData);
+
+            bool connected = connection_model::hasConnections(*conData, port->id());
 
             uint flags = NoPortFlag;
 

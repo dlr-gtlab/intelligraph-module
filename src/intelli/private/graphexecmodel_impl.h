@@ -421,12 +421,13 @@ struct GraphExecutionModel::Impl
         {
             auto& conModel = execModel->graph().globalConnectionModel();
             auto* conData = connection_model::find(conModel, node->uuid());
+            assert(conData);
 
             bool valid =
                 std::all_of(entry->portsIn.begin(), entry->portsIn.end(),
-                        [conData, this](PortDataItem const& entry){
+                            [conData, this](PortDataItem const& entry){
 
-                bool isConnected = connection_model::hasPredecessors(conData, entry.portId);
+                bool isConnected = connection_model::hasPredecessors(*conData, entry.portId);
                 bool isPortDataValid = entry.data.state == PortDataState::Valid;
 
                 auto* port = node->port(entry.portId);
@@ -509,8 +510,6 @@ struct GraphExecutionModel::Impl
         PortType type = item.node->portType(portId);
         assert(type != PortType::NoType);
 
-        bool success = false;
-
         switch (type)
         {
         case PortType::In:
@@ -521,7 +520,7 @@ struct GraphExecutionModel::Impl
             {
                 break;
             }
-            success = invalidateNodeHelper(model, nodeUuid, item.node->portId(PortType::Out, idx));
+            invalidateNodeHelper(model, nodeUuid, item.node->portId(PortType::Out, idx));
             break;
         }
         case PortType::Out:
@@ -529,17 +528,17 @@ struct GraphExecutionModel::Impl
             // invalidate all outgoing connections of this port only
             auto& conModel = model.graph().globalConnectionModel();
             auto* conData  = connection_model::find(conModel, nodeUuid);
-            success = connection_model::visitSuccessors(conData, portId,
-                                                     [&model](auto& con){
+            assert(conData);
+
+            connection_model::visitSuccessors(*conData, portId, [&model](auto& con){
                 invalidateNodeHelper(model, con.node, con.port);
-                return true;
             });
             break;
         }
         case PortType::NoType:
-            break;
+            throw GTlabException(__FUNCTION__, "path is unreachable!");
         }
-        return success;
+        return true;
     }
 
     static inline bool
@@ -572,10 +571,10 @@ struct GraphExecutionModel::Impl
 
             // find and invalidate connected nodes
             auto* conData = connection_model::find(model.graph().globalConnectionModel(), nodeUuid);
-            success &= connection_model::visitSuccessors(conData, port.portId,
-                                                         [&model](auto& con){
-                invalidateNodeHelper(model, con.node, con.port);
-                return true;
+            assert(conData);
+            connection_model::visitSuccessors(*conData, port.portId,
+                                              [&model, &success](auto& con){
+                success &= invalidateNodeHelper(model, con.node, con.port);
             });
         }
 
@@ -639,9 +638,10 @@ struct GraphExecutionModel::Impl
 
         auto& conModel = model.graph().globalConnectionModel();
         auto* conData = connection_model::find(conModel, nodeUuid);
+        if (!conData) return;
 
         // clear predecessors
-        connection_model::visitPredeccessors(conData, [&model](auto& con){
+        connection_model::visitPredecessors(*conData, [&model](auto& con){
             unscheduleNodeRecursively(model, con.node);
             return true;
         });
