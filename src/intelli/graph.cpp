@@ -533,7 +533,8 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 
     // setup connections
     connect(node.get(), &Node::portChanged,
-            this, Impl::PortChanged(this, node.get()), Qt::DirectConnection);
+            this, Impl::PortChanged(this, node.get()),
+            Qt::DirectConnection);
 
     connect(node.get(), &Node::portInserted,
             this, [this, nodeId = node->id()](PortType type, PortIndex idx){
@@ -541,7 +542,8 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     }, Qt::DirectConnection);
 
     connect(node.get(), &Node::portAboutToBeDeleted,
-            this, Impl::PortDeleted(this, node.get()), Qt::DirectConnection);
+            this, Impl::PortDeleted(this, node.get()),
+            Qt::DirectConnection);
 
     connect(node.get(), &Node::portDeleted,
             this, [this, nodeId = node->id()](PortType type, PortIndex idx){
@@ -549,7 +551,8 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     }, Qt::DirectConnection);
 
     connect(node.get(), &Node::nodeAboutToBeDeleted,
-            this, Impl::NodeDeleted(this), Qt::DirectConnection);
+            this, Impl::NodeDeleted(this),
+            Qt::DirectConnection);
 
     // notify
     emit nodeAppended(node.get());
@@ -636,19 +639,18 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
     // forwards outputs of subgraph to graph node
     if (auto* output = qobject_cast<GroupOutputProvider*>(&targetNode))
     {
-        Graph* parentGraph = accessGraph(*output);
-        assert(parentGraph);
+        NodeUuid const& graphUuid = uuid();
 
         // graph is being restored (memento diff)
-        if (!this->parentGraph())
+        if (!connection_model::find(*m_global, graphUuid))
         {
             assert(isBeingModified());
-            m_global->insert(uuid(), ConnectionData<NodeUuid>{ this });
+            m_global->insert(graphUuid, ConnectionData<NodeUuid>{ this });
         }
 
         conUuid.outNodeId = output->uuid();
         conUuid.outPort   = GroupOutputProvider::virtualPortId(conUuid.inPort);
-        conUuid.inNodeId  = parentGraph->uuid();
+        conUuid.inNodeId  = graphUuid;
         conUuid.inPort    = conUuid.outPort;
 
         appendGlobalConnection(nullptr, std::move(conUuid));
@@ -762,6 +764,8 @@ Graph::isBeingModified() const
 void
 Graph::onObjectDataMerged()
 {
+    Node::onObjectDataMerged();
+
     restoreNodesAndConnections();
 }
 
@@ -770,10 +774,12 @@ Graph::restoreNode(Node* node)
 {
     if (findNode(node->id()))
     {
+#ifndef NDEBUG
         if (auto* subgraph = qobject_cast<Graph*>(node))
         {
             assert(subgraph->m_global == m_global);
         }
+#endif
         return;
     }
 
