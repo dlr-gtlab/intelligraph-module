@@ -134,6 +134,8 @@ signals:
 
     void graphStalled(QPrivateSignal);
 
+    void wakeup(QPrivateSignal);
+
 private:
 
     // helper struct to "hide" implementation details
@@ -159,6 +161,8 @@ private:
     QVarLengthArray<TargetNode, PRE_ALLOC> m_targetNodes;
     /// nodes that are ready and waiting for evaluation
     QVarLengthArray<NodeUuid, PRE_ALLOC> m_queuedNodes;
+
+    QVarLengthArray<NodeUuid, PRE_ALLOC> m_evaluatingNodes;
     /// indicator if the exec model is currently beeing modified and thus
     /// should halt execution
     int m_modificationCount = 0;
@@ -193,13 +197,6 @@ private:
      * @param graph Grap to subscribe to
      */
     void setupConnections(Graph& graph);
-
-    /**
-     * @brief Removes the graph (and any subgraph) from this model.
-     * Used internally
-     * @param graph Graph to remove
-     */
-    void removeGraphFromModel(Graph* graph);
 
 private slots:
 

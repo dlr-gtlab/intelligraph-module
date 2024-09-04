@@ -124,18 +124,6 @@ visit(ConnectionData_t& data, PortType type, Lambda const& lambda)
     }
 }
 
-template <typename ConnectionData_t, typename NodeId_t, typename Lambda>
-inline void
-visitConnections(ConnectionData_t& data, NodeId_t sourceNode, PortType type, Lambda const& lambda)
-{
-    static_assert(!std::is_pointer<ConnectionData_t>::value,
-                  "expected ConnectionData_t& but got ConnectionData_t*");
-    for (auto& con : data.ports(type))
-    {
-        lambda(con.toConnection(sourceNode, type));
-    }
-}
-
 template <typename ConnectionData_t, typename Lambda>
 inline void
 visitSuccessors(ConnectionData_t& data, PortId sourcePort, Lambda const& lambda)
@@ -177,7 +165,7 @@ template <typename ConnectionData_t>
 inline bool
 hasConnections(ConnectionData_t& data, PortId sourcePort)
 {
-    return hasConnections(data, sourcePort, PortType::In) &&
+    return hasConnections(data, sourcePort, PortType::In) ||
            hasConnections(data, sourcePort, PortType::Out);
 }
 

@@ -146,7 +146,7 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
     };
     auto const buildPortError = [&](unsigned idx, auto str){
         return buildError() +
-            ", " + str + " going port index '" + std::to_string(idx) +
+            ", " + str + "-going port index '" + std::to_string(idx) +
             "' is out of bounds! " +
                gt::brackets(m_graph->caption().toStdString());
     };

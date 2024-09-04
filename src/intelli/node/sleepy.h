@@ -11,13 +11,14 @@
 #define GT_INTELLI_SLEEPYNODE_H
 
 #include <intelli/node.h>
+#include <intelli/exports.h>
 
 #include <gt_intproperty.h>
 
 namespace intelli
 {
 
-class SleepyNode : public Node
+class GT_INTELLI_TEST_EXPORT SleepyNode : public Node
 {
     Q_OBJECT
 

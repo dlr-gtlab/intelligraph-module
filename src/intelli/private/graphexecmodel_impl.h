@@ -14,6 +14,9 @@
 
 #include <gt_logging.h>
 
+#include <QMutex>
+#include <QMutexLocker>
+
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
 
 namespace intelli
@@ -83,6 +86,60 @@ inline QString evaluteNodeError(Graph const& graph)
 /// Helper struct to "hide" implementation details and template functions
 struct GraphExecutionModel::Impl
 {
+    struct SynchronizationEntry
+    {
+        QPointer<GraphExecutionModel> ptr = {};
+        size_t runningNodes = {};
+        bool isExclusiveNodeRunning = false;
+    };
+
+    // coarse locking
+    struct Synchronization
+    {
+        QMutex mutex;
+        QVector<SynchronizationEntry> entries;
+
+        bool isExclusiveNodeRunning()
+        {
+            return std::any_of(entries.begin(),
+                               entries.end(),
+                               [](SynchronizationEntry const& entry){
+                return entry.isExclusiveNodeRunning;
+            });
+        }
+
+        bool areNodesRunning()
+        {
+            return std::any_of(entries.begin(),
+                               entries.end(),
+                               [](SynchronizationEntry const& entry){
+               return entry.runningNodes > 0;
+           });
+        }
+
+        int indexOf(GraphExecutionModel& model)
+        {
+            int n = entries.size();
+            for (int idx = 0; idx < n; idx++)
+            {
+                auto& entry = entries.at(idx);
+                if (entry.ptr == &model) return idx;
+            }
+            return -1;
+        }
+
+        void notify(GraphExecutionModel& model)
+        {
+            for (auto& entry : entries)
+            {
+                if (entry.ptr == &model) continue;
+                assert(entry.ptr);
+                emit entry.ptr->wakeup(QPrivateSignal());
+            }
+        }
+    };
+
+    static Synchronization s_sync;
 
     /// Wrapper to retrieve iterator type for `QHash` depending on `IsConst`
     template<bool IsConst>
@@ -221,6 +278,12 @@ struct GraphExecutionModel::Impl
     isNodeEvaluating(Node const& node)
     {
         return node.nodeFlags() & NodeFlag::Evaluating;
+    }
+    static inline bool
+    isNodeExlusive(Node const& node)
+    {
+        return node.nodeEvalMode() == NodeEvalMode::ExclusiveBlocking ||
+               node.nodeEvalMode() == NodeEvalMode::ExclusiveDetached;
     }
 
     template<typename ExecModel, typename NodeIdent>
@@ -444,6 +507,11 @@ struct GraphExecutionModel::Impl
             return isNodeEvaluating(*node);
         }
 
+        bool isExclusive() const
+        {
+            return isNodeExlusive(*node);
+        }
+
         bool isEvaluated() const
         {
             return !isEvaluating() &&
@@ -592,6 +660,11 @@ struct GraphExecutionModel::Impl
 
         QVarLengthArray<NodeUuid, PRE_ALLOC> targetNodes;
         findLeafNodes(graph, targetNodes);
+
+        if (&model.graph() != &graph)
+        {
+            targetNodes.push_back(graph.uuid());
+        }
 
         for (auto const& target : targetNodes)
         {
@@ -909,26 +982,57 @@ struct GraphExecutionModel::Impl
             return NodeEvalState::Paused;
         }
 
-        // TODO: add proper support for exlusive nodes
-        auto containsExclusiveNodes = false;
+        // check if this model has
+        bool isExclusiveNodeRunning =
+            std::any_of(model.m_evaluatingNodes.cbegin(),
+                        model.m_evaluatingNodes.cend(),
+                        [&model](NodeUuid const& nodeUuid){
+            auto item = findData(model, nodeUuid);
+            assert(item);
+            return item.isExclusive();
+        });
 
         // an exclusive node has to be evaluated separatly to all other nodes
-        if (containsExclusiveNodes)
+        if (isExclusiveNodeRunning)
         {
             INTELLI_LOG(model)
-                << tr("executor contains exclusive nodes!");
+                << tr("executor is evaluating an exclusive node!");
             return NodeEvalState::Paused;
         }
 
-        bool isExclusive =
-            (item.node->nodeEvalMode() == NodeEvalMode::ExclusiveBlocking ||
-             item.node->nodeEvalMode() == NodeEvalMode::ExclusiveDetached);
-
-        if (isExclusive)
+        bool isExclusive = item.isExclusive();
+        if (isExclusive && !model.m_evaluatingNodes.empty())
         {
             INTELLI_LOG(model)
                 << tr("node is exclusive and must wait for others to finish!");
             return NodeEvalState::Paused;
+        }
+
+        // check other models
+        {
+            QMutexLocker locker{&s_sync.mutex};
+
+            // an exclusive node has to be evaluated separatly to all other nodes
+            if (s_sync.isExclusiveNodeRunning())
+            {
+                INTELLI_LOG(model)
+                    << tr("an other executor is evaluating an exclusive node!");
+                return NodeEvalState::Paused;
+            }
+
+            if (isExclusive && s_sync.areNodesRunning())
+            {
+                INTELLI_LOG(model)
+                    << tr("node is exclusive and must wait for other models to finish!");
+                return NodeEvalState::Paused;
+            }
+
+            // update synchronization entitiy
+            auto idx = s_sync.indexOf(model);
+            assert(idx >= 0);
+            auto& entry = s_sync.entries[idx];
+            entry.runningNodes += 1;
+            entry.isExclusiveNodeRunning = isExclusive;
         }
 
         INTELLI_LOG(model)
@@ -946,12 +1050,19 @@ struct GraphExecutionModel::Impl
                          &model, &GraphExecutionModel::onNodeEvaluated,
                          Qt::DirectConnection);
 
+        NodeUuid const& nodeUuid = item.node->uuid();
+
+        // dequeue and mark as evaluating
         assert(model.m_queuedNodes.size() > idx);
-        assert(model.m_queuedNodes.at(idx) == item.node->uuid());
+        assert(model.m_queuedNodes.at(idx) == nodeUuid);
         model.m_queuedNodes.remove(idx);
 
-        item->state = NodeEvalState::Evaluating;
+        assert(!model.m_evaluatingNodes.contains(nodeUuid));
+        model.m_evaluatingNodes.push_back(nodeUuid);
+
         item->isPending = false;
+        item->state = NodeEvalState::Evaluating;
+        emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
 
         // trigger node evaluation
         if (!exec::triggerNodeEvaluation(*item.node, model))
@@ -960,11 +1071,29 @@ struct GraphExecutionModel::Impl
                       << tr("node execution failed!");
 
             disconnect();
+
+            model.m_evaluatingNodes.pop_back();
+
+            // update synchronization entity
+            {
+                QMutexLocker locker{&s_sync.mutex};
+
+                auto idx = s_sync.indexOf(model);
+                assert(idx >= 0);
+
+                auto& entry = s_sync.entries[idx];
+                entry.runningNodes -= 1;
+                if (isExclusive) entry.isExclusiveNodeRunning = false;
+
+                locker.unlock();
+                s_sync.notify(model);
+            }
+
             item->state = NodeEvalState::Invalid;
-            emit model.nodeEvalStateChanged(item.node->uuid(), QPrivateSignal());
+            emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
 
             auto& conModel = model.graph().globalConnectionModel();
-            auto* conData = connection_model::find(conModel, item.node->uuid());
+            auto* conData = connection_model::find(conModel, nodeUuid);
             assert(conData);
             for (auto& successor : conData->successors)
             {
@@ -1025,7 +1154,8 @@ struct GraphExecutionModel::Impl
 
 }; // struct Impl
 
-} // namespace intelli
+GraphExecutionModel::Impl::Synchronization GraphExecutionModel::Impl::s_sync{};
 
+} // namespace intelli
 
 #endif // GT_INTELLI_GRAPHEXECMODEL_IMPL_H

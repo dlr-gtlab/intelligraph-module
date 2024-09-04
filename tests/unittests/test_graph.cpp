@@ -22,19 +22,19 @@ TEST(Graph, rootGraph)
     Graph* rootGraph = rootGraphPtr.get();
     EXPECT_EQ(rootGraph->rootGraph(), rootGraph);
 
-    auto subGraphPtr = std::make_unique<Graph>();
-    Graph* subGraph = subGraphPtr.get();
-    rootGraph->appendNode(std::move(subGraphPtr));
+    auto subgraphPtr = std::make_unique<Graph>();
+    Graph* subgraph = subgraphPtr.get();
+    rootGraph->appendNode(std::move(subgraphPtr));
 
     EXPECT_EQ(rootGraph->rootGraph(), rootGraph);
-    EXPECT_EQ(subGraph->rootGraph(), rootGraph);
+    EXPECT_EQ(subgraph->rootGraph(), rootGraph);
 
     GtObject root;
     ASSERT_TRUE(root.appendChild(rootGraph));
 
     rootGraphPtr.release(); // root now owns rootGraph
     EXPECT_EQ(rootGraph->rootGraph(), rootGraph);
-    EXPECT_EQ(subGraph->rootGraph(), rootGraph);
+    EXPECT_EQ(subgraph->rootGraph(), rootGraph);
 }
 
 /// input and output provider generate "virtual" (i.e. hidden) ports to simplify

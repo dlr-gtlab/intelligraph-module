@@ -40,6 +40,17 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
     setObjectName(QStringLiteral("__exec_model"));
     setParent(&graph);
 
+    // register model in synchronization entity
+    {
+        QMutexLocker locker{&Impl::s_sync.mutex};
+        Impl::s_sync.entries.push_back({this});
+    }
+
+    connect(this, &GraphExecutionModel::wakeup, this, [this](){
+        if (m_queuedNodes.empty()) return;
+        Impl::evaluateNextInQueue(*this);
+    }, Qt::QueuedConnection);
+
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
     connect(this, &GraphExecutionModel::nodeEvaluated,
             this, [this](QString const& nodeUuid){
@@ -80,7 +91,11 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
     reset();
 }
 
-GraphExecutionModel::~GraphExecutionModel() = default;
+GraphExecutionModel::~GraphExecutionModel()
+{
+    QMutexLocker locker{&Impl::s_sync.mutex};
+    Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
+}
 
 GraphExecutionModel*
 GraphExecutionModel::accessExecModel(Graph& graph)
@@ -183,6 +198,7 @@ GraphExecutionModel::endReset()
 {
     m_targetNodes.clear();
     m_queuedNodes.clear();
+    m_evaluatingNodes.clear();
     m_data.clear();
 
     Graph& graph = this->graph();
@@ -308,11 +324,6 @@ GraphExecutionModel::autoEvaluateGraph(Graph& graph)
     {
         m_autoEvaluateRootGraph = true;
         graph.setActive(true);
-    }
-    // append graph to target nodes
-    else if (!isAutoEvaluatingGraph(graph))
-    {
-        m_targetNodes.push_back({graph.uuid(), NodeEvaluationType::KeepEvaluated});
     }
 
     return Impl::evaluateGraph(*this, graph, NodeEvaluationType::KeepEvaluated);
@@ -513,7 +524,7 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
 
         emit item.node->inputDataRecieved(portId);
 
-        if (!item.isEvaluating() && !isBeingModified())
+        if (m_evaluatingNodes.empty() && !isBeingModified())
         {
             Impl::rescheduleTargetNodes(*this);
         }
@@ -616,6 +627,27 @@ GraphExecutionModel::onNodeEvaluated()
     assert(!Impl::isNodeEvaluating(*node));
 
     NodeUuid const& nodeUuid = node->uuid();
+
+    // update evaluating nodes
+    int idx = m_evaluatingNodes.indexOf(nodeUuid);
+    if (idx >= 0) m_evaluatingNodes.remove(idx);
+
+    // update synchronization entity
+    if (m_evaluatingNodes.size() == 0) // no need to update it every time
+    {
+        auto& s_sync = Impl::s_sync;
+
+        QMutexLocker locker{&s_sync.mutex};
+        auto idx = s_sync.indexOf(*this);
+        assert(idx >= 0);
+
+        auto& entry = s_sync.entries[idx];
+        entry.runningNodes = 0;
+        entry.isExclusiveNodeRunning = false;
+
+        locker.unlock();
+        s_sync.notify(*this);
+    }
 
     auto item = Impl::findData(*this, nodeUuid);
     if (!item)
@@ -822,89 +854,6 @@ GraphExecutionModel::onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, Po
     item.entry->ports(type).erase(item.portEntry);
 }
 
-#if 0
-void
-GraphExecutionModel::onConnectionAppended(Connection* con)
-{
-    assert(con);
-    ConnectionId conId = con->connectionId();
-    assert(conId.isValid());
-
-    auto const makeError = [](Graph const& graph){
-        return graph.objectName() + QStringLiteral(": ") +
-               tr("Connection appended: cannot update execution model") + ',';
-    };
-
-    auto itemOut = Impl::findData(*this, con->outNodeId(), makeError);
-    if (!itemOut) return;
-
-    auto itemIn = Impl::findData(*this, con->inNodeId(), makeError);
-    if (!itemIn) return;
-
-    INTELLI_LOG(*this)
-        << tr("Connection appended: updated execution model! ('%1')")
-               .arg(toString(conId));
-
-    // set node data
-    auto data = nodeData(itemOut.node->uuid(), conId.outPort);
-    setNodeData(itemIn.node->uuid(), conId.inPort, std::move(data));
-
-    // update auto evaluating nodes
-    NodeUuid const& outNodeUuid = itemOut.node->uuid();
-
-    auto* graph = Graph::accessGraph(*itemOut.node);
-    if (!isAutoEvaluatingGraph(*graph) ||
-        !isAutoEvaluatingNode(outNodeUuid)) return;
-
-    auto& conModel = graph->globalConnectionModel();
-    auto* conData  = connection_model::find(conModel, outNodeUuid);
-    if (!connection_model::hasPredecessors(conData))
-    {
-        stopAutoEvaluatingNode(outNodeUuid);
-    }
-}
-
-void
-GraphExecutionModel::onConnectionDeleted(ConnectioId conId)
-{
-    assert(conId.isValid());
-
-    auto const makeError = [](Graph const& graph){
-        return graph.objectName() + QStringLiteral(": ") +
-               tr("Connection deleted: cannot update execution model") + ',';
-    };
-
-    auto itemOut = Impl::findData(*this, conId.outNodeId, makeError);
-    if (!itemOut) return;
-
-    auto itemIn = Impl::findData(*this, conId.inNodeId, makeError);
-    if (!itemIn) return;
-
-    INTELLI_LOG(*this)
-        << tr("Connection deleted: updated execution model! ('%1')")
-               .arg(toString(conId));
-
-    // set node data
-    NodeDataSet data{nullptr};
-    data.state = PortDataState::Valid;
-
-    setNodeData(itemIn.node->uuid(), conId.inPort, data);
-
-    // update auto evaluating nodes
-    NodeUuid const& outNodeUuid = itemOut.node->uuid();
-
-    auto* graph = Graph::accessGraph(*itemOut.node);
-    if (!isAutoEvaluatingGraph(*graph)) return;
-
-    auto& conModel = graph->globalConnectionModel();
-    auto* conData  = connection_model::find(conModel, outNodeUuid);
-    if (!connection_model::hasPredecessors(conData))
-    {
-        Impl::scheduleTargetNode(*this, outNodeUuid, NodeEvaluationType::KeepEvaluated);
-    }
-}
-#endif
-
 void
 GraphExecutionModel::onConnectionAppended(ConnectionUuid conUuid)
 {
@@ -985,23 +934,6 @@ GraphExecutionModel::onConnectionDeleted(ConnectionUuid conUuid)
 }
 
 void
-GraphExecutionModel::removeGraphFromModel(Graph* graph)
-{
-    assert(graph);
-    graph->disconnect(this);
-
-    auto const& nodes = graph->nodes();
-    for (auto* node : nodes)
-    {
-//        if (auto* subgraph = qobject_cast<Graph*>(node))
-//        {
-//            removeGraphFromModel(subgraph);
-//        }
-        onNodeDeleted(graph, node->id());
-    }
-}
-
-void
 GraphExecutionModel::onGraphDeleted()
 {
     Graph* graph = qobject_cast<Graph*>(sender());
@@ -1014,7 +946,14 @@ GraphExecutionModel::onGraphDeleted()
         return;
     }
 
-    removeGraphFromModel(graph);
+    assert(graph);
+    graph->disconnect(this);
+
+    auto const& nodes = graph->nodes();
+    for (auto* node : nodes)
+    {
+        onNodeDeleted(graph, node->id());
+    }
 }
 
 void
