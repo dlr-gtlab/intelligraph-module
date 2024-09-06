@@ -136,7 +136,6 @@ NodePainter::drawPorts(QPainter& painter) const
 {
     auto& node  = this->node();
     auto& object = this->object();
-    auto& graph = object.graph();
     auto& highlights = object.highlights();
 
     for (PortType type : {PortType::Out, PortType::In})
@@ -149,16 +148,9 @@ NodePainter::drawPorts(QPainter& painter) const
             assert(port);
 
             if (!port->visible) continue;
-            
-            auto& conModel = graph.connectionModel();
-            auto* conData = connection_model::find(conModel, node.id());
-            assert(conData);
-
-            bool connected = connection_model::hasConnections(*conData, port->id());
 
             uint flags = NoPortFlag;
-
-            if (connected) flags |= PortConnected;
+            if (node.isPortConnected(port->id())) flags |= PortConnected;
             if (highlights.isActive())
             {
                 flags |= HighlightPorts;

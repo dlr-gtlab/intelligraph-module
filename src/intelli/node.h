@@ -633,16 +633,27 @@ private:
 
 inline void swap(Node::PortInfo& a, Node::PortInfo& b) noexcept { a.swap(b); }
 
+/**
+ * @brief Helper struct that yields the desired identification of a node
+ * depending on the template parameter.
+ *
+ * Usage:
+ * - NodeId id = get_node_id<NodeId>{}(ptr);
+ * - NodeUuid uuid = get_node_id<NodeUuid>{}(ptr);
+ */
 template <typename NodeId_t>
-struct get_node_id
+struct get_node_id;
+
+template <>
+struct get_node_id<NodeId>
 {
-    NodeId operator()(Node* node) { return node->id(); }
+    NodeId operator()(Node const* node) { assert(node); return node->id(); }
 };
 
 template <>
 struct get_node_id<NodeUuid>
 {
-    NodeUuid operator()(Node* node) { return node->uuid(); }
+    NodeUuid operator()(Node const* node) { assert(node); return node->uuid(); }
 };
 
 } // namespace intelli

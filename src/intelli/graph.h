@@ -129,7 +129,7 @@ public:
      * @brief Converts the connection id into a connection uuid (used for the
      * global connection model)
      * @param conId Connection id to convert
-     * @return
+     * @return Connection uuid
      */
     ConnectionUuid connectionUuid(ConnectionId conId) const;
 

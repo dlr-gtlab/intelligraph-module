@@ -16,6 +16,11 @@
 #include <gt_objectmementodiff.h>
 #include <gt_objectfactory.h>
 
+//template <typename Iter, typename GetOp/*, typename IncOp, typename EqualOp*/>
+//auto make_proxy(Iter iter, GetOp op/*, IncOp inc, EqualOp eq*/) {
+//    return proxy_iterator<Iter, op>{iter /*, get/*, inc, eq*/};
+//}
+
 using namespace intelli;
 
 TEST(Graph, root_graph)
@@ -63,6 +68,31 @@ TEST(Graph, input_and_output_provider)
     EXPECT_EQ(sub.graph.ports(PortType::In).size(),
               (sub.inNode.ports(PortType::In).size() +
                sub.outNode.ports(PortType::Out).size()));
+}
+
+TEST(Graph, connection_model_iterate_test)
+{
+    Graph graph;
+
+    test::buildLinearGraph(graph);
+
+    auto& conModel = graph.connectionModel();
+    auto conData = conModel.find(B_id);
+    ASSERT_TRUE(conData != conModel.end());
+
+    auto i = conData->iterateConnections(PortId(2)).begin();
+    auto e = conData->iterateConnections(PortId(2)).end();
+    gtDebug() << *i++ << (i == e);
+    gtDebug() << *i++ << (i == e);
+//    gtDebug() << *i++ << (i == e);
+    gtDebug() << (i == e);
+
+    auto ri = conData->iterateConnections(PortId(2)).reverse().begin();
+    auto re = conData->iterateConnections(PortId(2)).reverse().end();
+    gtDebug() << *ri++ << (ri == re);
+    gtDebug() << *ri++ << (ri == re);
+//    gtDebug() << *ri++ << (ri == re);
+    gtDebug() << (ri == re);
 }
 
 TEST(Graph, connection_model_iterate_over_connections)

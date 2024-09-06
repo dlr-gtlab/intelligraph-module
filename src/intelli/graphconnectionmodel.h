@@ -43,11 +43,72 @@ struct end_iterator<Container, typename Container::const_reverse_iterator>
     auto operator()(Container const& c) const { return c.rend(); }
 };
 
-} // namespace dtail;
-
-/// directed acyclic graph representing connections and nodes
-namespace connection_model
+template <bool Reversed, typename Container>
+struct begin_iterator_
 {
+    auto operator()(Container const& c) const { return c.begin(); }
+};
+template <typename Container>
+struct begin_iterator_<true, Container>
+{
+    auto operator()(Container const& c) const { return c.rbegin(); }
+};
+template <bool Reversed, typename Container>
+struct end_iterator_
+{
+    auto operator()(Container const& c) const { return c.end(); }
+};
+template <typename Container>
+struct end_iterator_<true, Container>
+{
+    auto operator()(Container const& c) const { return c.rend(); }
+};
+
+} // namespace detail;
+
+/**
+ * @brief Iterator wrapper class that can be used to alter the behavior
+ * (e.g. return type) of iterators
+ */
+template <typename Iterator, typename Proxy>
+class proxy_iterator
+{
+public:
+
+    using iterator_category = typename Iterator::iterator_category;
+    using difference_type   = typename Iterator::difference_type;
+    using value_type        = typename Proxy::value_type;
+    using reference         = typename Proxy::reference;
+    using pointer           = typename Proxy::pointer;
+
+    Iterator i{};  /// base iterater
+    Proxy proxy{}; /// proxy object
+
+    proxy_iterator() = default;
+    explicit proxy_iterator(Iterator i_, Proxy p_ = {}) :
+        i(std::move(i_)), proxy(std::move(p_))
+    { proxy.init(i); }
+
+    reference operator*() { return proxy.get(i); }
+    pointer operator->() { return &(*this); }
+
+    bool operator==(proxy_iterator const& o) const { return i == o.i; }
+    bool operator!=(proxy_iterator const& o) const { return !(operator==(o)); }
+
+    /// pre increment
+    proxy_iterator& operator++()
+    {
+        proxy.next(i);
+        return *this;
+    }
+    /// post increment
+    proxy_iterator operator++(int)
+    {
+        proxy_iterator cpy{i};
+        operator++();
+        return cpy;
+    }
+};
 
 template <typename NodeId_t>
 struct ConnectionDetail
@@ -60,7 +121,8 @@ struct ConnectionDetail
     PortId sourcePort;
 
     /**
-     * @brief Creates an outgoing connection id.
+     * @brief Creates an outgoing connection id. If `sourcePorts` refers to
+     * a input-port the connection is reversed.
      * @param sourceNode Source (outgoing) node
      * @return Connection id
      */
@@ -68,6 +130,13 @@ struct ConnectionDetail
     {
         return { std::move(sourceNode), sourcePort, node, port };
     }
+    /**
+     * @brief Creates a normalized outgoing connection id. The port type
+     * is used to normalize the direcction of the connection
+     * @param sourceNode Source (outgoing) node
+     * @param type Port type used for normalizing the connection
+     * @return Connection id
+     */
     ConnectionId_t<NodeId_t> toConnection(NodeId_t sourceNode, PortType type) const
     {
         return type == PortType::In ? toConnection(std::move(sourceNode)).reversed() :
@@ -121,19 +190,19 @@ struct ConnectionData
     class base_iterator
     {
     public:
-        Strategy s{}; /// iteration strategy
-
         using iterator_category = std::forward_iterator_tag;
+        using difference_type   = ptrdiff_t;
         using value_type = typename Strategy::value_type;
-        using difference_type = ptrdiff_t;
-        using pointer = value_type;
-        using reference = value_type;
+        using pointer    = typename Strategy::pointer;
+        using reference  = typename Strategy::reference;
+
+        Strategy s{}; /// iteration strategy
 
         base_iterator() = default;
         explicit base_iterator(Strategy data_) : s(std::move(data_)) { }
 
-        value_type operator*() const { return s.get(); }
-        value_type operator->() const { return *this; }
+        reference operator*() { return s.get(); }
+        pointer operator->() { return &s.get(); }
 
         bool operator==(base_iterator const& o) const { return s == o.s; }
         bool operator!=(base_iterator const& o) const { return !(operator==(o)); }
@@ -141,7 +210,7 @@ struct ConnectionData
         /// pre increment
         base_iterator& operator++()
         {
-            s.inc();
+            s.next();
             return *this;
         }
         /// post increment
@@ -156,30 +225,25 @@ struct ConnectionData
     /**
      * @brief Helper struct to instantiate a begin and end iterator on
      */
-    template <typename Strategy>
+    template <typename Strategy, typename Proxy>
     struct iterator_instantiator
     {
         iterator_instantiator(Strategy b_, Strategy e_ = {}) :
             b(std::move(b_)), e(std::move(e_))
         {}
 
-        base_iterator<Strategy> begin() const { return base_iterator<Strategy>{b}; }
-        base_iterator<Strategy> end() const { return base_iterator<Strategy>{e}; }
-        bool empty() const { return begin() == end(); }
+        using BaseIter = base_iterator<Strategy>;
+        using ProxyIter = proxy_iterator<BaseIter, Proxy>;
 
-        /**
-         * @brief Reverses the iterator
-         */
-        auto reverse() {
-            // chose reverse or forward iter based on condition
-            using Cond = std::is_same<decltype(b.iter), const_forward_iter>;
-            using iter = std::conditional_t<
-                Cond::value, const_reverse_iter, const_forward_iter>;
-            // build new type
-            using S = decltype(b.template reverse<iter>());
-            return iterator_instantiator<S>{
-                b.template reverse<iter>(),
-                e.template reverse<iter>()
+        ProxyIter begin() const { return ProxyIter{ BaseIter{b} }; }
+        ProxyIter end() const { return ProxyIter{ BaseIter{e} }; }
+        bool empty() const { return begin() == end(); }
+        size_t size() const { return std::distance(begin(), end()); }
+
+        auto reverse() const {
+            using reversed_type = typename Strategy::reversed_type;
+            return iterator_instantiator<reversed_type, Proxy>{
+                b.reverse(), e.reverse()
             };
         }
 
@@ -187,99 +251,43 @@ struct ConnectionData
         Strategy b, e;
     };
 
-    //**** iterator strategies ****//
-
     /**
-     * @brief Strategy to iterate only over all ingoing OR outgoing connections
+     * @brief Helper object to iterate only over all predecessors OR successors
      * of this object
      */
-    template <typename container_iterator>
-    struct iterate_connections_one_side
+    template <bool Reversed = false>
+    struct iterate_one_side
     {
-        using value_type = ConnectionId_t<NodeId_t>;
+        using reversed_type = iterate_one_side<!Reversed>;
 
-        ConnectionData const* ptr{};
-        container_iterator iter{};
-        container_iterator const end{};
-        PortType const type{PortType::NoType};
+        using value_type = ConnectionDetail<NodeId_t> const;
+        using reference = value_type&;
+        using pointer = value_type*;
 
-        iterate_connections_one_side() { assert(!isValid()); }
-        iterate_connections_one_side(ConnectionData const* ptr_,
-                                     container_iterator begin_,
-                                     container_iterator end_,
-                                     PortType type_) :
-            ptr(ptr_), iter(begin_), end(end_), type(type_)
-        { }
-
-        template <typename iter,
-                  typename return_type = iterate_connections_one_side<iter>>
-        return_type reverse() const
-        {
-            if (!ptr) return {};
-            auto& p = ptr->ports(type);
-            return {
-                ptr,
-                detail::begin_iterator<container_type, iter>{}(p),
-                detail::end_iterator<container_type, iter>{}(p),
-                type
-            };
-        }
-
-        bool isValid() const {
-            return ptr && type != PortType::NoType && iter != end;
-        }
-
-        value_type get() const {
-            assert(isValid() && "accessed invalid iterator! (iterate_connections_oneside)");
-            return iter->toConnection(get_node_id<NodeId_t>{}(ptr->node), type);
-        }
-
-        bool operator==(iterate_connections_one_side const& o) const
-        {
-            return (!isValid() && !o.ptr) || (!ptr && !o.isValid()) ||
-                   (ptr == o.ptr && iter == o.iter && type == o.type) ;
-        }
-
-        void inc()
-        {
-            if (iter != end) ++iter;
-        }
-    };
-
-    /**
-     * @brief Strategy to iterate over all ingoing AND outgoing connections
-     * of this object
-     */
-    template <typename container_iterator>
-    struct iterate_connections_both_sides
-    {
-        using value_type = ConnectionId_t<NodeId_t>;
+        using container_iterator =
+            std::conditional_t<Reversed, const_reverse_iter, const_forward_iter>;
 
         ConnectionData const* ptr{};
         container_iterator iter{};
         container_iterator end{};
         PortType type{PortType::NoType};
 
-        iterate_connections_both_sides() { assert(!isValid()); }
-        iterate_connections_both_sides(ConnectionData const* ptr_,
-                                       container_iterator begin_,
-                                       container_iterator end_,
-                                       PortType type_) :
+        iterate_one_side() { assert(!isValid()); }
+        iterate_one_side(ConnectionData const* ptr_,
+                         container_iterator begin_,
+                         container_iterator end_,
+                         PortType type_) :
             ptr(ptr_), iter(begin_), end(end_), type(type_)
-        {
-            if (iter == end) inc();
-        }
+        { }
 
-        template <typename iter,
-                  typename return_type = iterate_connections_both_sides<iter>>
-        return_type reverse() const
+        reversed_type reverse() const
         {
             if (!ptr) return {};
             auto& p = ptr->ports(type);
             return {
                 ptr,
-                detail::begin_iterator<container_type, iter>{}(p),
-                detail::end_iterator<container_type, iter>{}(p),
+                detail::begin_iterator_<!Reversed, container_type>{}(p),
+                detail::end_iterator_<!Reversed, container_type>{}(p),
                 type
             };
         }
@@ -289,68 +297,141 @@ struct ConnectionData
             return ptr && type != PortType::NoType && iter != end;
         }
 
-        value_type get() const
+        reference get() const
         {
-            assert(isValid() && "accessed invalid iterator! (iterate_connections)");
-            return iter->toConnection(get_node_id<NodeId_t>{}(ptr->node), type);
+            assert(isValid() && "accessed invalid iterator! (iterate_one_side)");
+            return *iter;
         }
 
-        bool operator==(iterate_connections_both_sides const& o) const
+        bool operator==(iterate_one_side const& o) const
         {
             return (!isValid() && !o.ptr) || (!ptr && !o.isValid()) ||
                    (ptr == o.ptr && iter == o.iter && type == o.type);
         }
 
-        void inc()
+        void next()
+        {
+            if (iter != end) ++iter;
+        }
+    };
+
+    /**
+     * @brief Helper object to iterate only over all predecessors AND successors
+     * of this object
+     */
+    template <bool Reversed = false>
+    struct iterate_both_sides
+    {
+        using reversed_type = iterate_both_sides<!Reversed>;
+
+        using value_type = ConnectionDetail<NodeId_t> const;
+        using reference = value_type&;
+        using pointer = value_type*;
+
+        using container_iterator =
+            std::conditional_t<Reversed, const_reverse_iter, const_forward_iter>;
+
+        ConnectionData const* ptr{};
+        container_iterator iter{};
+        container_iterator end{};
+        PortType type{PortType::NoType};
+
+        iterate_both_sides() { assert(!isValid()); }
+        iterate_both_sides(ConnectionData const* ptr_,
+                           container_iterator begin_,
+                           container_iterator end_,
+                           PortType type_) :
+            ptr(ptr_), iter(begin_), end(end_), type(type_)
+        {
+            // find initial valid position
+            if (iter == end) next();
+        }
+
+        reversed_type reverse() const
+        {
+            if (!ptr) return {};
+            auto& p = ptr->ports(type);
+            return {
+                ptr,
+                detail::begin_iterator_<!Reversed, container_type>{}(p),
+                detail::end_iterator_<!Reversed, container_type>{}(p),
+                type
+            };
+        }
+
+        bool isValid() const
+        {
+            return ptr && type != PortType::NoType && iter != end;
+        }
+
+        reference get() const
+        {
+            assert(isValid() && "accessed invalid iterator! (iterate_both_sides)");
+            return *iter;
+        }
+
+        bool operator==(iterate_both_sides const& o) const
+        {
+            return (!isValid() && !o.ptr) || (!ptr && !o.isValid()) ||
+                   (ptr == o.ptr && iter == o.iter && type == o.type);
+        }
+
+        void next()
         {
             if (iter != end) ++iter;
             // finsihed iterating input side -> switch to output side
             if (iter == end && type == PortType::In)
             {
                 auto& p = ptr->ports(PortType::Out);
-                iter = detail::begin_iterator<container_type, container_iterator>{}(p);
-                end  = detail::end_iterator<container_type, container_iterator>{}(p);
+                iter = detail::begin_iterator_<Reversed, container_type>{}(p);
+                end  = detail::end_iterator_<Reversed, container_type>{}(p);
                 type = PortType::Out;
             }
         }
     };
 
     /**
-     * @brief Strategy to iterate over all connections that either end or start
-     * at a specific Port (denoted by a port id)
+     * @brief Helper object to iterate only over all predecessors and successors
+     * that have the specified `portId` as the source port
      */
-    template <typename container_iterator>
-    struct iterate_connections_by_port
+    template <bool Reversed = false>
+    struct iterate_by_port
     {
-        using value_type = ConnectionId_t<NodeId_t>;
+        using reversed_type = iterate_by_port<!Reversed>;
+
+        using value_type = ConnectionDetail<NodeId_t> const;
+        using reference = value_type&;
+        using pointer = value_type*;
+
+        using container_iterator =
+            std::conditional_t<Reversed, const_reverse_iter, const_forward_iter>;
 
         ConnectionData const* ptr{};
         container_iterator iter{};
         container_iterator end{};
         PortType type{PortType::NoType};
-        PortId const portId{};
+        PortId portId{};
 
-        iterate_connections_by_port() { assert(!isValid()); }
-        iterate_connections_by_port(ConnectionData const* ptr_,
-                                    container_iterator begin_,
-                                    container_iterator end_,
-                                    PortType type_,
-                                    PortId portId_) :
+        iterate_by_port() { assert(!isValid()); }
+        iterate_by_port(ConnectionData const* ptr_,
+                           container_iterator begin_,
+                           container_iterator end_,
+                           PortType type_,
+                           PortId portId_) :
             ptr(ptr_), iter(begin_), end(end_), type(type_), portId(portId_)
         {
-            if (iter == end || iter->sourcePort != portId) inc();
+            // find initial valid position
+            if (iter == end || iter->sourcePort != portId) next();
         }
 
-        template <typename iter,
-                 typename return_type = iterate_connections_by_port<iter>>
-        return_type reverse() const
+        reversed_type reverse() const
         {
             if (!ptr) return {};
             auto& p = ptr->ports(type);
             return {
                 ptr,
-                detail::begin_iterator<container_type, iter>{}(p),
-                detail::end_iterator<container_type, iter>{}(p),
+                detail::begin_iterator_<!Reversed, container_type>{}(p),
+                detail::end_iterator_<!Reversed, container_type>{}(p),
                 type,
                 portId
             };
@@ -358,22 +439,22 @@ struct ConnectionData
 
         bool isValid() const
         {
-            return ptr && type != PortType::NoType && iter != end;
+            return ptr && type != PortType::NoType && iter != end ;
         }
 
-        value_type get() const
+        reference get() const
         {
-            assert(isValid() && "accessed invalid iterator! (iterate_connections_by_port)");
-            return iter->toConnection(get_node_id<NodeId_t>{}(ptr->node), type);
+            assert(isValid() && "accessed invalid iterator! (iterate_by_port)");
+            return *iter;
         }
 
-        bool operator==(iterate_connections_by_port const& o) const
+        bool operator==(iterate_by_port const& o) const
         {
             return (!isValid() && !o.ptr) || (!ptr && !o.isValid()) ||
                    (ptr == o.ptr && iter == o.iter && type == o.type && portId == o.portId);
         }
 
-        void inc()
+        void next()
         {
             while (true)
             {
@@ -400,78 +481,85 @@ struct ConnectionData
     };
 
     /**
-     * @brief Strategy to iterate only over all connected nodes at the inside OR
-     * outside
+     * @brief Proxy object that yields `ConnectionDetail<NodeId_t>`.
      */
-    template <typename container_iterator>
-    struct iterate_nodes_one_side : public iterate_connections_one_side<container_iterator>
+    class DefaultProxy
     {
-        using base_class = iterate_connections_one_side<container_iterator>;
-        using value_type = NodeId_t const&;
+        using value_type = ConnectionDetail<NodeId_t> const;
+        using reference  = value_type&;
+        using pointer    = value_type*;
 
-        using base_class::base_class;
-
-        value_type get() const
-        {
-            assert(base_class::isValid() && "accessed invalid iterator! (iterate_nodes_one_side)");
-            return base_class::iter->node;
-        }
-
-        template <typename iter>
-        iterate_nodes_one_side<iter> reverse() const
-        {
-            return base_class::template reverse<iter, iterate_nodes_one_side<iter>>();
-        }
+        template <typename Iter>
+        void init(Iter&) {}
+        template <typename Iter>
+        reference get(Iter& i) { return *i; }
+        template <typename Iter>
+        void next(Iter& i) { ++i; }
     };
 
     /**
-     * @brief Strategy to iterate over all connected nodes at the inside
-     * and outside
+     * @brief Can be used to iterate over all predecessors OR successors
+     * depending on the given port type.
+     * @param type Port type, denoting whether to iterate over predecessors or
+     * successors
+     * @return Helper object to call begin and end on. Can be used easily
+     * with range-based for loops
      */
-    template <typename container_iterator>
-    struct iterate_nodes_both_sides : public iterate_connections_both_sides<container_iterator>
+    auto iterate(PortType type) const
     {
-        using base_class = iterate_connections_both_sides<container_iterator>;
-        using value_type = NodeId_t const&;
-
-        using base_class::base_class;
-
-        value_type get() const
-        {
-            assert(base_class::isValid() && "accessed invalid iterator! (iterate_nodes_both_sides)");
-            return base_class::iter->node;
-        }
-
-        template <typename iter>
-        iterate_nodes_both_sides<iter> reverse() const
-        {
-            return base_class::template reverse<iter, iterate_nodes_both_sides<iter>>();
-        }
-    };
+        auto& p = ports(type);
+        return iterator_instantiator<iterate_one_side<>, DefaultProxy>{
+            { this, p.begin(), p.end(), PortType::In }
+        };
+    }
+    /**
+     * @brief Can be used to iterate over all predecessors AND successors.
+     * @return Helper object to call begin and end on. Can be used easily
+     * with range-based for loops
+     */
+    auto iterate() const
+    {
+        auto& p = ports(PortType::In);
+        return iterator_instantiator<iterate_both_sides<>, DefaultProxy>{
+            { this, p.begin(), p.end(), PortType::In }
+        };
+    }
+    /**
+     * @brief Can be used to iterate over all predecessors and successors
+     * that start/end at the given port. Will iterate over all input and output
+     * ports internally.
+     * @param portId Port id
+     * @return Helper object to call begin and end on. Can be used easily
+     * with range-based for loops
+     */
+    auto iterate(PortId portId) const
+    {
+        auto& p = ports(PortType::In);
+        return iterator_instantiator<iterate_by_port<>, DefaultProxy>{
+            { this, p.begin(), p.end(), PortType::In, portId }
+        };
+    }
 
     /**
-     * @brief Strategy to iterate over all nodes that are connected to a
-     * specific Port (denoted by a port id)
+     * @brief Proxy object that yields `ConnectionId_t<NodeId_t>`.
      */
-    template <typename container_iterator>
-    struct iterate_nodes_by_port : public iterate_connections_by_port<container_iterator>
+    struct ConnectionProxy
     {
-        using base_class = iterate_connections_by_port<container_iterator>;
-        using value_type = NodeId_t const&;
+        using value_type = ConnectionId_t<NodeId_t> const;
+        using reference  = value_type;
+        using pointer    = value_type;
 
-        using base_class::base_class;
+        template <typename Iter>
+        void init(Iter& i) { }
 
-        value_type get() const
+        template <typename Iter>
+        reference get(Iter& i)
         {
-            assert(base_class::isValid() && "accessed invalid iterator! (iterate_nodes_by_port)");
-            return base_class::iter->node;
+            return i->toConnection(get_node_id<NodeId_t>{}(i.s.ptr->node), i.s.type);
         }
 
-        template <typename iter>
-        iterate_nodes_by_port<iter> reverse() const
-        {
-            return base_class::template reverse<iter, iterate_nodes_by_port<iter>>();
-        }
+        template <typename Iter>
+        void next(Iter& i) { ++i; }
     };
 
     /**
@@ -485,7 +573,7 @@ struct ConnectionData
     auto iterateConnections(PortType type) const
     {
         auto& p = ports(type);
-        return iterator_instantiator<iterate_connections_one_side<const_forward_iter>>{
+        return iterator_instantiator<iterate_one_side<>, ConnectionProxy>{
             { this, p.begin(), p.end(), type }
         };
     }
@@ -499,29 +587,49 @@ struct ConnectionData
     auto iterateConnections() const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<iterate_connections_both_sides<const_forward_iter>>{
+        return iterator_instantiator<iterate_both_sides<>, ConnectionProxy>{
             { this, p.begin(), p.end(), PortType::In }
         };
     }
 
     /**
      * @brief Can be used to iterate over all connections that either end or
-     * start at the given port id. Will iterate over all input and output ports
-     * internally.
+     * start at the given port id.
+     * @param portId Port id
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
     auto iterateConnections(PortId portId) const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<iterate_connections_by_port<const_forward_iter>>{
+        return iterator_instantiator<iterate_by_port<>, ConnectionProxy>{
             { this, p.begin(), p.end(), PortType::In, portId }
         };
     }
 
     /**
+     * @brief Proxy object that yields `NodeId_t`.
+     */
+    struct NodeProxy
+    {
+        using value_type = NodeId_t const;
+        using reference  = value_type&;
+        using pointer    = value_type*;
+
+        template <typename Iter>
+        void init(Iter&) {}
+
+        template <typename Iter>
+        reference get(Iter& i) { return i->node; }
+
+        template <typename Iter>
+        void next(Iter& i) { ++i; }
+    };
+
+    /**
      * @brief Can be used to iterate over all nodes connected to either the
-     * inside or outside depending on the given port type.
+     * inside or outside depending on the given port type. May contain
+     * duplicates.
      * @param type Port type, denoting whether to iterate over ingoing or
      * outgoing connections
      * @return Helper object to call begin and end on. Can be used easily
@@ -530,21 +638,21 @@ struct ConnectionData
     auto iterateConnectedNodes(PortType type) const
     {
         auto& p = ports(type);
-        return iterator_instantiator<iterate_nodes_one_side<const_forward_iter>>{
+        return iterator_instantiator<iterate_one_side<>, NodeProxy>{
             { this, p.begin(), p.end(), type }
         };
     }
 
     /**
-     * @brief Can be used to iterate over all connetced nodes. Will iterate
-     * over all input and output ports internally.
+     * @brief Can be used to iterate over all connetced nodes. May contain
+     * duplicates.
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
     auto iterateConnectedNodes() const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<iterate_nodes_both_sides<const_forward_iter>>{
+        return iterator_instantiator<iterate_both_sides<>, NodeProxy>{
             { this, p.begin(), p.end(), PortType::In }
         };
     }
@@ -552,18 +660,21 @@ struct ConnectionData
     /**
      * @brief Can be used to iterate over all nodes that are connected to the
      * given port id. Will iterate over all input and output ports internally.
+     * May contain duplicates.
+     * @param portId Port id
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
     auto iterateConnectedNodes(PortId portId) const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<iterate_nodes_by_port<const_forward_iter>>{
+        return iterator_instantiator<iterate_by_port<>, NodeProxy>{
             { this, p.begin(), p.end(), PortType::In, portId }
         };
     }
 };
 
+/// directed acyclic graph representing connections and nodes
 template <typename T>
 class ConnectionModel
 {
@@ -579,7 +690,11 @@ public:
     using const_key_value_iterator = typename data_type::const_key_value_iterator;
 
     //**** custom ****//
-    iterator insert(key_type const& key, Node* node) { assert(node); return m_data.insert(key, { node }); }
+    iterator insert(key_type const& key, Node* node)
+    {
+        assert(node);
+        return m_data.insert(key, { node });
+    }
 
     //**** QHash ****//
     iterator insert(key_type const& key, value_type const& value) { return m_data.insert(key, value); }
@@ -608,6 +723,9 @@ private:
     /// data
     data_type m_data;
 };
+
+namespace connection_model
+{
 
 template <typename Model, typename NodeId_t>
 inline auto*
@@ -746,12 +864,12 @@ template <typename T>
 inline bool operator!=(ConnectionDetail<T> const& a, ConnectionDetail<T> const& b) { return !(a == b); }
 
 // definitions
+using intelli::ConnectionModel;
 using GlobalConnectionModel = ConnectionModel<NodeUuid>;
 using LocalConnectionModel  = ConnectionModel<NodeId>;
 
 } // namespace connection_model
 
-using connection_model::ConnectionModel;
 using connection_model::LocalConnectionModel;
 using connection_model::GlobalConnectionModel;
 

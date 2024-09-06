@@ -874,26 +874,26 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
 
     menu.addSeparator();
 
-    QList<GtObject*> connections;
-    {
-        auto tmp = m_graph->findConnections(node->id(), port);
-        std::transform(tmp.begin(), tmp.end(), std::back_inserter(connections),
-                       [this](ConnectionId conId){
-            auto* o = m_graph->findConnection(conId);
-            assert(o);
-            return o;
-        });
-    }
+    auto conData = m_graph->connectionModel().find(node->id());
+    assert(conData != m_graph->connectionModel().end());
+
+    auto cons = conData->iterateConnections(port);
 
     QAction* deleteAction = menu.addAction(tr("Remove all connections"));
-    deleteAction->setEnabled(!connections.empty());
+    deleteAction->setEnabled(!cons.empty());
     deleteAction->setIcon(gt::gui::icon::chainOff());
 
     QAction* triggered = menu.exec(QCursor::pos());
 
     if (triggered == deleteAction)
     {
-        gtDataModel->deleteFromModel(connections);
+        QList<GtObject*> objects;
+        std::transform(cons.begin(), cons.end(),
+                       std::back_inserter(objects),
+                        [this](ConnectionId conId){
+            return m_graph->findConnection(conId);
+        });
+        gtDataModel->deleteFromModel(objects);
         return;
     }
 
@@ -1001,11 +1001,11 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
 
     for (auto const* object : selectedNodeObjects)
     {
-        NodeId nodeId = object->nodeId();
-        assert (m_graph->findNode(object->nodeId()));
+        auto conData = m_graph->connectionModel().find(object->nodeId());
+        assert(conData != m_graph->connectionModel().end());
 
         // check connections
-        for (ConnectionId conId : m_graph->findConnections(nodeId))
+        for (ConnectionId conId : conData->iterateConnections())
         {
             auto const findNodeFunctor = [&conId](NodeGraphicsObject* o){
                 return o->nodeId() == conId.inNodeId;

@@ -233,14 +233,14 @@ Graph::findDependentNodes(NodeId nodeId) const
 Node*
 Graph::findNode(NodeId nodeId)
 {
-    auto* entry = connection_model::find(m_local, nodeId);
-    if (!entry) return {};
+    auto iter = m_local.find(nodeId);
+    if (iter == m_local.end()) return {};
 
-    assert(entry->node &&
-           entry->node->id() == nodeId &&
-           entry->node->parent() == this);
+    assert(iter->node &&
+           iter->node->id() == nodeId &&
+           iter->node->parent() == this);
 
-    return entry->node;
+    return iter->node;
 }
 
 Node const*
