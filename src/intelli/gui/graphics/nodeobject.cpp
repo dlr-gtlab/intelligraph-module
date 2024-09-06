@@ -327,19 +327,20 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     NodeGeometry::PortHit hit = m_geometry->portHit(coord);
     if (hit)
     {
-        auto const& connections = m_graph->findConnections(m_node->id(), hit.port);
+        auto conData = m_graph->connectionModel().find(m_node->id());
+        if (conData == m_graph->connectionModel().end()) return;
 
-        if (!connections.empty() && hit.type == PortType::In)
+        auto cons = conData->iterateConnections(hit.port);
+        auto iter = cons.begin();
+
+        // input connection disconnected
+        if (iter != cons.end() && hit.type == PortType::In)
         {
-            assert(connections.size() == 1);
-            auto const& conId = connections.first();
-
-            emit makeDraftConnection(this, conId);
-            return;
+            assert(std::distance(iter, cons.end()) == 1);
+            return emit makeDraftConnection(this, *iter);
         }
 
-        emit makeDraftConnection(this, hit.type, hit.port);
-        return;
+        return emit makeDraftConnection(this, hit.type, hit.port);
     }
 
     // check for resize handle hit
@@ -615,7 +616,7 @@ NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& typeId,
     {
         if (type == PortType::In)
         {
-            auto& conModel = graph.localConnectionModel();
+            auto& conModel = graph.connectionModel();
             auto* conData = connection_model::find(conModel, node.id());
             assert(conData);
             if (connection_model::hasConnections(*conData, port.id()))

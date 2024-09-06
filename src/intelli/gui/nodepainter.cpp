@@ -149,8 +149,8 @@ NodePainter::drawPorts(QPainter& painter) const
             assert(port);
 
             if (!port->visible) continue;
-
-            auto& conModel = graph.localConnectionModel();
+            
+            auto& conModel = graph.connectionModel();
             auto* conData = connection_model::find(conModel, node.id());
             assert(conData);
 

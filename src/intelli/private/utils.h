@@ -107,6 +107,33 @@ relativeNodePath(N const& node)
     return root->caption() + (node.objectPath().remove(root->objectPath())).replace(';', '/');
 }
 
+namespace utils
+{
+
+/// Helper function that searches for `t` in List and returns the iterator
+template<typename List, typename T>
+inline auto
+find(List& list, T const& t)
+{
+    return std::find(list.begin(), list.end(), t);
+}
+
+/// Helper function that searches for `t` in List and erases it if `t` was found
+template<typename List, typename T>
+inline bool
+erase(List& list, T const& t)
+{
+    auto iter = find(list, t);
+    if (iter != list.end())
+    {
+        list.erase(iter);
+        return true;
+    }
+    return false;
+}
+
+} // namespace utils
+
 } // namespace intelli
 
 #endif // GT_INTELLI_UTILS_H

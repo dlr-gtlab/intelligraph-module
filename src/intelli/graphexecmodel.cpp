@@ -251,9 +251,15 @@ GraphExecutionModel::nodeEvalState(NodeUuid const& nodeUuid) const
     if (!item) return NodeEvalState::Invalid;
 
     // override state
-    if (item.isEvaluating()) return NodeEvalState::Evaluating;
-    if (!item.node->isActive()) return NodeEvalState::Paused;
-
+    if (item.node->nodeFlags() & NodeFlag::Evaluating ||
+        item.isEvaluating())
+    {
+        return NodeEvalState::Evaluating;
+    }
+    if (!item.node->isActive())
+    {
+        return NodeEvalState::Paused;
+    }
     return item->state;
 }
 
@@ -286,10 +292,8 @@ GraphExecutionModel::isNodeEvaluated(NodeUuid const& nodeUuid) const
 bool
 GraphExecutionModel::isAutoEvaluatingNode(NodeUuid const& nodeUuid) const
 {
-    auto iter = Impl::findTargetNode(*this, nodeUuid);
-    if (iter == m_targetNodes.end()) return false;
-
-    return iter->evalType == NodeEvaluationType::KeepEvaluated;
+    auto iter = utils::find(m_targetNodes, std::make_pair(nodeUuid, NodeEvaluationType::KeepEvaluated));
+    return (iter != m_targetNodes.end());
 }
 
 bool
@@ -371,12 +375,12 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
     }
 
     // unschedule all target nodes
-    for (auto& conData : graph.localConnectionModel())
+    for (auto& conData : graph.connectionModel())
     {
         assert(conData.node);
         auto const& nodeUuid = conData.node->uuid();
         Impl::unscheduleNodeRecursively(*this, nodeUuid);
-        Impl::removeFromTargetNodes(*this, nodeUuid);
+        utils::erase(m_targetNodes, nodeUuid);
     };
 
     // we may have unscheduled nodes that are required for other target nodes
@@ -387,7 +391,7 @@ void
 GraphExecutionModel::stopAutoEvaluatingNode(NodeUuid const& nodeUuid)
 {
     Impl::unscheduleNodeRecursively(*this, nodeUuid);
-    Impl::removeFromTargetNodes(*this, nodeUuid);
+    utils::erase(m_targetNodes, nodeUuid);
 
     // we may have unscheduled nodes that are required for other target nodes
     Impl::rescheduleTargetNodes(*this);
@@ -539,9 +543,8 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
         }
 
         auto& conModel = graph().globalConnectionModel();
-        auto* conData = connection_model::find(conModel, nodeUuid);
-
-        assert(conData);
+        auto conData = conModel.find(nodeUuid);
+        assert(conData != conModel.end());
 
         connection_model::visitSuccessors(*conData, item->portId,
                                           [this, &item](auto& successor){
@@ -624,12 +627,11 @@ GraphExecutionModel::onNodeEvaluated()
                .arg(relativeNodePath(*node))
                .arg(node->id());
 
-    assert(!Impl::isNodeEvaluating(*node));
-
     NodeUuid const& nodeUuid = node->uuid();
 
     // update evaluating nodes
     int idx = m_evaluatingNodes.indexOf(nodeUuid);
+    assert(idx >= 0);
     if (idx >= 0) m_evaluatingNodes.remove(idx);
 
     // update synchronization entity
@@ -680,7 +682,7 @@ GraphExecutionModel::onNodeEvaluated()
         return;
     }
 
-    Impl::removeFromTargetNodes(*this, nodeUuid, NodeEvaluationType::SingleShot);
+    utils::erase(m_targetNodes, std::make_pair(nodeUuid, NodeEvaluationType::SingleShot));
 
     item->state = NodeEvalState::Valid;
     emit nodeEvalStateChanged(nodeUuid, QPrivateSignal());
@@ -761,12 +763,16 @@ GraphExecutionModel::onNodeAppended(Node* node)
 
     disconnect(node);
 
-    connect(node, &Node::triggerNodeEvaluation, this, [this, nodeUuid](){
+    connect(node, &Node::triggerNodeEvaluation,
+            this, [this, nodeUuid](){
         invalidateNodeOutputs(nodeUuid);
-        if (!isBeingModified())
-        {
-            Impl::rescheduleTargetNodes(*this);
-        }
+        if (!isBeingModified()) Impl::rescheduleTargetNodes(*this);
+    }, Qt::DirectConnection);
+
+    connect(node, &Node::isActiveChanged,
+            this, [this, nodeUuid](){
+        emit nodeEvalStateChanged(nodeUuid, QPrivateSignal());
+        // TODO: reschedule node
     }, Qt::DirectConnection);
 
     exec::setNodeDataInterface(*node, *this);
@@ -801,8 +807,14 @@ GraphExecutionModel::onNodeDeleted(Graph* graph, NodeId nodeId)
 
     m_data.erase(item.entry);
 
-    Impl::removeFromTargetNodes(*this, item.node->uuid());
-    Impl::removeFromQueuedNodes(*this, item.node->uuid());
+    NodeUuid const& nodeUuid = item.node->uuid();
+
+    utils::erase(m_targetNodes, nodeUuid);
+    utils::erase(m_queuedNodes, nodeUuid);
+    if (utils::erase(m_evaluatingNodes, nodeUuid))
+    {
+        // TODO: notify synchronization entity
+    }
 }
 
 void

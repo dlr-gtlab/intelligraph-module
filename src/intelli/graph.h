@@ -367,7 +367,7 @@ public:
      * @brief Returns the local connection model.
      * @return Local connection model
      */
-    inline LocalConnectionModel const& localConnectionModel() const { return m_local; }
+    inline LocalConnectionModel const& connectionModel() const { return m_local; }
 
     /**
      * @brief Returns the global connection model.

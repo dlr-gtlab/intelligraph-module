@@ -1538,9 +1538,10 @@ GraphScene::moveConnections(NodeGraphicsObject* object)
 {
     assert(object);
 
-    auto const& connections = m_graph->findConnections(object->nodeId());
+    auto conData = m_graph->connectionModel().find(object->nodeId());
+    if (conData == m_graph->connectionModel().end()) return;
 
-    for (auto const& conId : connections)
+    for (auto const& conId : conData->iterateConnections())
     {
         if (ConnectionGraphicsObject* con = connectionObject(conId))
         {

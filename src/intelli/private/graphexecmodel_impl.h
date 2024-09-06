@@ -157,7 +157,7 @@ struct GraphExecutionModel::Impl
     static inline void
     findStartAndEndNodes(Graph const& graph, PortType type, List& targetNodes)
     {
-        auto& conModel = graph.localConnectionModel();
+        auto& conModel = graph.connectionModel();
         for (auto& entry : conModel)
         {
             if (entry.ports(type).empty())
@@ -200,65 +200,6 @@ struct GraphExecutionModel::Impl
         return PortType::NoType;
     }
 
-    template<typename ExecModel>
-    static inline auto
-    findTargetNode(ExecModel& model, NodeUuid const& nodeUuid)
-    {
-        return std::find_if(model.m_targetNodes.begin(),
-                            model.m_targetNodes.end(),
-                            [nodeUuid](TargetNode const& target){
-            return target.nodeUuid == nodeUuid;
-        });
-    }
-
-    template<typename ExecModel>
-    static inline auto
-    findQueuedNode(ExecModel& model, NodeUuid const& nodeUuid)
-    {
-        return std::find(model.m_queuedNodes.begin(),
-                         model.m_queuedNodes.end(),
-                         nodeUuid);
-    }
-
-    static inline bool
-    removeFromTargetNodes(GraphExecutionModel& model,
-                          NodeUuid const& nodeUuid)
-    {
-        auto iter = findTargetNode(model, nodeUuid);
-        if (iter != model.m_targetNodes.end())
-        {
-            model.m_targetNodes.erase(iter);
-            return true;
-        }
-        return false;
-    }
-
-    static inline bool
-    removeFromQueuedNodes(GraphExecutionModel& model, NodeUuid const& nodeUuid)
-    {
-        auto iter = findQueuedNode(model, nodeUuid);
-        if (iter != model.m_queuedNodes.end())
-        {
-            model.m_queuedNodes.erase(iter);
-            return true;
-        }
-        return false;
-    }
-
-    static inline bool
-    removeFromTargetNodes(GraphExecutionModel& model,
-                          NodeUuid const& nodeUuid,
-                          NodeEvaluationType evalType)
-    {
-        auto iter = findTargetNode(model, nodeUuid);
-        if (iter != model.m_targetNodes.end() && iter->evalType == evalType)
-        {
-            model.m_targetNodes.erase(iter);
-            return true;
-        }
-        return false;
-    }
-
     static inline bool
     containsGraph(GraphExecutionModel const& model,
                      Graph const& graph)
@@ -271,19 +212,6 @@ struct GraphExecutionModel::Impl
             g = g->parentGraph();
         }
         return g == target;
-    }
-
-    /// Returns whether the node is evaluating
-    static inline bool
-    isNodeEvaluating(Node const& node)
-    {
-        return node.nodeFlags() & NodeFlag::Evaluating;
-    }
-    static inline bool
-    isNodeExlusive(Node const& node)
-    {
-        return node.nodeEvalMode() == NodeEvalMode::ExclusiveBlocking ||
-               node.nodeEvalMode() == NodeEvalMode::ExclusiveDetached;
     }
 
     template<typename ExecModel, typename NodeIdent>
@@ -504,12 +432,13 @@ struct GraphExecutionModel::Impl
 
         bool isEvaluating() const
         {
-            return isNodeEvaluating(*node);
+            return execModel->m_evaluatingNodes.contains(node->uuid());
         }
 
         bool isExclusive() const
         {
-            return isNodeExlusive(*node);
+            return node->nodeEvalMode() == NodeEvalMode::ExclusiveBlocking ||
+                   node->nodeEvalMode() == NodeEvalMode::ExclusiveDetached;
         }
 
         bool isEvaluated() const
@@ -627,7 +556,7 @@ struct GraphExecutionModel::Impl
 
         if (!item.isReadyForEvaluation())
         {
-            removeFromQueuedNodes(model, nodeUuid);
+            utils::erase(model.m_queuedNodes, nodeUuid);
         }
 
         bool success = true;
@@ -695,19 +624,14 @@ struct GraphExecutionModel::Impl
     }
 
     static inline void
-    unscheduleNode(GraphExecutionModel& model,
-                   NodeUuid const& nodeUuid)
-    {
-        // TODO (find data not necessary)
-        auto item = findData(model, nodeUuid);
-        if (item) item->isPending = false;
-    }
-
-    static inline void
     unscheduleNodeRecursively(GraphExecutionModel& model,
                               NodeUuid const& nodeUuid)
     {
-        unscheduleNode(model, nodeUuid);
+        // TODO (find data not necessary)
+        auto item = findData(model, nodeUuid);
+        if (!item || !item->isPending) return;
+
+        item->isPending = false;
 
         auto& conModel = model.graph().globalConnectionModel();
         auto* conData = connection_model::find(conModel, nodeUuid);
@@ -765,7 +689,7 @@ struct GraphExecutionModel::Impl
                    .arg(item.node->id());
 
         // register node as a target
-        auto iter = findTargetNode(model, nodeUuid);
+        auto iter = utils::find(model.m_targetNodes, nodeUuid);
         if (iter != model.m_targetNodes.end())
         {
             INTELLI_LOG(model) << tr("node is already a target node!");
@@ -786,11 +710,11 @@ struct GraphExecutionModel::Impl
         switch (state)
         {
         case NodeEvalState::Invalid:
-            removeFromTargetNodes(model, nodeUuid);
+            utils::erase(model.m_targetNodes, nodeUuid);
             break;
         case NodeEvalState::Valid:
             // node was evaluated -> remove from target nodes
-            removeFromTargetNodes(model, nodeUuid, NodeEvaluationType::SingleShot);
+            utils::erase(model.m_targetNodes, std::make_pair(nodeUuid, NodeEvaluationType::SingleShot));
             break;
         case NodeEvalState::Evaluating:
         case NodeEvalState::Outdated:
@@ -924,7 +848,7 @@ struct GraphExecutionModel::Impl
             return NodeEvalState::Paused;
         }
 
-        auto iter = findQueuedNode(model, nodeUuid);
+        auto iter = utils::find(model.m_queuedNodes, nodeUuid);
         if (iter != model.m_queuedNodes.end())
         {
             INTELLI_LOG(model)

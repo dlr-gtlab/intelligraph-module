@@ -633,6 +633,18 @@ private:
 
 inline void swap(Node::PortInfo& a, Node::PortInfo& b) noexcept { a.swap(b); }
 
+template <typename NodeId_t>
+struct get_node_id
+{
+    NodeId operator()(Node* node) { return node->id(); }
+};
+
+template <>
+struct get_node_id<NodeUuid>
+{
+    NodeUuid operator()(Node* node) { return node->uuid(); }
+};
+
 } // namespace intelli
 
 namespace gt

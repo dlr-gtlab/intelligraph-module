@@ -1336,13 +1336,13 @@ TEST(GraphExecutionModel, evaluation_of_cyclic_graph)
 
     try
     {
-        auto& value1   = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
-        auto& value2   = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("B"));
+        auto& value1   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid).setCaption(QStringLiteral("A"));
+        auto& value2   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), B_uuid).setCaption(QStringLiteral("B"));
 
-        auto& add1 = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("C"));
-        auto& add2 = builder.addNode(QStringLiteral("intelli::NumberMathNode")).setCaption(QStringLiteral("D"));
+        auto& add1 = builder.addNode(QStringLiteral("intelli::NumberMathNode"), C_uuid).setCaption(QStringLiteral("C"));
+        auto& add2 = builder.addNode(QStringLiteral("intelli::NumberMathNode"), D_uuid).setCaption(QStringLiteral("D"));
 
-        auto& result = builder.addNode(QStringLiteral("intelli::NumberDisplayNode")).setCaption(QStringLiteral("E"));
+        auto& result = builder.addNode(QStringLiteral("intelli::NumberDisplayNode"), E_uuid).setCaption(QStringLiteral("E"));
 
         builder.connect(value1, PortIndex{0}, add1, PortIndex{0});
         builder.connect(add2,   PortIndex{0}, add1, PortIndex{1});
@@ -1465,7 +1465,6 @@ TEST(GraphExecutionModel, stop_auto_evaluating_node)
     EXPECT_TRUE(test::compareNodeEvalState(
         graph, model, {B_uuid, C_uuid, D_uuid}, NodeEvalState::Outdated));
 }
-
 
 /// Destroying the graph exec model while its running should not cause any harm
 TEST(GraphExecutionModel, destroy_while_running)

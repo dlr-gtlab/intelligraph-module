@@ -173,7 +173,8 @@ Node::isValid() const
 void
 Node::setNodeFlag(NodeFlag flag, bool enable)
 {
-    enable ? pimpl->flags |= flag : pimpl->flags &= ~flag;
+    enable ? pimpl->flags |= flag :
+             pimpl->flags &= ~flag;
 }
 
 void

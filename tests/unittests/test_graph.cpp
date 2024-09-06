@@ -10,13 +10,15 @@
 
 #include "node/test_dynamic.h"
 
+#include "intelli/connection.h"
+
 #include <gt_objectmemento.h>
 #include <gt_objectmementodiff.h>
 #include <gt_objectfactory.h>
 
 using namespace intelli;
 
-TEST(Graph, rootGraph)
+TEST(Graph, root_graph)
 {
     auto rootGraphPtr = std::make_unique<Graph>();
     Graph* rootGraph = rootGraphPtr.get();
@@ -62,6 +64,163 @@ TEST(Graph, input_and_output_provider)
               (sub.inNode.ports(PortType::In).size() +
                sub.outNode.ports(PortType::Out).size()));
 }
+
+TEST(Graph, connection_model_iterate_over_connections)
+{
+    Graph graph;
+
+    test::buildLinearGraph(graph);
+
+    auto& conModel = graph.connectionModel();
+    auto conData = conModel.find(C_id);
+    ASSERT_TRUE(conData != conModel.end());
+
+    auto iIn  = conData->iterateConnections(PortType::In);
+    auto iOut = conData->iterateConnections(PortType::Out);
+    auto iAll = conData->iterateConnections();
+    EXPECT_EQ(std::distance(iIn.begin(), iIn.end()), 2);
+    EXPECT_EQ(std::distance(iOut.begin(), iOut.end()), 1);
+    EXPECT_EQ(std::distance(iAll.begin(), iAll.end()), 3);
+
+    auto riIn  = iIn.reverse();
+    auto riOut = iOut.reverse();
+    auto riAll = iAll.reverse();
+    EXPECT_EQ(std::distance(riIn.begin(), riIn.end()), 2);
+    EXPECT_EQ(std::distance(riOut.begin(), riOut.end()), 1);
+    EXPECT_EQ(std::distance(riAll.begin(), riAll.end()), 3);
+
+    auto iter = iAll.begin();
+    auto endIter = iAll.end();
+    decltype(endIter) nullIter{};
+    EXPECT_TRUE(endIter == nullIter);
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, graph.connectionId(B_id, PortIndex(0), C_id, PortIndex(0)));
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, graph.connectionId(B_id, PortIndex(0), C_id, PortIndex(1)));
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, graph.connectionId(C_id, PortIndex(0), D_id, PortIndex(0)));
+
+    EXPECT_TRUE(iter == endIter);
+    EXPECT_TRUE(iter == nullIter);
+}
+
+TEST(Graph, connection_model_iterate_over_connections_by_port)
+{
+    Graph graph;
+
+    test::buildLinearGraph(graph);
+
+    auto& conModel = graph.connectionModel();
+    auto conData = conModel.find(B_id);
+    ASSERT_TRUE(conData != conModel.end());
+
+    auto iPort = conData->iterateConnections(PortId(2));
+    auto iter = iPort.begin();
+    auto endIter = iPort.end();
+    decltype(endIter) nullIter{};
+    EXPECT_TRUE(endIter == nullIter);
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, graph.connectionId(B_id, PortIndex(0), C_id, PortIndex(0)));
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, graph.connectionId(B_id, PortIndex(0), C_id, PortIndex(1)));
+
+    EXPECT_TRUE(iter == endIter);
+    EXPECT_TRUE(iter == nullIter);
+
+    EXPECT_EQ(std::distance(iPort.begin(), iPort.end()), 2);
+
+    auto riPort = iPort.reverse();
+    EXPECT_EQ(std::distance(riPort.begin(), riPort.end()), 2);
+}
+
+TEST(Graph, connection_model_iterate_over_connected_nodes)
+{
+    Graph graph;
+
+    test::buildLinearGraph(graph);
+
+    auto& conModel = graph.connectionModel();
+    auto conData = conModel.find(B_id);
+    ASSERT_TRUE(conData != conModel.end());
+
+    auto iIn  = conData->iterateConnectedNodes(PortType::In);
+    auto iOut = conData->iterateConnectedNodes(PortType::Out);
+    auto iAll = conData->iterateConnectedNodes();
+    EXPECT_EQ(std::distance(iIn.begin(), iIn.end()), 1);
+    EXPECT_EQ(std::distance(iOut.begin(), iOut.end()), 2);
+    EXPECT_EQ(std::distance(iAll.begin(), iAll.end()), 3);
+
+    auto riIn  = iIn.reverse();
+    auto riOut = iOut.reverse();
+    auto riAll = iAll.reverse();
+    EXPECT_EQ(std::distance(riIn.begin(), riIn.end()), 1);
+    EXPECT_EQ(std::distance(riOut.begin(), riOut.end()), 2);
+    EXPECT_EQ(std::distance(riAll.begin(), riAll.end()), 3);
+
+    auto iter = iAll.begin();
+    auto endIter = iAll.end();
+    decltype(endIter) nullIter{};
+    EXPECT_TRUE(endIter == nullIter);
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, A_id);
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, C_id);
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, C_id);
+
+    EXPECT_TRUE(iter == endIter);
+    EXPECT_TRUE(iter == nullIter);
+}
+
+TEST(Graph, connection_model_iterate_over_connected_nodes_by_port)
+{
+    Graph graph;
+
+    test::buildLinearGraph(graph);
+
+    auto& conModel = graph.connectionModel();
+    auto conData = conModel.find(B_id);
+    ASSERT_TRUE(conData != conModel.end());
+
+    auto iPort = conData->iterateConnectedNodes(PortId(2));
+    auto iter = iPort.begin();
+    auto endIter = iPort.end();
+    decltype(endIter) nullIter{};
+    EXPECT_TRUE(endIter == nullIter);
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, C_id);
+
+    EXPECT_TRUE(iter != endIter);
+    EXPECT_TRUE(iter != nullIter);
+    EXPECT_EQ(*iter++, C_id);
+
+    EXPECT_TRUE(iter == endIter);
+    EXPECT_TRUE(iter == nullIter);
+
+    EXPECT_EQ(std::distance(iPort.begin(), iPort.end()), 2);
+
+    auto riPort = iPort.reverse();
+    EXPECT_EQ(std::distance(riPort.begin(), riPort.end()), 2);
+}
+
 
 TEST(Graph, predessecors_and_successors)
 {

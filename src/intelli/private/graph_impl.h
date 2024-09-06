@@ -10,55 +10,6 @@
 namespace intelli
 {
 
-// TODO
-template <typename NodeId_t>
-struct GetModel
-{
-    LocalConnectionModel& operator()(Graph* graph)
-    {
-        return const_cast<LocalConnectionModel&>(graph->localConnectionModel());
-    }
-};
-
-template <>
-struct GetModel<NodeUuid>
-{
-    GlobalConnectionModel& operator()(Graph* graph)
-    {
-        return const_cast<GlobalConnectionModel&>(graph->globalConnectionModel());
-    }
-};
-
-template <typename NodeId_t>
-struct GetGraph
-{
-    Graph* operator()(Node* node)
-    {
-        return static_cast<Graph*>(node->parent());
-    }
-};
-
-template <>
-struct GetGraph<NodeUuid>
-{
-    Graph* operator()(Node* node)
-    {
-        return static_cast<Graph*>(node->parent())->rootGraph();
-    }
-};
-
-template <typename NodeId_t>
-struct GetNodeId
-{
-    NodeId operator()(Node* node) { return node->id(); }
-};
-
-template <>
-struct GetNodeId<NodeUuid>
-{
-    NodeUuid operator()(Node* node) { return node->uuid(); }
-};
-
 /// Helper struct to "hide" implementation details and template functions
 struct Graph::Impl
 {
@@ -167,7 +118,7 @@ struct Graph::Impl
         }
 
         // check if input port is already connected
-        auto& conModel = graph.localConnectionModel();
+        auto& conModel = graph.connectionModel();
         auto* conData = connection_model::find(conModel, conId.inNodeId);
         assert(conData);
 
@@ -285,12 +236,14 @@ struct Graph::Impl
 
             emit graph->nodePortAboutToBeDeleted(nodeId, type, idx);
 
-            auto const& connections = graph->findConnections(nodeId, port);
-            if (connections.empty()) return;
+            auto conData = graph->connectionModel().find(nodeId);
+            if (conData == graph->connectionModel().end()) return;
+
+            auto cons = conData->iterateConnections(port);
+            if (cons.empty()) return;
 
             auto cmd = graph->modify();
-
-            for (auto conId : connections)
+            for (auto conId : cons)
             {
                 graph->deleteConnection(conId);
             }
@@ -315,8 +268,11 @@ struct Graph::Impl
         {
             NodeId nodeId = node->id();
 
-            auto const& connections = graph->findConnections(nodeId, portId);
-            if (connections.empty()) return;
+            auto conData = graph->connectionModel().find(nodeId);
+            if (conData == graph->connectionModel().end()) return;
+
+            auto cons = conData->iterateConnections(portId);
+            if (cons.empty()) return;
 
             PortInfo* port = node->port(portId);
             if (!port)
@@ -336,7 +292,7 @@ struct Graph::Impl
             auto& factory = NodeDataFactory::instance();
 
             // check if connections are still valid
-            for (auto conId : connections)
+            for (auto conId : cons)
             {
                 NodeId otherNodeId = conId.node(type);
                 assert(otherNodeId != nodeId);
@@ -394,20 +350,15 @@ struct Graph::Impl
             Q_UNUSED(change);
 
             // remove local connections
-            connection_model::visitPredecessors(*localIter, [this, nodeId](auto& con){
-                graph->deleteConnection(con.toConnection(nodeId).reversed());
-            });
-            connection_model::visitSuccessors(*localIter, [this, nodeId](auto& con){
-                graph->deleteConnection(con.toConnection(nodeId));
-            });
-
+            for (auto conId : localIter->iterateConnections().reverse())
+            {
+                graph->deleteConnection(conId);
+            }
             // remove remaining global connections
-            connection_model::visitPredecessors(*globalIter, [this, &nodeUuid](auto& con){
-                GlobalConnectionDeleted{graph, con.toConnection(nodeUuid).reversed()}();
-            });
-            connection_model::visitSuccessors(*globalIter, [this, &nodeUuid](auto& con){
-                GlobalConnectionDeleted{graph, con.toConnection(nodeUuid)}();
-            });
+            for (auto conId : globalIter->iterateConnections().reverse())
+            {
+                GlobalConnectionDeleted{graph, conId}();
+            }
 
             emit graph->childNodeAboutToBeDeleted(nodeId);
             
@@ -426,10 +377,13 @@ struct Graph::Impl
     template <typename NodeId_t>
     struct ConnectionDeletedCommon
     {
-        ConnectionDeletedCommon(Graph* g, ConnectionId_t<NodeId_t> id) :
-            graph(g), conId(id)
+        ConnectionDeletedCommon(Graph* g,
+                                ConnectionModel<NodeId_t>* m,
+                                ConnectionId_t<NodeId_t> id) :
+            graph(g), model(m), conId(id)
         {
             assert(graph);
+            assert(model);
             assert(conId.isValid());
         }
 
@@ -440,8 +394,8 @@ struct Graph::Impl
             auto inConnection  = ConnectionDetail<NodeId_t>::fromConnection(conId.reversed());
             auto outConnection = ConnectionDetail<NodeId_t>::fromConnection(conId);
 
-            auto* targetNode = connection_model::find(GetModel<NodeId_t>{}(graph), conId.inNodeId);
-            auto* sourceNode = connection_model::find(GetModel<NodeId_t>{}(graph), conId.outNodeId);
+            auto* targetNode = connection_model::find(*model, conId.inNodeId);
+            auto* sourceNode = connection_model::find(*model, conId.outNodeId);
 
             if (!targetNode || !sourceNode)
             {
@@ -453,9 +407,9 @@ struct Graph::Impl
             }
 
             assert(targetNode->node &&
-                   GetNodeId<NodeId_t>{}(targetNode->node) == conId.inNodeId);
+                   get_node_id<NodeId_t>{}(targetNode->node) == conId.inNodeId);
             assert(sourceNode->node &&
-                   GetNodeId<NodeId_t>{}(sourceNode->node) == conId.outNodeId);
+                   get_node_id<NodeId_t>{}(sourceNode->node) == conId.outNodeId);
 
             auto inIdx  = targetNode->predecessors.indexOf(inConnection);
             auto outIdx = sourceNode->successors.indexOf(outConnection);
@@ -484,16 +438,20 @@ struct Graph::Impl
     protected:
 
         Graph* graph = nullptr;
+        ConnectionModel<NodeId_t>* model;
         ConnectionId_t<NodeId_t> conId;
     };
 
     /// Functor to handle deletion of a "global" connection
     struct GlobalConnectionDeleted : public ConnectionDeletedCommon<NodeUuid>
     {
-        using ConnectionDeletedCommon<NodeUuid>::ConnectionDeletedCommon;
+        GlobalConnectionDeleted(Graph* g, ConnectionUuid id) :
+            ConnectionDeletedCommon(g, g->m_global.get(), std::move(id))
+        { }
 
         void operator()()
         {
+            model = graph->m_global.get(); // update ptr
             if (ConnectionDeletedCommon<NodeUuid>::operator()())
             {
                 emit graph->globalConnectionDeleted(conId);
@@ -504,7 +462,9 @@ struct Graph::Impl
     /// Functor to handle deletion of a "local" connection
     struct ConnectionDeleted : public ConnectionDeletedCommon<NodeId>
     {
-        using ConnectionDeletedCommon<NodeId>::ConnectionDeletedCommon;
+        ConnectionDeleted(Graph* g, ConnectionId id) :
+            ConnectionDeletedCommon(g, &g->m_local, std::move(id))
+        { }
 
         void operator()()
         {

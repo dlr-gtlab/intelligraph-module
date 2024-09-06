@@ -151,6 +151,15 @@ private:
     {
         NodeUuid nodeUuid;
         NodeEvaluationType evalType;
+
+        bool operator==(NodeUuid const& otherUuid) const
+        {
+            return nodeUuid == otherUuid;
+        }
+        bool operator==(std::pair<NodeUuid const&, NodeEvaluationType> other) const
+        {
+            return this->operator==(other.first) && evalType == other.second;
+        }
     };
 
     /// assoicated graph
