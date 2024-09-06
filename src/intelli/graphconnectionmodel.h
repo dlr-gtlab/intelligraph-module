@@ -152,6 +152,12 @@ struct ConnectionDetail
     {
         return { conId.inNodeId, conId.inPort, conId.outPort };
     }
+
+    bool operator==(ConnectionDetail const& o) const
+    {
+        return node == o.node && port == o.port && sourcePort == o.sourcePort;
+    }
+    bool operator!=(ConnectionDetail const& o) const { return !(operator==(o)); }
 };
 
 template <typename NodeId_t>
@@ -483,7 +489,7 @@ struct ConnectionData
     /**
      * @brief Proxy object that yields `ConnectionDetail<NodeId_t>`.
      */
-    class DefaultProxy
+    struct DefaultProxy
     {
         using value_type = ConnectionDetail<NodeId_t> const;
         using reference  = value_type&;
@@ -635,7 +641,7 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateConnectedNodes(PortType type) const
+    auto iterateNodes(PortType type) const
     {
         auto& p = ports(type);
         return iterator_instantiator<iterate_one_side<>, NodeProxy>{
@@ -649,7 +655,7 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateConnectedNodes() const
+    auto iterateNodes() const
     {
         auto& p = ports(PortType::In);
         return iterator_instantiator<iterate_both_sides<>, NodeProxy>{
@@ -665,23 +671,100 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateConnectedNodes(PortId portId) const
+    auto iterateNodes(PortId portId) const
     {
         auto& p = ports(PortType::In);
         return iterator_instantiator<iterate_by_port<>, NodeProxy>{
             { this, p.begin(), p.end(), PortType::In, portId }
         };
     }
+
+    /**
+     * @brief Proxy object that yields `NodeId_t`. Keeps track of visited
+     * nodes.
+     */
+    struct UniqueNodeProxy
+    {
+        using value_type = NodeId_t const;
+        using reference  = value_type&;
+        using pointer    = value_type*;
+
+        // cache to keep track of visited nodes
+        QVarLengthArray<NodeId_t, 10> visited;
+
+        template <typename Iter>
+        void init(Iter& i)
+        {
+            if (i.s.isValid()) visited << get(i);
+        }
+
+        template <typename Iter>
+        reference get(Iter& i) { return i->node; }
+
+        template <typename Iter>
+        void next(Iter& i)
+        {
+            while (i.s.isValid() && visited.contains(get(i))) ++i;
+            if (i.s.isValid()) visited << get(i);
+        }
+    };
+
+    /**
+     * @brief Can be used to iterate over all nodes connected to either the
+     * inside or outside depending on the given port type.
+     * Only yields unqiue entries.
+     * @param type Port type, denoting whether to iterate over ingoing or
+     * outgoing connections
+     * @return Helper object to call begin and end on. Can be used easily
+     * with range-based for loops
+     */
+    auto iterateUniqueNodes(PortType type) const
+    {
+        auto& p = ports(type);
+        return iterator_instantiator<iterate_one_side<>, UniqueNodeProxy>{
+            { this, p.begin(), p.end(), type }
+        };
+    }
+
+    /**
+     * @brief Can be used to iterate over all connetced nodes.
+     * Only yields unqiue entries.
+     * @return Helper object to call begin and end on. Can be used easily
+     * with range-based for loops
+     */
+    auto iterateUniqueNodes() const
+    {
+        auto& p = ports(PortType::In);
+        return iterator_instantiator<iterate_both_sides<>, UniqueNodeProxy>{
+            { this, p.begin(), p.end(), PortType::In }
+        };
+    }
+
+    /**
+     * @brief Can be used to iterate over all nodes that are connected to the
+     * given port id. Will iterate over all input and output ports internally.
+     * Only yields unqiue entries.
+     * @param portId Port id
+     * @return Helper object to call begin and end on. Can be used easily
+     * with range-based for loops
+     */
+    auto iterateUniqueNodes(PortId portId) const
+    {
+        auto& p = ports(PortType::In);
+        return iterator_instantiator<iterate_by_port<>, UniqueNodeProxy>{
+            { this, p.begin(), p.end(), PortType::In, portId }
+        };
+    }
 };
 
 /// directed acyclic graph representing connections and nodes
-template <typename T>
+template <typename NodeId_t>
 class ConnectionModel
 {
 public:
 
-    using key_type = T;
-    using value_type = ConnectionData<T>;
+    using key_type = NodeId_t;
+    using value_type = ConnectionData<NodeId_t>;
     using data_type = QHash<key_type, value_type>;
 
     using iterator = typename data_type::iterator;
@@ -696,6 +779,51 @@ public:
         return m_data.insert(key, { node });
     }
 
+//    template <typename... Args>
+//    auto iterate(NodeId_t const& nodeId, Args&&... args) const
+//    {
+//        auto iter = find(nodeId);
+//        if (iter == end())
+//        {
+//            ConnectionData<NodeId_t> dummy;
+//            return dummy.iterate(std::forward<Args>(args)...);
+//        }
+//        return iter->iterate(std::forward<Args>(args)...);
+//    }
+//    template <typename... Args>
+//    auto iterateConnections(NodeId_t const& nodeId, Args&&... args) const
+//    {
+//        auto iter = find(nodeId);
+//        if (iter == end())
+//        {
+//            ConnectionData<NodeId_t> dummy;
+//            return dummy.iterateConnections(std::forward<Args>(args)...);
+//        }
+//        return iter->iterateConnections(std::forward<Args>(args)...);
+//    }
+//    template <typename... Args>
+//    auto iterateNodes(NodeId_t const& nodeId, Args&&... args) const
+//    {
+//        auto iter = find(nodeId);
+//        if (iter == end())
+//        {
+//            ConnectionData<NodeId_t> dummy;
+//            return dummy.iterateNodes(std::forward<Args>(args)...);
+//        }
+//        return iter->iterateNodes(std::forward<Args>(args)...);
+//    }
+//    template <typename... Args>
+//    auto iterateUniqueNodes(NodeId_t const& nodeId, Args&&... args) const
+//    {
+//        auto iter = find(nodeId);
+//        if (iter == end())
+//        {
+//            ConnectionData<NodeId_t> dummy;
+//            return dummy.iterateUniqueNodes(std::forward<Args>(args)...);
+//        }
+//        return iter->iterateUniqueNodes(std::forward<Args>(args)...);
+//    }
+
     //**** QHash ****//
     iterator insert(key_type const& key, value_type const& value) { return m_data.insert(key, value); }
     void insert(ConnectionModel const& other) { m_data.insert(other.m_data); }
@@ -705,6 +833,8 @@ public:
 
     iterator find(key_type const& key) { return m_data.find(key); }
     const_iterator find(key_type const& key) const { return m_data.find(key); }
+
+    bool containts(key_type const& key) const { return m_data.contains(key); }
 
     value_type value(key_type const& key) const { return m_data.value(key); }
 
@@ -870,8 +1000,8 @@ using LocalConnectionModel  = ConnectionModel<NodeId>;
 
 } // namespace connection_model
 
-using connection_model::LocalConnectionModel;
-using connection_model::GlobalConnectionModel;
+using GlobalConnectionModel = ConnectionModel<NodeUuid>;
+using LocalConnectionModel  = ConnectionModel<NodeId>;
 
 } // namespace intelli;
 

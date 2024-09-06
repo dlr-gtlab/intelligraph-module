@@ -27,7 +27,7 @@
 using namespace intelli;
 
 // proxy widget to select node when clicking widget
-class NodeGraphicsObject::NodeProxyWidget : public QGraphicsProxyWidget
+class NodeGraphicsObject::NodeIdProxyWidget : public QGraphicsProxyWidget
 {
 public:
 
@@ -255,7 +255,7 @@ NodeGraphicsObject::embedCentralWidget()
     {
         m_geometry->setWidget(w.get());
 
-        m_proxyWidget = new NodeProxyWidget(this);
+        m_proxyWidget = new NodeIdProxyWidget(this);
 
         m_proxyWidget->setWidget(w.release());
         m_proxyWidget->setPreferredWidth(5);

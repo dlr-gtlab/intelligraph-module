@@ -70,31 +70,6 @@ TEST(Graph, input_and_output_provider)
                sub.outNode.ports(PortType::Out).size()));
 }
 
-TEST(Graph, connection_model_iterate_test)
-{
-    Graph graph;
-
-    test::buildLinearGraph(graph);
-
-    auto& conModel = graph.connectionModel();
-    auto conData = conModel.find(B_id);
-    ASSERT_TRUE(conData != conModel.end());
-
-    auto i = conData->iterateConnections(PortId(2)).begin();
-    auto e = conData->iterateConnections(PortId(2)).end();
-    gtDebug() << *i++ << (i == e);
-    gtDebug() << *i++ << (i == e);
-//    gtDebug() << *i++ << (i == e);
-    gtDebug() << (i == e);
-
-    auto ri = conData->iterateConnections(PortId(2)).reverse().begin();
-    auto re = conData->iterateConnections(PortId(2)).reverse().end();
-    gtDebug() << *ri++ << (ri == re);
-    gtDebug() << *ri++ << (ri == re);
-//    gtDebug() << *ri++ << (ri == re);
-    gtDebug() << (ri == re);
-}
-
 TEST(Graph, connection_model_iterate_over_connections)
 {
     Graph graph;
@@ -183,9 +158,9 @@ TEST(Graph, connection_model_iterate_over_connected_nodes)
     auto conData = conModel.find(B_id);
     ASSERT_TRUE(conData != conModel.end());
 
-    auto iIn  = conData->iterateConnectedNodes(PortType::In);
-    auto iOut = conData->iterateConnectedNodes(PortType::Out);
-    auto iAll = conData->iterateConnectedNodes();
+    auto iIn  = conData->iterateNodes(PortType::In);
+    auto iOut = conData->iterateNodes(PortType::Out);
+    auto iAll = conData->iterateNodes();
     EXPECT_EQ(std::distance(iIn.begin(), iIn.end()), 1);
     EXPECT_EQ(std::distance(iOut.begin(), iOut.end()), 2);
     EXPECT_EQ(std::distance(iAll.begin(), iAll.end()), 3);
@@ -228,7 +203,7 @@ TEST(Graph, connection_model_iterate_over_connected_nodes_by_port)
     auto conData = conModel.find(B_id);
     ASSERT_TRUE(conData != conModel.end());
 
-    auto iPort = conData->iterateConnectedNodes(PortId(2));
+    auto iPort = conData->iterateNodes(PortId(2));
     auto iter = iPort.begin();
     auto endIter = iPort.end();
     decltype(endIter) nullIter{};

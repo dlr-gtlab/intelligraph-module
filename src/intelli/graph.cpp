@@ -20,7 +20,6 @@
 #include <gt_mdilauncher.h>
 
 using namespace intelli;
-using namespace intelli::connection_model;
 
 Graph::Graph() :
     Node("Graph"),
@@ -503,10 +502,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 
     // register node in global model if not present already (avoid overwrite)
     NodeUuid const& nodeUuid = node->uuid();
-    if (!connection_model::find(*m_global, nodeUuid))
-    {
-        m_global->insert(nodeUuid, node.get());
-    }
+    if (!m_global->containts(nodeUuid)) m_global->insert(nodeUuid, node.get());
 
     // setup connections
     connect(node.get(), &Node::portChanged,
@@ -589,10 +585,10 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     connection->updateObjectName();
 
     // append connection to model
-    auto* targetNode = connection_model::find(m_local, conId.inNodeId);
-    auto* sourceNode = connection_model::find(m_local, conId.outNodeId);
-    assert(targetNode);
-    assert(sourceNode);
+    auto targetNode = m_local.find(conId.inNodeId);
+    auto sourceNode = m_local.find(conId.outNodeId);
+    assert(targetNode != m_local.end());
+    assert(sourceNode != m_local.end());
 
     auto inConnection  = ConnectionDetail<NodeId>::fromConnection(conId.reversed());
     auto outConnection = ConnectionDetail<NodeId>::fromConnection(conId);
@@ -646,7 +642,7 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
         NodeUuid const& graphUuid = uuid();
 
         // graph is being restored (memento diff)
-        if (!connection_model::find(*m_global, graphUuid))
+        if (!m_global->containts(graphUuid))
         {
             assert(isBeingModified());
             m_global->insert(graphUuid, this);
@@ -666,10 +662,10 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionUuid conUuid)
 {
     assert(conUuid.isValid());
 
-    auto* globalTargetNode = connection_model::find(*m_global, conUuid.inNodeId);
-    auto* globalSourceNode = connection_model::find(*m_global, conUuid.outNodeId);
-    assert(globalTargetNode);
-    assert(globalSourceNode);
+    auto globalTargetNode = m_global->find(conUuid.inNodeId);
+    auto globalSourceNode = m_global->find(conUuid.outNodeId);
+    assert(globalTargetNode != m_global->end());
+    assert(globalSourceNode != m_global->end());
 
     auto inConnection  = ConnectionDetail<NodeUuid>::fromConnection(conUuid.reversed());
     auto outConnection = ConnectionDetail<NodeUuid>::fromConnection(conUuid);
@@ -799,23 +795,20 @@ Graph::restoreConnection(Connection* connection)
     assert(connection);
     auto conId = connection->connectionId();
 
-    auto* conData = connection_model::find(m_local, connection->inNodeId());
-    assert(conData);
-    if (connection_model::containsConnection(*conData, connection->inNodeId(), conId, PortType::In))
-    {
-#ifndef NDEBUG
-        conData = connection_model::find(m_local, connection->outNodeId());
-        assert(conData);
-        assert(connection_model::containsConnection(*conData, connection->outNodeId(), conId, PortType::Out));
-#endif
-        return;
+    auto conData = m_local.find(connection->inNodeId());
+    auto conDataOut = m_local.find(connection->outNodeId());
+    assert(conData != m_local.end());
+    assert(conDataOut != m_local.end());
 
+    auto range = conData->iterateConnections(PortType::In);
+    if (std::find(range.begin(), range.end(), conId) != range.end())
+    {
+        range = conDataOut->iterateConnections(PortType::Out);
+        assert(std::find(range.begin(), range.end(), conId) != range.end());
+        return;
     }
-#ifndef NDEBUG
-    conData = connection_model::find(m_local, connection->outNodeId());
-    assert(conData);
-    assert(!connection_model::containsConnection(*conData, connection->outNodeId(), conId, PortType::Out));
-#endif
+    range = conDataOut->iterateConnections(PortType::Out);
+    assert(std::find(range.begin(), range.end(), conId) == range.end());
 
     std::unique_ptr<Connection> ptr{connection};
     ptr->setParent(nullptr);

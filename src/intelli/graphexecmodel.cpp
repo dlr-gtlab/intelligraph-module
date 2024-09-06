@@ -546,10 +546,11 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
         auto conData = conModel.find(nodeUuid);
         assert(conData != conModel.end());
 
-        connection_model::visitSuccessors(*conData, item->portId,
-                                          [this, &item](auto& successor){
-            setNodeData(successor.node, successor.port, item->data);
-        });
+        // iterate over all successors
+        for (auto& con : conData->iterate(item->portId))
+        {
+            setNodeData(con.node, con.port, item->data);
+        }
         break;
     }
     case PortType::NoType:
@@ -694,18 +695,20 @@ GraphExecutionModel::onNodeEvaluated()
 
     // schedule next nodes marked for evaluation
     auto& conModel = graph().globalConnectionModel();
-    auto* conData = connection_model::find(conModel, nodeUuid);
-    assert(conData);
+    auto conData = conModel.find(nodeUuid);
+    assert(conData != conModel.end());
 
-    connection_model::visitSuccessors(*conData, [this](auto& successor){
-        auto nextNode = Impl::findData(*this, successor.node);
+    // iterate over all successors
+    for (NodeUuid const& node : conData->iterateUniqueNodes(PortType::Out))
+    {
+        auto nextNode = Impl::findData(*this, node);
         assert(nextNode);
 
         if (nextNode->isPending)
         {
-            Impl::queueNode(*this, successor.node, nextNode);
+            Impl::queueNode(*this, node, nextNode);
         }
-    });
+    }
 
     Impl::evaluateNextInQueue(*this);
 }

@@ -264,7 +264,7 @@ signals:
 private:
 
     struct Impl;
-    class NodeProxyWidget;
+    class NodeIdProxyWidget;
 
     enum State
     {
