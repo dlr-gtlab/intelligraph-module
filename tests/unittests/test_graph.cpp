@@ -113,6 +113,14 @@ TEST(Graph, connection_model_iterate_over_connections)
 
     EXPECT_TRUE(iter == endIter);
     EXPECT_TRUE(iter == nullIter);
+
+    // check forwarding methods of connection model
+    auto fIn = conModel.iterateConnections(C_id, PortType::In);
+    EXPECT_TRUE(std::equal(fIn.begin(), fIn.end(), iIn.begin()));
+    auto fOut = conModel.iterateConnections(C_id, PortType::Out);
+    EXPECT_TRUE(std::equal(fOut.begin(), fOut.end(), iOut.begin()));
+    auto fAll = conModel.iterateConnections(C_id);
+    EXPECT_TRUE(std::equal(fAll.begin(), fAll.end(), iAll.begin()));
 }
 
 TEST(Graph, connection_model_iterate_over_connections_by_port)

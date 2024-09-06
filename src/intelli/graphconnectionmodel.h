@@ -234,7 +234,7 @@ struct ConnectionData
     template <typename Strategy, typename Proxy>
     struct iterator_instantiator
     {
-        iterator_instantiator(Strategy b_, Strategy e_ = {}) :
+        iterator_instantiator(Strategy b_ = {}, Strategy e_ = {}) :
             b(std::move(b_)), e(std::move(e_))
         {}
 
@@ -779,50 +779,80 @@ public:
         return m_data.insert(key, { node });
     }
 
-//    template <typename... Args>
-//    auto iterate(NodeId_t const& nodeId, Args&&... args) const
-//    {
-//        auto iter = find(nodeId);
-//        if (iter == end())
-//        {
-//            ConnectionData<NodeId_t> dummy;
-//            return dummy.iterate(std::forward<Args>(args)...);
-//        }
-//        return iter->iterate(std::forward<Args>(args)...);
-//    }
-//    template <typename... Args>
-//    auto iterateConnections(NodeId_t const& nodeId, Args&&... args) const
-//    {
-//        auto iter = find(nodeId);
-//        if (iter == end())
-//        {
-//            ConnectionData<NodeId_t> dummy;
-//            return dummy.iterateConnections(std::forward<Args>(args)...);
-//        }
-//        return iter->iterateConnections(std::forward<Args>(args)...);
-//    }
-//    template <typename... Args>
-//    auto iterateNodes(NodeId_t const& nodeId, Args&&... args) const
-//    {
-//        auto iter = find(nodeId);
-//        if (iter == end())
-//        {
-//            ConnectionData<NodeId_t> dummy;
-//            return dummy.iterateNodes(std::forward<Args>(args)...);
-//        }
-//        return iter->iterateNodes(std::forward<Args>(args)...);
-//    }
-//    template <typename... Args>
-//    auto iterateUniqueNodes(NodeId_t const& nodeId, Args&&... args) const
-//    {
-//        auto iter = find(nodeId);
-//        if (iter == end())
-//        {
-//            ConnectionData<NodeId_t> dummy;
-//            return dummy.iterateUniqueNodes(std::forward<Args>(args)...);
-//        }
-//        return iter->iterateUniqueNodes(std::forward<Args>(args)...);
-//    }
+    /**
+     * @brief Convenience function. Exposes `iterate` method of the entry
+     * denoted by `nodeId`. If entry was not found and empty range is returned.
+     * @param nodeId Target entry
+     * @param args Forwarding arguments the desired `iterate` call.
+     */
+    template <typename... Args>
+    auto iterate(NodeId_t const& nodeId, Args&&... args) const
+    {
+        auto iter = find(nodeId);
+        if (iter == end())
+        {
+            using R = decltype(iter->iterate(std::forward<Args>(args)...));
+            return R{};
+        }
+        return iter->iterate(std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Convenience function. Exposes `iterateConnections` method of the
+     * entry denoted by `nodeId`. If entry was not found and empty range is
+     * returned.
+     * @param nodeId Target entry
+     * @param args Forwarding arguments the desired `iterateConnections` call.
+     */
+    template <typename... Args>
+    auto iterateConnections(NodeId_t const& nodeId, Args&&... args) const
+    {
+        auto iter = find(nodeId);
+        if (iter == end())
+        {
+            using R = decltype(iter->iterateConnections(std::forward<Args>(args)...));
+            return R{};
+        }
+        return iter->iterateConnections(std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Convenience function. Exposes `iterateNodes` method of the
+     * entry denoted by `nodeId`. If entry was not found and empty range is
+     * returned.
+     * @param nodeId Target entry
+     * @param args Forwarding arguments the desired `iterateNodes` call.
+     */
+    template <typename... Args>
+    auto iterateNodes(NodeId_t const& nodeId, Args&&... args) const
+    {
+        auto iter = find(nodeId);
+        if (iter == end())
+        {
+            using R = decltype(iter->iterateNodes(std::forward<Args>(args)...));
+            return R{};
+        }
+        return iter->iterateNodes(std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Convenience function. Exposes `iterateUniqueNodes` method of the
+     * entry denoted by `nodeId`. If entry was not found and empty range is
+     * returned.
+     * @param nodeId Target entry
+     * @param args Forwarding arguments the desired `iterateUniqueNodes` call.
+     */
+    template <typename... Args>
+    auto iterateUniqueNodes(NodeId_t const& nodeId, Args&&... args) const
+    {
+        auto iter = find(nodeId);
+        if (iter == end())
+        {
+            using R = decltype(iter->iterateUniqueNodes(std::forward<Args>(args)...));
+            return R{};
+        }
+        return iter->iterateUniqueNodes(std::forward<Args>(args)...);
+    }
 
     //**** QHash ****//
     iterator insert(key_type const& key, value_type const& value) { return m_data.insert(key, value); }

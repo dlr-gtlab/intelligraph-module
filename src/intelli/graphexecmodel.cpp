@@ -542,12 +542,9 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
             emit nodeEvalStateChanged(nodeUuid, QPrivateSignal());
         }
 
+        // iterate over all connected ports
         auto& conModel = graph().globalConnectionModel();
-        auto conData = conModel.find(nodeUuid);
-        assert(conData != conModel.end());
-
-        // iterate over all successors
-        for (auto& con : conData->iterate(item->portId))
+        for (auto& con : conModel.iterate(nodeUuid, item->portId))
         {
             setNodeData(con.node, con.port, item->data);
         }
@@ -693,14 +690,11 @@ GraphExecutionModel::onNodeEvaluated()
 
     if (isBeingModified()) return;
 
-    // schedule next nodes marked for evaluation
-    auto& conModel = graph().globalConnectionModel();
-    auto conData = conModel.find(nodeUuid);
-    assert(conData != conModel.end());
-
     // iterate over all successors
-    for (NodeUuid const& node : conData->iterateUniqueNodes(PortType::Out))
+    auto& conModel = graph().globalConnectionModel();
+    for (NodeUuid const& node : conModel.iterateUniqueNodes(nodeUuid, PortType::Out))
     {
+        // schedule next nodes marked for evaluation
         auto nextNode = Impl::findData(*this, node);
         assert(nextNode);
 
@@ -901,8 +895,8 @@ GraphExecutionModel::onConnectionAppended(ConnectionUuid conUuid)
         !isAutoEvaluatingNode(outNodeUuid)) return;
 
     auto& conModel = graph->globalConnectionModel();
-    auto* conData  = connection_model::find(conModel, outNodeUuid);
-    if (!connection_model::hasPredecessors(conData))
+    auto predecessors = conModel.iterateConnections(outNodeUuid, PortType::In);
+    if (predecessors.empty())
     {
         stopAutoEvaluatingNode(outNodeUuid);
     }
@@ -941,8 +935,8 @@ GraphExecutionModel::onConnectionDeleted(ConnectionUuid conUuid)
     if (!isAutoEvaluatingGraph(*graph)) return;
 
     auto& conModel = graph->globalConnectionModel();
-    auto* conData  = connection_model::find(conModel, outNodeUuid);
-    if (!connection_model::hasPredecessors(conData))
+    auto predecessors = conModel.iterateConnections(outNodeUuid, PortType::In);
+    if (predecessors.empty())
     {
         Impl::scheduleTargetNode(*this, outNodeUuid, NodeEvaluationType::KeepEvaluated);
     }
