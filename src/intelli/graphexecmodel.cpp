@@ -374,7 +374,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
 
     connect(&graph, &Graph::nodeAppended,
             this, &GraphExecutionModel::onNodeAppended, Qt::DirectConnection);
-    connect(&graph, &Graph::nodeDeleted,
+    connect(&graph, &Graph::childNodeAboutToBeDeleted,
             this, &GraphExecutionModel::onNodeDeleted, Qt::DirectConnection);
     connect(&graph, &Graph::connectionAppended,
             this, &GraphExecutionModel::onConnectedionAppended, Qt::DirectConnection);
@@ -574,7 +574,6 @@ GraphExecutionModel::autoEvaluate()
             << Impl::graphName(*this)
             << tr("Cannot auto evaluate cyclic graph! The node sequence %1 "
                   "contains a cycle!").arg(toString(cyclicNodes));
-
         m_autoEvaluate = false;
         return {};
     }

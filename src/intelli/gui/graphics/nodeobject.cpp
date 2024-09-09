@@ -126,7 +126,6 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
     connect(&node, &Node::portChanged,
             this, &NodeGraphicsObject::onNodeChanged, Qt::DirectConnection);
 
-
     updateChildItems();
 }
 
@@ -327,19 +326,16 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     NodeGeometry::PortHit hit = m_geometry->portHit(coord);
     if (hit)
     {
-        auto const& connections = m_graph->findConnections(m_node->id(), hit.port);
-
+        // input connection disconnected
+        auto& conModel = m_graph->connectionModel();
+        auto connections = conModel.iterateConnections(m_node->id(), hit.port);
         if (!connections.empty() && hit.type == PortType::In)
         {
             assert(connections.size() == 1);
-            auto const& conId = connections.first();
-
-            emit makeDraftConnection(this, conId);
-            return;
+            return emit makeDraftConnection(this, *connections.begin());
         }
 
-        emit makeDraftConnection(this, hit.type, hit.port);
-        return;
+        return emit makeDraftConnection(this, hit.type, hit.port);
     }
 
     // check for resize handle hit
@@ -613,8 +609,13 @@ NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& typeId,
     auto& factory = NodeDataFactory::instance();
     for (auto& port : node.ports(type))
     {
-        if (type == PortType::In &&
-            !graph.findConnections(node.id(), port.id()).empty()) continue;
+        if (type == PortType::In)
+        {
+            auto& conModel = graph.connectionModel();
+            // check whether port is already connected
+            auto connections = conModel.iterateConnections(node.id(), port.id());
+            if (!connections.empty()) continue;
+        }
 
         if (!factory.canConvert(port.typeId, typeId, type)) continue;
 

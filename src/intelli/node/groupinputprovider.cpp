@@ -6,7 +6,7 @@
  *  E-Mail: marius.broecker@dlr.de
  */
 
-#include "intelli/node/groupinputprovider.h"
+#include <intelli/node/groupinputprovider.h>
 
 using namespace intelli;
 
@@ -19,9 +19,13 @@ GroupInputProvider::GroupInputProvider() :
 void
 GroupInputProvider::eval()
 {
-    // forward input data to output
-    for (auto const& p : ports(PortType::Out))
+    auto const& inPorts  = ports(PortType::In);
+    auto const& outPorts = ports(PortType::Out);
+
+    assert(inPorts.size() == outPorts.size());
+
+    for (auto& port : inPorts)
     {
-        setNodeData(p.id(), nodeData(p.id()));
+        setNodeData(mainPortId(port.id()), nodeData(port.id()));
     }
 }

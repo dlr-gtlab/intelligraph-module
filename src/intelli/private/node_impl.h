@@ -9,8 +9,8 @@
 #ifndef GT_INTELLI_NODE_IMPL_H
 #define GT_INTELLI_NODE_IMPL_H
 
-#include <intelli/memory.h>
 #include <intelli/node.h>
+#include <intelli/memory.h>
 #include <intelli/property/uint.h>
 
 #include <gt_intproperty.h>
@@ -21,22 +21,12 @@
 namespace intelli
 {
 
-class NodeDataInterface;
-
-template <typename Ports>
-auto findPort(Ports&& ports, PortId id)
-{
-    return std::find_if(ports.begin(), ports.end(), [id](auto const& p){
-        return p.id() == id;
-    });
-}
-
-struct NodeImpl
+struct Node::Impl
 {
     using PortInfo      = Node::PortInfo;
     using WidgetFactory = Node::WidgetFactory;
 
-    NodeImpl(QString const& name) : modelName(name) { }
+    Impl(QString const& name) : modelName(name) { }
 
     /// node id
     UIntProperty id{
@@ -87,7 +77,27 @@ struct NodeImpl
     /// iterator for the next port id
     PortId nextPortId{0};
 
-    std::vector<PortInfo>& ports(PortType type) noexcept(false)
+    /**
+     * @brief Returns an iterator to the port specified by `id`
+     * @param ports Port list
+     * @param id Port id to search for
+     */
+    template <typename Ports>
+    static inline auto
+    find(Ports& ports, PortId id)
+    {
+        return std::find_if(ports.begin(), ports.end(), [id](auto const& p){
+            return p.id() == id;
+        });
+    }
+
+    /**
+     * @brief Returns the ports of the specified type
+     * @param type Port type
+     * @return Ports
+     */
+    inline std::vector<PortInfo>&
+    ports(PortType type) noexcept(false)
     {
         switch (type)
         {
@@ -104,12 +114,14 @@ struct NodeImpl
         };
     }
 
-    std::vector<PortInfo> const& ports(PortType type) const noexcept(false)
+    inline std::vector<PortInfo> const&
+    ports(PortType type) const noexcept(false)
     {
-        return const_cast<NodeImpl*>(this)->ports(type);
+        return const_cast<Impl*>(this)->ports(type);
     }
 
-    struct FindData
+    /// Helper struct to provide easy access to the meta data of a port
+    struct PortDataHelper
     {
         PortType type{PortType::NoType};
         PortIndex idx{};
@@ -120,12 +132,19 @@ struct NodeImpl
         }
     };
 
-    FindData find(PortId id)
+    /**
+     * @brief Attempts to find the port specified by `id` and returns helper
+     * struct to provide easy access to its meta data.
+     * @param id Port to search for
+     * @return Port helper struct
+     */
+    inline PortDataHelper
+    findPort(PortId id)
     {
         for (auto type : { PortType::In, PortType::Out })
         {
             auto& ports = this->ports(type);
-            auto iter = findPort(ports, id);
+            auto iter = Impl::find(ports, id);
 
             if (iter != ports.end())
             {
@@ -136,20 +155,30 @@ struct NodeImpl
         return {};
     }
 
-    PortId incNextPortId(PortId id)
+    /**
+     * @brief Returns the next, unoccupied port id. The input port id can
+     * be used to request a custom port id. If a custom port id was specified,
+     * but the port id is already in use, an invalid port id is returned
+     * @param id Optional port id, which can be used for a custom port id.
+     * @return Nnew port id. Invalid, if operation failed.
+     */
+    inline PortId
+    incNextPortId(PortId id = invalid<PortId>())
     {
         if (id != invalid<PortId>())
         {
             // port already exists
-            if (find(id)) return PortId{};
+            if (findPort(id)) return PortId{};
 
+            // update next port id
             if (id >= nextPortId) nextPortId = PortId(id + 1);
 
             return id;
         }
         return nextPortId++;
     }
-};
+
+}; // struct Impl
 
 } // namespace intelli
 

@@ -32,7 +32,28 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
                        std::vector<PortInfo> const& outPorts,
                        Position pos) noexcept(false)
 {
+    return addGraph(inPorts, outPorts, {}, {}, {}, pos);
+}
+
+GraphBuilder::GraphData
+GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
+                       std::vector<PortInfo> const& outPorts,
+                       NodeUuid const& graphUuid,
+                       NodeUuid const& inNodeUuid,
+                       NodeUuid const& outNodeUuid,
+                       Position pos) noexcept(false)
+{
     auto graph = std::make_unique<Graph>();
+    if (!graphUuid.isEmpty()) graph->setUuid(graphUuid);
+
+    // custom uuids for input and utput provider
+    auto inputPtr  = std::make_unique<GroupInputProvider>();
+    auto outputPtr = std::make_unique<GroupOutputProvider>();
+    if (!inNodeUuid.isEmpty()) inputPtr->setUuid(inNodeUuid);
+    if (!outNodeUuid.isEmpty()) outputPtr->setUuid(outNodeUuid);
+    graph->appendNode(std::move(inputPtr));
+    graph->appendNode(std::move(outputPtr));
+
     graph->initInputOutputProviders();
     graph->setActive(true);
 
@@ -52,11 +73,11 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
     auto success = true;
     for (auto& port : inPorts)
     {
-        success &= input->insertPort(std::move(port));
+        success &= input->insertPort(std::move(port)).isValid();
     }
     for (auto& port : outPorts)
     {
-        success &= output->insertPort(std::move(port));
+        success &= output->insertPort(std::move(port)).isValid();
     }
 
     if (!success)
@@ -85,9 +106,18 @@ GraphBuilder::addNode(QString const& className, Position pos) noexcept(false)
 }
 
 Node&
-GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos)
+GraphBuilder::addNode(QString const& className, NodeUuid const& nodeUuid, Position pos) noexcept(false)
+{
+    auto node = NodeFactory::instance().makeNode(className);
+
+    return addNodeHelper(std::move(node), pos, nodeUuid);
+}
+
+Node&
+GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos, NodeUuid const& nodeUuid)
 {
     if (node && !pos.isNull()) node->setPos(pos);
+    if (node && !nodeUuid.isEmpty()) node->setUuid(nodeUuid);
 
     auto* ptr = m_graph->appendNode(std::move(node));
 
@@ -116,7 +146,7 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
     };
     auto const buildPortError = [&](unsigned idx, auto str){
         return buildError() +
-            ", " + str + " going port index '" + std::to_string(idx) +
+            ", " + str + "-going port index '" + std::to_string(idx) +
             "' is out of bounds! " +
                gt::brackets(m_graph->caption().toStdString());
     };
@@ -174,6 +204,33 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
     }
 
     return conId;
+}
+
+ConnectionId
+GraphBuilder::connect(NodeId from, PortIndex outIdx, NodeId to, PortIndex inIdx) noexcept(false)
+{
+    auto const buildError = [&](){
+        return std::string{
+            "GraphBuilder: Failed to connect node " +
+            gt::squoted(std::to_string(from)) + " and " +
+            gt::squoted(std::to_string(to))
+        };
+    };
+
+    Node* sourceNode = m_graph->findNode(from);
+    Node* targetNode = m_graph->findNode(to);
+
+    // check if nodes exist within the graph
+    if (!sourceNode || !targetNode)
+    {
+        throw std::logic_error{
+            buildError() +
+            ", nodes have not been added to the graph before! " +
+            gt::brackets(m_graph->caption().toStdString())
+        };
+    }
+
+    return connect(*sourceNode, outIdx, *targetNode, inIdx);
 }
 
 void

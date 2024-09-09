@@ -10,11 +10,10 @@
 #define GT_INTELLI_GRAPH_H
 
 #include <intelli/node.h>
+#include <intelli/graphconnectionmodel.h>
 
 #include <gt_finally.h>
 #include <gt_platform.h>
-
-#include <QPointer>
 
 class GtMdiItem;
 
@@ -26,6 +25,8 @@ class GroupInputProvider;
 class GroupOutputProvider;
 class Connection;
 class ConnectionGroup;
+class DynamicNode;
+class GraphExecutionModel;
 
 /**
  * @brief Opens the graph in a graph editor. The graph object should be kept
@@ -73,63 +74,8 @@ enum class NodeIdPolicy
     Keep = 1
 };
 
-/// directed acyclic graph representing connections and nodes
-namespace dag
-{
-
-struct ConnectionDetail
-{
-    /// target node
-    NodeId node;
-    /// target port
-    PortId port;
-    /// source port
-    PortId sourcePort;
-
-    /**
-     * @brief Creates an outgoing connection id.
-     * @param sourceNode Source (outgoing) node
-     * @return Connection id
-     */
-    ConnectionId toConnection(NodeId sourceNode) const
-    {
-        return { sourceNode, sourcePort, node, port };
-    }
-
-    /**
-     * @brief Constructs an object from an outgoing connection
-     * @param conId Source connection
-     * @return Connection detail
-     */
-    static ConnectionDetail fromConnection(ConnectionId conId)
-    {
-        return { conId.inNodeId, conId.inPort, conId.outPort };
-    }
-};
-
-struct Entry
-{
-    /// pointer to node
-    QPointer<Node> node;
-    /// adjacency lists
-    QVector<ConnectionDetail> ancestors = {}, descendants = {};
-};
-
-inline bool operator==(ConnectionDetail const& a, ConnectionDetail const& b)
-{
-    return a.node == b.node && a.port == b.port && a.sourcePort == b.sourcePort;
-}
-
-inline bool operator!=(ConnectionDetail const& a, ConnectionDetail const& b) { return !(a == b); }
-
-using DirectedAcyclicGraph = QHash<NodeId, dag::Entry>;
-
 /// prints the graph as a mermaid flow chart useful for debugging
-GT_INTELLI_EXPORT void debugGraph(DirectedAcyclicGraph const& graph);
-
-} // namespace dag
-
-using dag::DirectedAcyclicGraph;
+GT_INTELLI_EXPORT void debug(Graph const& graph);
 
 /**
  * @brief The Graph class.
@@ -148,7 +94,7 @@ class GT_INTELLI_EXPORT Graph : public Node
     friend class GraphScene;
 
 public:
-    
+
     Q_INVOKABLE Graph();
     ~Graph();
 
@@ -168,7 +114,7 @@ public:
     /**
      * @brief Returns the connection id matched by the given nodes and port
      * indicies. This can be used to easily access a connection id without
-     * knowing the speific port ids. The returned connection id may be invalid
+     * knowing the specific port ids. The returned connection id may be invalid
      * if the port are out of bounds or a node does not exist.
      * @param outNodeId Starting node id
      * @param outPortIdx Starting port index
@@ -178,6 +124,38 @@ public:
      */
     ConnectionId connectionId(NodeId outNodeId, PortIndex outPortIdx,
                               NodeId inNodeId, PortIndex inPortIdx) const;
+
+    /**
+     * @brief Converts the connection id into a connection uuid (used for the
+     * global connection model)
+     * @param conId Connection id to convert
+     * @return Connection uuid
+     */
+    ConnectionUuid connectionUuid(ConnectionId conId) const;
+
+    /**
+     * @brief Access the graph of the given node
+     * @param node Graph of the node
+     * @return Graph
+     */
+    static Graph* accessGraph(Node& node);
+    static Graph const* accessGraph(Node const& node);
+
+    /**
+     * @brief Returns the parent graph of this graph (null if the graph is a
+     * root graph node)
+     * @return Parent graph
+     */
+    Graph* parentGraph();
+    Graph const* parentGraph() const;
+
+    /**
+     * @brief Returns the root graph of this graph. If no root is found it is
+     * assumed that this object is the root.
+     * @return Root graph (should never be null)
+     */
+    Graph* rootGraph();
+    Graph const* rootGraph() const;
 
     /**
      * @brief Returns a list of all nodes in this graph
@@ -203,6 +181,7 @@ public:
      * @brief Returns a list of all connection ids in this graph
      * @return Connection ids
      */
+    [[deprecated]]
     QVector<ConnectionId> connectionIds() const;
     
     /**
@@ -212,6 +191,9 @@ public:
      */
     Node* findNode(NodeId nodeId);
     Node const* findNode(NodeId nodeId) const;
+
+    Node* findNodeByUuid(NodeUuid const& uuid);
+    Node const* findNodeByUuid(NodeUuid const& uuid) const;
 
     /**
      * @brief Attempts to finde a connection specified by the given connectionId
@@ -282,6 +264,9 @@ public:
     GroupInputProvider* inputProvider();
     GroupInputProvider const* inputProvider() const;
 
+    DynamicNode* inputNode();
+    DynamicNode const* inputNode() const;
+
     /**
      * @brief Returns the output provider of this graph. May be null if sub graph
      * was not yet initialized or it is the root graph.
@@ -289,7 +274,10 @@ public:
      */
     GroupOutputProvider* outputProvider();
     GroupOutputProvider const* outputProvider() const;
-    
+
+    DynamicNode* outputNode();
+    DynamicNode const* outputNode() const;
+
     /**
      * @brief Constructs an execution model. Each graph has it's own
      * execution model. If one already exists, this will be returned.
@@ -304,6 +292,7 @@ public:
      */
     GraphExecutionModel* executionModel();
     GraphExecutionModel const* executionModel() const;
+
 
     /**
      * @brief Finds all dependencies of the node referred by `nodeId`
@@ -387,7 +376,20 @@ public:
      * and their connections
      * @return DAG
      */
-    DirectedAcyclicGraph const& dag() const { return m_nodes; }
+    [[deprecated("use `localConnectionModel` instead")]]
+    ConnectionModel const& dag() const { return m_local; }
+
+    /**
+     * @brief Returns the local connection model.
+     * @return Local connection model
+     */
+    inline ConnectionModel const& connectionModel() const { return m_local; }
+
+    /**
+     * @brief Returns the global connection model.
+     * @return Global connection model
+     */
+    inline GlobalConnectionModel const& globalConnectionModel() const { return *m_global; }
 
     /**
      * @brief initializes the input and output of this graph
@@ -406,22 +408,42 @@ public:
     using Modification = gt::Finally<EndModificationFunctor>;
 
     /**
-     * @brief Scropped wrapper around `beginModification` and `endModification`
+     * @brief Scopped wrapper around `beginModification` and `endModification`
      * @return Scoped object which emits the begin and end modification signals
-     * resprectively, usd to signal that evaluation and similar processes should
-     * be halted.
+     * resprectively, used to signal that evaluation and similar processes
+     * should be halted.
      */
     GT_NO_DISCARD
     Modification modify();
 
+    /**
+     * @brief Tells the graph that is about to be modifed. Should be called
+     * before e.g. bulk deleting/inserting nodes and connections
+     */
     void emitBeginModification();
 
+    /**
+     * @brief Tells the graph that is no longer beeing modifed. Should be called
+     * after e.g. bulk deleting/inserting nodes and connections
+     */
     void emitEndModification();
 
 signals:
 
+    /**
+     * @brief Emitted just before ths object is deleted. Thus, specific memebers
+     * of this object are still accessable.
+     */
+    void graphAboutToBeDeleted(QPrivateSignal);
+
+    /**
+     * @brief Emitted once the graph is beeing modified.
+     */
     void beginModification(QPrivateSignal);
 
+    /**
+     * @brief Emitted once the graph is no longer beeing modified
+     */
     void endModification(QPrivateSignal);
 
     /**
@@ -429,12 +451,14 @@ signals:
      * @param Pointer to connection object
      */
     void connectionAppended(Connection* connection);
+    void globalConnectionAppended(ConnectionUuid connectionUuid);
 
     /**
      * @brief Emitted after a conections was deleted
      * @param Connection id of the deleted connection
      */
     void connectionDeleted(ConnectionId connectionId);
+    void globalConnectionDeleted(ConnectionUuid connectionUuid);
 
     /**
      * @brief Forwards the `portInserted` signal of node, so that
@@ -473,7 +497,13 @@ signals:
      * @brief Emitted after a node was deleted
      * @param Node id of the deleted node
      */
-    void nodeDeleted(NodeId nodeId);
+    void childNodeAboutToBeDeleted(NodeId nodeId);
+
+    /**
+     * @brief Emitted after a node was deleted
+     * @param Node id of the deleted node
+     */
+    void childNodeDeleted(NodeId nodeId);
 
     /**
      * @brief Emitted once the position of a node was altered. Is only triggered
@@ -484,8 +514,10 @@ signals:
     void nodePositionChanged(NodeId nodeId, QPointF pos);
 
 protected:
-    
+
     bool handleNodeEvaluation(GraphExecutionModel& model) override;
+    
+    void eval() override;
 
     void onObjectDataMerged() override;
 
@@ -493,9 +525,20 @@ private:
 
     struct Impl;
 
-    DirectedAcyclicGraph m_nodes;
+    /// local connection graph
+    ConnectionModel m_local;
+    /// shred global connection graph
+    std::shared_ptr<GlobalConnectionModel> m_global = nullptr;
 
+    size_t m_evaluationIndicator = 0;
+    /// indicator if the connection model is currently beeing modified
     int m_modificationCount = 0;
+
+    /**
+     * @brief Whether this model is currently undergoing modification.
+     * @return Is being modified
+     */
+    bool isBeingModified() const;
 
     /**
      * @brief Returns the group object in which all connections are stored
@@ -511,8 +554,8 @@ private:
     void restoreConnections();
     void restoreNodesAndConnections();
 
-    dag::Entry* findNodeEntry(NodeId nodeId);
-    dag::Entry const* findNodeEntry(NodeId nodeId) const;
+    void appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targetNode);
+    void appendGlobalConnection(Connection* guard, ConnectionUuid conUuid);
 
     GraphExecutionModel* makeDummyExecutionModel();
 
@@ -521,6 +564,7 @@ private slots:
     void onSubNodeEvaluated(NodeId nodeId);
 
     void onSubGraphStalled();
+
 };
 
 } // namespace intelli

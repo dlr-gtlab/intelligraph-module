@@ -7,10 +7,11 @@
  */
 
 
-#ifndef GRAPHBUILDER_H
-#define GRAPHBUILDER_H
+#ifndef GT_INTELLI_GRAPHBUILDER_H
+#define GT_INTELLI_GRAPHBUILDER_H
 
 #include <intelli/node.h>
+#include <intelli/dynamicnode.h>
 
 #include <gt_typetraits.h>
 
@@ -52,8 +53,8 @@ public:
     struct GraphData
     {
         Graph& graph;
-        Node& inNode;
-        Node& outNode;
+        DynamicNode& inNode;
+        DynamicNode& outNode;
     };
 
     /**
@@ -66,6 +67,12 @@ public:
     GraphData addGraph(std::vector<PortInfo> const& inPorts,
                        std::vector<PortInfo> const& outPorts,
                        Position pos = {}) noexcept(false);
+    GraphData addGraph(std::vector<PortInfo> const& inPorts,
+                       std::vector<PortInfo> const& outPorts,
+                       NodeUuid const& graphUuid,
+                       NodeUuid const& inNodeUuid,
+                       NodeUuid const& outNodeUUuid,
+                       Position pos = {}) noexcept(false);
 
     /**
      * @brief Adds the node to the intelli graph beeing built. The node is not
@@ -76,6 +83,7 @@ public:
      * @return Pointer to node (never null)
      */
     Node& addNode(QString const& className, Position pos = {}) noexcept(false);
+    Node& addNode(QString const& className, NodeUuid const& nodeUuid, Position pos = {}) noexcept(false);
 
     /**
      * @brief Overloads. Deduces class name by template type.
@@ -86,7 +94,13 @@ public:
               gt::trait::enable_if_base_of<Node, Derived> = true>
     Derived& addNode(Position pos = {}) noexcept(false)
     {
-        return static_cast<Derived&>(addNode(QString{Derived::staticMetaObject.className()}, pos));
+        return addNode<Derived>(NodeUuid{}, pos);
+    }
+    template <typename Derived,
+              gt::trait::enable_if_base_of<Node, Derived> = true>
+    Derived& addNode(NodeUuid const& nodeUuid, Position pos = {}) noexcept(false)
+    {
+        return static_cast<Derived&>(addNode(QString{Derived::staticMetaObject.className()}, nodeUuid, pos));
     }
 
     /**
@@ -116,13 +130,23 @@ public:
      */
     ConnectionId connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) noexcept(false);
 
+    /**
+     * @brief Overload. Connects two nodes based on their id.
+     * @param from Node to begin the connection from
+     * @param outIdx Output port of starting node to begin the connection from
+     * @param to Node to end connection at
+     * @param inIdx Input port of the end node to end the connection at
+     * @return connectionId
+     */
+    ConnectionId connect(NodeId from, PortIndex outIdx, NodeId to, PortIndex inIdx) noexcept(false);
+
 private:
 
     Graph* m_graph;
 
-    Node& addNodeHelper(std::unique_ptr<Node> node, Position pos = {});
+    Node& addNodeHelper(std::unique_ptr<Node> node, Position pos = {}, NodeUuid const& nodeUuid = {});
 };
 
 } // namespace intelli
 
-#endif // GRAPHBUILDER_H
+#endif // GT_INTELLI_GRAPHBUILDER_H

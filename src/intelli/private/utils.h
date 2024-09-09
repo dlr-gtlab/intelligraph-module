@@ -34,39 +34,6 @@ operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& d
 namespace intelli
 {
 
-template <typename Sender, typename SignalSender,
-         typename Reciever, typename SignalReciever>
-struct IgnoreSignal
-{
-    IgnoreSignal(Sender sender_, SignalSender signalSender_,
-                 Reciever reciever_, SignalReciever signalReciever_) :
-        sender(sender_), signalSender(signalSender_), reciever(reciever_), signalReciever(signalReciever_)
-    {
-        QObject::disconnect(sender, signalSender, reciever, signalReciever);
-    }
-
-    ~IgnoreSignal()
-    {
-        QObject::connect(sender, signalSender, reciever, signalReciever, Qt::UniqueConnection);
-    }
-
-    Sender sender;
-    SignalSender signalSender;
-    Reciever reciever;
-    SignalReciever signalReciever;
-};
-
-template <typename Sender, typename SignalSender,
-         typename Reciever, typename SignalReciever>
-GT_NO_DISCARD auto
-ignoreSignal(Sender sender, SignalSender signalSender,
-             Reciever reciever, SignalReciever signalReciever)
-{
-    return IgnoreSignal<Sender, SignalSender, Reciever, SignalReciever>{
-        sender, signalSender, reciever, signalReciever
-    };
-}
-
 template <typename T>
 inline QString toString(T const& t)
 {

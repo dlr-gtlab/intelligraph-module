@@ -76,7 +76,10 @@ NodeGeometry::portHeightExtent() const
         auto n = node().ports(type).size();
         if (n == 0) continue;
 
-        height = std::max(height, (int)(portCaptionRect(type, PortIndex::fromValue(n - 1)).bottomLeft().y() + vspacing()));
+        for (PortIndex idx{0}; idx < n; ++idx)
+        {
+            height = std::max(height, (int)(portCaptionRect(type, idx).bottomLeft().y() + vspacing()));
+        }
     }
 
     return height;
@@ -241,9 +244,12 @@ NodeGeometry::widgetPosition() const
     return QPointF{xOffset, yOffset};
 }
 
+// TODO: what if port index is out of bounds?
 QRectF
 NodeGeometry::portRect(PortType type, PortIndex idx) const
 {
+    auto& node  = this->node();
+
     assert(type != PortType::NoType && idx != invalid<PortIndex>());
 
     QFontMetrics metrics{QFont()};
@@ -252,7 +258,10 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
 
     for (PortIndex i{0}; i < idx; ++i)
     {
-        height += 1.5 * metrics.height();
+        auto* port = node.port(node.portId(type, idx));
+        bool visible = !port || port->visible;
+
+        height += visible * 1.5 * metrics.height();
     }
 
     auto& style = style::currentStyle().node;
@@ -271,19 +280,21 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
 {
     assert(type != PortType::NoType && idx != invalid<PortIndex>());
 
-    QFontMetrics metrics{QFont()};
-
-    auto& factory = NodeDataFactory::instance();
-
     auto& node = this->node();
     auto* port = node.port(node.portId(type, idx));
     assert(port);
+
+    if (!port->visible) return {};
+
+    QFontMetrics metrics{QFont()};
 
     int height = metrics.height();
     int width = 0;
 
     if (port->captionVisible)
     {
+        auto& factory = NodeDataFactory::instance();
+
         width += metrics.horizontalAdvance(port->caption.isEmpty() ?
                                                factory.typeName(port->typeId) :
                                                port->caption);
@@ -321,6 +332,8 @@ NodeGeometry::portHit(QRectF rect) const
     // check each port
     for (auto& port : node.ports(type))
     {
+        if (!port.visible) continue;
+
         auto pRect = this->portRect(type, node.portIndex(type, port.id()));
         if (pRect.intersects(rect))
         {

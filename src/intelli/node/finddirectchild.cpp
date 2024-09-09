@@ -14,6 +14,26 @@
 #include <gt_lineedit.h>
 
 #include <QRegExpValidator>
+#include <QRegExp>
+
+namespace gt
+{
+namespace re
+{
+
+namespace intelli
+{
+
+inline QRegExp forClassNames()
+{
+    return QRegExp(R"(^([a-zA-Z_][a-zA-Z0-9_]*::)*[a-zA-Z_][a-zA-Z0-9_]*$)");
+}
+
+} // namespace intelli
+
+} // namespace re
+
+} // namespace gt
 
 using namespace intelli;
 
