@@ -421,7 +421,7 @@ Node::isPortConnected(PortId portId) const
     auto* graph = qobject_cast<Graph const*>(parent());
     if (!graph) return false;
 
-    return !graph->findConnectedNodes(id(), portId).empty();
+    return !graph->connectionModel().iterateConnections(id(), portId).empty();
 }
 
 void
@@ -440,7 +440,6 @@ Node::handleNodeEvaluation(GraphExecutionModel& model)
         return detachedEvaluation(*this, model);
     case NodeEvalMode::Blocking:
         return blockingEvaluation(*this, model);
-
     }
 
     gtError().nospace()

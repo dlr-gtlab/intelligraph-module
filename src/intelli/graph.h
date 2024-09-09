@@ -247,6 +247,7 @@ public:
      * vice cersa.
      * @return List of all unique target nodes
      */
+    [[deprecated]]
     static QVector<NodeId> uniqueTargetNodes(QVector<ConnectionId> const& connections, PortType type);
 
     /**
@@ -292,7 +293,6 @@ public:
      */
     GraphExecutionModel* executionModel();
     GraphExecutionModel const* executionModel() const;
-
 
     /**
      * @brief Finds all dependencies of the node referred by `nodeId`

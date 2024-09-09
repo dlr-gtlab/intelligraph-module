@@ -344,16 +344,19 @@ Graph::uniqueTargetNodes(QVector<ConnectionId> const& connections, PortType type
 QVector<NodeId>
 Graph::findConnectedNodes(NodeId nodeId, PortType type) const
 {
-    auto const& connections = findConnections(nodeId, type);
-    return uniqueTargetNodes(connections, type);
+    QVector<NodeId> nodes;
+    auto iter = m_local.iterateUniqueNodes(nodeId, type);
+    std::copy(iter.begin(), iter.end(), std::back_inserter(nodes));
+    return nodes;
 }
 
 QVector<NodeId>
 Graph::findConnectedNodes(NodeId nodeId, PortId portId) const
 {
-    auto const& connections = findConnections(nodeId, portId);
-    auto const* node = findNode(nodeId);
-    return uniqueTargetNodes(connections, node ? node->portType(portId) : PortType::Out);
+    QVector<NodeId> nodes;
+    auto iter = m_local.iterateUniqueNodes(nodeId, portId);
+    std::copy(iter.begin(), iter.end(), std::back_inserter(nodes));
+    return nodes;
 }
 
 QList<Graph*>
