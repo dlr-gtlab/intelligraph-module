@@ -22,7 +22,7 @@ LogicSourceNode::LogicSourceNode() :
 {
     registerProperty(m_value);
 
-    setNodeEvalMode(NodeEvalMode::MainThread);
+    setNodeEvalMode(NodeEvalMode::Blocking);
 
     m_out = addOutPort(typeId<BoolData>());
 

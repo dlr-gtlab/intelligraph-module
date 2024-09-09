@@ -19,7 +19,7 @@ using namespace intelli;
 NumberDisplayNode::NumberDisplayNode() :
     Node("Number Display")
 {
-    setNodeEvalMode(NodeEvalMode::MainThread);
+    setNodeEvalMode(NodeEvalMode::Blocking);
 
     PortId in = addInPort(typeId<DoubleData>());
 

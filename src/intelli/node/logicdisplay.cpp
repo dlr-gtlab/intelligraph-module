@@ -19,7 +19,7 @@ using namespace intelli;
 LogicDisplayNode::LogicDisplayNode() :
     Node(QStringLiteral("Logic Display"))
 {
-    setNodeEvalMode(NodeEvalMode::MainThread);
+    setNodeEvalMode(NodeEvalMode::Blocking);
 
     m_in = addInPort(typeId<BoolData>());
 

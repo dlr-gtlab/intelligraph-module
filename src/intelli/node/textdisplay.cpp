@@ -32,7 +32,7 @@ TextDisplayNode::TextDisplayNode() :
     registerProperty(m_textType);
 
     // no eval method
-    setNodeEvalMode(NodeEvalMode::MainThread);
+    setNodeEvalMode(NodeEvalMode::Blocking);
     setNodeFlag(Resizable, true);
 
     auto info = PortInfo{typeId<StringData>()};

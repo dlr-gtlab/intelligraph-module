@@ -248,9 +248,9 @@ NodeGeometry::widgetPosition() const
 QRectF
 NodeGeometry::portRect(PortType type, PortIndex idx) const
 {
-    auto& node  = this->node();
-
     assert(type != PortType::NoType && idx != invalid<PortIndex>());
+
+    auto& node  = this->node();
 
     QFontMetrics metrics{QFont()};
 
@@ -258,7 +258,7 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
 
     for (PortIndex i{0}; i < idx; ++i)
     {
-        auto* port = node.port(node.portId(type, idx));
+        auto* port = node.port(node.portId(type, i));
         bool visible = !port || port->visible;
 
         height += visible * 1.5 * metrics.height();
