@@ -64,7 +64,7 @@ TEST(GraphBuilder, basic_graph)
         return;
     }
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 }
 
 TEST(GraphBuilder, graph_with_groups)
@@ -120,5 +120,5 @@ TEST(GraphBuilder, graph_with_groups)
         return;
     }
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 }

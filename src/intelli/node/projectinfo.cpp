@@ -20,7 +20,7 @@ using namespace intelli;
 ProjectInfoNode::ProjectInfoNode() :
     Node("Project Info")
 {
-    setNodeEvalMode(NodeEvalMode::MainThread);
+    setNodeEvalMode(NodeEvalMode::Blocking);
 
     m_outName = addOutPort({typeId<StringData>(), tr("name")});
     m_outPath = addOutPort({typeId<StringData>(), tr("path")});

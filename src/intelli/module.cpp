@@ -58,6 +58,9 @@ static const int meta_port_id = [](){
 static const int meta_node_id = [](){
     return qRegisterMetaType<NodeId>("NodeId");
 }();
+static const int meta_node_uuid = [](){
+    return qRegisterMetaType<NodeId>("NodeUuid");
+}();
 static const int meta_port_type = [](){
     return qRegisterMetaType<PortType>("PortType");
 }();
@@ -72,6 +75,9 @@ static const int ns_meta_port_id = [](){
 static const int ns_meta_node_id = [](){
     return qRegisterMetaType<NodeId>("intelli::NodeId");
 }();
+static const int ns_meta_node_uuid = [](){
+    return qRegisterMetaType<NodeId>("intelli::NodeUuid");
+}();
 static const int ns_meta_port_type = [](){
     return qRegisterMetaType<PortType>("intelli::PortType");
 }();
@@ -79,7 +85,7 @@ static const int ns_meta_port_type = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber(0, 11, 0);
+    return GtVersionNumber(0, 12, 0);
 }
 
 QString
@@ -115,6 +121,7 @@ bool upgrade_to_0_3_1(QDomElement& root, QString const& file);
 bool upgrade_to_0_5_0(QDomElement& root, QString const& file);
 bool upgrade_to_0_8_0(QDomElement& root, QString const& file);
 bool upgrade_to_0_10_1(QDomElement& root, QString const& file);
+bool upgrade_to_0_12_0(QDomElement& root, QString const& file);
 
 QList<gt::VersionUpgradeRoutine>
 GtIntelliGraphModule::upgradeRoutines() const
@@ -145,6 +152,11 @@ GtIntelliGraphModule::upgradeRoutines() const
     to_0_10_1.target = GtVersionNumber{0, 10, 1};
     to_0_10_1.f = upgrade_to_0_10_1;
     routines << to_0_10_1;
+
+    gt::VersionUpgradeRoutine to_0_12_0;
+    to_0_12_0.target = GtVersionNumber{0, 12, 0};
+    to_0_12_0.f = upgrade_to_0_12_0;
+    routines << to_0_12_0;
 
     return routines;
 }
@@ -410,16 +422,14 @@ rename_dynamicport_structs(QDomElement& root,
                            QString const& typeIn,
                            QString const& typeOut)
 {
-    auto objects = propertyContainerElements(root);
+    auto containers = propertyContainerElements(root);
 
-    if (objects.empty()) return true;
-
-    for (auto& object : objects)
+    for (auto& container : containers)
     {
         QString const* newType = &typeIn;
 
         // check for dynamic node containers
-        auto const& name = object.attribute(gt::xml::S_NAME_TAG);
+        auto const& name = container.attribute(gt::xml::S_NAME_TAG);
         if (name == QStringLiteral("dynamicOutPorts"))
         {
             newType = &typeOut;
@@ -429,7 +439,7 @@ rename_dynamicport_structs(QDomElement& root,
             continue;
         }
 
-        QDomNodeList childs = object.childNodes();
+        QDomNodeList childs = container.childNodes();
         int size = childs.size();
         for (int i = 0; i < size; ++i)
         {
@@ -441,6 +451,52 @@ rename_dynamicport_structs(QDomElement& root,
     return true;
 }
 
+bool
+clear_dynamicports(QDomElement& root,
+                   QString const& file,
+                   QString const& className)
+{
+    auto objects = gt::xml::findObjectElementsByClassName(root, className);
+
+    for (auto& object : objects)
+    {
+        auto containers = propertyContainerElements(object);
+
+        gtInfo() << QObject::tr("Found property container for '%1'").arg(object.attribute("class"));
+
+        for (auto& container : containers)
+        {
+            gtInfo() << QObject::tr("Removing dynamic ports for '%1'").arg(object.attribute("class"));
+
+            QDomNodeList childs = container.childNodes();
+            int size = childs.size();
+            for (int i = 0; i < size; i++)
+            {
+                auto child = childs.at(0).toElement();
+                container.removeChild(child);
+            }
+        }
+    }
+
+    return true;
+}
+
+// remove dynamic ports since port id generation has changed
+bool upgrade_to_0_12_0(QDomElement& root, QString const& file)
+{
+    return upgradeModuleFiles(
+               root, file, std::bind(clear_dynamicports,
+                                     std::placeholders::_1,
+                                     std::placeholders::_2,
+                                     QStringLiteral("intelli::GroupInputProvider"))) &&
+            upgradeModuleFiles(
+               root, file, std::bind(clear_dynamicports,
+                                     std::placeholders::_1,
+                                     std::placeholders::_2,
+                                     QStringLiteral("intelli::GroupOutputProvider")));
+}
+
+// rename dynamic port structs
 bool upgrade_to_0_10_1(QDomElement& root, QString const& file)
 {
     return upgradeModuleFiles(root, file, std::bind(rename_dynamicport_structs,
@@ -450,6 +506,7 @@ bool upgrade_to_0_10_1(QDomElement& root, QString const& file)
                                                     QStringLiteral("PortInfoOut")));
 }
 
+// rename dynamic port structs
 bool upgrade_to_0_8_0(QDomElement& root, QString const& file)
 {
     return upgradeModuleFiles(root, file, std::bind(rename_dynamicport_structs,

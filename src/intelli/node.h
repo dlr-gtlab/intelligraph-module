@@ -28,11 +28,11 @@ enum NodeFlag
     Unique      = 1 << 2,
 
     /// Indicates that the widget should be placed so that its size can be maximized
-    MaximizeWidget = 1 << 3,
+    MaximizeWidget = 1 << 4,
     /// Indicates node is resizeable
-    Resizable   = 1 << 4,
+    Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
-    ResizableHOnly = 1 << 5,
+    ResizableHOnly = 1 << 6,
 
     /// Indicates that the node is evaluating (will be set automatically)
     Evaluating  = 1 << 7,
@@ -51,21 +51,21 @@ enum class NodeEvalMode
     /// Indicates that the node will be evaluated non blockingly in a separate
     /// thread
     Detached = 0,
-    /// Indicates the the node should be evaluated exclusively to other nodes in
-    /// a separate thread
+    /// Indicates that the node should be evaluated exclusively to other nodes
     Exclusive,
     /// Indicates that the node should be evaluated in the main thread, thus
     /// blocking the GUI. Should only be used if node evaluates instantly.
-    MainThread,
+    Blocking,
     /// Default behaviour
     Default = Detached,
+    /// deprecated
+    MainThread [[deprecated("Use `Blocking` instead")]] = Blocking,
 };
 
 class NodeExecutor;
 class NodeData;
 class NodeDataInterface;
 class GraphExecutionModel;
-struct NodeImpl;
 
 /**
  * @brief Attempts to convert `data` to into the desired type. If
@@ -151,13 +151,27 @@ public:
             optional(_optional)
         {}
 
+        PortInfo(PortInfo const& other) = default;
+        PortInfo(PortInfo&& other) = default;
+        PortInfo& operator=(PortInfo const& other) = delete;
+        PortInfo& operator=(PortInfo&& other) = default;
+        ~PortInfo() = default;
+
         /// creates a PortInfo struct with a custom port id
         template<typename ...T>
-        static PortInfo customId(PortId id, T&&... args)
+        static PortInfo customId(PortId newPortId, T&&... args)
         {
             PortInfo pd(std::forward<T>(args)...);
-            pd.m_id = id;
+            pd.m_id = newPortId;
             return pd;
+        }
+
+        /// Performs a copy assignment using `other` but keeps old id
+        void assign(PortInfo other)
+        {
+            PortInfo tmp(std::move(other));
+            tmp.m_id = m_id;
+            swap(tmp);
         }
 
         /// creates a copy of this object but resets the id parameter
@@ -166,6 +180,17 @@ public:
             PortInfo pd(*this);
             pd.m_id = invalid<PortId>();
             return pd;
+        }
+
+        void swap(PortInfo& other) noexcept
+        {
+            using std::swap;
+            swap(typeId, other.typeId);
+            swap(caption, other.caption);
+            swap(captionVisible, other.captionVisible);
+            swap(visible, other.visible);
+            swap(optional, other.optional);
+            swap(m_id, other.m_id);
         }
 
         // type id for port data (classname)
@@ -187,6 +212,7 @@ public:
 
     private:
 
+        /// read only PortId
         PortId m_id{};
         
         friend class Node;
@@ -592,10 +618,36 @@ protected:
 
 private:
 
-    std::unique_ptr<NodeImpl> pimpl;
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
 
     // hide object name setter
     using GtObject::setObjectName;
+};
+
+inline void swap(Node::PortInfo& a, Node::PortInfo& b) noexcept { a.swap(b); }
+
+/**
+ * @brief Helper struct that yields the desired identification of a node
+ * depending on the template parameter.
+ *
+ * Usage:
+ * - NodeId id = get_node_id<NodeId>{}(ptr);
+ * - NodeUuid uuid = get_node_id<NodeUuid>{}(ptr);
+ */
+template <typename NodeId_t>
+struct get_node_id;
+
+template <>
+struct get_node_id<NodeId>
+{
+    NodeId operator()(Node const* node) { assert(node); return node->id(); }
+};
+
+template <>
+struct get_node_id<NodeUuid>
+{
+    NodeUuid operator()(Node const* node) { assert(node); return node->uuid(); }
 };
 
 } // namespace intelli

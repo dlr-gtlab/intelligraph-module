@@ -22,6 +22,7 @@ set(PUBLIC_HEADERS
     intelli/globals.h
     intelli/graph.h
     intelli/graphbuilder.h
+    intelli/graphconnectionmodel.h
     intelli/graphexecmodel.h
     intelli/memory.h
     intelli/node.h
@@ -112,6 +113,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
     intelli/gui/ui/logicnodeui.h
+    intelli/private/graph_impl.h
     intelli/private/node_impl.h
     intelli/private/utils.h
 
