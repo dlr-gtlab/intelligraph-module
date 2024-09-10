@@ -811,20 +811,16 @@ Graph::restoreConnection(Connection* connection)
     assert(connection);
     auto conId = connection->connectionId();
 
-    auto conData = m_local.find(connection->inNodeId());
-    auto conDataOut = m_local.find(connection->outNodeId());
-    assert(conData != m_local.end());
-    assert(conDataOut != m_local.end());
-
-    auto range = conData->iterateConnections(PortType::In);
-    if (std::find(range.begin(), range.end(), conId) != range.end())
+    auto cons = m_local.iterateConnections(conId.inNodeId, PortType::In);
+    if (std::find(cons.begin(), cons.end(), conId) != cons.end())
     {
-        range = conDataOut->iterateConnections(PortType::Out);
-        assert(std::find(range.begin(), range.end(), conId) != range.end());
+        cons = m_local.iterateConnections(conId.outNodeId, PortType::Out);
+        assert(std::find(cons.begin(), cons.end(), conId) != cons.end());
         return;
     }
-    range = conDataOut->iterateConnections(PortType::Out);
-    assert(std::find(range.begin(), range.end(), conId) == range.end());
+
+    cons = m_local.iterateConnections(conId.outNodeId, PortType::Out);
+    assert(std::find(cons.begin(), cons.end(), conId) == cons.end());
 
     std::unique_ptr<Connection> ptr{connection};
     ptr->setParent(nullptr);
