@@ -810,15 +810,15 @@ Graph::restoreConnection(Connection* connection)
 {
     assert(connection);
     auto conId = connection->connectionId();
+    auto conData = m_local.find(connection->inNodeId());
+    auto conDataOut = m_local.find(connection->outNodeId());
 
     if (conData == m_local.end() || conDataOut == m_local.end())
     {
         gtWarning() << tr("Cannot restore connection") << conId;
         return;
     }
-    
-    auto conData = m_local.find(connection->inNodeId());
-    auto conDataOut = m_local.find(connection->outNodeId());
+
     assert(conData != m_local.end());
     assert(conDataOut != m_local.end());
 
