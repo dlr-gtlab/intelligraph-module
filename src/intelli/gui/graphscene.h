@@ -178,8 +178,6 @@ private slots:
 
     void moveConnections(NodeGraphicsObject* object);
 
-    void onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId);
-
     void onMakeDraftConnection(NodeGraphicsObject* object,
                                PortType type,
                                PortId portId);

@@ -116,7 +116,8 @@ NodeDataFactory::typeName(TypeId const& typeId) const noexcept
 bool
 NodeDataFactory::canConvert(TypeId const& from, TypeId const& to) const
 {
-    return from == to || findConversion(m_conversions, from, to) != m_conversions.end();
+    return from == to ||
+           findConversion(m_conversions, from, to) != m_conversions.end();
 }
 
 bool

@@ -92,12 +92,10 @@ updateWidgetPalette(NodeGraphicsObject* o)
 }; // struct Impl;
 
 NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
-                                       Graph& graph,
                                        Node& node,
                                        NodeUI& ui) :
     QGraphicsObject(nullptr),
     m_sceneData(&data),
-    m_graph(&graph),
     m_node(&node),
     m_geometry(ui.geometry(node)),
     m_painter(ui.painter(*this, *m_geometry)),
@@ -146,19 +144,6 @@ NodeId
 NodeGraphicsObject::nodeId() const
 {
     return m_node->id();
-}
-
-Graph&
-NodeGraphicsObject::graph()
-{
-    assert (m_graph);
-    return *m_graph;
-}
-
-Graph const&
-NodeGraphicsObject::graph() const
-{
-    return const_cast<NodeGraphicsObject*>(this)->graph();
 }
 
 GraphSceneData const&
@@ -326,14 +311,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     NodeGeometry::PortHit hit = m_geometry->portHit(coord);
     if (hit)
     {
-        // input connection disconnected
-        auto& conModel = m_graph->connectionModel();
-        auto connections = conModel.iterateConnections(m_node->id(), hit.port);
-        if (!connections.empty() && hit.type == PortType::In)
-        {
-            assert(connections.size() == 1);
-            return emit makeDraftConnection(this, *connections.begin());
-        }
+        if (!m_node->port(hit.port)) return;
 
         return emit makeDraftConnection(this, hit.type, hit.port);
     }
@@ -603,19 +581,13 @@ NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& typeId,
     m_isActive = true;
     m_isNodeCompatible = true;
 
-    auto& graph = m_object->graph();
     auto& node  = m_object->node();
 
     auto& factory = NodeDataFactory::instance();
     for (auto& port : node.ports(type))
     {
-        if (type == PortType::In)
-        {
-            auto& conModel = graph.connectionModel();
-            // check whether port is already connected
-            auto connections = conModel.iterateConnections(node.id(), port.id());
-            if (!connections.empty()) continue;
-        }
+        // check whether port is already connected
+        if (type == PortType::In && port.isConnected()) continue;
 
         if (!factory.canConvert(port.typeId, typeId, type)) continue;
 

@@ -285,6 +285,7 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
         return PortId{};
     }
 
+    port.setConnected(false);
     auto& ports = pimpl->ports(type);
 
     auto iter = ports.end();
@@ -418,10 +419,8 @@ Node::portId(PortType type, PortIndex idx) const noexcept(false)
 bool
 Node::isPortConnected(PortId portId) const
 {
-    auto* graph = qobject_cast<Graph const*>(parent());
-    if (!graph) return false;
-
-    return !graph->connectionModel().iterateConnections(id(), portId).empty();
+    auto* port = this->port(portId);
+    return port && port->isConnected();
 }
 
 void

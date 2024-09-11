@@ -141,15 +141,14 @@ findItems(GraphScene& scene)
  */
 static ConnectionGraphicsObject*
 instantiateDraftConnection(GraphScene& scene,
-                           NodeGraphicsObject* sourceObject,
+                           NodeGraphicsObject& sourceObject,
                            PortType sourceType,
                            PortId sourcePortId)
 {
     assert(!scene.m_draftConnection);
-    assert(sourceObject);
     assert(sourcePortId.isValid());
 
-    NodeId sourceNodeId = sourceObject->nodeId();
+    NodeId sourceNodeId = sourceObject.nodeId();
 
     // dummy connection (respective end point is not connected)
     ConnectionId draftConId{
@@ -159,7 +158,7 @@ instantiateDraftConnection(GraphScene& scene,
         invalid<PortId>()
     };
 
-    auto& sourceNode = sourceObject->node();
+    auto& sourceNode = sourceObject.node();
 
     auto* sourcePort = sourceNode.port(sourcePortId);
     assert(sourcePort);
@@ -193,6 +192,45 @@ instantiateDraftConnection(GraphScene& scene,
 
     return scene.m_draftConnection.get();
 };
+
+static void
+makeDraftConnection(GraphScene& scene,
+                           NodeGraphicsObject& object,
+                           ConnectionId conId)
+{
+    auto const getEndPoint = [&scene](ConnectionId conId, PortType type){
+        ConnectionGraphicsObject* oldCon = scene.connectionObject(conId);
+        assert(oldCon);
+        return oldCon->endPoint(type);
+    };
+
+    assert(!scene.m_draftConnection);
+    assert(conId.isValid());
+    assert(conId.inNodeId == object.nodeId());
+
+    // this function is only called if an ingoing connection was disconnected
+    constexpr PortType type = PortType::In;
+
+    QPointF oldEndPoint = getEndPoint(conId, type);
+
+    // delete old connection
+    bool success = gtDataModel->deleteFromModel(scene.graph().findConnection(conId));
+    assert(success);
+
+    auto outNode = scene.nodeObject(conId.outNodeId);
+    assert(outNode);
+
+    // make draft connection form outgoing node
+    auto* draft = Impl::instantiateDraftConnection(scene,
+                                                   *outNode,
+                                                   invert(type),
+                                                   conId.outPort);
+
+    // move initial end position of draft connection
+    assert(draft);
+    draft->setEndPoint(type, oldEndPoint);
+}
+
 
 /**
  * @brief Updates the connection's end point that the specified port type
@@ -1355,7 +1393,7 @@ GraphScene::onNodeAppended(Node* node)
     NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
     if (!ui) ui = &defaultUI;
 
-    auto entity = make_volatile<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *m_graph, *node, *ui);
+    auto entity = make_volatile<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *node, *ui);
     // add to scene
     addItem(entity);
 
@@ -1372,11 +1410,8 @@ GraphScene::onNodeAppended(Node* node)
     connect(entity, &NodeGraphicsObject::nodeGeometryChanged,
             this, &GraphScene::moveConnections, Qt::DirectConnection);
 
-    connect(entity, qOverload<NodeGraphicsObject*, ConnectionId>(&NodeGraphicsObject::makeDraftConnection),
-            this,   qOverload<NodeGraphicsObject*, ConnectionId>(&GraphScene::onMakeDraftConnection),
-            Qt::DirectConnection);
-    connect(entity, qOverload<NodeGraphicsObject*, PortType, PortId>(&NodeGraphicsObject::makeDraftConnection),
-            this,   qOverload<NodeGraphicsObject*, PortType, PortId>(&GraphScene::onMakeDraftConnection),
+    connect(entity, &NodeGraphicsObject::makeDraftConnection,
+            this, &GraphScene::onMakeDraftConnection,
             Qt::DirectConnection);
 
     // append to map
@@ -1453,12 +1488,16 @@ GraphScene::onConnectionAppended(Connection* con)
     // update type ids if port changes to make sure connections stay updated
     connect(inNode, &Node::portChanged, entity,
             [entity = entity.get(), inNode](PortId id){
+        if (entity->connectionId().inPort != id) return;
         auto* port = inNode->port(id);
+        assert(port);
         entity->setPortTypeId(PortType::In, port->typeId);
     });
     connect(outNode, &Node::portChanged, entity,
             [entity = entity.get(), outNode](PortId id){
+        if (entity->connectionId().outPort != id) return;
         auto* port = outNode->port(id);
+        assert(port);
         entity->setPortTypeId(PortType::Out, port->typeId);
     });
 
@@ -1540,45 +1579,26 @@ GraphScene::moveConnections(NodeGraphicsObject* object)
 }
 
 void
-GraphScene::onMakeDraftConnection(NodeGraphicsObject* object, ConnectionId conId)
-{
-    auto const getEndPoint = [this](ConnectionId conId, PortType type){
-        ConnectionGraphicsObject* oldCon = connectionObject(conId);
-        assert(oldCon);
-        return oldCon->endPoint(type);
-    };
-
-    assert(!m_draftConnection);
-    assert(object);
-    assert(conId.isValid());
-    assert(conId.inNodeId == object->nodeId());
-
-    // this function is only called if an ingoing connection was disconnected
-    constexpr PortType type = PortType::In;
-
-    QPointF oldEndPoint = getEndPoint(conId, type);
-
-    // delete oldCon
-    bool success = gtDataModel->deleteFromModel(m_graph->findConnection(conId));
-    assert(success);
-
-    // make draft connection form outgoing node
-    auto* draft = Impl::instantiateDraftConnection(*this,
-                                                   nodeObject(conId.outNodeId),
-                                                   invert(type),
-                                                   conId.outPort);
-
-    // move initial end position of draft connection
-    assert(draft);
-    draft->setEndPoint(type, oldEndPoint);
-}
-
-void
 GraphScene::onMakeDraftConnection(NodeGraphicsObject* object,
                                   PortType type,
                                   PortId portId)
 {
-    Impl::instantiateDraftConnection(*this, object, type, portId);
+    assert(object);
+
+    if (type == PortType::In)
+    {
+        // disconnect existing ingoing connection and make it a draft connection
+        auto& conModel = m_graph->connectionModel();
+        auto connections = conModel.iterateConnections(object->nodeId(), portId);
+        if (!connections.empty())
+        {
+            assert(connections.size() == 1);
+            return Impl::makeDraftConnection(*this, *object, *connections.begin());
+        }
+    }
+
+    // create new connection
+    Impl::instantiateDraftConnection(*this, *object, type, portId);
 }
 
 void
