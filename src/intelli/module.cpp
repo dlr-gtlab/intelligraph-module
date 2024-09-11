@@ -342,10 +342,18 @@ propertyContainerElements(QDomElement const& root)
 {
     QList<QDomElement> result;
     findElements(root, [&](const QDomElement& elem) {
-            return elem.tagName() == gt::xml::S_PROPERTYCONT_TAG;
-        }, result);
+        return elem.tagName() == gt::xml::S_PROPERTYCONT_TAG;
+    }, result);
 
     return result;
+}
+
+QDomElement
+get_parent_object(QDomElement& object)
+{
+    return object
+        .parentNode() // tag = objectlist
+        .parentNode().toElement(); // tag = object
 }
 
 bool
@@ -364,7 +372,7 @@ rename_class_from_to(QDomElement& root,
 
     for (auto& object : objects)
     {
-        object.setAttribute(QStringLiteral("class"), to);
+        object.setAttribute(gt::xml::S_CLASS_TAG, to);
 
         if (func) func(object, indent + 2);
     }
@@ -396,6 +404,73 @@ replace_property_texts(QDomElement& root,
 }
 
 bool
+replace_property_value(QDomElement& root,
+                       QString const& propertyName,
+                       QString const& newValue)
+{
+    auto objects = gt::xml::propertyElements(root);
+
+    if (objects.empty()) return true;
+
+    for (auto& object : objects)
+    {
+        if (object.attribute(gt::xml::S_NAME_TAG) == propertyName)
+        {
+            auto text = object.firstChild().toText();
+            if (text.isNull()) continue;
+
+            text.setNodeValue(newValue);
+        }
+
+    }
+
+    return true;
+}
+
+QString
+get_property_text(QDomElement& root,
+                   QString const& propertyName)
+{
+    auto objects = gt::xml::propertyElements(root);
+    if (objects.empty()) return {};
+
+    for (auto& object : objects)
+    {
+        if (object.attribute(gt::xml::S_NAME_TAG) == propertyName)
+        {
+            auto text = object.firstChild().toText();
+            return text.data();
+        }
+    }
+
+    return {};
+}
+
+template<typename T> T
+get_property_value(QDomElement& root,
+                   QString const& propertyName)
+{
+    auto objects = gt::xml::propertyElements(root);
+    if (objects.empty()) return T{};
+
+    for (auto& object : objects)
+    {
+        if (object.attribute(gt::xml::S_NAME_TAG) == propertyName)
+        {
+            auto text = object.firstChild().toText();
+
+            bool ok = true;
+            T value{text.data().toUInt(&ok)};
+            if (!ok) return T{};
+
+            return value;
+        }
+    }
+
+    return T{};
+}
+
+bool
 remove_objects(QDomElement& root,
                QString const& className,
                int indent = 0)
@@ -415,12 +490,67 @@ remove_objects(QDomElement& root,
     return true;
 }
 
+bool
+replace_port_ids_in_connections(QDomElement graph,
+                                NodeId nodeId,
+                                PortId oldPortId,
+                                PortId newPortId,
+                                int indent = 0)
+{
+    gtInfo() << QStringLiteral(" ").repeated(indent)
+             << QObject::tr("Updating connections for graph '%1'")
+                    .arg(graph.toElement().attribute(gt::xml::S_NAME_TAG));
+
+    indent++;
+
+    // update connections in subgraph
+    auto connectionGroup = graph
+        .firstChildElement(gt::xml::S_OBJECTLIST_TAG)
+        .firstChildElement(gt::xml::S_OBJECT_TAG);
+
+    assert(connectionGroup.attribute(gt::xml::S_CLASS_TAG) == "intelli::ConnectionGroup");
+
+    auto connections = gt::xml::findObjectElementsByClassName(connectionGroup, "intelli::Connection");
+    for (auto connection : qAsConst(connections))
+    {
+        if (connection.attribute(gt::xml::S_NAME_TAG).contains("updated")) continue;
+
+        if (get_property_value<NodeId>(connection, "inNodeId") == nodeId &&
+            get_property_value<PortId>(connection, "inPort") == oldPortId)
+        {
+            gtInfo() << QStringLiteral(" ").repeated(indent)
+                     << QObject::tr("Updating connection '%1' for node '%2'")
+                            .arg(connection.attribute(gt::xml::S_NAME_TAG))
+                            .arg(nodeId);
+
+            replace_property_value(connection, "inPort", QString::number(newPortId));
+            // hacky way to avoid updating the same connection twice. Name is regenerated once loaded
+            connection.setAttribute(gt::xml::S_NAME_TAG, connection.attribute(gt::xml::S_NAME_TAG) + "updated");
+        }
+        else if (get_property_value<NodeId>(connection, "outNodeId") == nodeId &&
+                 get_property_value<PortId>(connection, "outPort") == oldPortId)
+        {
+            gtInfo() << QStringLiteral(" ").repeated(indent)
+                     << QObject::tr("Updating connection '%1' for node '%2'")
+                            .arg(connection.attribute(gt::xml::S_NAME_TAG))
+                            .arg(nodeId);
+
+            replace_property_value(connection, "outPort", QString::number(newPortId));
+            // hacky way to avoid updating the same connection twice. Name is regenerated once loaded
+            connection.setAttribute(gt::xml::S_NAME_TAG, connection.attribute(gt::xml::S_NAME_TAG) + "updated");
+        }
+    }
+
+    return true;
+}
+
+
 // update dynamic input/output container types
 bool
-rename_dynamicport_structs(QDomElement& root,
-                           QString const& file,
-                           QString const& typeIn,
-                           QString const& typeOut)
+rename_dynamic_ports_for_0_8_0(QDomElement& root,
+                               QString const& file,
+                               QString const& typeIn,
+                               QString const& typeOut)
 {
     auto containers = propertyContainerElements(root);
 
@@ -452,30 +582,80 @@ rename_dynamicport_structs(QDomElement& root,
 }
 
 bool
-clear_dynamicports(QDomElement& root,
-                   QString const& file,
-                   QString const& className)
+update_provider_ports_for_0_12_0(QDomElement& root,
+                                 QString const& file,
+                                 QString const& className,
+                                 PortType portType)
 {
     auto objects = gt::xml::findObjectElementsByClassName(root, className);
+    if (objects.empty()) return true;
 
-    for (auto& object : objects)
+    gtInfo() << QObject::tr("Updating dynamic ports in '%1'")
+                    .arg(file);
+
+    int indent = 0;
+    for (auto& provider : objects)
     {
-        auto containers = propertyContainerElements(object);
+        indent++;
 
-        gtInfo() << QObject::tr("Found property container for '%1'").arg(object.attribute("class"));
+        // access node id
+        NodeId nodeId = get_property_value<NodeId>(provider, "id");
+        assert(nodeId.isValid());
 
+        gtInfo() << QStringLiteral(" ").repeated(indent)
+                 << QObject::tr("Updating dynamic ports for '%1' (Node: %2)")
+                        .arg(className).arg(nodeId);
+
+        // iterate over all dynamic ports
+        auto containers = propertyContainerElements(provider);
         for (auto& container : containers)
         {
-            gtInfo() << QObject::tr("Removing dynamic ports for '%1'").arg(object.attribute("class"));
+            indent++;
+            PortId newPortId = PortId::fromValue((size_t)portType + 1);
 
-            QDomNodeList childs = container.childNodes();
-            int size = childs.size();
-            for (int i = 0; i < size; i++)
+            // update ports
+            QDomNodeList ports = container.childNodes();
+            int nports = ports.size();
+            for (int i = 0; i < nports; i++)
             {
-                auto child = childs.at(0).toElement();
-                container.removeChild(child);
+                auto port = ports.at(i).toElement();
+
+                // access  old port id
+                PortId oldPortId = get_property_value<PortId>(port, "PortId");
+                assert(oldPortId.isValid());
+
+                gtInfo() << QStringLiteral(" ").repeated(indent)
+                          << QObject::tr("Updating portId from '%1' to '%2'")
+                                 .arg(oldPortId)
+                                 .arg(newPortId);
+
+                // update port id
+                port.setAttribute("name", newPortId);
+                replace_property_value(port, "PortId", QString::number(newPortId));
+
+                // update connections in subgraph
+                auto subgraph = get_parent_object(provider);
+                assert(!subgraph.isNull());
+                replace_port_ids_in_connections(subgraph, nodeId, oldPortId, newPortId, indent + 1);
+
+                // update connections in parent graph
+                auto rootgraph = get_parent_object(subgraph);
+                assert(!rootgraph.isNull());
+
+                NodeId subgraphId = get_property_value<NodeId>(subgraph, "id");
+                // calculate port id of graph port
+                PortId subgraphPortId = PortId::fromValue((size_t)(oldPortId << 1) | (size_t)invert(portType));
+
+                replace_port_ids_in_connections(rootgraph, subgraphId, subgraphPortId, newPortId, indent + 1);
+
+                // increment port id
+                newPortId += PortId{4};
             }
+
+            indent--;
         }
+
+        indent--;
     }
 
     return true;
@@ -485,21 +665,23 @@ clear_dynamicports(QDomElement& root,
 bool upgrade_to_0_12_0(QDomElement& root, QString const& file)
 {
     return upgradeModuleFiles(
-               root, file, std::bind(clear_dynamicports,
+               root, file, std::bind(update_provider_ports_for_0_12_0,
                                      std::placeholders::_1,
                                      std::placeholders::_2,
-                                     QStringLiteral("intelli::GroupInputProvider"))) &&
+                                     QStringLiteral("intelli::GroupInputProvider"),
+                                     PortType::In)) &&
             upgradeModuleFiles(
-               root, file, std::bind(clear_dynamicports,
+               root, file, std::bind(update_provider_ports_for_0_12_0,
                                      std::placeholders::_1,
                                      std::placeholders::_2,
-                                     QStringLiteral("intelli::GroupOutputProvider")));
+                                     QStringLiteral("intelli::GroupOutputProvider"),
+                                     PortType::Out));
 }
 
 // rename dynamic port structs
 bool upgrade_to_0_10_1(QDomElement& root, QString const& file)
 {
-    return upgradeModuleFiles(root, file, std::bind(rename_dynamicport_structs,
+    return upgradeModuleFiles(root, file, std::bind(rename_dynamic_ports_for_0_8_0,
                                                     std::placeholders::_1,
                                                     std::placeholders::_2,
                                                     QStringLiteral("PortInfoIn"),
@@ -509,7 +691,7 @@ bool upgrade_to_0_10_1(QDomElement& root, QString const& file)
 // rename dynamic port structs
 bool upgrade_to_0_8_0(QDomElement& root, QString const& file)
 {
-    return upgradeModuleFiles(root, file, std::bind(rename_dynamicport_structs,
+    return upgradeModuleFiles(root, file, std::bind(rename_dynamic_ports_for_0_8_0,
                                                     std::placeholders::_1,
                                                     std::placeholders::_2,
                                                     QStringLiteral("PortDataIn"),
