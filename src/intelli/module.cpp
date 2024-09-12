@@ -513,9 +513,9 @@ replace_port_ids_in_connections(QDomElement graph,
     auto connections = gt::xml::findObjectElementsByClassName(connectionGroup, "intelli::Connection");
     for (auto connection : qAsConst(connections))
     {
-        if (connection.attribute(gt::xml::S_NAME_TAG).contains("updated")) continue;
 
-        if (get_property_value<NodeId>(connection, "inNodeId") == nodeId &&
+        if (!connection.attribute(gt::xml::S_NAME_TAG).contains("updatedIn") &&
+            get_property_value<NodeId>(connection, "inNodeId") == nodeId &&
             get_property_value<PortId>(connection, "inPort") == oldPortId)
         {
             gtInfo() << QStringLiteral(" ").repeated(indent)
@@ -525,9 +525,10 @@ replace_port_ids_in_connections(QDomElement graph,
 
             replace_property_value(connection, "inPort", QString::number(newPortId));
             // hacky way to avoid updating the same connection twice. Name is regenerated once loaded
-            connection.setAttribute(gt::xml::S_NAME_TAG, connection.attribute(gt::xml::S_NAME_TAG) + "updated");
+            connection.setAttribute(gt::xml::S_NAME_TAG, connection.attribute(gt::xml::S_NAME_TAG) + "updatedIn");
         }
-        else if (get_property_value<NodeId>(connection, "outNodeId") == nodeId &&
+        else if (!connection.attribute(gt::xml::S_NAME_TAG).contains("updatedOut") &&
+                 get_property_value<NodeId>(connection, "outNodeId") == nodeId &&
                  get_property_value<PortId>(connection, "outPort") == oldPortId)
         {
             gtInfo() << QStringLiteral(" ").repeated(indent)
@@ -537,7 +538,7 @@ replace_port_ids_in_connections(QDomElement graph,
 
             replace_property_value(connection, "outPort", QString::number(newPortId));
             // hacky way to avoid updating the same connection twice. Name is regenerated once loaded
-            connection.setAttribute(gt::xml::S_NAME_TAG, connection.attribute(gt::xml::S_NAME_TAG) + "updated");
+            connection.setAttribute(gt::xml::S_NAME_TAG, connection.attribute(gt::xml::S_NAME_TAG) + "updatedOut");
         }
     }
 
