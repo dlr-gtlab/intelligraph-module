@@ -195,15 +195,24 @@ public:
             swap(m_id, other.m_id);
         }
 
-        // type id for port data (classname)
+        // setters to allow function chaining
+        PortInfo& setCaption(QString v) { caption = std::move(v); return *this; }
+        PortInfo& setToolTip(QString v) { toolTip = std::move(v); return *this; }
+        PortInfo& setCaptionVisible(bool v) { captionVisible = v; return *this; }
+        PortInfo& setVisible(bool v) { visible = v; return *this; }
+        PortInfo& setOptional(bool v) { optional = v; return *this; }
+
+        /// type id for port data (classname)
         TypeId typeId;
-        // custom port caption (optional)
+        /// custom port caption (optional)
         QString caption;
-        // whether port caption should be visible
+        /// custom tooltip
+        QString toolTip;
+        /// whether port caption should be visible
         bool captionVisible = true;
-        // whether the port is visible at all
+        /// whether the port is visible at all
         bool visible = true;
-        // whether the port is required for the node evaluation
+        /// whether the port is required for the node evaluation
         bool optional = true;
 
         /**
@@ -216,19 +225,7 @@ public:
          * @brief Whether port is connected
          * @return Whether port is connected
          */
-        inline bool isConnected() const
-        {
-            return m_isConnected;
-        }
-
-        /**
-         * @brief Sets whether port is connected
-         * @param value Whether port is connected
-         */
-        inline void setConnected(bool value = true)
-        {
-            m_isConnected = value;
-        }
+        inline bool isConnected() const { return m_isConnected; }
 
     private:
         /// whether port is connected
@@ -240,6 +237,13 @@ public:
     };
     using PortData [[deprecated("use PortInfo")]] = PortInfo;
     
+    /**
+     * @brief Helper method to create a `PortInfo` struct given a `TypeId`.
+     * @param typeId TypeId
+     * @return `PortInfo` struct
+     */
+    static PortInfo makePort(TypeId typeId) { return PortInfo{std::move(typeId)}; }
+
     ~Node();
 
     /**
@@ -313,6 +317,19 @@ public:
      * @return Node eval mode
      */
     NodeEvalMode nodeEvalMode() const;
+
+    /**
+     * @brief Setter for the tooltip of the node. Will be displayed when
+     * hovering over the node.
+     * @param tooltip New Tooltip
+     */
+    void setToolTip(QString const& tooltip);
+
+    /**
+     * @brief Tooltip of the node
+     * @return Tooltip
+     */
+    QString const& tooltip() const;
 
     /**
      * @brief Setter for the caption. Will be saved persistently

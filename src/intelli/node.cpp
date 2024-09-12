@@ -104,6 +104,16 @@ Node::Node(QString const& modelName, GtObject* parent) :
         setNodeFlag(NodeFlag::Evaluating, false);
         emit evaluated();
     }, Qt::DirectConnection);
+
+    connect(this, &Node::portConnected, this, [this](PortId portId){
+        auto* port = this->port(portId);
+        if (port) port->m_isConnected = true;
+    }, Qt::DirectConnection);
+
+    connect(this, &Node::portDisconnected, this, [this](PortId portId){
+        auto* port = this->port(portId);
+        if (port) port->m_isConnected = false;
+    }, Qt::DirectConnection);
 }
 
 Node::~Node()
@@ -210,6 +220,18 @@ Node::nodeEvalMode() const
     return pimpl->evalMode;
 }
 
+void
+Node::setToolTip(QString const& tooltip)
+{
+    pimpl->toolTip = tooltip;
+}
+
+QString const&
+Node::tooltip() const
+{
+    return pimpl->toolTip;
+}
+
 Node&
 Node::setCaption(QString const& caption)
 {
@@ -285,9 +307,10 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
         return PortId{};
     }
 
-    port.setConnected(false);
-    auto& ports = pimpl->ports(type);
+    // reset is connected flag
+    port.m_isConnected = false;
 
+    auto& ports = pimpl->ports(type);
     auto iter = ports.end();
 
     if (idx >= 0 && static_cast<size_t>(idx) < ports.size())

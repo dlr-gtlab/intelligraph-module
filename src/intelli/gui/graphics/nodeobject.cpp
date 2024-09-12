@@ -429,6 +429,8 @@ NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 void
 NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
+    setToolTip(m_node->tooltip());
+
     setZValue(style::zValue(style::ZValue::NodeHovered));
 
     m_hovered = true;
@@ -459,16 +461,23 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
     {
         auto* port = m_node->port(hit.port);
         assert(port);
-        setToolTip(NodeDataFactory::instance().typeName(port->typeId));
-        return;
+        QString const& typeName = NodeDataFactory::instance().typeName(port->typeId);
+        QString const& toolTip = port->toolTip.isEmpty() ?
+                    typeName :
+                    QStringLiteral("%1 (%2)")
+                            .arg(port->toolTip, typeName);
+
+        return setToolTip(toolTip);
     }
 
-    setToolTip(QString{});
+    setToolTip(m_node->tooltip());
 }
 
 void
 NodeGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
+    setToolTip({});
+
     if (!isSelected())
     {
         setZValue(style::zValue(style::ZValue::Node));
