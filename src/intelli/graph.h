@@ -559,12 +559,13 @@ private:
 
     GraphExecutionModel* makeDummyExecutionModel();
 
+    void updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr);
+
 private slots:
 
     void onSubNodeEvaluated(NodeId nodeId);
 
     void onSubGraphStalled();
-
 };
 
 } // namespace intelli
