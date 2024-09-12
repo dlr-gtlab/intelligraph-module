@@ -64,6 +64,8 @@ struct Node::Impl
 
     /// caption string
     QString modelName;
+    /// tooltip
+    QString toolTip;
     /// ports
     std::vector<PortInfo> inPorts, outPorts{};
     /// factory for creating the widget
