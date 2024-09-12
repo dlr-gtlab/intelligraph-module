@@ -45,7 +45,6 @@ Graph::Graph() :
         if (this->findParent<Graph*>()) return;
         if (auto* exec = executionModel())
         {
-            gtWarning() << __FUNCTION__;
             isActive() ? (void)exec->autoEvaluate().detach() :
                 exec->disableAutoEvaluation();
         }
@@ -501,13 +500,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     // append nodes of subgraph
     if (auto* graph = qobject_cast<Graph*>(node.get()))
     {
-        // merge connection models
-        if (this->m_global != graph->m_global)
-        {
-            this->m_global->insert(*graph->m_global);
-        }
-
-        graph->m_global = this->m_global;
+        graph->updateGlobalConnectionModel(m_global);
 
         // init input output providers of sub graph
         graph->initInputOutputProviders();
@@ -994,6 +987,24 @@ Graph::makeDummyExecutionModel()
 }
 
 void
+Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr)
+{
+    // merge connection models
+    if (ptr != m_global)
+    {
+        ptr->insert(*m_global);
+    }
+
+    m_global = ptr;
+
+    // apply recursively
+    for (auto& subgraph : graphNodes())
+    {
+        subgraph->updateGlobalConnectionModel(ptr);
+    }
+}
+
+void
 Graph::onSubNodeEvaluated(NodeId nodeId)
 {
     auto* output = outputProvider();
@@ -1122,14 +1133,8 @@ namespace intelli
 {
 
 inline QString
-printableCaption(Node const* node)
+printableCaption(Node const* node, NodeUuid uuid)
 {
-    if (!node)
-    {
-        return QStringLiteral("id{NULL}");
-    }
-
-    QString uuid = node->uuid();
     uuid.remove('{');
     uuid.remove('}');
     uuid.remove('-');
@@ -1143,17 +1148,17 @@ printableCaption(Node const* node)
         return QStringLiteral("id_%1((O))").arg(uuid);
     }
 
-    QString caption = node->caption();
+    QString caption = node ? gt::brackets(node->caption()) : "{NULL}";
     caption.remove(']');
     caption.replace('[', '_');
     caption.replace(' ', '_');
-    return QStringLiteral("id_%1(%2)").arg(uuid, caption);
+    return QStringLiteral("id_%1%2").arg(uuid, caption);
 }
 
 QString
 debugGraphHelper(Graph const& graph)
 {
-    QString text;
+    QString debugString;
 
     auto const& data = graph.globalConnectionModel();
 
@@ -1161,43 +1166,41 @@ debugGraphHelper(Graph const& graph)
     auto end   = data.keyValueEnd();
     for (auto iter = begin; iter != end; ++iter)
     {
-        auto& entry = iter->second;
+        auto& conData = iter->second;
 
-        QString const& caption = printableCaption(entry.node);
-        text += QStringLiteral("\t") + caption + QStringLiteral("\n");
+        QString const& caption = printableCaption(conData.node, iter->first);
+        debugString += QStringLiteral("\t") + caption + QStringLiteral("\n");
 
-        for (auto& con : entry.successors)
+        for (auto& con : conData.successors)
         {
-            auto otherEntry = data.find(con.node);
-            if (otherEntry == data.end()) continue;
+            auto* otherNode = data.node(con.node);
 
-            QString entry = QStringLiteral("\t") + caption +
-                            QStringLiteral(" --") + QString::number(con.sourcePort) +
-                            QStringLiteral(" : ") + QString::number(con.port) +
-                            QStringLiteral("--> ") + printableCaption(otherEntry->node) +
-                            QStringLiteral("\n");
-            if (text.contains(entry)) continue;
+            QString text = QStringLiteral("\t") + caption +
+                           QStringLiteral(" --") + QString::number(con.sourcePort) +
+                           QStringLiteral(" : ") + QString::number(con.port) +
+                           QStringLiteral("--> ") + printableCaption(otherNode, con.node) +
+                           QStringLiteral("\n");
+            if (debugString.contains(text)) continue;
 
-            text += entry;
+            debugString += text;
         }
 
-        for (auto& con : entry.predecessors)
+        for (auto& con : conData.predecessors)
         {
-            auto otherEntry = data.find(con.node);
-            if (otherEntry == data.end()) continue;
+            auto* otherNode = data.node(con.node);
 
-            QString entry = QStringLiteral("\t") + printableCaption(otherEntry->node) +
-                            QStringLiteral(" --") + QString::number(con.port) +
-                            QStringLiteral(" : ") + QString::number(con.sourcePort) +
-                            QStringLiteral("--> ") + caption +
-                            QStringLiteral("\n");
-            if (text.contains(entry)) continue;
+            QString text = QStringLiteral("\t") + printableCaption(otherNode, con.node) +
+                           QStringLiteral(" --") + QString::number(con.port) +
+                           QStringLiteral(" : ") + QString::number(con.sourcePort) +
+                           QStringLiteral("--> ") + caption +
+                           QStringLiteral("\n");
+            if (debugString.contains(text)) continue;
 
-            text += entry;
+            debugString += text;
         }
     }
 
-    return text;
+    return debugString;
 }
 
 } // namespace intelli
