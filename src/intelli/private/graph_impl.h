@@ -234,14 +234,11 @@ struct Graph::Impl
 
             emit graph->nodePortAboutToBeDeleted(nodeId, type, idx);
 
-            auto conData = graph->connectionModel().find(nodeId);
-            if (conData == graph->connectionModel().end()) return;
-
-            auto cons = conData->iterateConnections(port);
-            if (cons.empty()) return;
+            auto connections = graph->connectionModel().iterateConnections(nodeId, port);
+            if (connections.empty()) return;
 
             auto cmd = graph->modify();
-            for (auto conId : cons)
+            for (auto conId : connections)
             {
                 graph->deleteConnection(conId);
             }
@@ -266,12 +263,6 @@ struct Graph::Impl
         {
             NodeId nodeId = node->id();
 
-            auto conData = graph->connectionModel().find(nodeId);
-            if (conData == graph->connectionModel().end()) return;
-
-            auto cons = conData->iterateConnections(portId);
-            if (cons.empty()) return;
-
             PortInfo* port = node->port(portId);
             if (!port)
             {
@@ -280,6 +271,12 @@ struct Graph::Impl
                                    .arg(portId).arg(nodeId);
                 return;
             }
+
+            auto& conModel = graph->connectionModel();
+            auto connections = conModel.iterateConnections(nodeId, portId);
+            port->setConnected(!connections.empty());
+
+            if (connections.empty()) return;
 
             PortType type = invert(node->portType(portId));
             assert(type != PortType::NoType);
@@ -290,15 +287,15 @@ struct Graph::Impl
             auto& factory = NodeDataFactory::instance();
 
             // check if connections are still valid
-            for (auto conId : cons)
+            for (auto conId : connections)
             {
                 NodeId otherNodeId = conId.node(type);
                 assert(otherNodeId != nodeId);
 
-                Node* otherNode = graph->findNode(otherNodeId);
+                Node const* otherNode = conModel.node(otherNodeId);
                 if (!otherNode) continue;
 
-                PortInfo* otherPort = otherNode->port(conId.port(type));
+                PortInfo const* otherPort = otherNode->port(conId.port(type));
                 if (!otherPort) continue;
 
                 if (!factory.canConvert(port->typeId, otherPort->typeId))
@@ -419,14 +416,28 @@ struct Graph::Impl
                 return false;
             }
 
-            if (std::is_same<NodeId, NodeId_t>::value)
-            {
-                emit targetNode->node->portDisconnected(conId.inPort);
-                emit sourceNode->node->portDisconnected(conId.outPort);
-            }
-
             targetNode->predecessors.remove(inIdx);
             sourceNode->successors.remove(outIdx);
+
+            // update ports once if local model changes
+            if (std::is_same<NodeId, NodeId_t>::value)
+            {
+                auto* inPort = targetNode->node->port(conId.inPort);
+                auto* outPort = sourceNode->node->port(conId.outPort);
+                assert(inPort);
+                assert(outPort);
+
+                // input port should have no connections
+                assert(targetNode->iterateConnections(inPort->id()).empty());
+                inPort->setConnected(false);
+
+                // output port may still be connected
+                bool isConnected = !sourceNode->iterate(outPort->id()).empty();
+                inPort->setConnected(isConnected);
+
+                emit targetNode->node->portDisconnected(inPort->id());
+                if (!isConnected) emit sourceNode->node->portDisconnected(outPort->id());
+            }
 
             return true;
         }

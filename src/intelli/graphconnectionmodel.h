@@ -757,6 +757,18 @@ public:
         return m_data.insert(key, { node });
     }
 
+    Node* node(NodeId_t const& key)
+    {
+        auto iter = find(key);
+        return (iter == end()) ? nullptr : iter->node;
+    }
+
+    Node const* node(NodeId_t const& key) const
+    {
+        auto iter = find(key);
+        return (iter == end()) ? nullptr : iter->node;
+    }
+
     /**
      * @brief Convenience function. Exposes `iterate` method of the entry
      * denoted by `nodeId`. If entry was not found and empty range is returned.

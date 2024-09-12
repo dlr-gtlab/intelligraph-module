@@ -7,13 +7,13 @@
  */
 
 
+#include "intelli/graph.h"
 #include "intelli/gui/nodepainter.h"
 #include "intelli/gui/nodegeometry.h"
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
 
 #include "intelli/nodedatafactory.h"
-#include "intelli/graph.h"
 
 #include <gt_colors.h>
 
@@ -150,7 +150,10 @@ NodePainter::drawPorts(QPainter& painter) const
             if (!port->visible) continue;
 
             uint flags = NoPortFlag;
-            if (node.isPortConnected(port->id())) flags |= PortConnected;
+            if (port->isConnected())
+            {
+                flags |= PortConnected;
+            }
             if (highlights.isActive())
             {
                 flags |= HighlightPorts;
