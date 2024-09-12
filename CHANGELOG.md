@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed hidden ports being rendered incorretly. Hidden ports are still accessible through a port id and port index. - #111
+- API: Fixed `portConnected` and `portDisconnected` being emitted incorrectly. - #114
 
 ### Removed
 
