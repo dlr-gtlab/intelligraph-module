@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Allowed nodes and ports to have custom tooltips. - #110
+
 ### Changed
 - The PortId-generation of output- and input-providers had to be reworked, thus nested graphs imported from old version of this module are missing connections - #111 
 - API: Refactored the "connection model" and provided leaner and more flexible access to connection data of nodes. This change may improve general performance of large graphs. - #111
