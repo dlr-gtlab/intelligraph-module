@@ -347,6 +347,9 @@ struct Graph::Impl
                 return;
             }
 
+            auto* root = graph->rootGraph();
+            assert(root && root->m_global.get() == graph->m_global.get());
+
             auto change = graph->modify();
             Q_UNUSED(change);
 
@@ -386,6 +389,7 @@ struct Graph::Impl
             assert(graph);
             assert(model);
             assert(conId.isValid());
+            assert(conId.inNodeId != conId.outNodeId);
         }
 
         bool operator()()
