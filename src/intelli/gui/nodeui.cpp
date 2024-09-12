@@ -19,6 +19,7 @@
 #include "intelli/gui/nodegeometry.h"
 #include "intelli/gui/nodepainter.h"
 #include "intelli/gui/graphics/nodeobject.h"
+#include "intelli/private/utils.h"
 
 #include <gt_logging.h>
 
@@ -133,7 +134,7 @@ NodeUI::NodeUI(Option option)
         gtInfo() << tr("Node '%1' (id: %2), Port id: %3")
                         .arg(obj->caption())
                         .arg(obj->id())
-                        .arg(obj->portId(type, idx));
+                        .arg(toString(obj->port(obj->portId(type, idx))));
     }).setIcon(gt::gui::icon::bug());
 }
 

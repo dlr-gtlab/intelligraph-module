@@ -133,7 +133,7 @@ public:
         DefaultPortPolicy = Optional
     };
 
-    /// port data struct
+    /// Port info struct
     class PortInfo
     {
     public:
@@ -182,6 +182,7 @@ public:
             return pd;
         }
 
+        /// swap
         void swap(PortInfo& other) noexcept
         {
             using std::swap;
@@ -190,11 +191,12 @@ public:
             swap(captionVisible, other.captionVisible);
             swap(visible, other.visible);
             swap(optional, other.optional);
+            swap(m_isConnected, other.m_isConnected);
             swap(m_id, other.m_id);
         }
 
         // type id for port data (classname)
-        QString typeId;
+        TypeId typeId;
         // custom port caption (optional)
         QString caption;
         // whether port caption should be visible
@@ -210,8 +212,27 @@ public:
          */
         inline PortId id() const { return m_id; }
 
-    private:
+        /**
+         * @brief Whether port is connected
+         * @return Whether port is connected
+         */
+        inline bool isConnected() const
+        {
+            return m_isConnected;
+        }
 
+        /**
+         * @brief Sets whether port is connected
+         * @param value Whether port is connected
+         */
+        inline void setConnected(bool value = true)
+        {
+            m_isConnected = value;
+        }
+
+    private:
+        /// whether port is connected
+        bool m_isConnected{false};
         /// read only PortId
         PortId m_id{};
         
@@ -369,6 +390,7 @@ public:
      * @param id Port id to check
      * @return Is port connected
      */
+    [[deprecated("Use `PortInfo::isConnected()` instead")]]
     bool isPortConnected(PortId portId) const;
 
 signals:

@@ -233,13 +233,15 @@ NodeGeometry::widgetPosition() const
         return QPointF{xOffset, yOffset};
     }
 
-    double xOffset = 1.5 * hspacing() + portHorizontalExtent(PortType::In);
-    double yOffset = captionHeightExtend();
 
-    if (node().ports(PortType::In).empty())
-    {
-        xOffset = innerRect().width() - w->width() - 1.5 * hspacing() - portHorizontalExtent(PortType::Out);
-    }
+    int portsDiff = portHorizontalExtent(PortType::Out) -
+                    portHorizontalExtent(PortType::In);
+
+    double xOffset = (innerRect().width() * 0.5) -
+                     (portsDiff * 0.5) -
+                     (w->width() * 0.5);
+
+    double yOffset = captionHeightExtend();
 
     return QPointF{xOffset, yOffset};
 }
