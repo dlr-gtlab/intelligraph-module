@@ -274,9 +274,15 @@ struct Graph::Impl
 
             auto& conModel = graph->connectionModel();
             auto connections = conModel.iterateConnections(nodeId, portId);
-            port->setConnected(!connections.empty());
 
-            if (connections.empty()) return;
+            bool isConnected = !connections.empty();
+            if (port->isConnected() != isConnected)
+            {
+                isConnected ? emit node->portConnected(port->id()) :
+                              emit node->portDisconnected(port->id());
+            }
+
+            if (!isConnected) return;
 
             PortType type = invert(node->portType(portId));
             assert(type != PortType::NoType);
@@ -429,13 +435,10 @@ struct Graph::Impl
 
                 // input port should have no connections
                 assert(targetNode->iterateConnections(inPort->id()).empty());
-                inPort->setConnected(false);
+                emit targetNode->node->portDisconnected(inPort->id());
 
                 // output port may still be connected
                 bool isConnected = !sourceNode->iterate(outPort->id()).empty();
-                inPort->setConnected(isConnected);
-
-                emit targetNode->node->portDisconnected(inPort->id());
                 if (!isConnected) emit sourceNode->node->portDisconnected(outPort->id());
             }
 

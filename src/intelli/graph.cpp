@@ -623,17 +623,10 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     // notify
     emit connectionAppended(connection.get());
 
-    auto inPort  = targetNode->node->port(conId.inPort);
-    auto outPort = sourceNode->node->port(conId.outPort);
-    assert(inPort);
-    assert(outPort);
+    assert(targetNode->iterateConnections(conId.inPort).size() == 1);
 
-    assert(targetNode->iterateConnections(inPort->id()).size() == 1);
-    inPort->setConnected();
-    outPort->setConnected();
-
-    emit targetNode->node->portConnected(inPort->id());
-    emit sourceNode->node->portConnected(outPort->id());
+    emit targetNode->node->portConnected(conId.inPort);
+    emit sourceNode->node->portConnected(conId.outPort);
 
     return connection.release();
 }

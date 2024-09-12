@@ -35,9 +35,7 @@ TextDisplayNode::TextDisplayNode() :
     setNodeEvalMode(NodeEvalMode::Blocking);
     setNodeFlag(Resizable, true);
 
-    auto info = PortInfo{typeId<StringData>()};
-    info.captionVisible = false;
-    PortId in = addInPort(std::move(info));
+    PortId in = addInPort(makePort(typeId<StringData>()).setCaptionVisible(false));
 
     registerWidgetFactory([this, in](){
         auto base = makeBaseWidget();
