@@ -11,13 +11,12 @@
 #define GT_INTELLI_SLEEPYNODE_H
 
 #include <intelli/node.h>
-
-#include <gt_intproperty.h>
+#include <intelli/property/uint.h>
 
 namespace intelli
 {
 
-class SleepyNode : public Node
+class GT_INTELLI_TEST_EXPORT SleepyNode : public Node
 {
     Q_OBJECT
 
@@ -35,7 +34,7 @@ protected:
 
 private:
 
-    GtIntProperty m_timer;
+    UIntProperty m_timer;
 
     PortId m_in, m_out;
 };

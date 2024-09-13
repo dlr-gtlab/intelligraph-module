@@ -166,7 +166,7 @@ private slots:
 
     void onNodeDeleted(NodeId nodeId);
 
-    void onNodeEvalStateChanged(NodeId nodeId);
+    void onNodeEvalStateChanged(NodeUuid const& nodeUuid);
 
     void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
 

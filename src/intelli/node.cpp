@@ -9,9 +9,9 @@
 
 #include "intelli/node.h"
 
-#include "intelli/graphexecmodel.h"
-#include "intelli/nodedatafactory.h"
 #include "intelli/nodeexecutor.h"
+#include "intelli/nodedatafactory.h"
+#include "intelli/nodedatainterface.h"
 #include "intelli/private/node_impl.h"
 #include "intelli/private/utils.h"
 
@@ -29,21 +29,6 @@ intelli::convert(NodeDataPtr const& data, TypeId const& to)
     // forwarding call
     return NodeDataFactory::instance().convert(data, to);
 }
-
-namespace
-{
-
-template <typename N, typename P>
-inline auto* dataInterface(N* node, P& pimpl)
-{
-    NodeDataInterface* model = pimpl->dataInterface;
-
-    if (!model) model = NodeExecutor::accessExecModel(*const_cast<Node*>(node));
-
-    return model;
-}
-
-} // namespace
 
 std::unique_ptr<QWidget>
 intelli::makeBaseWidget()
@@ -360,7 +345,7 @@ Node::removePort(PortId id)
 Node::NodeDataPtr
 Node::nodeData(PortId id) const
 {
-    auto* model = dataInterface(this, pimpl);
+    auto* model = pimpl->dataInterface;
     if (!model)
     {
         gtWarning().nospace()
@@ -369,13 +354,13 @@ Node::nodeData(PortId id) const
         return {};
     }
 
-    return model->nodeData(this->id(), id);
+    return model->nodeData(this->uuid(), id);
 }
 
 bool
 Node::setNodeData(PortId id, NodeDataPtr data)
 {
-    auto* model = dataInterface(this, pimpl);
+    auto* model = pimpl->dataInterface;
     if (!model)
     {
         gtWarning().nospace()
@@ -384,7 +369,7 @@ Node::setNodeData(PortId id, NodeDataPtr data)
         return false;
     }
 
-    return model->setNodeData(this->id(), id, std::move(data));
+    return model->setNodeData(this->uuid(), id, std::move(data));
 }
 
 Node::PortInfo*
@@ -454,20 +439,23 @@ Node::eval()
 }
 
 bool
-Node::handleNodeEvaluation(GraphExecutionModel& model)
+Node::handleNodeEvaluation(NodeDataInterface& model)
 {
-    switch (pimpl->evalMode)
+    size_t evalFlag = (size_t)pimpl->evalMode;
+
+    if (evalFlag & IsDetachedMask)
     {
-    case NodeEvalMode::Exclusive:
-    case NodeEvalMode::Detached:
-        return detachedEvaluation(*this, model);
-    case NodeEvalMode::Blocking:
-        return blockingEvaluation(*this, model);
+        return exec::detachedEvaluation(*this, model);
+    }
+    if (evalFlag & IsBlockingMask)
+    {
+        return exec::blockingEvaluation(*this, model);
     }
 
     gtError().nospace()
         << objectName() << ": "
-        << tr("Unkonw eval mode! (%1)").arg((int)pimpl->evalMode);
+        << tr("Unhandled eval mode! (%1)").arg((size_t)pimpl->evalMode);
+
     return false;
 }
 

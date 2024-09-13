@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-#include "intelli/graph.h"
+#include "intelli/graphexecmodel.h"
 #include "intelli/graphbuilder.h"
 #include "intelli/data/double.h"
 
@@ -426,7 +426,238 @@ inline bool buildGraphWithForwardingGroup(Graph& graph)
     return true;
 }
 
+/**
+ * @brief Checks the node eval state of all nodes given by `uuids`
+ * @param graph Graph
+ * @param model Exec model
+ * @param uuids Nodes to check
+ * @param targetState Eval state to check against
+ * @return success
+ */
+inline bool compareNodeEvalState(Graph const& graph,
+                                 GraphExecutionModel& model,
+                                 QStringList const& uuids,
+                                 NodeEvalState targetState)
+{
+    Q_UNUSED(graph);
+
+    bool success = true;
+    for (auto const& uuid : uuids)
+    {
+        auto state = model.nodeEvalState(uuid);
+        if (state != targetState)
+        {
+            gtError() << QObject::tr("model.nodeEvalState(%1): %2 != %3")
+                             .arg(uuid, toString(state), toString(targetState));
+            success = false;
+        }
+    }
+
+    return success;
+}
+
+/// helper struct to compare two values of type `T`
+template<typename T>
+struct ValueComparator
+{
+    bool operator()(T const& value, T const& target)
+    {
+        return value == target;
+    }
+};
+
+/// fuzzy compare for doubles
+template<>
+struct ValueComparator<double>
+{
+    bool operator()(double value, double target)
+    {
+        return std::fabs(value - target) <= std::numeric_limits<double>::epsilon();
+    }
+};
+
+/// helper struct to compare a `NodeDataPtr` to a value of type `T`.
+template<typename T>
+struct PortDataComparator
+{
+    bool operator()(QString const& uuid, PortId portId, NodeDataPtr const& data, T const& target)
+    {
+        if (!data)
+        {
+            gtError() << QObject::tr("model.nodeData(%1:%2).ptr == NULL")
+                             .arg(uuid).arg(portId);
+        }
+
+        auto value = data->invoke<T>("value");
+        if (!value.has_value())
+        {
+            gtError() << QObject::tr("model.nodeData(%1:%4).ptr: %2 != %3 (types do not match)")
+                             .arg(uuid, toString(data), toString(QVariant::fromValue(target))).arg(portId);
+            return false;
+        }
+
+        if (!ValueComparator<T>()(value.value(), target))
+        {
+            gtError() << QObject::tr("model.nodeData(%1:%4).ptr: %2 != %3")
+                             .arg(uuid).arg(value.value()).arg(target).arg(portId);
+            return false;
+        }
+
+        return true;
+    }
+};
+
+// helper struct to check if data is null
+template<>
+struct PortDataComparator<std::nullptr_t>
+{
+    bool operator()(QString const& uuid, PortId portId, NodeDataPtr data, std::nullptr_t target)
+    {
+        if (data)
+        {
+            gtError() << QObject::tr("model.nodeData(%1:%3).ptr: %2 != NULL")
+                             .arg(uuid, toString(data)).arg(portId);
+            return false;
+        }
+        return true;
+    }
+};
+
+/**
+ * @brief Checks the data of the node given by `uuid` and its ports given by `ports`
+ * @param graph Graph
+ * @param model Exec model
+ * @param uuid Node to check
+ * @param ports Port ids to check
+ * @param targetState Port state to check against
+ * @param NodeDataPtr data to check against. If not explicitly given, no check is
+ * performed
+ * @return success
+ */
+template<typename T = std::nullptr_t>
+inline bool comparePortData(Graph const& graph,
+                            GraphExecutionModel& model,
+                            QString const& uuid,
+                            QVector<PortId> const& ports,
+                            PortDataState targetState,
+                            tl::optional<T> targetData = {})
+{
+    Q_UNUSED(graph);
+
+    bool success = true;
+
+    for (PortId portId : ports)
+    {
+        auto data = model.nodeData(uuid, portId);
+        if (data.state != targetState)
+        {
+            gtError() << QObject::tr("model.nodeData(%1:%4).state: %2 != %3")
+                             .arg(uuid, toString(data.state), toString(targetState))
+                             .arg(portId);
+            success = false;
+        }
+
+        if (!targetData.has_value()) continue;
+
+        success &= PortDataComparator<T>()(uuid, portId, data.ptr, targetData.value());
+    }
+
+    return success;
+}
+
+/**
+ * @brief Checks the data of the node given by `uuid` and all ports of `type`
+ * @param graph Graph
+ * @param model Exec model
+ * @param uuid Node to check
+ * @param type Ports of a given type to check
+ * @param targetState Port state to check against
+ * @param NodeDataPtr data to check against. If not explicitly given, no check is
+ * performed
+ * @return success
+ */
+template<typename T = std::nullptr_t>
+inline bool comparePortData(Graph const& graph,
+                            GraphExecutionModel& model,
+                            QString const& uuid,
+                            PortType type,
+                            PortDataState targetState,
+                            tl::optional<T> targetData = {})
+{
+    Q_UNUSED(graph);
+
+    auto* node = graph.findNodeByUuid(uuid);
+    if (!node)
+    {
+        gtError() << QObject::tr("graph.findNodeByUuid(%1) == NULL")
+                         .arg(uuid);
+        return false;
+    }
+
+    QVector<PortId> targetPorts;
+    auto const& ports = node->ports(type);
+
+    std::transform(ports.begin(), ports.end(), std::back_inserter(targetPorts),
+                   [](auto const& port){
+                       return port.id();
+                   });
+
+    return comparePortData(graph, model, uuid, targetPorts, targetState, targetData);
+}
+
+/**
+ * @brief Checks the data of the node given by `uuid` and all of its ports
+ * @param graph Graph
+ * @param model Exec model
+ * @param uuid Node to check
+ * @param targetState Port state to check against
+ * @param NodeDataPtr data to check against. If not explicitly given, no check is
+ * performed
+ * @return success
+ */
+template<typename T = std::nullptr_t>
+inline bool comparePortData(Graph const& graph,
+                            GraphExecutionModel& model,
+                            QString const& uuid,
+                            PortDataState targetState,
+                            tl::optional<T> targetData = {})
+{
+    bool success = true;
+    for (auto type : {PortType::In, PortType::Out})
+    {
+        success &= comparePortData(graph, model, uuid, type, targetState, targetData);
+    }
+    return success;
+}
+
+/**
+ * @brief Checks the data of all nodes given by `uuids` and all of their ports
+ * @param graph Graph
+ * @param model Exec model
+ * @param uuids Nodes to check
+ * @param targetState Port state to check against
+ * @param NodeDataPtr data to check against. If not explicitly given, no check is
+ * performed
+ * @return success
+ */
+template<typename T = std::nullptr_t>
+inline bool comparePortData(Graph const& graph,
+                            GraphExecutionModel& model,
+                            QStringList const& uuids,
+                            PortDataState targetState,
+                            tl::optional<T> targetData = {})
+{
+    bool success = true;
+    for (auto const& uuid : uuids)
+    {
+        success &= comparePortData(graph, model, uuid, targetState, targetData);
+    }
+
+    return success;
+}
+
 } // namespace test
+
 
 } // namespace intelli
 

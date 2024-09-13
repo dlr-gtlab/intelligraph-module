@@ -24,6 +24,7 @@ set(PUBLIC_HEADERS
     intelli/core.h
     intelli/dynamicnode.h
     intelli/exports.h
+    intelli/future.h
     intelli/globals.h
     intelli/graph.h
     intelli/graphbuilder.h
@@ -119,6 +120,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/stringselection.h
     intelli/gui/ui/logicnodeui.h
     intelli/private/graph_impl.h
+    intelli/private/graphexecmodel_impl.h
     intelli/private/node_impl.h
     intelli/private/utils.h
 
@@ -126,6 +128,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/connectiongroup.cpp
     intelli/core.cpp
     intelli/dynamicnode.cpp
+    intelli/future.cpp
     intelli/graph.cpp
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp

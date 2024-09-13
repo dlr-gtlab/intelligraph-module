@@ -23,7 +23,7 @@ using namespace intelli;
 
 SleepyNode::SleepyNode() :
     Node("Sleeping Node"),
-    m_timer("timer", tr("Timer"), tr("Timer"), GtUnit::Time, 5)
+    m_timer("timer", tr("Timer"), tr("Timer"), 5)
 {
     registerProperty(m_timer);
 
@@ -61,15 +61,17 @@ SleepyNode::eval()
 
     constexpr int intervalMs = 500;
 
-    auto updates = m_timer * 1000 / intervalMs;
+    size_t updates = m_timer * 1000 / intervalMs;
 
     emit timePassed(0);
 
-    for (int i = 1; i < updates; ++i)
+    for (size_t i = 0; i < updates; ++i)
     {
         GtEventLoop eventloop(intervalMs);
         eventloop.exec();
-        gtDebug() << "Sending update" << i << "of" << updates;
+        gtTrace().verbose()
+            << gt::quoted(caption(), "", ":")
+            << "Sending update" << i << "of" << updates;
         emit timePassed((int)((i / (double)updates) * 100));
     }
 
