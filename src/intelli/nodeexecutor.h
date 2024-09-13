@@ -19,31 +19,21 @@ namespace intelli
 
 class Node;
 class NodeDataInterface;
-class GraphExecutionModel;
 
-GT_INTELLI_EXPORT bool blockingEvaluation(Node& node,
-                                          GraphExecutionModel& model);
-
-GT_INTELLI_EXPORT bool detachedEvaluation(Node& node,
-                                          GraphExecutionModel& model);
-
-
-/**
- * @brief The NodeExecutor class. Helper class to access private or protected
- * members of a Node used for the evaluation.
- */
-class NodeExecutor
+namespace exec
 {
-    NodeExecutor() = delete;
 
-public:
+GT_INTELLI_EXPORT bool blockingEvaluation(Node& node, NodeDataInterface& model);
 
-    static void evaluate(Node& node);
+GT_INTELLI_EXPORT bool detachedEvaluation(Node& node, NodeDataInterface& model);
 
-    static GraphExecutionModel* accessExecModel(Node& node);
+GT_INTELLI_EXPORT void setNodeDataInterface(Node& node, NodeDataInterface& model);
 
-    static void setNodeDataInterface(Node& node, NodeDataInterface* interface);
-};
+GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
+
+bool triggerNodeEvaluation(Node& node, NodeDataInterface& model);
+
+}
 
 } // namespace intelli
 

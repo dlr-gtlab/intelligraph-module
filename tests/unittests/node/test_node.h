@@ -11,6 +11,7 @@
 #define TESTNODE_H
 
 #include <intelli/node.h>
+#include <intelli/node/sleepy.h>
 
 class TestNode : public intelli::Node
 {
@@ -18,15 +19,35 @@ class TestNode : public intelli::Node
 
 public:
 
+    bool failEvaluation = false;
+
     static void registerOnce();
 
     Q_INVOKABLE TestNode();
 
+    using Node::setFlag;
+    using Node::setNodeEvalMode;
     using Node::insertInPort;
     using Node::insertOutPort;
     using Node::addInPort;
     using Node::addOutPort;
     using Node::removePort;
+
+protected:
+
+    bool handleNodeEvaluation(intelli::NodeDataInterface& model) override;
+};
+
+class TestSleepyNode : public intelli::SleepyNode
+{
+public:
+
+    static void registerOnce();
+
+    Q_INVOKABLE TestSleepyNode();
+
+    using Node::setFlag;
+    using Node::setNodeEvalMode;
 };
 
 #endif // TESTNODE_H

@@ -27,38 +27,52 @@ enum NodeFlag
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
     Unique      = 1 << 2,
-
     /// Indicates that the widget should be placed so that its size can be maximized
     MaximizeWidget = 1 << 4,
     /// Indicates node is resizeable
     Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
     ResizableHOnly = 1 << 6,
-
     /// Indicates that the node is evaluating (will be set automatically)
     Evaluating  = 1 << 7,
-
     /// default node flags
     DefaultNodeFlags = NoFlag,
-
-    /// mask to check if node is resizable
-    IsResizableMask = Resizable | ResizableHOnly
 };
 
 using NodeFlags = unsigned int;
 
+/// mask to check if node is resizable
+constexpr size_t IsResizableMask = Resizable | ResizableHOnly;
+/// mask to check if node should be evaluated in separate thread
+constexpr size_t IsDetachedMask = 1 << 0;
+/// mask to check if node should be evaluated in main thread
+constexpr size_t IsBlockingMask = 1 << 1;
+/// mask to check if node should be evaluated exclusively
+constexpr size_t IsExclusiveMask = 1 << 2;
+
 enum class NodeEvalMode
 {
+
     /// Indicates that the node will be evaluated non blockingly in a separate
     /// thread
-    Detached = 0,
-    /// Indicates that the node should be evaluated exclusively to other nodes
-    Exclusive,
+    Detached = IsDetachedMask,
     /// Indicates that the node should be evaluated in the main thread, thus
     /// blocking the GUI. Should only be used if node evaluates instantly.
-    Blocking,
+    Blocking = IsBlockingMask,
+    /// Indicates that the node should be evaluated exclusively to other nodes in
+    /// a separate thread
+    ExclusiveDetached = IsExclusiveMask | IsDetachedMask,
+    /// Indicates that the node should be evaluated exclusively to other nodes in
+    /// the main thread
+    ExclusiveBlocking = IsExclusiveMask | IsBlockingMask,
+    /// Inidcates that the inputs of the node should be forwarded to the outputs
+    /// of the node
+    ForwardInputsToOutputs = 1 << 3 | IsBlockingMask,
     /// Default behaviour
     Default = Detached,
+
+    /// deprecated
+    Exclusive [[deprecated("Use `ExclusiveDetached` or `ExclusiveBlocking` instead")]] = ExclusiveDetached,
     /// deprecated
     MainThread [[deprecated("Use `Blocking` instead")]] = Blocking,
 };
@@ -66,7 +80,6 @@ enum class NodeEvalMode
 class NodeExecutor;
 class NodeData;
 class NodeDataInterface;
-class GraphExecutionModel;
 
 /**
  * @brief Attempts to convert `data` to into the desired type. If
@@ -535,7 +548,7 @@ protected:
      * @return Returns true if the evaluation was triggered sucessfully.
      * (node may be evaluated non-blocking)
      */
-    virtual bool handleNodeEvaluation(GraphExecutionModel& model);
+    virtual bool handleNodeEvaluation(NodeDataInterface& model);
 
     /**
      * @brief Should be called within the constructor. Used to register

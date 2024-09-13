@@ -15,9 +15,6 @@
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 
-#include "intelli/graphexecmodel.h"
-#include "intelli/nodeexecutor.h"
-
 #include <gt_qtutilities.h>
 #include <gt_algorithms.h>
 #include <gt_mdiitem.h>
@@ -40,15 +37,6 @@ Graph::Graph() :
 
     connect(group, &ConnectionGroup::mergeConnections, this, [this](){
         restoreConnections();
-    });
-
-    connect(this, &Node::isActiveChanged, this, [this](){
-        if (this->findParent<Graph*>()) return;
-        if (auto* exec = executionModel())
-        {
-            isActive() ? (void)exec->autoEvaluate().detach() :
-                exec->disableAutoEvaluation();
-        }
     });
 }
 
@@ -540,14 +528,14 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     // indicate graph node as evaluating if a node is currently evaluating
     auto updateEvaluatingFlag = [this, node = node.get()](auto const& op){
         assert(node);
-//        bool wasActive = m_evaluationIndicator > 0;
+        bool wasActive = m_evaluationIndicator > 0;
         // not incrementing variable since node may emit computing started
         // multiple times
         op(m_evaluationIndicator, node->id());
         bool isActive = m_evaluationIndicator > 0;
         setNodeFlag(Evaluating, isActive);
-//        if (wasActive != isActive) emit isActiveChanged();
-//        emit isActiveChanged();
+        if (wasActive != isActive) emit isActiveChanged();
+        emit isActiveChanged();
     };
     auto setEvaluatingFlag = [updateEvaluatingFlag](){
         updateEvaluatingFlag([](size_t& flags, size_t val){
@@ -877,13 +865,13 @@ Graph::initInputOutputProviders()
 void
 Graph::eval()
 {
-//    for (auto& port : ports(PortType::Out))
-//    {
-//        if (port.visible)
-//        {
-//            setNodeData(port.id(), nodeData(port.id() + PortId(2)));
-//        }
-//    }
+    for (auto& port : ports(PortType::Out))
+    {
+        if (port.visible)
+        {
+            setNodeData(port.id(), nodeData(port.id() + PortId(2)));
+        }
+    }
 }
 
 Graph::Modification
@@ -915,78 +903,6 @@ Graph::emitEndModification()
     }
 }
 
-bool
-Graph::handleNodeEvaluation(GraphExecutionModel& model)
-{
-    auto* input = inputProvider();
-    if (!input) return false;
-
-    auto* output = outputProvider();
-    if (!output) return false;
-
-    auto* submodel = makeDummyExecutionModel();
-
-    gtDebug().verbose().nospace()
-        << "### Evaluating node: '" << objectName() << "'";
-
-    emit computingStarted();
-    // trick the submodel into thinking that the node was already evaluated
-    emit input->computingStarted();
-
-    auto list = model.nodeData(id(), PortType::In);
-    list.resize(list.size() - output->ports(PortType::In).size());
-    submodel->setNodeData(input->id(), PortType::In, std::move(list));
-    submodel->invalidateNode(output->id());
-
-    connect(submodel, &GraphExecutionModel::nodeEvaluated,
-            this, &Graph::onSubNodeEvaluated, Qt::UniqueConnection);
-    connect(submodel, &GraphExecutionModel::graphStalled,
-            this, &Graph::onSubGraphStalled, Qt::UniqueConnection);
-
-    emit input->computingFinished();
-
-    auto finally = gt::finally([this](){
-        emit computingFinished();
-    });
-
-    if (submodel->evaluateNode(output->id()).detach() &&
-        !submodel->isNodeEvaluated(output->id()))
-    {
-        finally.clear();
-    }
-
-    return true;
-}
-
-GraphExecutionModel*
-Graph::makeExecutionModel()
-{
-    auto* model = makeDummyExecutionModel();
-    model->makeActive();
-
-    return model;
-}
-
-GraphExecutionModel*
-Graph::executionModel()
-{
-    return findDirectChild<GraphExecutionModel*>();
-}
-
-GraphExecutionModel const*
-Graph::executionModel() const
-{
-    return findDirectChild<GraphExecutionModel*>();
-}
-
-GraphExecutionModel*
-Graph::makeDummyExecutionModel()
-{
-    if (auto* model = executionModel()) return model;
-
-    return new GraphExecutionModel(*this, GraphExecutionModel::DummyModel);
-}
-
 void
 Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr)
 {
@@ -1003,46 +919,6 @@ Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const&
     {
         subgraph->updateGlobalConnectionModel(ptr);
     }
-}
-
-void
-Graph::onSubNodeEvaluated(NodeId nodeId)
-{
-    auto* output = outputProvider();
-    if (!output) return;
-
-    if (output->id() != nodeId) return;
-
-    auto finally = gt::finally([this](){
-        emit computingFinished();
-    });
-
-    auto* submodel = NodeExecutor::accessExecModel(*output);
-    if (!submodel) return;
-
-    auto* model = NodeExecutor::accessExecModel(*this);
-    if (!model) return;
-
-    model->setNodeData(id(), PortType::Out, submodel->nodeData(output->id(), PortType::In));
-}
-
-void
-Graph::onSubGraphStalled()
-{
-    auto finally = gt::finally([this](){
-        emit computingFinished();
-    });
-
-    auto* output = outputProvider();
-    if (!output) return;
-
-    auto* submodel = NodeExecutor::accessExecModel(*output);
-    if (!submodel) return;
-
-    auto* model = NodeExecutor::accessExecModel(*this);
-    if (!model) return;
-
-    model->setNodeData(id(), PortType::Out, submodel->nodeData(output->id(), PortType::In));
 }
 
 GtMdiItem*

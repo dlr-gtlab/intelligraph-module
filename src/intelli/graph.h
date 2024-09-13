@@ -281,21 +281,6 @@ public:
     DynamicNode const* outputNode() const;
 
     /**
-     * @brief Constructs an execution model. Each graph has it's own
-     * execution model. If one already exists, this will be returned.
-     * @return Execution model, may be null.
-     */
-    GraphExecutionModel* makeExecutionModel();
-
-    /**
-     * @brief Returns the exection model of this graph. Each graph has it's own
-     * execution model.
-     * @return Execution model, may be null.
-     */
-    GraphExecutionModel* executionModel();
-    GraphExecutionModel const* executionModel() const;
-
-    /**
      * @brief Finds all dependencies of the node referred by `nodeId`
      * @param nodeId Node to find dependencies of
      * @return Dependencies
@@ -515,8 +500,6 @@ signals:
     void nodePositionChanged(NodeId nodeId, QPointF pos);
 
 protected:
-
-    bool handleNodeEvaluation(GraphExecutionModel& model) override;
     
     void eval() override;
 
@@ -558,15 +541,7 @@ private:
     void appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targetNode);
     void appendGlobalConnection(Connection* guard, ConnectionUuid conUuid);
 
-    GraphExecutionModel* makeDummyExecutionModel();
-
     void updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr);
-
-private slots:
-
-    void onSubNodeEvaluated(NodeId nodeId);
-
-    void onSubGraphStalled();
 };
 
 } // namespace intelli

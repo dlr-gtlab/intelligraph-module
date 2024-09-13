@@ -11,6 +11,7 @@
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
 #include "intelli/gui/style.h"
+#include "intelli/future.h"
 #include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
 
@@ -452,9 +453,10 @@ GraphView::setScene(GraphScene& scene)
         {
             if (&s->graph() != &graph) return;
 
-            auto* exec = graph.executionModel();
-            bool isAutoEvaluating = exec && exec->isAutoEvaluating();
+            auto* model = GraphExecutionModel::accessExecModel(graph);
+            if (!model || &(model->graph()) != &graph) return;
 
+            bool isAutoEvaluating = model->isAutoEvaluatingGraph();
             m_startAutoEvalBtn->setVisible(!isAutoEvaluating);
             m_stopAutoEvalBtn->setVisible(isAutoEvaluating);
         }
@@ -470,16 +472,18 @@ GraphView::setScene(GraphScene& scene)
 
     connect(m_startAutoEvalBtn, &QPushButton::clicked,
             this, [this](){
-        if (auto* s = nodeScene())
+        if (auto* scene = nodeScene())
+        if (auto* model = GraphExecutionModel::accessExecModel(scene->graph()))
         {
-            s->graph().setActive(true);
+            model->autoEvaluateGraph().detach();
         }
     });
     connect(m_stopAutoEvalBtn, &QPushButton::clicked,
             this, [this](){
-        if (auto* s = nodeScene())
+        if (auto* scene = nodeScene())
+        if (auto* model = GraphExecutionModel::accessExecModel(scene->graph()))
         {
-            s->graph().setActive(false);
+            model->stopAutoEvaluatingGraph();
         }
     });
     connect(m_snapToGridBtn, &QPushButton::clicked,

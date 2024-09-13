@@ -26,3 +26,17 @@ TestNode::TestNode() :
 
 }
 
+bool
+TestNode::handleNodeEvaluation(intelli::NodeDataInterface& model)
+{
+    return !failEvaluation && intelli::Node::handleNodeEvaluation(model);
+}
+
+void
+TestSleepyNode::registerOnce()
+{
+    static auto _ = []{
+        return GT_INTELLI_REGISTER_NODE(TestNode, "Test");
+    }();
+    Q_UNUSED(_);
+}
