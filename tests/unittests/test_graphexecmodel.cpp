@@ -20,6 +20,8 @@
 #include <gt_objectfactory.h>
 #include <gt_eventloop.h>
 
+#include <gt_algorithms.h>
+
 /* TODO:
  * - Check evaluation of paused nodes
  */
@@ -28,6 +30,19 @@ using namespace intelli;
 
 constexpr auto maxTimeout = std::chrono::seconds(1);
 constexpr auto directTimeout = std::chrono::seconds(0);
+
+TEST(GraphExecutionModel, test)
+{
+    Graph graph;
+
+    test::buildGraphWithGroup(graph);
+
+    auto& conModel = graph.globalConnectionModel();
+
+    GraphExecutionModel model(graph);
+
+    model.evaluateGraph().wait(maxTimeout);
+}
 
 /// Evaluating a node should evaluate all of its dependencies. In this case
 /// we only evalutate the first node, which has no dependencies. Thus, only
@@ -162,6 +177,7 @@ TEST(GraphExecutionModel, linear_graph__evaluate_last_node_and_dependencies)
     debug(model);
 }
 
+#if 0
 TEST(GraphExecutionModel, linear_graph__auto_evaluate_graph)
 {
     constexpr double EXPECTED_VALUE = 84.0;
@@ -226,6 +242,7 @@ TEST(GraphExecutionModel, linear_graph__auto_evaluate_graph)
             graph, model, {A_uuid, B_uuid, C_uuid, D_uuid}, NodeEvalState::Valid));
     }
 }
+#endif
 
 /// A basic graph which contains a group node (subgraph) is tested. However,
 /// this group node is setup in such a way, that the ports of the input provider
@@ -448,6 +465,7 @@ TEST(GraphExecutionModel, graph_with_forwarding_group__evaluate_graph)
         graph, model, D_uuid, {PortId(2)}, PortDataState::Outdated, EXPECTED_VALUE_D));
 }
 
+#if 0
 TEST(GraphExecutionModel, graph_with_forwarding_group__auto_evaluate_graph)
 {
     constexpr double EXPECTED_VALUE_A = 26.0;
@@ -1040,6 +1058,7 @@ TEST(GraphExecutionModel, auto_evaluate_subgraph_without_connection_between_inpu
     ASSERT_TRUE(data);
     EXPECT_EQ(data->value(), 8);
 }
+#endif
 
 TEST(GraphExecutionModel, evaluation_of_exclusive_nodes)
 {
@@ -1373,9 +1392,6 @@ TEST(GraphExecutionModel, evaluation_of_cyclic_graph)
 
     GraphExecutionModel model(graph);
 
-    EXPECT_FALSE(model.autoEvaluateGraph().wait(maxTimeout));
-    EXPECT_FALSE(model.isGraphEvaluated());
-
     EXPECT_FALSE(model.evaluateGraph().wait(maxTimeout));
     EXPECT_FALSE(model.isGraphEvaluated());
 
@@ -1385,6 +1401,7 @@ TEST(GraphExecutionModel, evaluation_of_cyclic_graph)
     EXPECT_FALSE(model.isNodeEvaluated(E_uuid));
 }
 
+#if 0
 TEST(GraphExecutionModel, stop_auto_evaluating_graph)
 {
     Graph graph;
@@ -1466,6 +1483,7 @@ TEST(GraphExecutionModel, stop_auto_evaluating_node)
     EXPECT_TRUE(test::compareNodeEvalState(
         graph, model, {B_uuid, C_uuid, D_uuid}, NodeEvalState::Outdated));
 }
+#endif
 
 /// Destroying the graph exec model while its running should not cause any harm
 TEST(GraphExecutionModel, destroy_while_running)

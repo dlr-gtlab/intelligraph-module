@@ -63,8 +63,8 @@ ExecFuture::ExecFuture(GraphExecutionModel& model) :
 }
 
 ExecFuture::ExecFuture(GraphExecutionModel& model,
-                                 NodeUuid nodeUuid,
-                                 NodeEvalState evalState) :
+                       NodeUuid nodeUuid,
+                       NodeEvalState evalState) :
     ExecFuture(model)
 {
     append(std::move(nodeUuid), evalState);
@@ -75,7 +75,7 @@ ExecFuture::wait(milliseconds timeout) const
 {
     GT_INTELLI_PROFILE();
 
-    if (!m_model) return false;
+    if (!m_model || m_targets.empty()) return false;
 
     if (areNodesEvaluated()) return true; // nodes are already evaluated
 
@@ -170,6 +170,8 @@ ExecFuture::then(CallbackFunctor functor) const
 bool
 ExecFuture::detach() const
 {
+    if (!m_model || m_targets.empty()) return false;
+
     updateTargets();
     return areNodesEvaluated() || !haveNodesFailed();
 }
@@ -216,8 +218,8 @@ ExecFuture::append(NodeUuid nodeUuid, NodeEvalState evalState)
 
     auto iter = std::find_if(m_targets.begin(), m_targets.end(),
                              [nodeUuid](TargetNode const& target){
-                                 return target.uuid == nodeUuid;
-                             });
+        return target.uuid == nodeUuid;
+    });
 
     // node is already a target, it is unclear which eval state to accept
     // -> mark as outdated

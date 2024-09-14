@@ -357,7 +357,7 @@ GraphScene::endReset()
         onNodeEvalStateChanged(node->uuid());
     }
 
-    if (root->isActive()) model->autoEvaluateGraph(*m_graph).detach();
+    if (root->isActive()) model->autoEvaluateGraph(*m_graph);
 }
 
 Graph&

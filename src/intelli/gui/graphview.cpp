@@ -475,7 +475,7 @@ GraphView::setScene(GraphScene& scene)
         if (auto* scene = nodeScene())
         if (auto* model = GraphExecutionModel::accessExecModel(scene->graph()))
         {
-            model->autoEvaluateGraph().detach();
+            model->autoEvaluateGraph();
         }
     });
     connect(m_stopAutoEvalBtn, &QPushButton::clicked,
