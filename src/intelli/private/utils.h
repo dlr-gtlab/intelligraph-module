@@ -120,6 +120,14 @@ find(List& list, T const& t)
     return std::find(list.begin(), list.end(), t);
 }
 
+/// Helper function that searches for `t` in List and returns the iterator
+template<typename List, typename T>
+inline auto
+contains(List const& list, T const& t)
+{
+    return std::find(list.begin(), list.end(), t) != list.end();
+}
+
 /// Helper function that searches for `t` in List and erases it if `t` was found
 template<typename List, typename T>
 inline bool

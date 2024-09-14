@@ -62,18 +62,18 @@ public:
     GT_NO_DISCARD
     GT_INTELLI_EXPORT
     NodeDataSet get(NodeUuid const& nodeUuid,
-                PortId portId,
-                milliseconds timeout = milliseconds::max()) const;
+                    PortId portId,
+                    milliseconds timeout = milliseconds::max()) const;
 
     GT_NO_DISCARD
     GT_INTELLI_EXPORT
     NodeDataSet get(NodeUuid const& nodeUuid,
-                PortType type,
-                PortIndex portIdx,
-                milliseconds timeout = milliseconds::max()) const;
+                    PortType type,
+                    PortIndex portIdx,
+                    milliseconds timeout = milliseconds::max()) const;
 
     GT_INTELLI_EXPORT
-        ExecFuture const& then(CallbackFunctor functor) const;
+    ExecFuture const& then(CallbackFunctor functor) const;
 
     /**
      * @brief Does not wait for the evaluation of all target nodes. Returns
@@ -85,6 +85,9 @@ public:
     GT_INTELLI_EXPORT
     bool detach() const;
 
+    GT_INTELLI_EXPORT
+    bool isRunning() const { return detach(); }
+
     /**
      * @brief Joins with other futures. Can be used to wait for multiple,
      * separatly triggered nodes.
@@ -92,7 +95,7 @@ public:
      * @return returns a new future
      */
     GT_INTELLI_EXPORT
-        ExecFuture& join(ExecFuture const& other);
+    ExecFuture& join(ExecFuture const& other);
 
 private:
 
@@ -116,8 +119,8 @@ private:
      * @param evalState Current node eval state
      */
     ExecFuture(GraphExecutionModel& model,
-                    NodeUuid nodeUuid,
-                    NodeEvalState evalState);
+               NodeUuid nodeUuid,
+               NodeEvalState evalState = NodeEvalState::Outdated);
 
     /**
      * @brief Constructs an empty future object from the model
@@ -131,7 +134,7 @@ private:
      * @param evalState Current node eval state
      * @return this
      */
-    ExecFuture& append(NodeUuid nodeUuid, NodeEvalState evalState);
+    ExecFuture& append(NodeUuid nodeUuid, NodeEvalState evalState = NodeEvalState::Outdated);
 
     /**
      * @brief Returns whether all nodes have finished their evaluation

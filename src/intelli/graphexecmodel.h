@@ -60,15 +60,9 @@ public:
     bool isAutoEvaluatingGraph() const;
     GT_NO_DISCARD
     bool isAutoEvaluatingGraph(Graph const& graph) const;
-    GT_NO_DISCARD
-    bool isAutoEvaluatingNode(NodeUuid const& nodeUuid) const;
 
-    GT_NO_DISCARD
-    ExecFuture autoEvaluateGraph();
-    GT_NO_DISCARD
-    ExecFuture autoEvaluateGraph(Graph& graph);
-    GT_NO_DISCARD
-    ExecFuture autoEvaluateNode(NodeUuid const& nodeUuid);
+    bool autoEvaluateGraph();
+    bool autoEvaluateGraph(Graph& graph);
 
     GT_NO_DISCARD
     ExecFuture evaluateGraph();
@@ -79,7 +73,6 @@ public:
 
     void stopAutoEvaluatingGraph();
     void stopAutoEvaluatingGraph(Graph& graph);
-    void stopAutoEvaluatingNode(NodeUuid const& nodeUuid);
 
     bool invalidateNode(NodeUuid const& nodeUuid);
     bool invalidateNodeOutputs(NodeUuid const& nodeUuid);
@@ -141,42 +134,24 @@ private:
     // helper struct to "hide" implementation details
     struct Impl;
 
-    enum class NodeEvaluationType
-    {
-        SingleShot = 0,
-        KeepEvaluated
-    };
-
-    struct TargetNode
-    {
-        NodeUuid nodeUuid;
-        NodeEvaluationType evalType;
-
-        bool operator==(NodeUuid const& otherUuid) const
-        {
-            return nodeUuid == otherUuid;
-        }
-        bool operator==(std::pair<NodeUuid const&, NodeEvaluationType> other) const
-        {
-            return this->operator==(other.first) && evalType == other.second;
-        }
-    };
-
     /// assoicated graph
     QPointer<Graph> m_graph;
     /// data model for all nodes and their ports
     GraphDataModel m_data;
     /// nodes that should be evaluated
-    QVarLengthArray<TargetNode, PRE_ALLOC> m_targetNodes;
+    QVarLengthArray<NodeUuid, PRE_ALLOC> m_targetNodes;
+    /// nodes that are pending
+    std::vector<NodeUuid> m_pendingNodes;
     /// nodes that are ready and waiting for evaluation
     QVarLengthArray<NodeUuid, PRE_ALLOC> m_queuedNodes;
-
+    /// nodes that are currently evaluating
     QVarLengthArray<NodeUuid, PRE_ALLOC> m_evaluatingNodes;
+
+    /// graphs that should be auto evaluated
+    QVarLengthArray<NodeUuid, PRE_ALLOC> m_autoEvaluatingGraphs;
     /// indicator if the exec model is currently beeing modified and thus
     /// should halt execution
     int m_modificationCount = 0;
-    /// whether to auto evaluate the root graph
-    bool m_autoEvaluateRootGraph = false;
 
     void beginReset();
 

@@ -87,6 +87,74 @@ public:
     }
 };
 
+/**
+     * @brief Base iterator class that accepts a "strategy" object to operate on
+     */
+template <typename Strategy>
+class base_iterator
+{
+public:
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type   = ptrdiff_t;
+    using value_type = typename Strategy::value_type;
+    using pointer    = typename Strategy::pointer;
+    using reference  = typename Strategy::reference;
+
+    Strategy s{}; /// iteration strategy
+
+    base_iterator() = default;
+    explicit base_iterator(Strategy data_) : s(std::move(data_)) { }
+
+    reference operator*() { return s.get(); }
+    pointer operator->() { return &s.get(); }
+
+    bool operator==(base_iterator const& o) const { return s == o.s; }
+    bool operator!=(base_iterator const& o) const { return !(operator==(o)); }
+
+    /// pre increment
+    base_iterator& operator++()
+    {
+        s.next();
+        return *this;
+    }
+    /// post increment
+    base_iterator operator++(int)
+    {
+        base_iterator cpy{s};
+        operator++();
+        return cpy;
+    }
+};
+
+/**
+     * @brief Helper struct to instantiate a begin and end iterator on
+     */
+template <typename Strategy, typename Proxy>
+struct iterator_instantiator
+{
+    iterator_instantiator(Strategy b_ = {}, Strategy e_ = {}) :
+        b(std::move(b_)), e(std::move(e_))
+    {}
+
+    using BaseIter = base_iterator<Strategy>;
+    using ProxyIter = proxy_iterator<BaseIter, Proxy>;
+
+    ProxyIter begin() const { return ProxyIter{ BaseIter{b} }; }
+    ProxyIter end() const { return ProxyIter{ BaseIter{e} }; }
+    bool empty() const { return begin() == end(); }
+    size_t size() const { return std::distance(begin(), end()); }
+
+    auto reverse() const {
+        using reversed_type = typename Strategy::reversed_type;
+        return iterator_instantiator<reversed_type, Proxy>{
+            b.reverse(), e.reverse()
+        };
+    }
+
+private:
+    Strategy b, e;
+};
+
 template <typename NodeId_t>
 struct ConnectionDetail
 {
@@ -165,74 +233,6 @@ struct ConnectionData
         assert(type != PortType::NoType);
         return (type == PortType::In) ? predecessors : successors;
     }
-
-    /**
-     * @brief Base iterator class that accepts a "strategy" object to operate on
-     */
-    template <typename Strategy>
-    class base_iterator
-    {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type   = ptrdiff_t;
-        using value_type = typename Strategy::value_type;
-        using pointer    = typename Strategy::pointer;
-        using reference  = typename Strategy::reference;
-
-        Strategy s{}; /// iteration strategy
-
-        base_iterator() = default;
-        explicit base_iterator(Strategy data_) : s(std::move(data_)) { }
-
-        reference operator*() { return s.get(); }
-        pointer operator->() { return &s.get(); }
-
-        bool operator==(base_iterator const& o) const { return s == o.s; }
-        bool operator!=(base_iterator const& o) const { return !(operator==(o)); }
-
-        /// pre increment
-        base_iterator& operator++()
-        {
-            s.next();
-            return *this;
-        }
-        /// post increment
-        base_iterator operator++(int)
-        {
-            base_iterator cpy{s};
-            operator++();
-            return cpy;
-        }
-    };
-
-    /**
-     * @brief Helper struct to instantiate a begin and end iterator on
-     */
-    template <typename Strategy, typename Proxy>
-    struct iterator_instantiator
-    {
-        iterator_instantiator(Strategy b_ = {}, Strategy e_ = {}) :
-            b(std::move(b_)), e(std::move(e_))
-        {}
-
-        using BaseIter = base_iterator<Strategy>;
-        using ProxyIter = proxy_iterator<BaseIter, Proxy>;
-
-        ProxyIter begin() const { return ProxyIter{ BaseIter{b} }; }
-        ProxyIter end() const { return ProxyIter{ BaseIter{e} }; }
-        bool empty() const { return begin() == end(); }
-        size_t size() const { return std::distance(begin(), end()); }
-
-        auto reverse() const {
-            using reversed_type = typename Strategy::reversed_type;
-            return iterator_instantiator<reversed_type, Proxy>{
-                b.reverse(), e.reverse()
-            };
-        }
-
-    private:
-        Strategy b, e;
-    };
 
     /**
      * @brief Helper object to iterate only over all predecessors OR successors

@@ -17,11 +17,6 @@
 #include <gt_objectmementodiff.h>
 #include <gt_objectfactory.h>
 
-//template <typename Iter, typename GetOp/*, typename IncOp, typename EqualOp*/>
-//auto make_proxy(Iter iter, GetOp op/*, IncOp inc, EqualOp eq*/) {
-//    return proxy_iterator<Iter, op>{iter /*, get/*, inc, eq*/};
-//}
-
 using namespace intelli;
 
 TEST(Graph, root_graph)
@@ -234,7 +229,6 @@ TEST(Graph, connection_model_iterate_over_connected_nodes_by_port)
     auto riPort = iPort.reverse();
     EXPECT_EQ(std::distance(riPort.begin(), riPort.end()), 2);
 }
-
 
 TEST(Graph, predessecors_and_successors)
 {

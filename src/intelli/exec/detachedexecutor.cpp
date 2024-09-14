@@ -65,7 +65,7 @@ public:
                        std::back_inserter(data),
                        [this, type](auto& port){
             using T = typename NodeDataPtrList::value_type;
-            return T{port.id, port.data};
+            return T{port.portId, port.data};
         });
         return data;
     }
@@ -85,7 +85,7 @@ public:
         {
             auto iter = std::find_if(ports->begin(), ports->end(),
                                      [portId](auto const& port){
-                return port.id == portId;
+                return port.portId == portId;
             });
             if (iter != ports->end()) return iter->data;
         }
@@ -146,7 +146,7 @@ public:
         {
             auto iter = std::find_if(ports->begin(), ports->end(),
                                      [portId](auto const& port){
-                return port.id == portId;
+                return port.portId == portId;
             });
             if (iter != ports->end())
             {
