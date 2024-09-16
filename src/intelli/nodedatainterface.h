@@ -13,6 +13,8 @@
 #include <intelli/exports.h>
 #include <intelli/globals.h>
 
+#include <gt_finally.h>
+
 namespace intelli
 {
 
@@ -40,8 +42,8 @@ struct DataItem
     QVarLengthArray<PortDataItem, PRE_ALLOC> portsIn{}, portsOut{};
     /// internal evalution state
     NodeEvalState state = NodeEvalState::Outdated;
-
-    bool isPending = false;
+    /// counter of nodes that are running in subgraph nodes
+    size_t m_evaluatingChildNodes = 0;
 
     /**
      * @brief Returns the ancestors or descendants depending on the port type
@@ -111,6 +113,29 @@ public:
 
     virtual bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet data) = 0;
     virtual bool setNodeData(NodeUuid const& nodeUuid, PortType type, NodeDataPtrList const& data) = 0;
+
+    virtual void setNodeEvaluationFailed(NodeUuid const& nodeUuid) {}
+
+    struct NodeEvaluationEndedFunctor
+    {
+        inline void operator()() const noexcept
+        {
+            if (i) i->nodeEvaluationFinished(uuid);
+        }
+        NodeDataInterface* i{};
+        NodeUuid uuid{};
+    };
+
+    using ScopedEvaluation = gt::Finally<NodeEvaluationEndedFunctor>;
+
+    ScopedEvaluation nodeEvaluation(NodeUuid const& nodeUuid)
+    {
+        nodeEvaluationStarted(nodeUuid);
+        return gt::finally(NodeEvaluationEndedFunctor{this, nodeUuid});
+    }
+
+    virtual void nodeEvaluationStarted(NodeUuid const& nodeUuid) {}
+    virtual void nodeEvaluationFinished(NodeUuid const& nodeUuid) {}
 };
 
 } // namespace intelli

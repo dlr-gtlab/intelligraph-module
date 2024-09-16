@@ -203,14 +203,14 @@ inline bool buildLinearGraph(Graph& graph)
 
 Group C:
    .---.                                        .---.
-   | A |---8----.  .---.                    .---| E |
+   | A |---8----.  .---.                    .---| D |
    '---'        '--| B |                    |   '---'
                    |   |--34--.             |
-  .-----.       .--| + |      |  .---.      |  .-----.
-  |     |--26---'  '---'      '--| C |      |  |     |
-  | IN  |                        |   |--42--+--| OUT |
-  |     |---8--------------------| + |         |     |
-  '-----'                        '---'         '-----'
+  .-----.       .--| + |      |  .---.      |    .-----.
+  |     |--26---'  '---'      '--| C |      +----|     |
+  | IN  |                        |   |--42--'    | OUT |
+  |     |---8--------------------| + |        O--|     |
+  '-----'                        '---'           '-----'
 
 */
 inline bool buildGraphWithGroup(Graph& graph)
@@ -426,6 +426,23 @@ inline bool buildGraphWithForwardingGroup(Graph& graph)
     return true;
 }
 
+inline bool compareNodeEvalState(Graph const& graph,
+                                 GraphExecutionModel& model,
+                                 NodeUuid const& uuid,
+                                 NodeEvalState targetState)
+{
+    Q_UNUSED(graph);
+
+    auto state = model.nodeEvalState(uuid);
+    if (state != targetState)
+    {
+        gtError() << QObject::tr("model.nodeEvalState(%1): %2 != %3")
+                         .arg(uuid, toString(state), toString(targetState));
+        return false;
+    }
+
+    return true;
+}
 /**
  * @brief Checks the node eval state of all nodes given by `uuids`
  * @param graph Graph
@@ -444,13 +461,25 @@ inline bool compareNodeEvalState(Graph const& graph,
     bool success = true;
     for (auto const& uuid : uuids)
     {
-        auto state = model.nodeEvalState(uuid);
-        if (state != targetState)
-        {
-            gtError() << QObject::tr("model.nodeEvalState(%1): %2 != %3")
-                             .arg(uuid, toString(state), toString(targetState));
-            success = false;
-        }
+        success &= compareNodeEvalState(graph, model, uuid, targetState);
+    }
+
+    return success;
+}
+
+
+inline bool compareNodeEvalState(Graph const& graph,
+                                 GraphExecutionModel& model,
+                                 QList<std::tuple<NodeUuid, NodeEvalState>> const& data)
+{
+    Q_UNUSED(graph);
+
+    bool success = true;
+    for (auto const& d : data)
+    {
+        success &= compareNodeEvalState(graph, model,
+                                        std::get<NodeUuid>(d),
+                                        std::get<NodeEvalState>(d));
     }
 
     return success;
@@ -484,8 +513,11 @@ struct PortDataComparator
     {
         if (!data)
         {
+            if (!target) return true;
+
             gtError() << QObject::tr("model.nodeData(%1:%2).ptr == NULL")
                              .arg(uuid).arg(portId);
+            return false;
         }
 
         auto value = data->invoke<T>("value");
@@ -565,6 +597,41 @@ inline bool comparePortData(Graph const& graph,
     return success;
 }
 
+template<typename T = std::nullptr_t>
+inline bool comparePortData(Graph const& graph,
+                            GraphExecutionModel& model,
+                            QString const& uuid,
+                            QVector<std::pair<PortType, PortIndex>> const& ports,
+                            PortDataState targetState,
+                            tl::optional<T> targetData = {})
+{
+    auto* node = graph.findNodeByUuid(uuid);
+    if (!node)
+    {
+        gtError() << QObject::tr("graph.findNodeByUuid(%1) == NULL")
+                         .arg(uuid);
+        return false;
+    }
+
+    QVector<PortId> portIds;
+    for (auto entry : ports)
+    {
+        PortId portId = node->portId(entry.first, entry.second);
+        if (!portId.isValid())
+        {
+            gtError() << QObject::tr("node.port(%1, %2) not found! (node: %3)")
+                             .arg(toString(entry.first))
+                             .arg(entry.second)
+                             .arg(uuid);
+            return false;
+        }
+
+        portIds.push_back(portId);
+    }
+
+    return comparePortData(graph, model, uuid, portIds, targetState, targetData);
+}
+
 /**
  * @brief Checks the data of the node given by `uuid` and all ports of `type`
  * @param graph Graph
@@ -594,13 +661,14 @@ inline bool comparePortData(Graph const& graph,
         return false;
     }
 
-    QVector<PortId> targetPorts;
     auto const& ports = node->ports(type);
 
-    std::transform(ports.begin(), ports.end(), std::back_inserter(targetPorts),
+    QVector<PortId> targetPorts;
+    std::transform(ports.begin(), ports.end(),
+                   std::back_inserter(targetPorts),
                    [](auto const& port){
-                       return port.id();
-                   });
+        return port.id();
+    });
 
     return comparePortData(graph, model, uuid, targetPorts, targetState, targetData);
 }
@@ -651,6 +719,42 @@ inline bool comparePortData(Graph const& graph,
     for (auto const& uuid : uuids)
     {
         success &= comparePortData(graph, model, uuid, targetState, targetData);
+    }
+
+    return success;
+}
+
+template<typename T = std::nullptr_t>
+inline bool comparePortData(Graph const& graph,
+                            GraphExecutionModel& model,
+                            QList<std::tuple<NodeUuid, PortType, PortIndex, PortDataState, T>> const& data)
+{
+    bool success = true;
+    for (auto const& d : data)
+    {
+        success &= comparePortData<T>(graph, model,
+                                      std::get<NodeUuid>(d),
+                                      {{std::get<PortType>(d), std::get<PortIndex>(d)}},
+                                      std::get<PortDataState>(d),
+                                      std::get<T>(d));
+    }
+
+    return success;
+}
+
+template<typename T = std::nullptr_t>
+inline bool comparePortData(Graph const& graph,
+                            GraphExecutionModel& model,
+                            QList<std::tuple<NodeUuid, PortId, PortDataState, T>> const& data)
+{
+    bool success = true;
+    for (auto const& d : data)
+    {
+        success &= comparePortData<T>(graph, model,
+                                      std::get<NodeUuid>(d),
+                                      {std::get<PortId>(d)},
+                                      std::get<PortDataState>(d),
+                                      std::get<T>(d));
     }
 
     return success;

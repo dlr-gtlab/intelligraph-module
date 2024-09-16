@@ -525,33 +525,6 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
             this, Impl::NodeDeleted(this),
             Qt::DirectConnection);
 
-    // indicate graph node as evaluating if a node is currently evaluating
-    auto updateEvaluatingFlag = [this, node = node.get()](auto const& op){
-        assert(node);
-        bool wasActive = m_evaluationIndicator > 0;
-        // not incrementing variable since node may emit computing started
-        // multiple times
-        op(m_evaluationIndicator, node->id());
-        bool isActive = m_evaluationIndicator > 0;
-        setNodeFlag(Evaluating, isActive);
-        if (wasActive != isActive) emit isActiveChanged();
-        emit isActiveChanged();
-    };
-    auto setEvaluatingFlag = [updateEvaluatingFlag](){
-        updateEvaluatingFlag([](size_t& flags, size_t val){
-            flags |= val;
-        });
-    };
-    auto unsetEvluatingFlag = [updateEvaluatingFlag](){
-        updateEvaluatingFlag([](size_t& flags, size_t val){
-            flags &= ~val;
-        });
-    };
-    connect(node.get(), &Node::computingStarted,
-            this, setEvaluatingFlag, Qt::DirectConnection);
-    connect(node.get(), &Node::computingFinished,
-            this, unsetEvluatingFlag, Qt::DirectConnection);
-
     // notify
     emit nodeAppended(node.get());
 

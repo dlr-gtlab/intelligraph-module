@@ -14,6 +14,8 @@
 
 #include <gt_eventloop.h>
 
+#include <QTimer>
+
 using namespace intelli;
 
 struct ExecFuture::Impl
@@ -101,8 +103,8 @@ ExecFuture::wait(milliseconds timeout) const
 
 NodeDataSet
 ExecFuture::get(NodeUuid const& nodeUuid,
-                     PortId portId,
-                     milliseconds timeout) const
+                PortId portId,
+                milliseconds timeout) const
 {
     if (portId == invalid<PortId>()) return {};
 
@@ -119,9 +121,9 @@ ExecFuture::get(NodeUuid const& nodeUuid,
 
 NodeDataSet
 ExecFuture::get(NodeUuid const& nodeUuid,
-                     PortType type,
-                     PortIndex portIdx,
-                     milliseconds timeout) const
+                PortType type,
+                PortIndex portIdx,
+                milliseconds timeout) const
 {
     assert(m_model);
     auto* node = m_model->graph().findNodeByUuid(nodeUuid);
@@ -131,8 +133,9 @@ ExecFuture::get(NodeUuid const& nodeUuid,
 }
 
 ExecFuture const&
-ExecFuture::then(CallbackFunctor functor) const
+ExecFuture::then(CallbackFunctor functor, milliseconds timeout) const
 {
+    assert(m_model);
     auto observer = std::make_unique<Impl::Observer>(*this, std::move(functor));
 
     auto const invokeFunctor = [o = observer.get()](bool success){
@@ -157,6 +160,17 @@ ExecFuture::then(CallbackFunctor functor) const
                      observer.get(), onFailure);
     QObject::connect(observer.get(), &Impl::Observer::abort,
                      observer.get(), onFailure);
+
+    // seup timeout
+    if (timeout >= milliseconds::zero() &&
+        timeout <= milliseconds::max())
+    {
+        auto* timer = new QTimer;
+        timer->setParent(observer.get());
+        timer->setSingleShot(true);
+        observer->connectFailed(timer, &QTimer::timeout);
+        timer->start(timeout);
+    }
 
     observer->setParent(m_model);
 

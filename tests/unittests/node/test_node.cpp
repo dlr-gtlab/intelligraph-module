@@ -26,10 +26,15 @@ TestNode::TestNode() :
 
 }
 
-bool
-TestNode::handleNodeEvaluation(intelli::NodeDataInterface& model)
+void
+TestNode::eval()
 {
-    return !failEvaluation && intelli::Node::handleNodeEvaluation(model);
+    if (failEvaluation)
+    {
+        gtWarning().nospace() << caption() << ": "
+                              << tr("Triggering node failure!");
+        evalFailed();
+    }
 }
 
 void

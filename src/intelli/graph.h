@@ -312,9 +312,27 @@ public:
      * already occupied
      * @param node Node to append
      * @param policy Whether to generate a new id if necessary
-     * @return success
+     * @return Node ptr
      */
     Node* appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy = NodeIdPolicy::Update);
+
+    /**
+     * @brief Overload, that accepts a unique ptr of type `T` and returns a
+     * pointer of type `T`.
+     * @param node Node to append
+     * @param policy Whether to generate a new id if necessary
+     * @return Node ptr of type `T`
+     */
+    template<typename T>
+    inline T* appendNode(std::unique_ptr<T> node, NodeIdPolicy policy = NodeIdPolicy::Update)
+    {
+        using Signature = Node*(Graph::*)(std::unique_ptr<Node>, NodeIdPolicy);
+
+        // avoid recursive calls
+        auto f  = static_cast<Signature>(&Graph::appendNode);
+        Node* r = ((this->*f)(std::move(node), policy));
+        return static_cast<T*>(r);
+    }
 
     /**
      * @brief Appends the connection to intelli graph. Use this function instead
@@ -513,8 +531,6 @@ private:
     ConnectionModel m_local;
     /// shred global connection graph
     std::shared_ptr<GlobalConnectionModel> m_global = nullptr;
-
-    size_t m_evaluationIndicator = 0;
     /// indicator if the connection model is currently beeing modified
     int m_modificationCount = 0;
 

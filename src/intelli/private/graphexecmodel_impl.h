@@ -14,8 +14,6 @@
 #include <intelli/graph.h>
 #include <intelli/node.h>
 #include <intelli/future.h>
-#include <intelli/dynamicnode.h>
-#include <intelli/nodeexecutor.h>
 
 #include <intelli/private/utils.h>
 
@@ -96,16 +94,17 @@ inline QString evaluteNodeError(Graph const& graph)
 /// Helper struct to "hide" implementation details and template functions
 struct GraphExecutionModel::Impl
 {
-    struct SynchronizationEntry
-    {
-        QPointer<GraphExecutionModel> ptr = {};
-        size_t runningNodes = {};
-        bool isExclusiveNodeRunning = false;
-    };
 
     // coarse locking
     struct Synchronization
     {
+        struct SynchronizationEntry
+        {
+            QPointer<GraphExecutionModel> ptr = {};
+            size_t runningNodes = {};
+            bool isExclusiveNodeRunning = false;
+        };
+
         QMutex mutex;
         QVector<SynchronizationEntry> entries;
 
@@ -149,6 +148,8 @@ struct GraphExecutionModel::Impl
         }
     };
 
+    /// Synchronization entity for evaluating nodes exclusively between multiple
+    /// graphs
     static Synchronization s_sync;
 
     /// Wrapper to retrieve iterator type for `QHash` depending on `IsConst`
@@ -160,6 +161,9 @@ struct GraphExecutionModel::Impl
 
     using MutableDataItemHelper = DataItemHelper<false>;
     using ConstDataItemHelper = DataItemHelper<true>;
+
+    using MutablePortDataItemHelper = PortDataItemHelper<false>;
+    using ConstPortDataItemHelper = PortDataItemHelper<true>;
 
     /// Finds either all start (root) or end (leaf) nodes of the graph. This can
     /// be determined if there no ingoing/outgoing connections
@@ -414,8 +418,7 @@ struct GraphExecutionModel::Impl
 
         bool requiresReevaluation() const
         {
-            return entry->state == NodeEvalState::Outdated ||
-                   entry->state == NodeEvalState::Invalid;
+            return entry->state == NodeEvalState::Outdated;
         }
 
         bool inputsValid() const
@@ -493,8 +496,36 @@ struct GraphExecutionModel::Impl
         const_t<IsConst, PortDataItem const>* operator->() const { return portEntry; }
     };
 
+    /**
+     * @brief Propagates that a node is (finished) evaluating to its parent graph
+     * @param model Model
+     * @param graph Graph to update
+     * @tparam Op Operation (plus/minus)
+     */
+    template <template <typename> class Op>
+    static inline void
+    propagateNodeEvalautionStatus(GraphExecutionModel& model, Graph* graph)
+    {
+        constexpr auto invalid = std::numeric_limits<size_t>::max();
+
+        assert(graph);
+        if (graph == graph->rootGraph()) return;
+
+        auto item = Impl::findData(model, *graph, graph, graph->uuid());
+        assert(item);
+
+        // update counter
+        auto& refCounter = item->m_evaluatingChildNodes;
+        refCounter = Op<size_t>{}(refCounter, 1);
+        assert(refCounter < invalid);
+        emit model.nodeEvalStateChanged(graph->uuid(), QPrivateSignal());
+
+        // next parent
+        propagateNodeEvalautionStatus<Op>(model, graph->parentGraph());
+    }
+
     static inline bool
-    invalidateNodeHelper(GraphExecutionModel& model,
+    invalidatePort(GraphExecutionModel& model,
                          NodeUuid const& nodeUuid,
                          PortId portId)
     {
@@ -511,7 +542,7 @@ struct GraphExecutionModel::Impl
 
         if (item.node->nodeEvalMode() != NodeEvalMode::ForwardInputsToOutputs)
         {
-            return invalidateNodeHelper(model, nodeUuid, item);
+            return invalidateNode(model, nodeUuid, item);
         }
 
         // node is forwarding data from input to respective output
@@ -531,7 +562,7 @@ struct GraphExecutionModel::Impl
             {
                 break;
             }
-            invalidateNodeHelper(model, nodeUuid, item.node->portId(PortType::Out, idx));
+            invalidatePort(model, nodeUuid, item.node->portId(PortType::Out, idx));
             break;
         }
         case PortType::Out:
@@ -540,7 +571,7 @@ struct GraphExecutionModel::Impl
             auto& conModel = model.graph().globalConnectionModel();
             for (auto& con : conModel.iterate(nodeUuid, portId))
             {
-                invalidateNodeHelper(model, con.node, con.port);
+                invalidatePort(model, con.node, con.port);
             }
             break;
         }
@@ -551,16 +582,27 @@ struct GraphExecutionModel::Impl
     }
 
     static inline bool
-    invalidateNodeHelper(GraphExecutionModel& model,
-                         NodeUuid const& nodeUuid,
-                         MutableDataItemHelper item)
+    invalidateNode(GraphExecutionModel& model,
+                   NodeUuid const& nodeUuid,
+                   MutableDataItemHelper item)
     {
-        item->state = NodeEvalState::Outdated;
+        if (item->state == NodeEvalState::Outdated &&
+            std::all_of(item->portsOut.begin(),
+                        item->portsOut.end(),
+                        [](auto const& port){
+                return port.data.state == PortDataState::Outdated;
+            }))
+        {
+            // already invalidated -> nothing to do
+            return true;
+        }
 
         INTELLI_LOG_SCOPE(model)
             << tr("invalidating node '%1' (%2)...")
                    .arg(relativeNodePath(*item.node))
                    .arg(item.node->id());
+
+        item->state = NodeEvalState::Outdated;
 
         auto finally = gt::finally([&model, &nodeUuid](){
             emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
@@ -574,19 +616,131 @@ struct GraphExecutionModel::Impl
         bool success = true;
         for (auto& port : item->portsOut)
         {
-            if (port.data.state != PortDataState::Valid) continue;
-
             port.data.state = PortDataState::Outdated;
 
             // find and invalidate connected nodes
             auto& conModel = model.graph().globalConnectionModel();
             for (auto& con : conModel.iterate(nodeUuid, PortType::Out))
             {
-                success &= invalidateNodeHelper(model, con.node, con.port);
+                success &= invalidatePort(model, con.node, con.port);
             }
         }
 
         return success;
+    }
+
+    static void
+    propagateNodeEvaluationFailure(GraphExecutionModel& model,
+                                   NodeUuid const& nodeUuid,
+                                   MutableDataItemHelper& item)
+    {
+        assert(item);
+        if (item->state == NodeEvalState::Invalid) return;
+
+        item->state = NodeEvalState::Invalid;
+        emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
+
+        auto& conModel = model.graph().globalConnectionModel();
+        for (auto& successor : conModel.iterate(nodeUuid, PortType::Out))
+        {
+            auto subitem = findData(model, successor.node);
+            if (!subitem) continue;
+
+            propagateNodeEvaluationFailure(model, successor.node, subitem);
+        }
+    }
+
+    static inline bool
+    setNodeData(GraphExecutionModel& model,
+                NodeUuid const& nodeUuid,
+                PortId portId,
+                NodeDataSet data,
+                bool tryTriggerEvaluation = true)
+    {
+        auto item = Impl::findPortData(model, nodeUuid, portId, setNodeDataError);
+        if (!item) return false;
+
+        return setNodeData(model,
+                           item,
+                           std::move(data),
+                           tryTriggerEvaluation);
+    }
+
+    static inline bool
+    setNodeData(GraphExecutionModel& model,
+                MutableDataItemHelper item,
+                PortId portId,
+                NodeDataSet data,
+                bool tryTriggerEvaluation = true)
+    {
+        auto portItem = Impl::findPortData(model, item, portId, setNodeDataError);
+        if (!portItem) return false;
+
+        return setNodeData(model,
+                           portItem,
+                           std::move(data),
+                           tryTriggerEvaluation);
+    }
+
+    static inline bool
+    setNodeData(GraphExecutionModel& model,
+                MutablePortDataItemHelper item,
+                NodeDataSet data,
+                bool tryTriggerEvaluation = true)
+    {
+        assert(item);
+
+        NodeUuid const& nodeUuid = item.node->uuid();
+        PortId portId = item->portId;
+
+        INTELLI_LOG_SCOPE(model)
+            << tr("setting node data '%1' for node '%2' at port '%3'...")
+                   .arg(toString(data.ptr), relativeNodePath(*item.node))
+                   .arg(portId);
+
+        item->data = std::move(data);
+
+        switch (item.portType)
+        {
+        case PortType::In:
+        {
+            model.invalidateNodeOutputs(nodeUuid);
+
+            emit item.node->inputDataRecieved(portId);
+
+            if (tryTriggerEvaluation &&
+                !model.isEvaluating() &&
+                !model.isBeingModified())
+            {
+                rescheduleTargetNodes(model);
+            }
+            break;
+        }
+        case PortType::Out:
+        {
+            if (item.requiresReevaluation())
+            {
+                item->data.state = PortDataState::Outdated;
+                emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
+            }
+
+            // iterate over all connected ports
+            auto& conModel = model.graph().globalConnectionModel();
+            for (auto& con : conModel.iterate(nodeUuid, portId))
+            {
+                setNodeData(model,
+                                  con.node,
+                                  con.port,
+                                  item->data,
+                                  tryTriggerEvaluation);
+            }
+            break;
+        }
+        case PortType::NoType:
+            throw GTlabException(__FUNCTION__, "path is unreachable!");
+        }
+
+        return true;
     }
 
     template<typename List>
@@ -606,7 +760,7 @@ struct GraphExecutionModel::Impl
     }
 
     static void
-    topoSortPendingNodes(GraphExecutionModel& model)
+    sortPendingNodes(GraphExecutionModel& model)
     {
         auto& conModel = model.graph().globalConnectionModel();
 
@@ -621,6 +775,32 @@ struct GraphExecutionModel::Impl
             adjacencyMatrix.insert({nodeUuid, predecessors});
         }
         model.m_pendingNodes = gt::topo_sort(adjacencyMatrix);
+    }
+
+    static inline void
+    reschedulePendingNodes(GraphExecutionModel& model)
+    {
+        model.m_pendingNodes.clear();
+
+        if (model.m_targetNodes.empty()) return;
+
+        auto& conModel = model.graph().globalConnectionModel();
+
+        // reschedule target nodes
+        for (NodeUuid const& nodeUuid : model.m_targetNodes)
+        {
+            accumulateDependencies(conModel, model.m_pendingNodes, nodeUuid);
+        }
+
+        sortPendingNodes(model);
+
+        INTELLI_LOG(model) << "Pending nodes:" << model.m_pendingNodes;
+
+        auto state = schedulePendingNodes(model);
+        if (state != NodeEvalState::Valid)
+        {
+            INTELLI_LOG_WARN(model) << "Scheduling pending nodes failed!";
+        }
     }
 
     static inline bool
@@ -649,32 +829,6 @@ struct GraphExecutionModel::Impl
         return false;
     }
 
-    static inline void
-    reschedulePendingNodes(GraphExecutionModel& model)
-    {
-        model.m_pendingNodes.clear();
-
-        if (model.m_targetNodes.empty()) return;
-
-        auto& conModel = model.graph().globalConnectionModel();
-
-        // reschedule target nodes
-        for (NodeUuid const& nodeUuid : model.m_targetNodes)
-        {
-            accumulateDependencies(conModel, model.m_pendingNodes, nodeUuid);
-        }
-
-        topoSortPendingNodes(model);
-
-        INTELLI_LOG(model) << "Pending nodes:" << model.m_pendingNodes;
-
-        auto state = schedulePendingNodes(model);
-        if (state != NodeEvalState::Valid)
-        {
-            INTELLI_LOG_WARN(model) << "Scheduling pending nodes failed!";
-        }
-    }
-
     static inline ExecFuture
     evaluateGraph(GraphExecutionModel& model,
                   Graph const& graph)
@@ -688,6 +842,10 @@ struct GraphExecutionModel::Impl
         // append to target nodes
         QVarLengthArray<NodeUuid, 10> targets;
         findLeafNodes(graph, targets);
+
+        // append the graph node itself
+        bool isRootGraph = model.m_graph == &graph;
+        if (!isRootGraph) targets.push_back(graph.uuid());
 
         // evaluate pending nodes
         ExecFuture future{model};
@@ -718,7 +876,7 @@ struct GraphExecutionModel::Impl
                  NodeUuid const& nodeUuid)
     {
         INTELLI_LOG(model)
-            << QObject::tr("Setting target node '%1'...")
+            << QObject::tr("Scheduling target node '%1'...")
                    .arg(nodeUuid);
 
         // append to target nodes
@@ -758,12 +916,16 @@ struct GraphExecutionModel::Impl
     static inline void
     rescheduleTargetNodes(GraphExecutionModel& model)
     {
+        INTELLI_LOG_WARN(model)
+            << tr("rescheduling target nodes...");
+        return reschedulePendingNodes(model);
+        /*
+        if (model.isBeingModified()) return;
         if (model.m_targetNodes.empty()) return;
 
         INTELLI_LOG_WARN(model)
             << tr("TODO: rescheduling target nodes...");
 
-        /*
         foreach (auto const& target, model.m_targetNodes)
         {
             // only reschedule if target node is not running already
@@ -782,8 +944,7 @@ struct GraphExecutionModel::Impl
                 emit model.nodeEvaluationFailed(target, QPrivateSignal());
                 emit model.graphStalled(QPrivateSignal());
             }
-        }
-        */
+        }*/
     }
 
     /*
@@ -845,17 +1006,11 @@ struct GraphExecutionModel::Impl
 
         for (size_t idx = 0; idx < model.m_pendingNodes.size(); ++idx)
         {
-
             NodeUuid const& nodeUuid = model.m_pendingNodes.at(idx);
 
             auto item = findData(model, nodeUuid, evaluteNodeError);
             if (!item)
             {
-                INTELLI_LOG_SCOPE(model)
-                    << tr("node '%1' (%2) is not ready for evaluation!")
-                           .arg(relativeNodePath(*item.node))
-                           .arg(item.node->id());
-
                 model.m_pendingNodes.clear();
                 return NodeEvalState::Invalid;
             }
@@ -1150,18 +1305,6 @@ struct GraphExecutionModel::Impl
             << tr("triggering evaluation of node '%1'...")
                    .arg(relativeNodePath(*item.node));
 
-        // disconnect old signal if still present
-        auto disconnect = [exec = &model, node = item.node](){
-            QObject::disconnect(node, &Node::computingFinished,
-                                exec, &GraphExecutionModel::onNodeEvaluated);
-        };
-        disconnect();
-
-        // subscribe to when node finished its execution
-        QObject::connect(item.node, &Node::computingFinished,
-                         &model, &GraphExecutionModel::onNodeEvaluated,
-                         Qt::DirectConnection);
-
         NodeUuid const& nodeUuid = item.node->uuid();
 
         // dequeue and mark as evaluating
@@ -1169,53 +1312,33 @@ struct GraphExecutionModel::Impl
         assert(model.m_queuedNodes.at(idx) == nodeUuid);
         model.m_queuedNodes.remove(idx);
 
-        assert(!model.m_evaluatingNodes.contains(nodeUuid));
-        model.m_evaluatingNodes.push_back(nodeUuid);
-
-        item->isPending = false;
-        item->state = NodeEvalState::Evaluating;
-        emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
-
         // trigger node evaluation
-        if (exec::triggerNodeEvaluation(*item.node, model))
+        if (!exec::triggerNodeEvaluation(*item.node, model))
         {
-            return item->state;
+            gtError() << evaluteNodeError(model.graph())
+                      << tr("node execution failed!");
+
+            // update synchronization entity
+            {
+                QMutexLocker locker{&s_sync.mutex};
+
+                auto idx = s_sync.indexOf(model);
+                assert(idx >= 0);
+
+                auto& entry = s_sync.entries[idx];
+                entry.runningNodes -= 1;
+                if (isExclusive) entry.isExclusiveNodeRunning = false;
+
+                locker.unlock();
+                s_sync.notify(model);
+            }
+
+            propagateNodeEvaluationFailure(model, nodeUuid, item);
+
+            return NodeEvalState::Invalid;
         }
 
-        gtError() << evaluteNodeError(model.graph())
-                  << tr("node execution failed!");
-
-        disconnect();
-
-        model.m_evaluatingNodes.pop_back();
-
-        // update synchronization entity
-        {
-            QMutexLocker locker{&s_sync.mutex};
-
-            auto idx = s_sync.indexOf(model);
-            assert(idx >= 0);
-
-            auto& entry = s_sync.entries[idx];
-            entry.runningNodes -= 1;
-            if (isExclusive) entry.isExclusiveNodeRunning = false;
-
-            locker.unlock();
-            s_sync.notify(model);
-        }
-
-        item->state = NodeEvalState::Invalid;
-        emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
-
-        auto& conModel = model.graph().globalConnectionModel();
-        for (auto& successor : conModel.iterate(nodeUuid, PortType::Out))
-        {
-            auto item = findData(model, successor.node);
-            item->state = NodeEvalState::Invalid;
-            emit model.nodeEvalStateChanged(successor.node, QPrivateSignal());
-        }
-
-        return NodeEvalState::Invalid;
+        return item->state;
     }
 
     static inline bool

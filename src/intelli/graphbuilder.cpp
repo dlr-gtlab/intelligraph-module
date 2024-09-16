@@ -51,14 +51,9 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
     auto outputPtr = std::make_unique<GroupOutputProvider>();
     if (!inNodeUuid.isEmpty()) inputPtr->setUuid(inNodeUuid);
     if (!outNodeUuid.isEmpty()) outputPtr->setUuid(outNodeUuid);
-    graph->appendNode(std::move(inputPtr));
-    graph->appendNode(std::move(outputPtr));
 
-    graph->initInputOutputProviders();
-    graph->setActive(true);
-
-    auto* input = graph->inputProvider();
-    auto* output = graph->outputProvider();
+    GroupInputProvider* input   = graph->appendNode(std::move(inputPtr));
+    GroupOutputProvider* output = graph->appendNode(std::move(outputPtr));
 
     if (!input || !output)
     {
@@ -69,6 +64,8 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
             }
         };
     }
+
+    graph->setActive(true);
 
     auto success = true;
     for (auto& port : inPorts)

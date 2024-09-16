@@ -20,8 +20,9 @@
 namespace intelli
 {
 
-enum NodeFlag
+enum NodeFlag : size_t
 {
+    /// no flag
     NoFlag      = 0,
     /// Indicates node caption should be hidden
     HideCaption = 1 << 1,
@@ -33,16 +34,19 @@ enum NodeFlag
     Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
     ResizableHOnly = 1 << 6,
-    /// Indicates that the node is evaluating (will be set automatically)
-    Evaluating  = 1 << 7,
     /// default node flags
     DefaultNodeFlags = NoFlag,
+
+    /// base flag for user defined node flags
+    UserFlag = 1 << 16
 };
 
-using NodeFlags = unsigned int;
+using NodeFlags = size_t;
 
 /// mask to check if node is resizable
-constexpr size_t IsResizableMask = Resizable | ResizableHOnly;
+constexpr size_t IsResizableMask =
+    Resizable | ResizableHOnly;
+
 /// mask to check if node should be evaluated in separate thread
 constexpr size_t IsDetachedMask = 1 << 0;
 /// mask to check if node should be evaluated in main thread
@@ -52,7 +56,6 @@ constexpr size_t IsExclusiveMask = 1 << 2;
 
 enum class NodeEvalMode
 {
-
     /// Indicates that the node will be evaluated non blockingly in a separate
     /// thread
     Detached = IsDetachedMask,
@@ -77,9 +80,29 @@ enum class NodeEvalMode
     MainThread [[deprecated("Use `Blocking` instead")]] = Blocking,
 };
 
-class NodeExecutor;
+class INode;
+class Node;
 class NodeData;
 class NodeDataInterface;
+
+namespace exec
+{
+
+GT_INTELLI_EXPORT bool blockingEvaluation(Node& node, NodeDataInterface& model);
+
+GT_INTELLI_EXPORT bool detachedEvaluation(Node& node, NodeDataInterface& model);
+
+GT_INTELLI_EXPORT void setNodeDataInterface(Node& node, NodeDataInterface* model);
+
+GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
+
+/**
+ * @brief Triggers the evaluation of the node.
+ * @return success
+ */
+GT_INTELLI_EXPORT bool triggerNodeEvaluation(Node& node, NodeDataInterface& model);
+
+}
 
 /**
  * @brief Attempts to convert `data` to into the desired type. If
@@ -116,7 +139,7 @@ class GT_INTELLI_EXPORT Node : public GtObject
 {
     Q_OBJECT
     
-    friend class NodeExecutor;
+    friend class INode;
     friend class NodeGraphicsObject;
     friend class GraphExecutionModel;
 
@@ -428,7 +451,9 @@ signals:
 
     /**
      * @brief Triggers the evaluation of node. It is not guranteed to be
-     * evaluated, as the underling graph execution model must be active
+     * evaluated, as the underling graph execution model must be active.
+     * Should be triggered if the node has changed internal data and requires
+     * reevaluation.
      */
     void triggerNodeEvaluation();
 
@@ -447,14 +472,16 @@ signals:
 
     /**
      * @brief Emitted once the node evaluation has started. Will update the node
-     * flags `RequiresEvaluation` and `Evaluating` automatically.
+     * flag `Evaluating` automatically.
      */
+    [[deprecated]]
     void computingStarted();
     
     /**
-     * @brief Emitted once the node evaluation has finished. Will update the
-     * node flag `Evaluating` automatically.
+     * @brief Emitted once the node evaluation has finished. Will update the node
+     * flag `Evaluating` automatically.
      */
+    [[deprecated("use `evaluated` signal instead")]]
     void computingFinished();
 
     /**
@@ -540,15 +567,9 @@ protected:
     virtual void eval();
 
     /**
-     * @brief Handles the evaluation of the node. This method is not intended to
-     * actually do the evaluation (use `eval` instead), but to handle/manage the
-     * execution of the node. Should only be overriden in rare cases.
-     * Note: When overriding do not forget to emit the `computingStarted` and
-     * `computingFinished` respectively.
-     * @return Returns true if the evaluation was triggered sucessfully.
-     * (node may be evaluated non-blocking)
+     * @brief Can be called to indicate that the node evaluation failed.
      */
-    virtual bool handleNodeEvaluation(NodeDataInterface& model);
+    void evalFailed();
 
     /**
      * @brief Should be called within the constructor. Used to register
@@ -565,6 +586,16 @@ protected:
      * @param enable Whether to enable or disable the flag
      */
     void setNodeFlag(NodeFlag flag, bool enable = true);
+
+    /**
+     * @brief Overload, that accepts a custom node flag
+     * @param flag Flag(s) to set
+     * @param enable Whether to enable or disable the flag(s)
+     */
+    inline void setNodeFlag(size_t flag, bool enable = true)
+    {
+        return setNodeFlag((NodeFlag)flag, enable);
+    }
 
     /**
      * @brief Sets the node evaluation mode

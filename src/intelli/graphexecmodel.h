@@ -44,17 +44,44 @@ public:
     Graph& graph();
     Graph const& graph() const;
 
+    /**
+     * @brief Resets the model, including all data and evaluation states.
+     */
     void reset();
 
     GT_NO_DISCARD
     NodeEvalState nodeEvalState(NodeUuid const& nodeUuid) const;
 
+    /**
+     * @brief Returns whether the root graph is currently beeing evaluated
+     * @return Whether the root graph is beeing evaluated.
+     */
     GT_NO_DISCARD
     bool isGraphEvaluated() const;
+
+    /**
+     * @brief Returns whether the graph is currently beeing evaluated
+     * @param graph Graph
+     * @return Whether the graph is beeing evaluated.
+     */
     GT_NO_DISCARD
     bool isGraphEvaluated(Graph const& graph) const;
+
+    /**
+     * @brief Returns whether the node is currently evaluating
+     * @param nodeUuid Node's uuid
+     * @return Whether the node is evaluating. If node is not found, false is
+     * returned.
+     */
     GT_NO_DISCARD
     bool isNodeEvaluated(NodeUuid const& nodeUuid) const;
+
+    /**
+     * @brief Returns whether the model is currently evaluating any node.
+     * @return Whether the model is currently evaluating a node.
+     */
+    GT_NO_DISCARD
+    bool isEvaluating() const;
 
     GT_NO_DISCARD
     bool isAutoEvaluatingGraph() const;
@@ -96,6 +123,13 @@ public:
      * @return Execution data
      */
     inline auto const& data() const { return m_data; }
+
+protected:
+
+    void setNodeEvaluationFailed(NodeUuid const& nodeUuid) override;
+
+    void nodeEvaluationStarted(NodeUuid const& nodeUuid) override;
+    void nodeEvaluationFinished(NodeUuid const& nodeUuid) override;
 
 signals:
 
@@ -186,8 +220,9 @@ private slots:
 
     /**
      * @brief Method is directly invoked once a node has been evaluated.
+     * @param nodeUuid Uuid of the node that was evaluated
      */
-    void onNodeEvaluated();
+    void onNodeEvaluated(NodeUuid const& nodeUuid);
 
     void onNodeAppended(Node* node);
 

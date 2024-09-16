@@ -73,7 +73,8 @@ public:
                     milliseconds timeout = milliseconds::max()) const;
 
     GT_INTELLI_EXPORT
-    ExecFuture const& then(CallbackFunctor functor) const;
+    ExecFuture const& then(CallbackFunctor functor,
+                           milliseconds timeout = milliseconds::max()) const;
 
     /**
      * @brief Does not wait for the evaluation of all target nodes. Returns
@@ -86,7 +87,7 @@ public:
     bool detach() const;
 
     GT_INTELLI_EXPORT
-    bool isRunning() const { return detach(); }
+    bool startedSuccessfully() const { return detach(); }
 
     /**
      * @brief Joins with other futures. Can be used to wait for multiple,
@@ -134,7 +135,8 @@ private:
      * @param evalState Current node eval state
      * @return this
      */
-    ExecFuture& append(NodeUuid nodeUuid, NodeEvalState evalState = NodeEvalState::Outdated);
+    ExecFuture& append(NodeUuid nodeUuid,
+                       NodeEvalState evalState = NodeEvalState::Outdated);
 
     /**
      * @brief Returns whether all nodes have finished their evaluation

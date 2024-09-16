@@ -10,7 +10,6 @@
 #ifndef GT_INTELLI_DETACHEDEXECUTOR_H
 #define GT_INTELLI_DETACHEDEXECUTOR_H
 
-#include "intelli/nodeexecutor.h"
 #include "intelli/node.h"
 
 #include <QFutureWatcher>
@@ -34,17 +33,22 @@ public:
 
     bool evaluateNode(Node& node, NodeDataInterface& model);
 
-protected:
-    
-    bool canEvaluateNode(Node& node);
+    bool canEvaluateNode();
 
 private:
     
     QPointer<Node> m_node;
     
-    QFutureWatcher<NodeDataPtrList> m_watcher;
+    struct ReturnValue
+    {
+        NodeDataPtrList data;
+        bool success = false;
+    };
+
+    QFutureWatcher<ReturnValue> m_watcher;
 
     bool m_collected = true;
+    bool m_destroyed = false;
 
 private slots:
 

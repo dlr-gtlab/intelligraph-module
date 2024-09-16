@@ -25,7 +25,7 @@ public:
 
     Q_INVOKABLE TestNode();
 
-    using Node::setFlag;
+    using Node::setNodeFlag;
     using Node::setNodeEvalMode;
     using Node::insertInPort;
     using Node::insertOutPort;
@@ -35,7 +35,7 @@ public:
 
 protected:
 
-    bool handleNodeEvaluation(intelli::NodeDataInterface& model) override;
+    void eval();
 };
 
 class TestSleepyNode : public intelli::SleepyNode
@@ -44,7 +44,7 @@ public:
 
     static void registerOnce();
 
-    Q_INVOKABLE TestSleepyNode();
+    Q_INVOKABLE TestSleepyNode() = default;
 
     using Node::setFlag;
     using Node::setNodeEvalMode;
