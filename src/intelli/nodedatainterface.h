@@ -13,6 +13,8 @@
 #include <intelli/exports.h>
 #include <intelli/globals.h>
 
+#include <gt_finally.h>
+
 namespace intelli
 {
 
@@ -111,6 +113,27 @@ public:
 
     virtual bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet data) = 0;
     virtual bool setNodeData(NodeUuid const& nodeUuid, PortType type, NodeDataPtrList const& data) = 0;
+
+    struct NodeEvaluationEndedFunctor
+    {
+        inline void operator()() const noexcept
+        {
+            if (i) i->nodeEvaluationFinished(uuid);
+        }
+        NodeDataInterface* i{};
+        NodeUuid uuid{};
+    };
+
+    using ScopedEvaluation = gt::Finally<NodeEvaluationEndedFunctor>;
+
+    ScopedEvaluation nodeEvaluation(NodeUuid const& nodeUuid)
+    {
+        nodeEvaluationStarted(nodeUuid);
+        return gt::finally(NodeEvaluationEndedFunctor{this});
+    }
+
+    virtual void nodeEvaluationStarted(NodeUuid const& nodeUuid) {}
+    virtual void nodeEvaluationFinished(NodeUuid const& nodeUuid) {}
 };
 
 } // namespace intelli

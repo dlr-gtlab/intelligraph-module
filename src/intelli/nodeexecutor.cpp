@@ -8,7 +8,9 @@
  */
 
 #include "intelli/nodeexecutor.h"
+
 #include "intelli/node.h"
+#include "intelli/nodedatainterface.h"
 #include "intelli/exec/detachedexecutor.h"
 #include "intelli/private/node_impl.h"
 
@@ -56,6 +58,9 @@ using namespace intelli;
 bool
 intelli::exec::blockingEvaluation(Node& node, NodeDataInterface& model)
 {
+    auto cmd = model.nodeEvaluation(node.uuid());
+    Q_UNUSED(cmd);
+
     // cleanup routine
     auto finally = gt::finally([&node](){
         emit node.computingFinished();

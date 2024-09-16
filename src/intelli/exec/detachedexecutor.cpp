@@ -414,17 +414,22 @@ DetachedExecutor::onResultReady(int result)
         return;
     }
 
-    if (!model->setNodeData(m_node->uuid(), PortType::Out, outData))
+    NodeUuid const& nodeUuid = m_node->uuid();
+
+    if (!model->setNodeData(nodeUuid, PortType::Out, outData))
     {
         gtError() << tr("Failed to transfer node data!");
-        return;
     }
+
+    model->nodeEvaluationFinished(nodeUuid);
 }
 
 bool
 DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
 {
     if (!canEvaluateNode(node)) return false;
+
+    model.nodeEvaluationStarted(node.uuid());
 
     m_node = &node;
     m_collected = false;
