@@ -1,11 +1,12 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 17.7.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/gui/graphscene.h"
 
@@ -412,6 +413,10 @@ GraphScene::connectionObject(ConnectionId conId) const
 QMenu*
 GraphScene::createSceneMenu(QPointF scenePos)
 {
+// (adapted)
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     auto* menu = new QMenu;
 
     // Add filterbox to the context menu
@@ -516,6 +521,7 @@ GraphScene::createSceneMenu(QPointF scenePos)
     });
 
     return menu;
+// SPDX-SnippetEnd
 }
 
 void

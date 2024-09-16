@@ -1,11 +1,12 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2024 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 12.3.2024
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include <intelli/gui/graphics/connectionobject.h>
 #include <intelli/gui/graphics/nodeobject.h>
@@ -38,6 +39,10 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection,
 QRectF
 ConnectionGraphicsObject::boundingRect() const
 {
+// (adapted)
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     auto points = controlPoints();
 
     // `normalized()` fixes inverted rects.
@@ -55,6 +60,7 @@ ConnectionGraphicsObject::boundingRect() const
     commonRect.setBottomRight(commonRect.bottomRight() + 2 * cornerOffset);
 
     return commonRect;
+// SPDX-SnippetEnd
 }
 
 ConnectionId
@@ -130,6 +136,10 @@ ConnectionGraphicsObject::controlPoints() const
 
     case ConnectionShape::Cubic:
     {
+// (adapted)
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
         constexpr double maxControlPointExtent = 200;
 
         double xDistance = m_end.x() - m_start.x();
@@ -154,6 +164,7 @@ ConnectionGraphicsObject::controlPoints() const
         QPointF c2 = m_end  - QPointF{horizontalOffset, verticalOffset};
 
         return {c1, c2};
+// SPDX-SnippetEnd
     }
 
     case ConnectionShape::Rectangle:
@@ -292,6 +303,10 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     }
 
 #ifdef GT_INTELLI_DEBUG_CONNECTION_GRAPHICS
+// (adapted)
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     QPointF in  = endPoint(PortType::In);
     QPointF out = endPoint(PortType::Out);
 
@@ -311,6 +326,7 @@ ConnectionGraphicsObject::paint(QPainter* painter,
 
     painter->setPen(Qt::red);
     painter->drawRect(boundingRect());
+// SPDX-SnippetEnd
 #endif
 }
 
@@ -385,7 +401,6 @@ ConnectionGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 QPainterPath
 ConnectionGraphicsObject::path() const
 {
-
     QPointF const& in = endPoint(PortType::In);
     QPointF const& out = endPoint(PortType::Out);
 

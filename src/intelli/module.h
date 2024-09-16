@@ -1,13 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
- * 
- * Created on: 16.03.2023
- * Author: S. Reitenbach
- * Email: 
+/*
+ * GTlab IntelliGraph
+ *
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef NDS_NODESMODULE_H
-#define NDS_NODESMODULE_H
+#ifndef GT_INTELLI_MODULE_H
+#define GT_INTELLI_MODULE_H
 
 #include <gt_moduleinterface.h>
 #include <gt_datamodelinterface.h>
@@ -143,4 +144,4 @@ public:
     QMap<const char*, QMetaObject> propertyItems() override;
 };
 
-#endif // NDS_NODESMODULE_H
+#endif // GT_INTELLI_MODULE_H

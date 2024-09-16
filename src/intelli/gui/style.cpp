@@ -1,11 +1,12 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 13.9.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include <intelli/gui/style.h>
 
@@ -232,7 +233,9 @@ intelli::style::generateTypeColor(TypeId const& typeId)
         return *iter;
     }
 
-    // from QtNodes
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     std::size_t hash = qHash(typeId);
 
     std::size_t const hue_range = 0xFF;
@@ -244,6 +247,7 @@ intelli::style::generateTypeColor(TypeId const& typeId)
     int sat = 120 + hash % 129;
 
     QColor color = QColor::fromHsl(hue, sat, 160);
+// SPDX-SnippetEnd
     cache.insert(typeId, color);
     return color;
 }

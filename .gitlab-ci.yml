@@ -1,3 +1,8 @@
+#  GTlab Intelligraph
+#
+#  SPDX-License-Identifier: BSD-3-Clause
+#  SPDX-FileCopyrightText: 2024 German Aerospace Center
+
 # Variables that are defined globally for the pipeline
 variables:
   PIPELINEVERSION: "2.1.0"
@@ -157,9 +162,6 @@ package-linux-gtlab_2.0:
     toolchain: linux
 
 # code quality
-codingstyle:
-  stage: codequality
-  extends: .codingStyleTemplate
  
 #cppcheck:
 #  stage: codequality
@@ -181,5 +183,3 @@ badges:
     - linuxBuildDebug
     #- testWin
     #- testLinux
-    - codingstyle
-

@@ -1,19 +1,19 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2024 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 28.02.2024
- *  Author: Jens Schmeink (AT-TWK)
- *  E-Mail: jens.schmeink@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-
-#include "intelli/data/integer.h"
+#include "intelli/data/int.h"
 
 using namespace intelli;
 
 IntData::IntData(int val) :
-    NodeData("int"),
-    m_data(std::move(val))
+    NodeData(QStringLiteral("int")),
+    m_data(val)
 {
 
 }

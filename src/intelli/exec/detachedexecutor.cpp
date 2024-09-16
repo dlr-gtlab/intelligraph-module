@@ -1,16 +1,15 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 26.7.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/exec/detachedexecutor.h"
 
 #include "intelli/node.h"
-#include "intelli/nodedata.h"
 #include "intelli/graphexecmodel.h"
 
 #include "gt_utilities.h"
@@ -27,7 +26,7 @@ using namespace intelli;
 
 /**
  * @brief The DummyDataModel class.
- * Helper method to set and access node data of a single node
+ * Helper class to set and access data of a single node
  */
 class DummyDataModel : public NodeDataInterface
 {
@@ -149,8 +148,8 @@ private:
 
 //////////////////////////////////////////////////////
 
-// we want to skip signals that are speicifc to Node, GtObject and QObject,
-// therefore we will calculate the offset to the "custom" signals once
+/// we want to skip signals that are speicifc to the Node, GtObject and QObject
+/// class, therefore we will calculate the offset to the "custom" signals once
 int signal_offset(){
     static int const o = [](){
         auto* sourceMetaObject = &Node::staticMetaObject;
@@ -183,6 +182,7 @@ int signal_offset(){
 
 using SignalSignature = QByteArray;
 
+/// searches for all "custom" signals that should be forwarded to the main node
 inline QVector<SignalSignature>
 findSignalsToConnect(QObject& object)
 {
@@ -232,6 +232,8 @@ findSignalsToConnect(QObject& object)
     return signalsToConnect;
 }
 
+/// interconnect signals of the copied node to the actual node in the main
+/// thread. Only connect "custom" signals
 inline bool
 connectSignals(QVector<SignalSignature> const& signalsToConnect,
                QPointer<Node> sourceObject,

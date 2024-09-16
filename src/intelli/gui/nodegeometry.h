@@ -1,11 +1,11 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2024 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 26.3.2024
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #ifndef GT_INTELLI_NODEGEOMETRY_H
 #define GT_INTELLI_NODEGEOMETRY_H
@@ -26,7 +26,7 @@ class Node;
 
 /**
  * @brief The NodeGeometry class.
- * Denotes how the node graphic object is organized. I.e. where are the ports
+ * Defines how the node graphics object is structured. I.e. where are the ports
  * placed, the caption, the eval state visualizer, the resize handle etc.
  *
  * This class implements the default implementation for nodes. It should be
