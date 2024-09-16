@@ -86,7 +86,7 @@ public:
     bool detach() const;
 
     GT_INTELLI_EXPORT
-    bool isRunning() const { return detach(); }
+        bool startedSuccessfully() const { return detach(); }
 
     /**
      * @brief Joins with other futures. Can be used to wait for multiple,

@@ -565,6 +565,41 @@ inline bool comparePortData(Graph const& graph,
     return success;
 }
 
+template<typename T = std::nullptr_t>
+inline bool comparePortData(Graph const& graph,
+                            GraphExecutionModel& model,
+                            QString const& uuid,
+                            QVector<std::pair<PortType, PortIndex>> const& ports,
+                            PortDataState targetState,
+                            tl::optional<T> targetData = {})
+{
+    auto* node = graph.findNodeByUuid(uuid);
+    if (!node)
+    {
+        gtError() << QObject::tr("graph.findNodeByUuid(%1) == NULL")
+                         .arg(uuid);
+        return false;
+    }
+
+    QVector<PortId> portIds;
+    for (auto entry : ports)
+    {
+        PortId portId = node->portId(entry.first, entry.second);
+        if (!portId.isValid())
+        {
+            gtError() << QObject::tr("node.port(%1, %2) not found! (node: %3)")
+                             .arg(toString(entry.first))
+                             .arg(entry.second)
+                             .arg(uuid);
+            return false;
+        }
+
+        portIds.push_back(portId);
+    }
+
+    return comparePortData(graph, model, uuid, portIds, targetState, targetData);
+}
+
 /**
  * @brief Checks the data of the node given by `uuid` and all ports of `type`
  * @param graph Graph
