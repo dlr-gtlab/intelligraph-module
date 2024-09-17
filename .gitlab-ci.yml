@@ -168,6 +168,26 @@ package-linux-gtlab_2.0:
 #  extends: .cppCheckReportTemplate
 #  allow_failure: true
 
+check-license:
+   stage: codequality
+   tags: ["docker", "linux"]
+   needs: []
+   image: at-twk-hal9000.intra.dlr.de:5000/dlr-at/buster-dev
+   before_script:
+    - python3 -m pip install reuse
+   script:
+    - reuse lint
+   variables:
+     GIT_SUBMODULE_STRATEGY: "none"
+   
+cppcheck:
+  stage: codequality
+  extends: .cppCheckTemplate
+  allow_failure: false
+  variables:
+    GIT_SUBMODULE_STRATEGY: "none"
+
+
 pages:
   stage: badges
   extends: .pageTemplate
