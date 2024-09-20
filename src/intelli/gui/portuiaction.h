@@ -1,16 +1,16 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 17.7.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #ifndef GT_INTELLI_PORTUIACTION_H
 #define GT_INTELLI_PORTUIACTION_H
 
-#include <intelli/node.h>
+#include <intelli/globals.h>
 
 #include <functional>
 
@@ -18,6 +18,8 @@
 
 namespace intelli
 {
+
+class Node;
 
 /**
  * @brief The GtIgPortUIAction class
@@ -42,20 +44,20 @@ public:
     /* @brief text
      * @return
      */
-    const QString& text() const { return m_text; }
+    QString const& text() const { return m_text; }
 
     /**
      * @brief icon
      * @return
      */
-    const QIcon& icon() const { return m_icon; }
+    QIcon const& icon() const { return m_icon; }
 
     /**
      * @brief Action method. Must be called with a parent and target objet as
      * parameters
      * @return Action method
      */
-    const ActionMethod& method() const { return m_method; }
+    ActionMethod const& method() const { return m_method; }
 
     /**
      * @brief Verification method used to check if action should be enabled.
@@ -63,7 +65,7 @@ public:
      * parameters
      * @return Verification method
      */
-    const VerificationMethod& verificationMethod() const { return m_verification; }
+    VerificationMethod const& verificationMethod() const { return m_verification; }
 
     /**
      * @brief Visibility method used to check if action should be visible.
@@ -71,7 +73,7 @@ public:
      * parameters
      * @return Visibility method
      */
-    const VisibilityMethod& visibilityMethod() const { return m_visibility; }
+    VisibilityMethod const& visibilityMethod() const { return m_visibility; }
 
     /**
      * @brief Dedicated setter for the UI icon

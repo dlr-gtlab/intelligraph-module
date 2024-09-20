@@ -1,13 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * Source File:
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 27.02.2024
- *  Author: Jens Schmeink (AT-TWK)
- *  Tel.: +49 2203 601 2191
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
-#ifndef EDITABLEDOUBLELABEL_H
-#define EDITABLEDOUBLELABEL_H
+
+#ifndef GT_INTELLI_EDITABLEDOUBLELABEL_H
+#define GT_INTELLI_EDITABLEDOUBLELABEL_H
 
 #include <QStackedWidget>
 
@@ -21,8 +22,8 @@ class EditableDoubleLabel : public QStackedWidget
 {  
     Q_OBJECT
 public:
-    Q_INVOKABLE EditableDoubleLabel(QString const& text,
-                                    QWidget* parent = nullptr);
+    Q_INVOKABLE explicit EditableDoubleLabel(QString const& text,
+                                             QWidget* parent = nullptr);
 
     double value() const;
 
@@ -43,10 +44,11 @@ private slots:
     void onTextChanged();
 
 private:
-    QLabel* m_l;
+    QLabel* m_l{nullptr};
 
-    QLineEdit* m_e;
+    QLineEdit* m_e{nullptr};
 };
 
 } /// namespace intelli
-#endif // EDITABLEDOUBLELABEL_H
+
+#endif // GT_INTELLI_EDITABLEDOUBLELABEL_H

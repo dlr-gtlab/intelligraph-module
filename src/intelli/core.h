@@ -1,3 +1,12 @@
+/*
+ * GTlab IntelliGraph
+ *
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marting Siggel <martin.siggel@dlr.de>
+ */
+
 #ifndef INTELLI_CORE_H
 #define INTELLI_CORE_H
 

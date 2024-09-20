@@ -1,3 +1,8 @@
+# GTlab IntelliGraph
+#
+#  SPDX-License-Identifier: BSD-3-Clause
+#  SPDX-FileCopyrightText: 2024 German Aerospace Center
+
 set(CMAKE_DEBUG_POSTFIX -d)
 
 set(INTELLIGRAPH_VERSION 0.11.0)
@@ -189,7 +194,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/stringselection.cpp
     intelli/gui/ui/logicnodeui.cpp
     intelli/property/color.cpp
-    intelli/property/objectlink.cpp
     intelli/property/stringselection.cpp
     intelli/property/uint.cpp
 )

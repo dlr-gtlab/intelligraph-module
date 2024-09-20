@@ -1,11 +1,12 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 17.7.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/gui/graphscene.h"
 
@@ -412,6 +413,10 @@ GraphScene::connectionObject(ConnectionId conId) const
 QMenu*
 GraphScene::createSceneMenu(QPointF scenePos)
 {
+// (adapted)
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     auto* menu = new QMenu;
 
     // Add filterbox to the context menu
@@ -516,6 +521,7 @@ GraphScene::createSceneMenu(QPointF scenePos)
     });
 
     return menu;
+// SPDX-SnippetEnd
 }
 
 void
@@ -666,10 +672,8 @@ GraphScene::pasteObjects()
         node->setPos(node->pos() + offset);
     }
 
-    auto cmd = gtApp->startCommand(m_graph, tr("Paste objects"));
-    auto cleanup = gt::finally([&](){
-        gtApp->endCommand(cmd);
-    });
+    auto cmd = gtApp->makeCommand(m_graph, tr("Paste objects"));
+    Q_UNUSED(cmd);
 
     // append objects
     auto newNodeIds = m_graph->appendObjects(uniqueNodes, uniqueConnections);
@@ -821,6 +825,8 @@ GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             if (!m_graph->canAppendConnections(conId)) continue;
 
             auto cmd = gtApp->makeCommand(m_graph, tr("Append %1").arg(toString(conId)));
+            Q_UNUSED(cmd);
+
             m_graph->appendConnection(std::make_unique<Connection>(conId));
             break;
         }
@@ -1339,7 +1345,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
             auto iter = std::find_if(shared.begin(), shared.end(), [conId](ConnectionId other){
                 return conId.outNodeId == other.outNodeId && conId.outPort == other.outPort;
             });
-            if ((success = iter != shared.end()))
+            if ((success = (iter != shared.end())))
             {
                 makeConnections(*iter, provider, index, type, false);
                 shared.erase(iter);

@@ -1,22 +1,22 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 15.6.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #ifndef GT_INTELLI_OBJECTDATA_H
 #define GT_INTELLI_OBJECTDATA_H
 
-#include "intelli/nodedata.h"
+#include <intelli/nodedata.h>
 
 namespace intelli
 {
 
 /**
- * @brief The GtIgObjectData class. Represents a GtObject as node data.
+ * @brief The ObjectData class. Represents a GtObject as node data object.
  */
 class GT_INTELLI_EXPORT ObjectData : public NodeData
 {
@@ -26,7 +26,8 @@ public:
 
     /**
      * @brief constructor
-     * @param obj Object to hold. Ownership isno transfered. A copy will  be made
+     * @param obj Object to hold. Ownership is not transfered.
+     * A copy will be made
      */
     Q_INVOKABLE ObjectData(GtObject const* obj = nullptr);
 

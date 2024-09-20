@@ -1,8 +1,10 @@
-/*
- * GTlab Geometry Module
- * SPDX-FileCopyrightText: 2023 German Aerospace Center (DLR)
+/* 
+ * GTlab IntelliGraph
  *
- * Author: Martin Siggel <martin.siggel@dlr.de>
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ * 
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include "gtest/gtest.h"
