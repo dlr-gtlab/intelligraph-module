@@ -42,7 +42,13 @@ private:
     
     QPointer<Node> m_node;
     
-    QFutureWatcher<NodeDataPtrList> m_watcher;
+    struct ReturnValue
+    {
+        NodeDataPtrList data;
+        bool success = false;
+    };
+
+    QFutureWatcher<ReturnValue> m_watcher;
 
     bool m_collected = true;
 

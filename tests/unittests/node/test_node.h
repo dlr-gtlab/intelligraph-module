@@ -32,10 +32,6 @@ public:
     using Node::addInPort;
     using Node::addOutPort;
     using Node::removePort;
-
-protected:
-
-    bool handleNodeEvaluation(intelli::NodeDataInterface& model) override;
 };
 
 class TestSleepyNode : public intelli::SleepyNode

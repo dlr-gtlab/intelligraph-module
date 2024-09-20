@@ -580,6 +580,27 @@ struct GraphExecutionModel::Impl
         return success;
     }
 
+    static void
+    propagateNodeEvaluationFailure(GraphExecutionModel& model,
+                                   NodeUuid const& nodeUuid,
+                                   MutableDataItemHelper& item)
+    {
+        assert(item);
+        if (item->state == NodeEvalState::Invalid) return;
+
+        item->state = NodeEvalState::Invalid;
+        emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
+
+        auto& conModel = model.graph().globalConnectionModel();
+        for (auto& successor : conModel.iterate(nodeUuid, PortType::Out))
+        {
+            auto subitem = findData(model, successor.node);
+            if (!subitem) continue;
+
+            propagateNodeEvaluationFailure(model, successor.node, subitem);
+        }
+    }
+
     template<typename List>
     static void
     accumulateDependencies(GlobalConnectionModel const& conModel,
@@ -1141,18 +1162,6 @@ struct GraphExecutionModel::Impl
             << tr("triggering evaluation of node '%1'...")
                    .arg(relativeNodePath(*item.node));
 
-        // disconnect old signal if still present
-        auto disconnect = [exec = &model, node = item.node](){
-            QObject::disconnect(node, &Node::computingFinished,
-                                exec, &GraphExecutionModel::onNodeEvaluated);
-        };
-        disconnect();
-
-        // subscribe to when node finished its execution
-        QObject::connect(item.node, &Node::computingFinished,
-                         &model, &GraphExecutionModel::onNodeEvaluated,
-                         Qt::DirectConnection);
-
         NodeUuid const& nodeUuid = item.node->uuid();
 
         // dequeue and mark as evaluating
@@ -1160,53 +1169,33 @@ struct GraphExecutionModel::Impl
         assert(model.m_queuedNodes.at(idx) == nodeUuid);
         model.m_queuedNodes.remove(idx);
 
-        assert(!model.m_evaluatingNodes.contains(nodeUuid));
-        model.m_evaluatingNodes.push_back(nodeUuid);
-
-        item->isPending = false;
-        item->state = NodeEvalState::Evaluating;
-        emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
-
         // trigger node evaluation
-        if (exec::triggerNodeEvaluation(*item.node, model))
+        if (!exec::triggerNodeEvaluation(*item.node, model))
         {
-            return item->state;
+            gtError() << evaluteNodeError(model.graph())
+                      << tr("node execution failed!");
+
+            // update synchronization entity
+            {
+                QMutexLocker locker{&s_sync.mutex};
+
+                auto idx = s_sync.indexOf(model);
+                assert(idx >= 0);
+
+                auto& entry = s_sync.entries[idx];
+                entry.runningNodes -= 1;
+                if (isExclusive) entry.isExclusiveNodeRunning = false;
+
+                locker.unlock();
+                s_sync.notify(model);
+            }
+
+            propagateNodeEvaluationFailure(model, nodeUuid, item);
+
+            return NodeEvalState::Invalid;
         }
 
-        gtError() << evaluteNodeError(model.graph())
-                  << tr("node execution failed!");
-
-        disconnect();
-
-        model.m_evaluatingNodes.pop_back();
-
-        // update synchronization entity
-        {
-            QMutexLocker locker{&s_sync.mutex};
-
-            auto idx = s_sync.indexOf(model);
-            assert(idx >= 0);
-
-            auto& entry = s_sync.entries[idx];
-            entry.runningNodes -= 1;
-            if (isExclusive) entry.isExclusiveNodeRunning = false;
-
-            locker.unlock();
-            s_sync.notify(model);
-        }
-
-        item->state = NodeEvalState::Invalid;
-        emit model.nodeEvalStateChanged(nodeUuid, QPrivateSignal());
-
-        auto& conModel = model.graph().globalConnectionModel();
-        for (auto& successor : conModel.iterate(nodeUuid, PortType::Out))
-        {
-            auto item = findData(model, successor.node);
-            item->state = NodeEvalState::Invalid;
-            emit model.nodeEvalStateChanged(successor.node, QPrivateSignal());
-        }
-
-        return NodeEvalState::Invalid;
+        return item->state;
     }
 
     static inline bool

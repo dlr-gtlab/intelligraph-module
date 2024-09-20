@@ -114,6 +114,8 @@ public:
     virtual bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet data) = 0;
     virtual bool setNodeData(NodeUuid const& nodeUuid, PortType type, NodeDataPtrList const& data) = 0;
 
+    virtual void setNodeEvaluationFailed(NodeUuid const& nodeUuid) {}
+
     struct NodeEvaluationEndedFunctor
     {
         inline void operator()() const noexcept
@@ -129,7 +131,7 @@ public:
     ScopedEvaluation nodeEvaluation(NodeUuid const& nodeUuid)
     {
         nodeEvaluationStarted(nodeUuid);
-        return gt::finally(NodeEvaluationEndedFunctor{this});
+        return gt::finally(NodeEvaluationEndedFunctor{this, nodeUuid});
     }
 
     virtual void nodeEvaluationStarted(NodeUuid const& nodeUuid) {}

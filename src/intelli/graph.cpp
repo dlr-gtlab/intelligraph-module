@@ -542,7 +542,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
             flags |= val;
         });
     };
-    auto unsetEvluatingFlag = [updateEvaluatingFlag](){
+    auto unsetEvaluatingFlag = [updateEvaluatingFlag](){
         updateEvaluatingFlag([](size_t& flags, size_t val){
             flags &= ~val;
         });
@@ -550,7 +550,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     connect(node.get(), &Node::computingStarted,
             this, setEvaluatingFlag, Qt::DirectConnection);
     connect(node.get(), &Node::computingFinished,
-            this, unsetEvluatingFlag, Qt::DirectConnection);
+            this, unsetEvaluatingFlag, Qt::DirectConnection);
 
     // notify
     emit nodeAppended(node.get());

@@ -33,8 +33,8 @@ enum NodeFlag
     Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
     ResizableHOnly = 1 << 6,
-    /// Indicates that the node is evaluating (will be set automatically)
-    Evaluating  = 1 << 7,
+    /// Indicates that the node is evaluating
+    Evaluating = 1 << 7,
     /// default node flags
     DefaultNodeFlags = NoFlag,
 };
@@ -52,7 +52,6 @@ constexpr size_t IsExclusiveMask = 1 << 2;
 
 enum class NodeEvalMode
 {
-
     /// Indicates that the node will be evaluated non blockingly in a separate
     /// thread
     Detached = IsDetachedMask,
@@ -77,9 +76,29 @@ enum class NodeEvalMode
     MainThread [[deprecated("Use `Blocking` instead")]] = Blocking,
 };
 
-class NodeExecutor;
+class INode;
+class Node;
 class NodeData;
 class NodeDataInterface;
+
+namespace exec
+{
+
+GT_INTELLI_EXPORT bool blockingEvaluation(Node& node, NodeDataInterface& model);
+
+GT_INTELLI_EXPORT bool detachedEvaluation(Node& node, NodeDataInterface& model);
+
+GT_INTELLI_EXPORT void setNodeDataInterface(Node& node, NodeDataInterface* model);
+
+GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
+
+/**
+ * @brief Triggers the evaluation of the node.
+ * @return success
+ */
+GT_INTELLI_EXPORT bool triggerNodeEvaluation(Node& node, NodeDataInterface& model);
+
+}
 
 /**
  * @brief Attempts to convert `data` to into the desired type. If
@@ -116,7 +135,7 @@ class GT_INTELLI_EXPORT Node : public GtObject
 {
     Q_OBJECT
     
-    friend class NodeExecutor;
+    friend class INode;
     friend class NodeGraphicsObject;
     friend class GraphExecutionModel;
 
@@ -447,13 +466,13 @@ signals:
 
     /**
      * @brief Emitted once the node evaluation has started. Will update the node
-     * flags `RequiresEvaluation` and `Evaluating` automatically.
+     * flag `Evaluating` automatically.
      */
     void computingStarted();
     
     /**
-     * @brief Emitted once the node evaluation has finished. Will update the
-     * node flag `Evaluating` automatically.
+     * @brief Emitted once the node evaluation has finished. Will update the node
+     * flag `Evaluating` automatically.
      */
     void computingFinished();
 
@@ -540,15 +559,9 @@ protected:
     virtual void eval();
 
     /**
-     * @brief Handles the evaluation of the node. This method is not intended to
-     * actually do the evaluation (use `eval` instead), but to handle/manage the
-     * execution of the node. Should only be overriden in rare cases.
-     * Note: When overriding do not forget to emit the `computingStarted` and
-     * `computingFinished` respectively.
-     * @return Returns true if the evaluation was triggered sucessfully.
-     * (node may be evaluated non-blocking)
+     * @brief Can be called to indicate that the node evaluation failed.
      */
-    virtual bool handleNodeEvaluation(NodeDataInterface& model);
+    void evalFailed();
 
     /**
      * @brief Should be called within the constructor. Used to register

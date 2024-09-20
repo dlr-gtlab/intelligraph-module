@@ -97,6 +97,13 @@ public:
      */
     inline auto const& data() const { return m_data; }
 
+protected:
+
+    void setNodeEvaluationFailed(NodeUuid const& nodeUuid) override;
+
+    void nodeEvaluationStarted(NodeUuid const& nodeUuid) override;
+    void nodeEvaluationFinished(NodeUuid const& nodeUuid) override;
+
 signals:
 
     /**
@@ -186,8 +193,9 @@ private slots:
 
     /**
      * @brief Method is directly invoked once a node has been evaluated.
+     * @param nodeUuid Uuid of the node that was evaluated
      */
-    void onNodeEvaluated();
+    void onNodeEvaluated(NodeUuid const& nodeUuid);
 
     void onNodeAppended(Node* node);
 

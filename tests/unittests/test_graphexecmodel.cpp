@@ -151,7 +151,7 @@ TEST(GraphExecutionModel, evaluate_node_without_dependencies)
 ///  - the graph was evaluated
 TEST(GraphExecutionModel, evaluate_node_with_dependencies)
 {
-    constexpr double EXPECTED_VALUE = 50.0;
+    constexpr double EXPECTED_VALUE = 84.0;
 
     Graph graph;
 
@@ -229,7 +229,7 @@ TEST(GraphExecutionModel, evaluate_node_with_dependencies)
 /// Evaluate a single node that has dependencies across different graph levels
 TEST(GraphExecutionModel, evaluate_node_with_nested_dependencies)
 {
-    constexpr double EXPECTED_VALUE = 84.0;
+    constexpr double EXPECTED_VALUE = 50.0;
 
     Graph graph;
 
@@ -267,9 +267,9 @@ TEST(GraphExecutionModel, evaluate_node_with_nested_dependencies)
         gtTrace() << "Validate results...";
 
         EXPECT_TRUE(model.isNodeEvaluated(D_uuid));
-        EXPECT_TRUE(model.isGraphEvaluated());
+        EXPECT_FALSE(model.isGraphEvaluated());
 
-        auto dataD = model.nodeData(D_uuid, PortType::In, PortIndex(0))
+        auto dataD = model.nodeData(D_uuid, PortType::Out, PortIndex(0))
                          .as<DoubleData>();
         ASSERT_TRUE(dataD);
         EXPECT_EQ(dataD->value(), EXPECTED_VALUE);
@@ -324,10 +324,6 @@ TEST(GraphExecutionModel, evaluate_graph_with_forwarding_layer)
 
     auto* group = qobject_cast<Graph*>(graph.findNode(group_id));
     ASSERT_TRUE(group);
-    auto* A = graph.findNode(A_id);
-    ASSERT_TRUE(A);
-    auto* B = graph.findNode(B_id);
-    ASSERT_TRUE(B);
 
     PortId group_input1 = group->portId(PortType::In, PortIndex(0));
     PortId group_input2 = group->portId(PortType::In, PortIndex(1));
@@ -417,8 +413,7 @@ TEST(GraphExecutionModel, evaluate_graph_with_forwarding_layer)
 
     gtTrace() << "Invalidate...";
 
-    emit A->triggerNodeEvaluation();
-
+    model.invalidateNode(A_uuid);
 
     {
         gtTrace() << "Validate results...";
@@ -466,7 +461,7 @@ TEST(GraphExecutionModel, evaluate_graph_with_forwarding_layer)
         EXPECT_TRUE(test::comparePortData<double>(
             graph, model, D_uuid, {
                 {PortType::In, PortIndex(1)}
-            }, PortDataState::Outdated, EXPECTED_VALUE_B));
+            }, PortDataState::Valid, EXPECTED_VALUE_B)); // B was not invalidated
         EXPECT_TRUE(test::comparePortData<double>(
             graph, model, D_uuid, {
                 {PortType::Out, PortIndex(0)}
@@ -502,11 +497,19 @@ TEST(GraphExecutionModel, propagate_invalidation)
 
     ASSERT_TRUE(test::buildLinearGraph(graph));
 
-    auto nodeA = graph.findNode(A_id);
+    Node* nodeA = graph.findNode(A_id);
     ASSERT_TRUE(nodeA);
+    Node* nodeB = graph.findNode(B_id);
+    ASSERT_TRUE(nodeB);
 
     debug(graph);
     debug(model);
+
+    EXPECT_TRUE(test::compareNodeEvalState(
+        graph, model, {A_uuid, B_uuid, C_uuid, D_uuid},
+        NodeEvalState::Outdated));
+
+    gtDebug() << "Setting node data of node A...";
 
     auto dataPtr = std::make_shared<DoubleData const>(EXPECTED_VALUE);
 
@@ -514,29 +517,102 @@ TEST(GraphExecutionModel, propagate_invalidation)
     dataA.ptr = dataPtr;
     dataA.state = PortDataState::Valid;
 
-    model.setNodeData(A_uuid, PortType::Out, PortIndex(0), dataPtr);
+    ASSERT_TRUE(model.setNodeData(A_uuid, PortType::Out, PortIndex(0), dataPtr));
 
-    /// evaluate node once
-    model.evaluateNode(A_uuid).wait(maxTimeout);
-//    EXPECT_TRUE(exec::blockingEvaluation(*nodeA, model));
+    gtDebug() << "Triggering evaluation of node A...";
 
-    EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, A_uuid, {
-            {PortType::Out, PortIndex(0)}
-        }, PortDataState::Valid, EXPECTED_VALUE));
+    /// evaluate node A once -> make data valid
+    ASSERT_TRUE(exec::blockingEvaluation(*nodeA, model));
 
-    EXPECT_TRUE(test::comparePortData<double>(
-        graph, model, B_uuid, {
-            {PortType::In, PortIndex(0)}
-        }, PortDataState::Valid, EXPECTED_VALUE));
+    {
+        EXPECT_TRUE(test::compareNodeEvalState(
+            graph, model, A_uuid,
+            NodeEvalState::Valid));
 
-    EXPECT_TRUE(test::comparePortData(
-        graph, model, B_uuid, {
-            {PortType::In, PortIndex(1)},
-            {PortType::Out, PortIndex(0)}
-        }, PortDataState::Outdated, {nullptr}));
+        EXPECT_TRUE(test::comparePortData<double>(graph, model, {
+             {A_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE},
+             {B_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE},
+             {B_uuid, PortType::In , PortIndex(1), PortDataState::Outdated, {}},
+             {B_uuid, PortType::Out, PortIndex(0), PortDataState::Outdated, {}}
+        }));
+    }
 
+    gtDebug() << "Triggering evaluation of node B...";
 
+    /// evaluate node B once -> make data valid
+    ASSERT_TRUE(exec::blockingEvaluation(*nodeB, model));
+
+    {
+        EXPECT_TRUE(test::compareNodeEvalState(
+            graph, model, {A_uuid, B_uuid},
+            NodeEvalState::Valid));
+
+        EXPECT_TRUE(test::comparePortData<double>(graph, model, {
+            /// data is set and valid
+            {A_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE},
+            {B_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE},
+            {B_uuid, PortType::In , PortIndex(1), PortDataState::Outdated, {}},
+            {B_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE}
+        }));
+    }
+
+    gtDebug() << "Setting node data of node B...";
+
+    ASSERT_TRUE(model.setNodeData(B_uuid, PortType::In, PortIndex(1), dataPtr));
+
+    {
+        EXPECT_TRUE(test::compareNodeEvalState(
+            graph, model, A_uuid,
+            NodeEvalState::Valid));
+
+        /// node B is now outdated
+        EXPECT_TRUE(test::compareNodeEvalState(
+            graph, model, B_uuid,
+            NodeEvalState::Outdated));
+
+        EXPECT_TRUE(test::comparePortData<double>(graph, model, {
+            {A_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE},
+            {B_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE},
+            {B_uuid, PortType::In , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE},
+            /// out data is outdated and has old value
+            {B_uuid, PortType::Out, PortIndex(0), PortDataState::Outdated, EXPECTED_VALUE}
+        }));
+    }
+
+    gtDebug() << "Triggering evaluation of node B...";
+
+    /// evaluate node B once -> make data valid
+    ASSERT_TRUE(exec::blockingEvaluation(*nodeB, model));
+
+    {
+        EXPECT_TRUE(test::compareNodeEvalState(
+            graph, model, {A_uuid, B_uuid},
+            NodeEvalState::Valid));
+
+        EXPECT_TRUE(test::comparePortData<double>(graph, model, {
+            {A_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE},
+            {B_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE},
+            {B_uuid, PortType::In , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE},
+            {B_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE * 2}
+        }));
+    }
+
+    gtDebug() << "Invalidating...";
+
+    ASSERT_TRUE(model.invalidateNode(A_uuid));
+
+    {
+        EXPECT_TRUE(test::compareNodeEvalState(
+            graph, model, {A_uuid, B_uuid, C_uuid, D_uuid},
+            NodeEvalState::Outdated));
+
+        EXPECT_TRUE(test::comparePortData<double>(graph, model, {
+            {A_uuid, PortType::Out, PortIndex(0), PortDataState::Outdated, EXPECTED_VALUE},
+            {B_uuid, PortType::In , PortIndex(0), PortDataState::Outdated, EXPECTED_VALUE},
+            {B_uuid, PortType::In , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE},
+            {B_uuid, PortType::Out, PortIndex(0), PortDataState::Outdated, EXPECTED_VALUE * 2}
+        }));
+    }
 }
 
 TEST(GraphExecutionModel, propagate_failed_evaluation)
