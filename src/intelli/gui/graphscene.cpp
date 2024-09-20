@@ -1,14 +1,16 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 17.7.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/gui/graphscene.h"
 
+#include "intelli/future.h"
 #include "intelli/connection.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/nodefactory.h"
@@ -291,10 +293,10 @@ GraphScene::~GraphScene()
 {
     if (!m_graph) return;
 
-    auto* model = m_graph->executionModel();
+    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
     if (!model) return;
 
-    model->disableAutoEvaluation();
+    model->stopAutoEvaluatingGraph();
 }
 
 void
@@ -307,17 +309,27 @@ GraphScene::reset()
 void
 GraphScene::beginReset()
 {
+    assert(m_graph);
+
     disconnect(m_graph);
+    if (auto* model = GraphExecutionModel::accessExecModel(*m_graph))
+    {
+        model->disconnect(this);
+    }
 }
 
 void
 GraphScene::endReset()
 {
+    assert(m_graph);
+
     m_nodes.clear();
 
-    auto* model = m_graph->executionModel();
-    if (!model) model = m_graph->makeExecutionModel();
-    else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
+    auto* root = m_graph->rootGraph();
+    assert(root);
+
+    auto* model = GraphExecutionModel::accessExecModel(*root);
+    if (!model) model = new GraphExecutionModel(*root);
 
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
@@ -339,7 +351,13 @@ GraphScene::endReset()
     connect(model, &GraphExecutionModel::nodeEvalStateChanged,
             this, &GraphScene::onNodeEvalStateChanged, Qt::DirectConnection);
 
-    if ( m_graph->isActive()) model->autoEvaluate().detach();
+    // update node eval states
+    for (auto* node : nodes)
+    {
+        onNodeEvalStateChanged(node->uuid());
+    }
+
+    if (root->isActive()) model->autoEvaluateGraph(*m_graph);
 }
 
 Graph&
@@ -380,8 +398,8 @@ GraphScene::nodeObject(NodeId nodeId)
                              [nodeId](NodeEntry const& e){
         return e.nodeId == nodeId;
     });
+    if (iter == m_nodes.end()) return nullptr;
 
-    if (iter == m_nodes.end()) return {};
     return iter->object;
 }
 
@@ -395,11 +413,11 @@ ConnectionGraphicsObject*
 GraphScene::connectionObject(ConnectionId conId)
 {
     auto iter = std::find_if(m_connections.begin(), m_connections.end(),
-                             [conId](ConnectionEntry const& e){ return e.conId == conId; });
-    if (iter == m_connections.end())
-    {
-        return nullptr;
-    }
+                             [conId](ConnectionEntry const& e){
+        return e.conId == conId;
+    });
+    if (iter == m_connections.end()) return nullptr;
+
     return iter->object;
 }
 
@@ -412,6 +430,10 @@ GraphScene::connectionObject(ConnectionId conId) const
 QMenu*
 GraphScene::createSceneMenu(QPointF scenePos)
 {
+// (adapted)
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     auto* menu = new QMenu;
 
     // Add filterbox to the context menu
@@ -516,6 +538,7 @@ GraphScene::createSceneMenu(QPointF scenePos)
     });
 
     return menu;
+// SPDX-SnippetEnd
 }
 
 void
@@ -666,10 +689,8 @@ GraphScene::pasteObjects()
         node->setPos(node->pos() + offset);
     }
 
-    auto cmd = gtApp->startCommand(m_graph, tr("Paste objects"));
-    auto cleanup = gt::finally([&](){
-        gtApp->endCommand(cmd);
-    });
+    auto cmd = gtApp->makeCommand(m_graph, tr("Paste objects"));
+    Q_UNUSED(cmd);
 
     // append objects
     auto newNodeIds = m_graph->appendObjects(uniqueNodes, uniqueConnections);
@@ -821,6 +842,8 @@ GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             if (!m_graph->canAppendConnections(conId)) continue;
 
             auto cmd = gtApp->makeCommand(m_graph, tr("Append %1").arg(toString(conId)));
+            Q_UNUSED(cmd);
+
             m_graph->appendConnection(std::make_unique<Connection>(conId));
             break;
         }
@@ -1104,9 +1127,6 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     groupNode->setPos(center);
     groupNode->setActive(true);
 
-    auto exec = groupNode->makeDummyExecutionModel();
-    exec->disableAutoEvaluation();
-
     // setup input/output provider
     groupNode->initInputOutputProviders();
     auto* inputProvider  = groupNode->inputProvider();
@@ -1339,7 +1359,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
             auto iter = std::find_if(shared.begin(), shared.end(), [conId](ConnectionId other){
                 return conId.outNodeId == other.outNodeId && conId.outPort == other.outPort;
             });
-            if ((success = iter != shared.end()))
+            if ((success = (iter != shared.end())))
             {
                 makeConnections(*iter, provider, index, type, false);
                 shared.erase(iter);
@@ -1375,12 +1395,6 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     for (ConnectionId const& conId : qAsConst(connectionsInternal))
     {
         groupNode->appendConnection(std::make_unique<Connection>(conId));
-    }
-
-    // enable auto evaluation if parent graph is auto evaluating
-    if (auto* parentExec = m_graph->executionModel())
-    {
-        if (parentExec->isAutoEvaluating()) exec->autoEvaluate().detach();
     }
 }
 
@@ -1430,13 +1444,18 @@ GraphScene::onNodeDeleted(NodeId nodeId)
 }
 
 void
-GraphScene::onNodeEvalStateChanged(NodeId nodeId)
+GraphScene::onNodeEvalStateChanged(NodeUuid const& nodeUuid)
 {
-    auto* node = nodeObject(nodeId);
-    if (!node) return;
+    auto* node = m_graph->findNodeByUuid(nodeUuid);
+    if (!node || node->parent() != m_graph) return;
 
-    auto exec = m_graph->executionModel();
-    node->setNodeEvalState(exec->nodeEvalState(nodeId));
+    auto* object = nodeObject(node->id());
+    assert(object);
+
+    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
+    assert(model);
+
+    object->setNodeEvalState(model->nodeEvalState(nodeUuid));
 }
 
 void
@@ -1568,8 +1587,8 @@ GraphScene::moveConnections(NodeGraphicsObject* object)
 {
     assert(object);
 
-    auto connections = m_graph->connectionModel().iterateConnections(object->nodeId());
-    for (auto const& conId : connections)
+    auto& conModel = m_graph->connectionModel();
+    for (auto const& conId : conModel.iterateConnections(object->nodeId()))
     {
         if (ConnectionGraphicsObject* con = connectionObject(conId))
         {

@@ -1,14 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 17.8.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-
-#ifndef GRAPHMODEL_H
-#define GRAPHMODEL_H
+#ifndef GT_INTELLI_GRAPHEXECMODEL_H
+#define GT_INTELLI_GRAPHEXECMODEL_H
 
 #include <intelli/graph.h>
 #include <intelli/nodedatainterface.h>
@@ -19,8 +19,8 @@ namespace intelli
 class Connection;
 class Graph;
 class Node;
-class FutureGraphEvaluated;
-class FutureNodeEvaluated;
+
+class ExecFuture;
 
 /**
  * @brief The GraphExecutionModel class.
@@ -31,132 +31,134 @@ class GT_INTELLI_EXPORT GraphExecutionModel : public QObject,
 {
     Q_OBJECT
 
+    static constexpr size_t PRE_ALLOC = 20;
+
 public:
 
-    enum Mode
-    {
-        DummyModel = 1,
-        ActiveModel = 2
-    };
-
-    GraphExecutionModel(Graph& graph, Mode mode = ActiveModel);
+    GraphExecutionModel(Graph& graph);
     ~GraphExecutionModel();
+
+    static GraphExecutionModel* accessExecModel(Graph& graph);
+    static GraphExecutionModel const* accessExecModel(Graph const& graph);
 
     Graph& graph();
     Graph const& graph() const;
 
-    void makeActive();
-    Mode mode() const;
-
     void reset();
 
-    NodeEvalState nodeEvalState(NodeId nodeId) const;
-
-    /**
-     * @brief Returns whether the underlying graph has been evaluated completly,
-     * i.e. all nodes have been evaluated once and their data is valid.
-     * @return Returns whether the graph has been evaluated.
-     */
-    bool isEvaluated() const;
-
-    /**
-     * @brief Returns whether the node has been evaluated and if its data is
-     * valid.
-     * @return Returns whether the graph has been evaluated.
-     */
-    bool isNodeEvaluated(NodeId nodeId) const;
-
-    /**
-     * @brief Whether the model is auto-evaluating the graph. When
-     * auto-evaluating changes to the input/output data of a node will trigger
-     * dependent nodes automatically.
-     * @return Is auto-evaluating
-     */
-    bool isAutoEvaluating() const;
-
-    /*
-     * @brief Tells the model to disable the auto evaluation (if it has been
-     * enabled)
-     */
-    void disableAutoEvaluation();
-
-    /**
-     * @brief Tells the model to auto evaluate the graph. When auto-evaluatiing
-     * changes to the input/output data of a node will trigger dependent nodes
-     * automatically.
-     * @return Future like object that can be used to pause until the evaluation
-     * finishes. The model must be kept alive for the life time of this object.
-     */
     GT_NO_DISCARD
-    FutureGraphEvaluated autoEvaluate();
+    NodeEvalState nodeEvalState(NodeUuid const& nodeUuid) const;
+
+    GT_NO_DISCARD
+    bool isGraphEvaluated() const;
+    GT_NO_DISCARD
+    bool isGraphEvaluated(Graph const& graph) const;
+    GT_NO_DISCARD
+    bool isNodeEvaluated(NodeUuid const& nodeUuid) const;
+
+    GT_NO_DISCARD
+    bool isAutoEvaluatingGraph() const;
+    GT_NO_DISCARD
+    bool isAutoEvaluatingGraph(Graph const& graph) const;
+
+    bool autoEvaluateGraph();
+    bool autoEvaluateGraph(Graph& graph);
+
+    GT_NO_DISCARD
+    ExecFuture evaluateGraph();
+    GT_NO_DISCARD
+    ExecFuture evaluateGraph(Graph& graph);
+    GT_NO_DISCARD
+    ExecFuture evaluateNode(NodeUuid const& nodeUuid);
+
+    void stopAutoEvaluatingGraph();
+    void stopAutoEvaluatingGraph(Graph& graph);
+
+    bool invalidateNode(NodeUuid const& nodeUuid);
+    bool invalidateNodeOutputs(NodeUuid const& nodeUuid);
+
+    [[deprecated]] NodeDataSet nodeData(NodeId nodeId, PortId portId) const;
+    [[deprecated]] bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data);
+
+    NodeDataSet nodeData(Graph const& graph, NodeId nodeId, PortId portId) const;
+    NodeDataSet nodeData(NodeUuid const& nodeUuid, PortId portId) const override;
+    NodeDataSet nodeData(NodeUuid const& nodeUuid, PortType type, PortIndex portIdx) const;
+    NodeDataPtrList nodeData(NodeUuid const& nodeUuid, PortType type) const override;
+
+    bool setNodeData(Graph const& graph, NodeId nodeId, PortId portId, NodeDataSet data);
+    bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet data) override;
+    bool setNodeData(NodeUuid const& nodeUuid, PortType type, PortIndex portIdx, NodeDataSet data);
+    bool setNodeData(NodeUuid const& nodeUuid, PortType type, NodeDataPtrList const& data) override;
 
     /**
-     * @brief Tells the model to evaluate the graph once. This will not keep the
-     * model evaluating if inputs/outputs change.
-     * @return Future like object that can be used to pause until the evaluation
-     * finishes. The model must be kept alive for the life time of this object.
+     * @brief Gives access to the internal exec model used to manage the
+     * execution states and data of all nodes.
+     * @return Execution data
      */
-    GT_NO_DISCARD
-    FutureGraphEvaluated evaluateGraph();
+    inline auto const& data() const { return m_data; }
 
-    /**
-     * @brief Tells the model to evaluate a single node. Multiple calls to this
-     * function with different nodes are allowed and will be handled accordinly
-     * @param nodeId
-     * @return Future like object that can be used to pause until the evaluation
-     * finishes. The model must be kept alive for the life time of this object.
-     */
-    GT_NO_DISCARD
-    FutureNodeEvaluated evaluateNode(NodeId nodeId);
+protected:
 
-    bool invalidateOutPorts(NodeId nodeId);
-    bool invalidatePort(NodeId nodeId, PortId portId);
-    bool invalidateNode(NodeId nodeId);
+    void setNodeEvaluationFailed(NodeUuid const& nodeUuid) override;
 
-    NodeDataSet nodeData(NodeId nodeId, PortId portId) const override;
-    NodeDataSet nodeData(NodeId nodeId, PortType type, PortIndex portIdx) const;
-    NodeDataPtrList nodeData(NodeId nodeId, PortType type) const;
-
-    bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data) override;
-    bool setNodeData(NodeId nodeId, PortType type, PortIndex idx, NodeDataSet data);
-    bool setNodeData(NodeId nodeId, PortType type, NodeDataPtrList const& data);
-
-    void debug(NodeId nodeId = invalid<NodeId>()) const;
+    void nodeEvaluationStarted(NodeUuid const& nodeUuid) override;
+    void nodeEvaluationFinished(NodeUuid const& nodeUuid) override;
 
 signals:
 
-    void nodeEvaluated(NodeId nodeId);
+    /**
+     * @brief Emitted once a node has been evaluated. This signal
+     * is always emitted in the next event loop cycle.
+     * @param nodeUuid Uuid of the evaluated node
+     */
+    void nodeEvaluated(QString const& nodeUuid, QPrivateSignal);
 
-    void graphEvaluated();
+    /**
+     * @brief Emitted once a node has failed to evaluate. This signal
+     * may be emitted in the next event loop cycle.
+     * @param nodeUuid Uuid of the evaluated node
+     */
+    void nodeEvaluationFailed(QString const& nodeUuid, QPrivateSignal);
 
-    void internalError();
+    /**
+     * @brief Emitted once a node's eval state has changed.
+     * @param nodeUuid Uuid of the affected node
+     */
+    void nodeEvalStateChanged(QString const& nodeUuid, QPrivateSignal);
 
-    void graphStalled();
+    /**
+     * @brief Emitted once an internal error has occured, that may result due to
+     * a node not being accessible anymore (e.g. because it has been deleted).
+     */
+    void internalError(QPrivateSignal);
 
-    void nodeEvalStateChanged(NodeId nodeId);
+    void graphStalled(QPrivateSignal);
+
+    void wakeup(QPrivateSignal);
 
 private:
 
-    struct Impl; // helper struct to "hide" implementation details
+    // helper struct to "hide" implementation details
+    struct Impl;
 
-    GraphData m_data;
-
+    /// assoicated graph
     QPointer<Graph> m_graph;
+    /// data model for all nodes and their ports
+    GraphDataModel m_data;
+    /// nodes that should be evaluated
+    QVarLengthArray<NodeUuid, PRE_ALLOC> m_targetNodes;
+    /// nodes that are pending
+    std::vector<NodeUuid> m_pendingNodes;
+    /// nodes that are ready and waiting for evaluation
+    QVarLengthArray<NodeUuid, PRE_ALLOC> m_queuedNodes;
+    /// nodes that are currently evaluating
+    QVarLengthArray<NodeUuid, PRE_ALLOC> m_evaluatingNodes;
 
-    Mode m_mode;
-
-    QVector<NodeId> m_targetNodes;
-
-    QVector<NodeId> m_pendingNodes;
-
-    QVector<NodeId> m_queuedNodes;
-
-    QVector<QPointer<Node>> m_evaluatingNodes;
-
-    // evaluation properties & flags
+    /// graphs that should be auto evaluated
+    QVarLengthArray<NodeUuid, PRE_ALLOC> m_autoEvaluatingGraphs;
+    /// indicator if the exec model is currently beeing modified and thus
+    /// should halt execution
     int m_modificationCount = 0;
-    bool m_autoEvaluate = false;
-    bool m_evaluatingPendingNodes = false;
 
     void beginReset();
 
@@ -173,110 +175,50 @@ private:
 
     void endModification();
 
-    bool invalidatePortEntry(NodeId nodeId, graph_data::PortEntry& port);
-
-    bool autoEvaluateNode(NodeId nodeId);
-
-    bool evaluateNodeDependencies(NodeId nodeId, bool reevaluate = false);
+    /**
+     * @brief Whether this model is currently undergoing modification and
+     * execution is halted
+     * @return Is being modified
+     */
+    bool isBeingModified() const;
 
     /**
-     * @brief Attempts to queue the node. Can only queue nodes that are ready
-     * for evaluation (i.e. their inputs are met and are not already evaluating)
-     * @param nodeId Node to queue
-     * @return Success if node could be queued
+     * @brief Setups connections between the given graph and this exec model.
+     * Required for updates to nodes and connections
+     * @param graph Grap to subscribe to
      */
-    bool queueNodeForEvaluation(NodeId nodeId);
-
-    bool evaluateNextInQueue();
-
-    void rescheduleTargetNodes();
-
-    QVector<NodeId> findRootNodes(QList<Node*> const& nodes) const;
-
-    QVector<NodeId> findLeafNodes(QList<Node*> const& nodes) const;
+    void setupConnections(Graph& graph);
 
 private slots:
 
+    /**
+     * @brief Method is directly invoked once a node has been evaluated.
+     * @param nodeUuid Uuid of the node that was evaluated
+     */
+    void onNodeEvaluated(NodeUuid const& nodeUuid);
+
     void onNodeAppended(Node* node);
 
-    void onNodeDeleted(NodeId nodeId);
+    void onNodeDeleted(Graph* graph, NodeId nodeId);
 
     void onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx);
 
     void onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, PortIndex idx);
 
+    void onConnectionAppended(ConnectionUuid conUuid);
+
+    void onConnectionDeleted(ConnectionUuid conUuid);
+
+    void onGraphDeleted();
+
     void onBeginGraphModification();
 
     void onEndGraphModification();
-
-    void onConnectedionAppended(Connection* con);
-
-    void onConnectionDeleted(ConnectionId conId);
-
-    void onNodeEvaluated();
 };
 
-/**
- * @brief The FutureGraphEvaluated class.
- * Helper class to await evaluation of a complete graph
- */
-class FutureGraphEvaluated
-{
-    friend class GraphExecutionModel;
-public:
-
-    FutureGraphEvaluated() = default;
-
-    GT_INTELLI_EXPORT
-        bool wait(std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
-
-    bool detach() { return hasStarted(); }
-
-    bool hasStarted() const { return m_model; }
-
-private:
-
-    explicit FutureGraphEvaluated(GraphExecutionModel* model) :
-        m_model(model)
-    {}
-
-    GraphExecutionModel* m_model;
-};
-
-/**
- * @brief The FutureNodeEvaluated class.
- * Helper class to await evaluation of a node
- */
-class FutureNodeEvaluated
-{
-    friend class GraphExecutionModel;
-public:
-
-    FutureNodeEvaluated() = default;
-
-    GT_INTELLI_EXPORT
-    bool wait(std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
-
-    GT_INTELLI_EXPORT
-    NodeDataSet get(PortId port, std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
-
-    GT_INTELLI_EXPORT
-    NodeDataSet get(PortType type, PortIndex idx, std::chrono::milliseconds timeout = std::chrono::milliseconds::max());
-
-    bool detach() { return hasStarted(); }
-
-    bool hasStarted() const { return m_model && m_targetNode != invalid<NodeId>(); }
-
-private:
-
-    explicit FutureNodeEvaluated(GraphExecutionModel* model, NodeId target) :
-        m_model(model), m_targetNode(target)
-    {}
-
-    GraphExecutionModel* m_model{};
-    NodeId m_targetNode{};
-};
+/// Outputs internal data of the graph exectuion model
+GT_INTELLI_EXPORT void debug(GraphExecutionModel const& model);
 
 } // namespace intelli
 
-#endif // GRAPHMODEL_H
+#endif // GT_INTELLI_GRAPHEXECMODEL_H

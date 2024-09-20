@@ -1,14 +1,16 @@
-/* GTlab - Gas Turbine laboratory
- * Source File:
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 06.03.2024
- *  Author: Jens Schmeink (AT-TWK)
- *  Tel.: +49 2203 601 2191
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
+
 #include "graphexeccalculator.h"
 #include <QRegExpValidator>
 
+#include <intelli/future.h>
 #include <intelli/graph.h>
 #include <intelli/graphexecmodel.h>
 
@@ -24,14 +26,12 @@
 #include "gt_stringproperty.h"
 #include "gt_boolproperty.h"
 
+using namespace intelli;
 
-namespace intelli
-
-{
 GraphExecCalculator::GraphExecCalculator() :
     m_intelli("intelli", tr("IntelliGraph"),
                 tr("Link to IntelliGraph"), "",
-                this, QStringList() << GT_CLASSNAME(intelli::Graph)),
+                this, QStringList() << GT_CLASSNAME(Graph)),
     m_numberNodeContainer("propertyNodes", "Property Nodes")//,
 {
 
@@ -73,17 +73,12 @@ GraphExecCalculator::GraphExecCalculator() :
 bool
 GraphExecCalculator::run()
 {
-    auto* graph1 = data<intelli::Graph*>(m_intelli);
-
-    if (!graph1)
+    auto* graph = data<Graph*>(m_intelli);
+    if (!graph)
     {
         gtError() << tr("IntelliGraph not found!");
         return false;
     }
-
-    GtObject* helper = graph1->copy();
-
-    intelli::Graph* graph = qobject_cast<intelli::Graph*>(helper);
 
     for (auto& prop : m_numberNodeContainer)
     {
@@ -155,17 +150,11 @@ GraphExecCalculator::run()
         }
     }
 
-    intelli::GraphExecutionModel model(*graph);
-    model.reset();
+    GraphExecutionModel model(*graph);
 
-    bool success = model.evaluateGraph().wait();
+    /// TODO: enable custom timeout
+    bool success = model.evaluateGraph().wait(std::chrono::minutes{5});
 
-    graph->deleteLater();
-
-    /// ToDo:
-    /// Add monitoring information if possible
-
+    /// TODO: Add monitoring information if possible
     return success;
-}
-
 }

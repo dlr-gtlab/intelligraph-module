@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: IntelliGraph
+Upstream-Contact: Marius Bröcker <marius.broecker@dlr.de>
+Source: 
+
+Files: .bumpversion.cfg *.md src/resources/* src/intelli/module.json
+Copyright: 2023 German Aerospace Center (DLR) <marius.broecker@dlr.de>
+License: BSD-3-Clause

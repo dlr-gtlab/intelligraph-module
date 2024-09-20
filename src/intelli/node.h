@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 3.4.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #ifndef GT_INTELLI_NODE_H
@@ -26,46 +27,78 @@ enum NodeFlag
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
     Unique      = 1 << 2,
-
     /// Indicates that the widget should be placed so that its size can be maximized
     MaximizeWidget = 1 << 4,
     /// Indicates node is resizeable
     Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
     ResizableHOnly = 1 << 6,
-
-    /// Indicates that the node is evaluating (will be set automatically)
-    Evaluating  = 1 << 7,
-
+    /// Indicates that the node is evaluating
+    Evaluating = 1 << 7,
     /// default node flags
     DefaultNodeFlags = NoFlag,
-
-    /// mask to check if node is resizable
-    IsResizableMask = Resizable | ResizableHOnly
 };
 
 using NodeFlags = unsigned int;
+
+/// mask to check if node is resizable
+constexpr size_t IsResizableMask = Resizable | ResizableHOnly;
+/// mask to check if node should be evaluated in separate thread
+constexpr size_t IsDetachedMask = 1 << 0;
+/// mask to check if node should be evaluated in main thread
+constexpr size_t IsBlockingMask = 1 << 1;
+/// mask to check if node should be evaluated exclusively
+constexpr size_t IsExclusiveMask = 1 << 2;
 
 enum class NodeEvalMode
 {
     /// Indicates that the node will be evaluated non blockingly in a separate
     /// thread
-    Detached = 0,
-    /// Indicates that the node should be evaluated exclusively to other nodes
-    Exclusive,
+    Detached = IsDetachedMask,
     /// Indicates that the node should be evaluated in the main thread, thus
     /// blocking the GUI. Should only be used if node evaluates instantly.
-    Blocking,
+    Blocking = IsBlockingMask,
+    /// Indicates that the node should be evaluated exclusively to other nodes in
+    /// a separate thread
+    ExclusiveDetached = IsExclusiveMask | IsDetachedMask,
+    /// Indicates that the node should be evaluated exclusively to other nodes in
+    /// the main thread
+    ExclusiveBlocking = IsExclusiveMask | IsBlockingMask,
+    /// Inidcates that the inputs of the node should be forwarded to the outputs
+    /// of the node
+    ForwardInputsToOutputs = 1 << 3 | IsBlockingMask,
     /// Default behaviour
     Default = Detached,
+
+    /// deprecated
+    Exclusive [[deprecated("Use `ExclusiveDetached` or `ExclusiveBlocking` instead")]] = ExclusiveDetached,
     /// deprecated
     MainThread [[deprecated("Use `Blocking` instead")]] = Blocking,
 };
 
-class NodeExecutor;
+class INode;
+class Node;
 class NodeData;
 class NodeDataInterface;
-class GraphExecutionModel;
+
+namespace exec
+{
+
+GT_INTELLI_EXPORT bool blockingEvaluation(Node& node, NodeDataInterface& model);
+
+GT_INTELLI_EXPORT bool detachedEvaluation(Node& node, NodeDataInterface& model);
+
+GT_INTELLI_EXPORT void setNodeDataInterface(Node& node, NodeDataInterface* model);
+
+GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
+
+/**
+ * @brief Triggers the evaluation of the node.
+ * @return success
+ */
+GT_INTELLI_EXPORT bool triggerNodeEvaluation(Node& node, NodeDataInterface& model);
+
+}
 
 /**
  * @brief Attempts to convert `data` to into the desired type. If
@@ -102,7 +135,7 @@ class GT_INTELLI_EXPORT Node : public GtObject
 {
     Q_OBJECT
     
-    friend class NodeExecutor;
+    friend class INode;
     friend class NodeGraphicsObject;
     friend class GraphExecutionModel;
 
@@ -433,13 +466,13 @@ signals:
 
     /**
      * @brief Emitted once the node evaluation has started. Will update the node
-     * flags `RequiresEvaluation` and `Evaluating` automatically.
+     * flag `Evaluating` automatically.
      */
     void computingStarted();
     
     /**
-     * @brief Emitted once the node evaluation has finished. Will update the
-     * node flag `Evaluating` automatically.
+     * @brief Emitted once the node evaluation has finished. Will update the node
+     * flag `Evaluating` automatically.
      */
     void computingFinished();
 
@@ -526,15 +559,9 @@ protected:
     virtual void eval();
 
     /**
-     * @brief Handles the evaluation of the node. This method is not intended to
-     * actually do the evaluation (use `eval` instead), but to handle/manage the
-     * execution of the node. Should only be overriden in rare cases.
-     * Note: When overriding do not forget to emit the `computingStarted` and
-     * `computingFinished` respectively.
-     * @return Returns true if the evaluation was triggered sucessfully.
-     * (node may be evaluated non-blocking)
+     * @brief Can be called to indicate that the node evaluation failed.
      */
-    virtual bool handleNodeEvaluation(GraphExecutionModel& model);
+    void evalFailed();
 
     /**
      * @brief Should be called within the constructor. Used to register

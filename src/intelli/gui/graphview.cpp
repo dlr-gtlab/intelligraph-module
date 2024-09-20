@@ -1,15 +1,17 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/* 
+ * GTlab IntelliGraph
  *
- *  Created on: 17.7.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ * 
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
 #include "intelli/gui/style.h"
+#include "intelli/future.h"
 #include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
 
@@ -451,9 +453,10 @@ GraphView::setScene(GraphScene& scene)
         {
             if (&s->graph() != &graph) return;
 
-            auto* exec = graph.executionModel();
-            bool isAutoEvaluating = exec && exec->isAutoEvaluating();
+            auto* model = GraphExecutionModel::accessExecModel(graph);
+            if (!model || &(model->graph()) != &graph) return;
 
+            bool isAutoEvaluating = model->isAutoEvaluatingGraph();
             m_startAutoEvalBtn->setVisible(!isAutoEvaluating);
             m_stopAutoEvalBtn->setVisible(isAutoEvaluating);
         }
@@ -469,16 +472,18 @@ GraphView::setScene(GraphScene& scene)
 
     connect(m_startAutoEvalBtn, &QPushButton::clicked,
             this, [this](){
-        if (auto* s = nodeScene())
+        if (auto* scene = nodeScene())
+        if (auto* model = GraphExecutionModel::accessExecModel(scene->graph()))
         {
-            s->graph().setActive(true);
+            model->autoEvaluateGraph();
         }
     });
     connect(m_stopAutoEvalBtn, &QPushButton::clicked,
             this, [this](){
-        if (auto* s = nodeScene())
+        if (auto* scene = nodeScene())
+        if (auto* model = GraphExecutionModel::accessExecModel(scene->graph()))
         {
-            s->graph().setActive(false);
+            model->stopAutoEvaluatingGraph();
         }
     });
     connect(m_snapToGridBtn, &QPushButton::clicked,
@@ -680,6 +685,10 @@ GraphView::wheelEvent(QWheelEvent* event)
         }
     }
 
+// (refactored)
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     QPoint delta = event->angleDelta();
 
     if (delta.y() == 0)
@@ -690,11 +699,15 @@ GraphView::wheelEvent(QWheelEvent* event)
     double const d = delta.y() / std::abs(delta.y());
 
     (d > 0.0) ? scaleUp() : scaleDown();
+// SPDX-SnippetEnd
 }
 
 void
 GraphView::keyPressEvent(QKeyEvent* event)
 {
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     switch (event->key())
     {
     case Qt::Key_Shift:
@@ -705,11 +718,15 @@ GraphView::keyPressEvent(QKeyEvent* event)
     }
 
     QGraphicsView::keyPressEvent(event);
+// SPDX-SnippetEnd
 }
 
 void
 GraphView::keyReleaseEvent(QKeyEvent* event)
 {
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     switch (event->key())
     {
     case Qt::Key_Shift:
@@ -719,21 +736,29 @@ GraphView::keyReleaseEvent(QKeyEvent* event)
         break;
     }
     QGraphicsView::keyReleaseEvent(event);
+// SPDX-SnippetEnd
 }
 
 void
 GraphView::mousePressEvent(QMouseEvent* event)
 {
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     QGraphicsView::mousePressEvent(event);
     if (event->button() & Qt::LeftButton)
     {
         m_panPosition = mapToScene(event->pos());
     }
+// SPDX-SnippetEnd
 }
 
 void
 GraphView::mouseMoveEvent(QMouseEvent* event)
 {
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
+// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     QGraphicsView::mouseMoveEvent(event);
     if (scene() && !scene()->mouseGrabberItem() && event->buttons() & Qt::LeftButton)
     {
@@ -744,6 +769,7 @@ GraphView::mouseMoveEvent(QMouseEvent* event)
             setSceneRect(sceneRect().translated(difference.x(), difference.y()));
         }
     }
+// SPDX-SnippetEnd
 }
 
 GraphScene*

@@ -1,13 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * Source File:
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 28.02.2024
- *  Author: Jens Schmeink (AT-TWK)
- *  Tel.: +49 2203 601 2191
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
-#ifndef BOOLINPUTNODE_H
-#define BOOLINPUTNODE_H
+
+#ifndef GT_INTELLI_BOOLINPUTNODE_H
+#define GT_INTELLI_BOOLINPUTNODE_H
 
 #include <gt_boolproperty.h>
 
@@ -30,5 +31,7 @@ public:
 private:
     PortId m_out;
 };
+
 } // namespace intelli
-#endif // NPBOOLINPUTNODE_H
+
+#endif // GT_INTELLI_BOOLINPUTNODE_H

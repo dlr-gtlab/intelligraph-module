@@ -1,13 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- * Created on: 16.03.2023
- * Author: S. Reitenbach
- * Email:
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef NDSNODEEDITOR_H
-#define NDSNODEEDITOR_H
+#ifndef GT_INTELLI_GRAPHEDITOR_H
+#define GT_INTELLI_GRAPHEDITOR_H
 
 #include <intelli/memory.h>
 #include <intelli/gui/graphscene.h>
@@ -49,4 +50,4 @@ private:
 
 } // namespace intelli
 
-#endif // NDSNODEEDITOR_H
+#endif // GT_INTELLI_GRAPHEDITOR_H

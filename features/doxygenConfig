@@ -1,4 +1,9 @@
-# Doxyfile 1.9.1
+#  GTlab Intelligraph
+#
+#  Doxyfile 1.9.1
+#
+#  SPDX-License-Identifier: CC0-1.0
+#  SPDX-FileCopyrightText: 2024 German Aerospace Center
 
 # This file describes the settings to be used by the documentation system
 # doxygen (www.doxygen.org) for a project.

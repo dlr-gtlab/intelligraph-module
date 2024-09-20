@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/* 
+ * GTlab IntelliGraph
  *
- *  Created on: 17.8.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ * 
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include "test_helper.h"
@@ -15,11 +16,6 @@
 #include <gt_objectmemento.h>
 #include <gt_objectmementodiff.h>
 #include <gt_objectfactory.h>
-
-//template <typename Iter, typename GetOp/*, typename IncOp, typename EqualOp*/>
-//auto make_proxy(Iter iter, GetOp op/*, IncOp inc, EqualOp eq*/) {
-//    return proxy_iterator<Iter, op>{iter /*, get/*, inc, eq*/};
-//}
 
 using namespace intelli;
 
@@ -233,7 +229,6 @@ TEST(Graph, connection_model_iterate_over_connected_nodes_by_port)
     auto riPort = iPort.reverse();
     EXPECT_EQ(std::distance(riPort.begin(), riPort.end()), 2);
 }
-
 
 TEST(Graph, predessecors_and_successors)
 {

@@ -1,16 +1,17 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 3.4.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include "intelli/node.h"
 
-#include "intelli/graphexecmodel.h"
 #include "intelli/nodedatafactory.h"
-#include "intelli/nodeexecutor.h"
+#include "intelli/nodedatainterface.h"
+#include "intelli/exec/detachedexecutor.h"
 #include "intelli/private/node_impl.h"
 #include "intelli/private/utils.h"
 
@@ -28,21 +29,6 @@ intelli::convert(NodeDataPtr const& data, TypeId const& to)
     // forwarding call
     return NodeDataFactory::instance().convert(data, to);
 }
-
-namespace
-{
-
-template <typename N, typename P>
-inline auto* dataInterface(N* node, P& pimpl)
-{
-    NodeDataInterface* model = pimpl->dataInterface;
-
-    if (!model) model = NodeExecutor::accessExecModel(*const_cast<Node*>(node));
-
-    return model;
-}
-
-} // namespace
 
 std::unique_ptr<QWidget>
 intelli::makeBaseWidget()
@@ -96,15 +82,6 @@ Node::Node(QString const& modelName, GtObject* parent) :
         emit isActiveChanged();
     });
 
-    connect(this, &Node::computingStarted, this, [this](){
-        setNodeFlag(NodeFlag::Evaluating, true);
-    }, Qt::DirectConnection);
-
-    connect(this, &Node::computingFinished, this, [this](){
-        setNodeFlag(NodeFlag::Evaluating, false);
-        emit evaluated();
-    }, Qt::DirectConnection);
-
     connect(this, &Node::portConnected, this, [this](PortId portId){
         auto* port = this->port(portId);
         if (port) port->m_isConnected = true;
@@ -113,6 +90,16 @@ Node::Node(QString const& modelName, GtObject* parent) :
     connect(this, &Node::portDisconnected, this, [this](PortId portId){
         auto* port = this->port(portId);
         if (port) port->m_isConnected = false;
+    }, Qt::DirectConnection);
+
+    connect(this, &Node::computingStarted, this, [this](){
+        setNodeFlag(NodeFlag::Evaluating, true);
+    gtDebug() << "COMPUTING STARTED" << caption();
+    }, Qt::DirectConnection);
+
+    connect(this, &Node::computingFinished, this, [this](){
+        setNodeFlag(NodeFlag::Evaluating, false);
+    gtDebug() << "COMPUTING ENDED" << caption();
     }, Qt::DirectConnection);
 }
 
@@ -359,7 +346,7 @@ Node::removePort(PortId id)
 Node::NodeDataPtr
 Node::nodeData(PortId id) const
 {
-    auto* model = dataInterface(this, pimpl);
+    auto* model = pimpl->dataInterface;
     if (!model)
     {
         gtWarning().nospace()
@@ -368,13 +355,13 @@ Node::nodeData(PortId id) const
         return {};
     }
 
-    return model->nodeData(this->id(), id);
+    return model->nodeData(this->uuid(), id);
 }
 
 bool
 Node::setNodeData(PortId id, NodeDataPtr data)
 {
-    auto* model = dataInterface(this, pimpl);
+    auto* model = pimpl->dataInterface;
     if (!model)
     {
         gtWarning().nospace()
@@ -383,7 +370,7 @@ Node::setNodeData(PortId id, NodeDataPtr data)
         return false;
     }
 
-    return model->setNodeData(this->id(), id, std::move(data));
+    return model->setNodeData(this->uuid(), id, std::move(data));
 }
 
 Node::PortInfo*
@@ -452,22 +439,19 @@ Node::eval()
     // nothing to do here
 }
 
-bool
-Node::handleNodeEvaluation(GraphExecutionModel& model)
+void
+Node::evalFailed()
 {
-    switch (pimpl->evalMode)
+    auto* model = pimpl->dataInterface;
+    if (!model)
     {
-    case NodeEvalMode::Exclusive:
-    case NodeEvalMode::Detached:
-        return detachedEvaluation(*this, model);
-    case NodeEvalMode::Blocking:
-        return blockingEvaluation(*this, model);
+        gtWarning().nospace()
+            << objectName() << ": "
+            << tr("Failed to set node evaluation status, evaluation model not found!");
+        return;
     }
 
-    gtError().nospace()
-        << objectName() << ": "
-        << tr("Unkonw eval mode! (%1)").arg((int)pimpl->evalMode);
-    return false;
+    model->setNodeEvaluationFailed(uuid());
 }
 
 void
@@ -482,4 +466,105 @@ Node::registerWidgetFactory(WidgetFactoryNoArgs factory)
     registerWidgetFactory([f = std::move(factory)](Node&){
         return f();
     });
+}
+
+//////////////////////////////////////////////////////
+
+/**
+ * @brief The INode class. Helper class to access private or protected
+ * members of a Node outside the node.
+ */
+class intelli::INode
+{
+    INode() = delete;
+
+public:
+
+    static void evaluateNode(Node& node)
+    {
+        node.eval();
+    }
+
+    static void setNodeDataInterface(Node& node, NodeDataInterface* interface)
+    {
+        node.pimpl->dataInterface = interface;
+    }
+
+    static NodeDataInterface* nodeDataInterface(Node& node)
+    {
+        return node.pimpl->dataInterface;
+    }
+
+    static bool triggerNodeEvaluation(Node& node, NodeDataInterface& interface)
+    {
+        size_t evalFlag = (size_t)node.nodeEvalMode();
+
+        if (evalFlag & IsDetachedMask)
+        {
+            return exec::detachedEvaluation(node, interface);
+        }
+        if (evalFlag & IsBlockingMask)
+        {
+            return exec::blockingEvaluation(node, interface);
+        }
+
+        gtError().nospace()
+            << node.objectName() << ": "
+            << QObject::tr("Unhandled eval mode! (%1)").arg((size_t)evalFlag);
+
+        return false;
+    }
+};
+
+bool
+intelli::exec::detachedEvaluation(Node& node, NodeDataInterface& model)
+{
+    if (node.findChild<DetachedExecutor*>())
+    {
+        gtError() << QObject::tr("Node %1 already has a executor!").arg(node.id());
+        return false;
+    }
+
+    auto executor = new DetachedExecutor;
+    executor->setParent(&node);
+
+    return executor->evaluateNode(node, model);
+}
+
+bool
+intelli::exec::blockingEvaluation(Node& node, NodeDataInterface& model)
+{
+    auto cmd = model.nodeEvaluation(node.uuid());
+    Q_UNUSED(cmd);
+
+    // cleanup routine
+    auto finally = gt::finally([&node](){
+        emit node.computingFinished();
+    });
+    Q_UNUSED(finally);
+
+    emit node.computingStarted();
+
+    INode::setNodeDataInterface(node, &model);
+    INode::evaluateNode(node);
+
+    return true;
+}
+
+bool
+intelli::exec::triggerNodeEvaluation(Node& node, NodeDataInterface& model)
+{
+    return INode::triggerNodeEvaluation(node, model);
+}
+
+void
+intelli::exec::setNodeDataInterface(Node& node, NodeDataInterface* model)
+{
+    return INode::setNodeDataInterface(node, model);
+}
+
+NodeDataInterface*
+intelli::exec::nodeDataInterface(Node& node)
+{
+    return INode::nodeDataInterface(node);
 }

@@ -1,17 +1,19 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 4.10.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-
-#ifndef NODEDATAINTERFACE_H
-#define NODEDATAINTERFACE_H
+#ifndef GT_INTELLI_NODEDATAINTERFACE_H
+#define GT_INTELLI_NODEDATAINTERFACE_H
 
 #include <intelli/exports.h>
 #include <intelli/globals.h>
+
+#include <gt_finally.h>
 
 namespace intelli
 {
@@ -19,37 +21,82 @@ namespace intelli
 class Node;
 class Graph;
 
-enum class NodeState
-{
-    Evaluated,
-    RequiresReevaluation
-};
-
-namespace graph_data
+namespace data_model
 {
 
-struct PortEntry
+struct PortDataItem
 {
     /// referenced port
-    PortId id;
+    PortId portId;
     /// actual data at port
     NodeDataSet data{nullptr};
 };
 
-struct Entry
+struct DataItem
 {
-    /// in and out ports
-    QVector<PortEntry> portsIn{}, portsOut{};
+    static constexpr size_t PRE_ALLOC = 8;
 
-    NodeState state = NodeState::RequiresReevaluation;
+    explicit DataItem() {}
+
+    /// in and out ports
+    QVarLengthArray<PortDataItem, PRE_ALLOC> portsIn{}, portsOut{};
+    /// internal evalution state
+    NodeEvalState state = NodeEvalState::Outdated;
+
+    bool isPending = false;
+
+    /**
+     * @brief Returns the ancestors or descendants depending on the port type
+     * @param type Port type
+     * @return Port vector
+     */
+    auto& ports(PortType type)
+    {
+        assert(type != PortType::NoType);
+        return (type == PortType::In) ? portsIn : portsOut;
+    }
+    auto const& ports(PortType type) const
+    {
+        return const_cast<DataItem*>(this)->ports(type);
+    }
+
+    /**
+     * @brief Returns the port data item associated with `portId`. If `typeOut`
+     * is not null, it will hold whether the port is an output or input.
+     * @param portId Port id to find
+     * @param typeOut Out: Port type
+     * @return Port data item
+     */
+    PortDataItem* findPort(PortId portId, PortType* typeOut = nullptr)
+    {
+        PortType type = PortType::In;
+        for (auto* ports : {&portsIn, &portsOut})
+        {
+            auto portIter = std::find_if(ports->begin(), ports->end(),
+                                         [portId](PortDataItem const& port){
+                                             return port.portId == portId;
+            });
+
+            if (portIter != ports->end())
+            {
+                if (typeOut) *typeOut = type;
+                return portIter;
+            }
+            type = PortType::Out;
+        }
+        return {};
+    }
+    PortDataItem const* findPort(PortId portId, PortType* typeOut = nullptr) const
+    {
+        return const_cast<DataItem*>(this)->findPort(portId, typeOut);
+    }
 };
 
-using DataModel [[deprecated("Use 'GraphData' instead")]] = QHash<NodeId, Entry>;
-using GraphData = QHash<NodeId, Entry>;
+using GraphDataModel = QHash<NodeUuid, DataItem>;
 
-} // namesace graph_data
+} // namespace data_model
 
-using graph_data::GraphData;
+using data_model::GraphDataModel;
 
 /**
  * @brief The NodeDataInterface class.
@@ -61,11 +108,36 @@ public:
 
     virtual ~NodeDataInterface() = default;
 
-    virtual NodeDataSet nodeData(NodeId nodeId, PortId portId) const = 0;
+    virtual NodeDataSet nodeData(NodeUuid const& nodeUuid, PortId portId) const = 0;
+    virtual NodeDataPtrList nodeData(NodeUuid const& nodeUuid, PortType type) const = 0;
 
-    virtual bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data) = 0;
+    virtual bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet data) = 0;
+    virtual bool setNodeData(NodeUuid const& nodeUuid, PortType type, NodeDataPtrList const& data) = 0;
+
+    virtual void setNodeEvaluationFailed(NodeUuid const& nodeUuid) {}
+
+    struct NodeEvaluationEndedFunctor
+    {
+        inline void operator()() const noexcept
+        {
+            if (i) i->nodeEvaluationFinished(uuid);
+        }
+        NodeDataInterface* i{};
+        NodeUuid uuid{};
+    };
+
+    using ScopedEvaluation = gt::Finally<NodeEvaluationEndedFunctor>;
+
+    ScopedEvaluation nodeEvaluation(NodeUuid const& nodeUuid)
+    {
+        nodeEvaluationStarted(nodeUuid);
+        return gt::finally(NodeEvaluationEndedFunctor{this, nodeUuid});
+    }
+
+    virtual void nodeEvaluationStarted(NodeUuid const& nodeUuid) {}
+    virtual void nodeEvaluationFinished(NodeUuid const& nodeUuid) {}
 };
 
 } // namespace intelli
 
-#endif // NODEDATAINTERFACE_H
+#endif // GT_INTELLI_NODEDATAINTERFACE_H

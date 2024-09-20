@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 3.4.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #ifndef GT_INTELLI_GRAPH_H
@@ -280,21 +281,6 @@ public:
     DynamicNode const* outputNode() const;
 
     /**
-     * @brief Constructs an execution model. Each graph has it's own
-     * execution model. If one already exists, this will be returned.
-     * @return Execution model, may be null.
-     */
-    GraphExecutionModel* makeExecutionModel();
-
-    /**
-     * @brief Returns the exection model of this graph. Each graph has it's own
-     * execution model.
-     * @return Execution model, may be null.
-     */
-    GraphExecutionModel* executionModel();
-    GraphExecutionModel const* executionModel() const;
-
-    /**
      * @brief Finds all dependencies of the node referred by `nodeId`
      * @param nodeId Node to find dependencies of
      * @return Dependencies
@@ -514,8 +500,6 @@ signals:
     void nodePositionChanged(NodeId nodeId, QPointF pos);
 
 protected:
-
-    bool handleNodeEvaluation(GraphExecutionModel& model) override;
     
     void eval() override;
 
@@ -557,15 +541,7 @@ private:
     void appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targetNode);
     void appendGlobalConnection(Connection* guard, ConnectionUuid conUuid);
 
-    GraphExecutionModel* makeDummyExecutionModel();
-
     void updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr);
-
-private slots:
-
-    void onSubNodeEvaluated(NodeId nodeId);
-
-    void onSubGraphStalled();
 };
 
 } // namespace intelli

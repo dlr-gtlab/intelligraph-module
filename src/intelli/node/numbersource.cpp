@@ -1,11 +1,11 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 21.6.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/node/numbersource.h"
 
@@ -38,6 +38,7 @@ NumberSourceNode::NumberSourceNode() :
         // react to user inputs
         auto const updateProp = [this, w_ = w.get()](){
             double tmp = w_->text().toDouble();
+            // cppcheck-suppress duplicateConditionalAssign
             if (m_value != tmp) m_value = tmp;
         };
         connect(w.get(), &GtLineEdit::focusOut, this, updateProp);
