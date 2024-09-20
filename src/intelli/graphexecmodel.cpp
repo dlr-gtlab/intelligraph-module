@@ -189,6 +189,7 @@ findPortDataEntry(GraphExecutionModel& model, NodeId nodeId, PortId portId)
     }
 
     PortIndex idx(0);
+    // cppcheck-suppress shadowFunction
     for (auto* ports : {&entry->portsIn, &entry->portsOut})
     {
         for (auto& port : *ports)

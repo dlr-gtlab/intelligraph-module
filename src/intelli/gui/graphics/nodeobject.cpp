@@ -301,6 +301,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
 
     auto accept = gt::finally(event, &QEvent::accept);
+    Q_UNUSED(accept);
 
     // bring this node forward
     setZValue(style::zValue(style::ZValue::NodeHovered));
@@ -319,9 +320,8 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     // check for resize handle hit
     if (hasResizeHandle())
     {
-        auto pos = event->pos();
-        bool hit = m_geometry->resizeHandleRect().contains(pos);
-        if (hit)
+        bool resize = m_geometry->resizeHandleRect().contains(event->pos());
+        if (resize)
         {
             m_state = Resizing;
             return;
@@ -361,6 +361,7 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         if (auto w = m_proxyWidget->widget())
         {
             auto change = Impl::prepareGeometryChange(this);
+            Q_UNUSED(change);
 
             QSize oldSize = w->size();
             oldSize += QSize(diff.x(), (m_node->nodeFlags() & ResizableHOnly) ? 0 : diff.y());
@@ -444,7 +445,8 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 {
     QPointF pos = event->pos();
 
-    auto finally = gt::finally(event, &QEvent::accept);
+    auto accept = gt::finally(event, &QEvent::accept);
+    Q_UNUSED(accept);
 
     // check for resize handle hit and change cursor
     if (hasResizeHandle() && m_geometry->resizeHandleRect().contains(pos))
@@ -534,6 +536,7 @@ void
 NodeGraphicsObject::onNodeChanged()
 {
     auto change = Impl::prepareGeometryChange(this);
+    Q_UNUSED(change);
 
     m_geometry->recomputeGeomtry();
     updateChildItems();

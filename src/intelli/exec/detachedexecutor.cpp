@@ -32,7 +32,7 @@ class DummyDataModel : public NodeDataInterface
 {
 public:
 
-    DummyDataModel(Node& node) :
+    explicit DummyDataModel(Node& node) :
         m_node(&node)
     {
         NodeExecutor::setNodeDataInterface(node, this);
@@ -60,10 +60,13 @@ public:
         NodeDataPtrList data;
 
         auto const& ports = type == PortType::In ? &m_data.portsIn : &m_data.portsOut;
-        for (auto& port : *ports)
-        {
-            data.push_back({m_node->portIndex(type, port.id), port.data});
-        }
+        std::transform(ports->begin(), ports->end(),
+                       std::back_inserter(data),
+                       [this, type](auto& port){
+            using T = typename NodeDataPtrList::value_type;
+            return T{m_node->portIndex(type, port.id), port.data};
+        });
+
         return data;
     }
 
@@ -101,10 +104,11 @@ private:
 
         for (auto const* ports : {&m_data.portsIn, &m_data.portsOut})
         {
-            for (auto const& p : *ports)
-            {
-                if (p.id == portId) return p.data;
-            }
+            auto iter = std::find_if(ports->begin(), ports->end(),
+                                     [portId](auto const& port){
+                return port.id == portId;
+            });
+            if (iter != ports->end()) return iter->data;
         }
 
         gtWarning() << QObject::tr("DummyExecModel: Failed to access data of node %1! "
@@ -126,13 +130,14 @@ private:
 
         for (auto* ports : {&m_data.portsIn, &m_data.portsOut})
         {
-            for (auto& p : *ports)
+            auto iter = std::find_if(ports->begin(), ports->end(),
+                                     [portId](auto const& port){
+                return port.id == portId;
+            });
+            if (iter != ports->end())
             {
-                if (p.id == portId)
-                {
-                    p.data = std::move(data);
-                    return true;
-                }
+                iter->data = std::move(data);
+                return true;
             }
         }
 
@@ -420,7 +425,7 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
             }
 
             // set data
-            DummyDataModel model(*node);
+            DummyDataModel model{*node};
 
             bool success = true;
             success &= model.setNodeData(PortType::In,  inData);

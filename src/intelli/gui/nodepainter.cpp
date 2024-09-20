@@ -228,7 +228,7 @@ NodePainter::drawPortCaption(QPainter& painter,
     auto& factory = NodeDataFactory::instance();
 
     painter.setBrush(Qt::NoBrush);
-    painter.setPen(flags & PortConnected ?
+    painter.setPen((flags & PortConnected) ?
                        gt::gui::color::text() :
                        gt::gui::color::disabled());
 

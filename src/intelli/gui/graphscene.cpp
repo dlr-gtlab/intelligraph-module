@@ -672,10 +672,8 @@ GraphScene::pasteObjects()
         node->setPos(node->pos() + offset);
     }
 
-    auto cmd = gtApp->startCommand(m_graph, tr("Paste objects"));
-    auto cleanup = gt::finally([&](){
-        gtApp->endCommand(cmd);
-    });
+    auto cmd = gtApp->makeCommand(m_graph, tr("Paste objects"));
+    Q_UNUSED(cmd);
 
     // append objects
     auto newNodeIds = m_graph->appendObjects(uniqueNodes, uniqueConnections);
@@ -827,6 +825,8 @@ GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             if (!m_graph->canAppendConnections(conId)) continue;
 
             auto cmd = gtApp->makeCommand(m_graph, tr("Append %1").arg(toString(conId)));
+            Q_UNUSED(cmd);
+
             m_graph->appendConnection(std::make_unique<Connection>(conId));
             break;
         }
@@ -1345,7 +1345,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
             auto iter = std::find_if(shared.begin(), shared.end(), [conId](ConnectionId other){
                 return conId.outNodeId == other.outNodeId && conId.outPort == other.outPort;
             });
-            if ((success = iter != shared.end()))
+            if ((success = (iter != shared.end())))
             {
                 makeConnections(*iter, provider, index, type, false);
                 shared.erase(iter);

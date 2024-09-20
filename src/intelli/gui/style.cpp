@@ -159,6 +159,7 @@ intelli::style::currentStyle()
 StyleData const*
 intelli::style::findStyle(StyleId const& id)
 {
+    // cppcheck-suppress shadowFunction
     auto const& styles = ::styles();
     auto iter = styles.find(id);
     if (iter == styles.end()) return nullptr;

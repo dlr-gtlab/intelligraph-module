@@ -33,6 +33,7 @@ LogicSourceNode::LogicSourceNode() :
         base->layout()->addWidget(w);
 
         connect(w, &LogicDisplayWidget::valueChanged, this, [this](bool newVal){
+            // cppcheck-suppress duplicateConditionalAssign
             if (m_value != newVal) m_value = newVal;
         });
 

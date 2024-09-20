@@ -182,7 +182,7 @@ ConnectionGraphicsObject::controlPoints() const
         {
             constexpr double maxHorizontalOffset = 10;
 
-            double yDistance = m_end.y() - m_start.y();
+            yDistance = m_end.y() - m_start.y();
 
             verticalOffset  = std::abs(yDistance) * 0.5;
             verticalOffset *= (yDistance < 0) ? -1.0 : 1.0;

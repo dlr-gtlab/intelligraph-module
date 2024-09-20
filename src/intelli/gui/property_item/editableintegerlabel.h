@@ -21,8 +21,8 @@ class EditableIntegerLabel : public QStackedWidget
 {  
     Q_OBJECT
 public:
-    Q_INVOKABLE EditableIntegerLabel(QString const& text,
-                                     QWidget* parent = nullptr);
+    Q_INVOKABLE explicit EditableIntegerLabel(QString const& text,
+                                              QWidget* parent = nullptr);
 
     int value() const;
 

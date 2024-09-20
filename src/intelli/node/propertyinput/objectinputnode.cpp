@@ -37,6 +37,7 @@ ObjectInputNode::ObjectInputNode() :
                           true)
                       )
 {
+    // cppcheck-suppress useInitializationList
     m_out = addOutPort(intelli::typeId<intelli::ObjectData>());
     port(m_out)->captionVisible = false;
 

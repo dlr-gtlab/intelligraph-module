@@ -156,8 +156,6 @@ IntegerInputWidget::initDial()
     m_dial->setContentsMargins(0, 0, 0, 0);
     m_dial->setSingleStep(1);
 
-    int dialStartValue = (m_max + m_min) / 2;
-
     auto* d = qobject_cast<QDial*>(m_dial);
     if (d) d->setNotchesVisible(true);
 

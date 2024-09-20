@@ -22,8 +22,8 @@ class EditableDoubleLabel : public QStackedWidget
 {  
     Q_OBJECT
 public:
-    Q_INVOKABLE EditableDoubleLabel(QString const& text,
-                                    QWidget* parent = nullptr);
+    Q_INVOKABLE explicit EditableDoubleLabel(QString const& text,
+                                             QWidget* parent = nullptr);
 
     double value() const;
 

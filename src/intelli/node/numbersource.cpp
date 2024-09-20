@@ -38,6 +38,7 @@ NumberSourceNode::NumberSourceNode() :
         // react to user inputs
         auto const updateProp = [this, w_ = w.get()](){
             double tmp = w_->text().toDouble();
+            // cppcheck-suppress duplicateConditionalAssign
             if (m_value != tmp) m_value = tmp;
         };
         connect(w.get(), &GtLineEdit::focusOut, this, updateProp);
