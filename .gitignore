@@ -1,3 +1,8 @@
+#  GTlab Intelligraph
+#
+#  SPDX-License-Identifier: BSD-3-Clause
+#  SPDX-FileCopyrightText: 2024 German Aerospace Center
+
 Makefile*
 
 include/

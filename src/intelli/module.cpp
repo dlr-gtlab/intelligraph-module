@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
- * 
- * Created on: 16.03.2023
- * Author: S. Reitenbach
- * Email: 
+/*
+ * GTlab IntelliGraph
+ *
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 /*
@@ -106,12 +107,9 @@ GtIntelliGraphModule::MetaInformation
 GtIntelliGraphModule::metaInformation() const
 {
     MetaInformation m;
-
     m.author =    QStringLiteral("M. Bröcker, S. Reitenbach");
     m.authorContact = QStringLiteral("AT-TWK");
-
-    // TODO: set license
-    // m.licenseShort = ...;
+    m.licenseShort = QStringLiteral("BSD-3-Clause");
 
     return m;
 }
@@ -221,9 +219,7 @@ GtIntelliGraphModule::calculators()
 QList<GtTaskData>
 GtIntelliGraphModule::tasks()
 {
-    QList<GtTaskData> list;
-
-    return list;
+    return {};
 }
 
 QList<QMetaObject>
@@ -239,9 +235,7 @@ GtIntelliGraphModule::mdiItems()
 QList<QMetaObject>
 GtIntelliGraphModule::dockWidgets()
 {
-    QList<QMetaObject> list;
-
-    return list;
+    return {};
 }
 
 QMap<const char*, QMetaObject>
@@ -284,17 +278,13 @@ GtIntelliGraphModule::uiItems()
 QList<QMetaObject>
 GtIntelliGraphModule::postItems()
 {
-    QList<QMetaObject> list;
-
-    return list;
+    return {};
 }
 
 QList<QMetaObject>
 GtIntelliGraphModule::postPlots()
 {
-    QList<QMetaObject> list;
-
-    return list;
+    return {};
 }
 
 QMap<const char*, QMetaObject>
@@ -312,11 +302,8 @@ GtIntelliGraphModule::propertyItems()
 }
 
 template<typename ConverterFunction>
-bool upgradeModuleFiles(QDomElement& root,
-                        QString const& file,
-                        ConverterFunction f);
+bool upgradeModuleFiles(QDomElement&, QString const&, ConverterFunction);
 
-// stolen from xml utilities
 template <typename Predicate>
 void
 findElements(QDomElement const& elem,
@@ -336,7 +323,6 @@ findElements(QDomElement const& elem,
     }
 }
 
-// stolen from xml utilities
 QList<QDomElement>
 propertyContainerElements(QDomElement const& root)
 {
@@ -548,6 +534,7 @@ replace_port_ids_in_connections(QDomElement graph,
 
 // update dynamic input/output container types
 bool
+// cppcheck-suppress constParameterCallback
 rename_dynamic_ports_for_0_8_0(QDomElement& root,
                                QString const& file,
                                QString const& typeIn,
@@ -756,15 +743,17 @@ bool upgrade_to_0_3_0(QDomElement& root, QString const& file)
 }
 
 template<typename ConverterFunction>
-bool upgradeModuleFiles(QDomElement& root, QString const& file, ConverterFunction f)
+bool upgradeModuleFiles(QDomElement& /*root*/,
+                        QString const& moduleFilePath,
+                        ConverterFunction f)
 {
-    if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseSensitive)) return true;
+    if (!moduleFilePath.contains(QStringLiteral("intelligraph"), Qt::CaseSensitive)) return true;
 
     auto const makeError = [](){
         return QObject::tr("Failed to update intelligraph module data!");
     };
 
-    QFileInfo info{file};
+    QFileInfo info{moduleFilePath};
     QDir dir = info.absoluteDir();
     if (!dir.cd(Package::MODULE_DIR))
     {
@@ -785,7 +774,13 @@ bool upgradeModuleFiles(QDomElement& root, QString const& file, ConverterFunctio
 
     while (iter.hasNext())
     {
-        dir.cd(iter.next());
+        if (!dir.cd(iter.next()))
+        {
+            gtWarning() << makeError()
+                        << QObject::tr("(Category directory '%1' does not exist)")
+                               .arg(iter.path());
+            continue;
+        }
 
         QDirIterator fileIter{
             dir.path(),
@@ -799,7 +794,7 @@ bool upgradeModuleFiles(QDomElement& root, QString const& file, ConverterFunctio
             QString filePath = dir.absoluteFilePath(fileIter.next());
             QFile file{filePath};
 
-            // stolen from Module Upgrader implementation
+            // see Module Upgrader implementation
             QDomDocument document;
             QString errorStr;
             int errorLine;

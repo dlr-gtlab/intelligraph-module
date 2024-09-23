@@ -1,13 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * Source File:
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 28.02.2024
- *  Author: Jens Schmeink (AT-TWK)
- *  Tel.: +49 2203 601 2191
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
-#ifndef ABSTRACTINPUTNODE_H
-#define ABSTRACTINPUTNODE_H
+
+#ifndef GT_INTELLI_ABSTRACTINPUTNODE_H
+#define GT_INTELLI_ABSTRACTINPUTNODE_H
 
 #include <intelli/node.h>
 
@@ -31,7 +32,7 @@ protected:
             std::unique_ptr<GtAbstractProperty>&& pointer) :
         intelli::Node(nodeId),
         m_value(std::move(pointer)),
-        m_isArg("isArg", tr("isArg"), tr("isArg"))
+        m_isArg(QStringLiteral("isArg"), tr("isArg"), tr("isArg"))
     {
         registerProperty(*m_value);
         registerProperty(m_isArg);
@@ -44,4 +45,4 @@ protected:
 };
 
 }
-#endif // ABSTRACTINPUTNODE_H
+#endif // GT_INTELLI_ABSTRACTINPUTNODE_H

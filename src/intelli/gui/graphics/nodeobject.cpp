@@ -1,11 +1,12 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2024 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 12.3.2024
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include <intelli/gui/graphscenedata.h>
 #include <intelli/gui/graphics/nodeobject.h>
@@ -242,7 +243,6 @@ NodeGraphicsObject::embedCentralWidget()
         m_proxyWidget = new NodeProxyWidget(this);
 
         m_proxyWidget->setWidget(w.release());
-        m_proxyWidget->setPreferredWidth(5);
         m_proxyWidget->setZValue(style::zValue(style::ZValue::NodeWidget));
 
         Impl::updateWidgetPalette(this);
@@ -301,6 +301,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
 
     auto accept = gt::finally(event, &QEvent::accept);
+    Q_UNUSED(accept);
 
     // bring this node forward
     setZValue(style::zValue(style::ZValue::NodeHovered));
@@ -319,9 +320,8 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     // check for resize handle hit
     if (hasResizeHandle())
     {
-        auto pos = event->pos();
-        bool hit = m_geometry->resizeHandleRect().contains(pos);
-        if (hit)
+        bool resize = m_geometry->resizeHandleRect().contains(event->pos());
+        if (resize)
         {
             m_state = Resizing;
             return;
@@ -361,6 +361,7 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         if (auto w = m_proxyWidget->widget())
         {
             auto change = Impl::prepareGeometryChange(this);
+            Q_UNUSED(change);
 
             QSize oldSize = w->size();
             oldSize += QSize(diff.x(), (m_node->nodeFlags() & ResizableHOnly) ? 0 : diff.y());
@@ -444,7 +445,8 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 {
     QPointF pos = event->pos();
 
-    auto finally = gt::finally(event, &QEvent::accept);
+    auto accept = gt::finally(event, &QEvent::accept);
+    Q_UNUSED(accept);
 
     // check for resize handle hit and change cursor
     if (hasResizeHandle() && m_geometry->resizeHandleRect().contains(pos))
@@ -534,6 +536,7 @@ void
 NodeGraphicsObject::onNodeChanged()
 {
     auto change = Impl::prepareGeometryChange(this);
+    Q_UNUSED(change);
 
     m_geometry->recomputeGeomtry();
     updateChildItems();

@@ -1,14 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 26.7.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-
-#ifndef GT_INTELLI_PARALLELEXECUTOR_H
-#define GT_INTELLI_PARALLELEXECUTOR_H
+#ifndef GT_INTELLI_DETACHEDEXECUTOR_H
+#define GT_INTELLI_DETACHEDEXECUTOR_H
 
 #include "intelli/nodeexecutor.h"
 #include "intelli/node.h"
@@ -19,6 +19,10 @@
 namespace intelli
 {
 
+/**
+ * @brief The DetachedExecutor class.
+ * Executes a node in separate thread to allow parallelism
+ */
 class DetachedExecutor : public QObject
 {
     Q_OBJECT
@@ -51,4 +55,4 @@ private slots:
 
 } // namespace intelli
 
-#endif // GT_INTELLI_PARALLELEXECUTOR_H
+#endif // GT_INTELLI_DETACHEDEXECUTOR_H
