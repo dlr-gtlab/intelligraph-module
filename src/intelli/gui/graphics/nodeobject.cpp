@@ -1,11 +1,12 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2024 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 12.3.2024
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include <intelli/gui/graphscenedata.h>
 #include <intelli/gui/graphics/nodeobject.h>
@@ -92,12 +93,10 @@ updateWidgetPalette(NodeGraphicsObject* o)
 }; // struct Impl;
 
 NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
-                                       Graph& graph,
                                        Node& node,
                                        NodeUI& ui) :
     QGraphicsObject(nullptr),
     m_sceneData(&data),
-    m_graph(&graph),
     m_node(&node),
     m_geometry(ui.geometry(node)),
     m_painter(ui.painter(*this, *m_geometry)),
@@ -126,7 +125,6 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
     connect(&node, &Node::portChanged,
             this, &NodeGraphicsObject::onNodeChanged, Qt::DirectConnection);
 
-
     updateChildItems();
 }
 
@@ -147,19 +145,6 @@ NodeId
 NodeGraphicsObject::nodeId() const
 {
     return m_node->id();
-}
-
-Graph&
-NodeGraphicsObject::graph()
-{
-    assert (m_graph);
-    return *m_graph;
-}
-
-Graph const&
-NodeGraphicsObject::graph() const
-{
-    return const_cast<NodeGraphicsObject*>(this)->graph();
 }
 
 GraphSceneData const&
@@ -258,7 +243,6 @@ NodeGraphicsObject::embedCentralWidget()
         m_proxyWidget = new NodeProxyWidget(this);
 
         m_proxyWidget->setWidget(w.release());
-        m_proxyWidget->setPreferredWidth(5);
         m_proxyWidget->setZValue(style::zValue(style::ZValue::NodeWidget));
 
         Impl::updateWidgetPalette(this);
@@ -317,6 +301,7 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
 
     auto accept = gt::finally(event, &QEvent::accept);
+    Q_UNUSED(accept);
 
     // bring this node forward
     setZValue(style::zValue(style::ZValue::NodeHovered));
@@ -327,27 +312,16 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     NodeGeometry::PortHit hit = m_geometry->portHit(coord);
     if (hit)
     {
-        auto const& connections = m_graph->findConnections(m_node->id(), hit.port);
+        if (!m_node->port(hit.port)) return;
 
-        if (!connections.empty() && hit.type == PortType::In)
-        {
-            assert(connections.size() == 1);
-            auto const& conId = connections.first();
-
-            emit makeDraftConnection(this, conId);
-            return;
-        }
-
-        emit makeDraftConnection(this, hit.type, hit.port);
-        return;
+        return emit makeDraftConnection(this, hit.type, hit.port);
     }
 
     // check for resize handle hit
     if (hasResizeHandle())
     {
-        auto pos = event->pos();
-        bool hit = m_geometry->resizeHandleRect().contains(pos);
-        if (hit)
+        bool resize = m_geometry->resizeHandleRect().contains(event->pos());
+        if (resize)
         {
             m_state = Resizing;
             return;
@@ -387,6 +361,7 @@ NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         if (auto w = m_proxyWidget->widget())
         {
             auto change = Impl::prepareGeometryChange(this);
+            Q_UNUSED(change);
 
             QSize oldSize = w->size();
             oldSize += QSize(diff.x(), (m_node->nodeFlags() & ResizableHOnly) ? 0 : diff.y());
@@ -455,6 +430,8 @@ NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 void
 NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
+    setToolTip(m_node->tooltip());
+
     setZValue(style::zValue(style::ZValue::NodeHovered));
 
     m_hovered = true;
@@ -468,7 +445,8 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 {
     QPointF pos = event->pos();
 
-    auto finally = gt::finally(event, &QEvent::accept);
+    auto accept = gt::finally(event, &QEvent::accept);
+    Q_UNUSED(accept);
 
     // check for resize handle hit and change cursor
     if (hasResizeHandle() && m_geometry->resizeHandleRect().contains(pos))
@@ -485,16 +463,23 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
     {
         auto* port = m_node->port(hit.port);
         assert(port);
-        setToolTip(NodeDataFactory::instance().typeName(port->typeId));
-        return;
+        QString const& typeName = NodeDataFactory::instance().typeName(port->typeId);
+        QString const& toolTip = port->toolTip.isEmpty() ?
+                    typeName :
+                    QStringLiteral("%1 (%2)")
+                            .arg(port->toolTip, typeName);
+
+        return setToolTip(toolTip);
     }
 
-    setToolTip(QString{});
+    setToolTip(m_node->tooltip());
 }
 
 void
 NodeGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
+    setToolTip({});
+
     if (!isSelected())
     {
         setZValue(style::zValue(style::ZValue::Node));
@@ -551,6 +536,7 @@ void
 NodeGraphicsObject::onNodeChanged()
 {
     auto change = Impl::prepareGeometryChange(this);
+    Q_UNUSED(change);
 
     m_geometry->recomputeGeomtry();
     updateChildItems();
@@ -607,14 +593,13 @@ NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& typeId,
     m_isActive = true;
     m_isNodeCompatible = true;
 
-    auto& graph = m_object->graph();
     auto& node  = m_object->node();
 
     auto& factory = NodeDataFactory::instance();
     for (auto& port : node.ports(type))
     {
-        if (type == PortType::In &&
-            !graph.findConnections(node.id(), port.id()).empty()) continue;
+        // check whether port is already connected
+        if (type == PortType::In && port.isConnected()) continue;
 
         if (!factory.canConvert(port.typeId, typeId, type)) continue;
 

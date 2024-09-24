@@ -1,5 +1,9 @@
-# - Config file for the GTlabNodesModule package
-
+#  GTlab Intelligraph
+#
+#  CMake config file for the GTlabIntelliGraph package 
+#
+#  SPDX-License-Identifier: BSD-3-Clause
+#  SPDX-FileCopyrightText: 2024 German Aerospace Center
 
 find_package(Qt5 COMPONENTS Widgets Core Concurrent Gui)
 

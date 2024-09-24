@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 3.4.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #ifndef GT_INTELLI_GLOBALS_H
@@ -11,20 +12,18 @@
 
 #include <gt_logging.h>
 #include <gt_exceptions.h>
+#include <gt_platform.h>
 
-#include <chrono>
 #include <utility>
 #include <stdlib.h>
 
+#include <QPoint>
 #include <QPointF>
-#include <QRegExp>
 
 namespace intelli
 {
 
 class NodeData;
-
-constexpr auto max_timeout = std::chrono::milliseconds::max();
 
 /**
  * @brief Quantizes `point` so that it is a multiple of `stepSize`.
@@ -47,6 +46,8 @@ inline QPoint quantize(QPointF point, int stepSize)
 
     return QPoint{divX.quot * stepSize, divY.quot * stepSize};
 };
+
+using Position = QPointF;
 
 /**
  * @brief Denotes the possible port types
@@ -119,6 +120,11 @@ public:
     constexpr inline StrongType&
     operator/=(StrongType const& o) noexcept { m_value /= o.m_value; return *this; }
 
+    constexpr inline StrongType
+    operator+(StrongType const& o) noexcept { return StrongType{m_value + o.m_value}; }
+    constexpr inline StrongType
+    operator-(StrongType const& o) noexcept { return StrongType{m_value - o.m_value}; }
+
     // pre increment
     constexpr inline StrongType&
     operator++() noexcept { ++m_value; return *this; }
@@ -143,15 +149,10 @@ private:
     T m_value = InitValue;
 };
 
+using NodeUuid  = QString;
 using NodeId    = StrongType<unsigned, struct NodeId_, std::numeric_limits<unsigned>::max()>;
 using PortIndex = StrongType<unsigned, struct PortIndex_, std::numeric_limits<unsigned>::max()>;
 using PortId    = StrongType<unsigned, struct PortId_, std::numeric_limits<unsigned>::max()>;
-
-using Position = QPointF;
-
-using NodeDataPtr = std::shared_ptr<const NodeData>;
-
-using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
 
 using TypeName = QString;
 
@@ -161,13 +162,13 @@ using TypeIdList = QStringList;
 namespace detail
 {
 
-template <typename T>
+template<typename T>
 struct InvalidValue
 {
-    constexpr static T get() { return std::numeric_limits<T>::max(); }
+    constexpr static T get() { return {}; }
 };
 
-template <typename T, typename Tag, T InitVal>
+template<typename T, typename Tag, T InitVal>
 struct InvalidValue<StrongType<T, Tag, InitVal>>
 {
     using StrongTypeDef = StrongType<T, Tag, InitVal>;
@@ -187,19 +188,20 @@ constexpr inline T invalid() noexcept
  * Connection identificator that stores
  * out `NodeId`, out `PortIndex`, in `NodeId`, in `PortIndex`
  */
-struct ConnectionId
+template <typename NodeId_t>
+struct ConnectionId_t
 {
-    constexpr ConnectionId() {};
+    constexpr ConnectionId_t() {};
 
-    constexpr ConnectionId(NodeId _outNode, PortId _outPort,
-                           NodeId _inNode, PortId _inPort) :
+    constexpr ConnectionId_t(NodeId_t _outNode, PortId _outPort,
+                             NodeId_t _inNode, PortId _inPort) :
         outNodeId(_outNode), outPort(_outPort),
         inNodeId(_inNode), inPort(_inPort)
     {}
 
-    NodeId outNodeId;
+    NodeId_t outNodeId;
     PortId outPort;
-    NodeId inNodeId;
+    NodeId_t inNodeId;
     PortId inPort;
 
     /// Reverses the node and port ids, such that the out node becomes the
@@ -210,13 +212,13 @@ struct ConnectionId
     }
 
     /// Returns a new connection that has its node and port ids reversed
-    constexpr ConnectionId reversed() const noexcept
+    constexpr ConnectionId_t reversed() const noexcept
     {
         return { inNodeId, inPort, outNodeId, outPort };
     }
 
     /// Returns the node id associated with the port type
-    constexpr NodeId node(PortType type) const
+    constexpr NodeId_t node(PortType type) const
     {
         switch (type)
         {
@@ -227,6 +229,7 @@ struct ConnectionId
         case PortType::NoType:
             throw GTlabException(__FUNCTION__, "invalid port type!");
         }
+        return invalid<NodeId_t>();
     }
 
     /// Returns the port id associated with the port type
@@ -241,14 +244,15 @@ struct ConnectionId
         case PortType::NoType:
             throw GTlabException(__FUNCTION__, "invalid port type!");
         }
+        return invalid<PortId>();
     }
 
     /// Whether this connection is valid (i.e. contains only valid node
     /// and port ids)
     constexpr bool isValid() const noexcept
     {
-        return inNodeId  != invalid<NodeId>() &&
-               outNodeId != invalid<NodeId>() &&
+        return inNodeId  != invalid<NodeId_t>() &&
+               outNodeId != invalid<NodeId_t>() &&
                inPort    != invalid<PortId>() &&
                outPort   != invalid<PortId>();
     }
@@ -262,13 +266,13 @@ struct ConnectionId
     /// Returns which side of the draft connection is valid
     constexpr PortType draftType() const noexcept
     {
-        if (outNodeId == invalid<NodeId>() && outPort == invalid<PortId>() &&
-            inNodeId  != invalid<NodeId>() && inPort  != invalid<PortId>())
+        if (outNodeId == invalid<NodeId_t>() && outPort == invalid<PortId>() &&
+            inNodeId  != invalid<NodeId_t>() && inPort  != invalid<PortId>())
         {
             return PortType::In;
         }
-        if (inNodeId  == invalid<NodeId>() && inPort  == invalid<PortId>() &&
-            outNodeId != invalid<NodeId>() && outPort != invalid<PortId>())
+        if (inNodeId  == invalid<NodeId_t>() && inPort  == invalid<PortId>() &&
+            outNodeId != invalid<NodeId_t>() && outPort != invalid<PortId>())
         {
             return PortType::Out;
         }
@@ -276,16 +280,19 @@ struct ConnectionId
     }
 
     // Overload comparison operators as needed
-    constexpr inline bool operator==(ConnectionId const& o) const noexcept {
+    constexpr inline bool operator==(ConnectionId_t const& o) const noexcept {
         return inNodeId == o.inNodeId &&
                inPort == o.inPort &&
                outNodeId == o.outNodeId &&
                outPort == o.outPort;
     }
-    constexpr inline bool operator!=(ConnectionId const& o) const noexcept {
+    constexpr inline bool operator!=(ConnectionId_t const& o) const noexcept {
         return !(*this == o);
     }
 };
+
+using ConnectionId   = ConnectionId_t<NodeId>;
+using ConnectionUuid = ConnectionId_t<NodeUuid>;
 
 /// Enum for GraphicsObject::Type value
 enum class GraphicsItemType
@@ -296,18 +303,100 @@ enum class GraphicsItemType
     Connection
 };
 
-namespace detail
+/// Enum indicating the evauation state of a node
+enum class NodeEvalState
 {
-
-template <>
-struct InvalidValue<ConnectionId>
-{
-    constexpr static ConnectionId get() {
-        return ConnectionId{ NodeId{}, PortId{}, NodeId{}, PortId{} };
-    }
+    Invalid = 0,
+    Outdated,
+    Evaluating,
+    Paused,
+    Valid
 };
 
-} // namespace detail
+// Enum indicating the data state of a node port
+enum class PortDataState
+{
+    /// Port data is outdated
+    Outdated = 0,
+    /// Port data is valid and up-to-date
+    Valid,
+};
+
+using NodeDataPtr = std::shared_ptr<const NodeData>;
+
+using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
+
+struct NodeDataSet
+{
+    NodeDataSet(std::nullptr_t) :
+        ptr(nullptr), state(PortDataState::Outdated)
+    {}
+    NodeDataSet(NodeDataPtr _data = {}) :
+        ptr(std::move(_data)), state(PortDataState::Valid)
+    {}
+    template <typename T>
+    NodeDataSet(std::shared_ptr<T> _data) :
+        ptr(std::move(_data)), state(PortDataState::Valid)
+    {}
+
+    /// actual node data
+    NodeDataPtr ptr;
+    /// data state
+    PortDataState state;
+
+    operator NodeDataPtr&() & { return ptr; }
+    operator NodeDataPtr&&() && { return std::move(ptr); }
+    operator NodeDataPtr const&() const& { return ptr; }
+
+    template <typename T>
+    [[deprecated("Use `as` instead")]]
+    inline auto value() const noexcept { return as<T>(); }
+
+    template <typename T>
+    inline auto as() const noexcept { return qobject_pointer_cast<T const>(ptr); }
+};
+
+template <typename Sender, typename SignalSender,
+         typename Reciever, typename SignalReciever>
+struct IgnoreSignal
+{
+    IgnoreSignal(Sender sender_, SignalSender signalSender_,
+                 Reciever reciever_, SignalReciever signalReciever_) :
+        sender(sender_), signalSender(signalSender_),
+        reciever(reciever_), signalReciever(signalReciever_)
+    {
+        QObject::disconnect(sender, signalSender, reciever, signalReciever);
+    }
+
+    ~IgnoreSignal()
+    {
+        QObject::connect(sender, signalSender, reciever, signalReciever, Qt::UniqueConnection);
+    }
+
+    Sender sender;
+    SignalSender signalSender;
+    Reciever reciever;
+    SignalReciever signalReciever;
+};
+
+/**
+ * @brief Ignores a signal-sginal/signal-slot connection between two objects
+ * for the lifetime of the returned helper object.
+ * @param sender Sender
+ * @param signalSender Signal of sender
+ * @param reciever Reciever
+ * @param signalReciever Signal/Slot of reciever
+ */
+template<typename Sender, typename SignalSender,
+         typename Reciever, typename SignalReciever>
+GT_NO_DISCARD
+inline auto ignoreSignal(Sender sender, SignalSender signalSender,
+                         Reciever reciever, SignalReciever signalReciever)
+{
+    return IgnoreSignal<Sender, SignalSender, Reciever, SignalReciever>{
+        sender, signalSender, reciever, signalReciever
+    };
+}
 
 template <typename T, typename Tag, T InitVal>
 constexpr inline bool
@@ -329,6 +418,16 @@ constexpr inline bool
 operator/=(StrongType<T, Tag, InitVal> const& a,
            StrongType<T, Tag, InitVal> const& b) noexcept { return a /= b; }
 
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator+(StrongType<T, Tag, InitVal> const& a,
+          StrongType<T, Tag, InitVal> const& b) noexcept{ return a.operator+(b); }
+
+template <typename T, typename Tag, T InitVal>
+constexpr inline bool
+operator-(StrongType<T, Tag, InitVal> const& a,
+          StrongType<T, Tag, InitVal> const& b) noexcept { return a.operator-(b); }
+
 template <typename T, typename Tag, T InitValue>
 constexpr inline bool StrongType<T, Tag, InitValue>::isValid() const noexcept
 {
@@ -339,21 +438,6 @@ constexpr inline bool StrongType<T, Tag, InitValue>::isValid() const noexcept
 
 namespace gt
 {
-namespace re
-{
-
-namespace intelli
-{
-
-inline QRegExp forClassNames()
-{
-    return QRegExp(R"(^([a-zA-Z_][a-zA-Z0-9_]*::)*[a-zA-Z_][a-zA-Z0-9_]*$)");
-}
-
-} // namespace intelli
-
-} // namespace re
-
 namespace log
 {
 
@@ -364,8 +448,9 @@ operator<<(gt::log::Stream& s, intelli::StrongType<T, Tag, InitVal> const& t)
     return s << t.value();
 }
 
+template <typename T>
 inline gt::log::Stream&
-operator<<(gt::log::Stream& s, intelli::ConnectionId const& con)
+operator<<(gt::log::Stream& s, intelli::ConnectionId_t<T> const& con)
 {
     {
         gt::log::StreamStateSaver saver(s);
@@ -390,7 +475,44 @@ operator<<(gt::log::Stream& s, intelli::PortType type)
     {
         gt::log::StreamStateSaver saver(s);
         s.nospace()
-            << "PortType::INVALID(" << type << ')';
+            << "PortType::INVALID(" << (int)type << ')';
+    }
+    return s.doLogSpace();
+}
+
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, intelli::NodeEvalState state)
+{
+    switch (state)
+    {
+    case intelli::NodeEvalState::Evaluating: return s << "NodeEvalState::Evaluating";
+    case intelli::NodeEvalState::Invalid: return s << "NodeEvalState::Invalid";
+    case intelli::NodeEvalState::Outdated: return s << "NodeEvalState::Outdated";
+    case intelli::NodeEvalState::Paused: return s << "NodeEvalState::Paused";
+    case intelli::NodeEvalState::Valid: return s << "NodeEvalState::Valid";
+    }
+
+    {
+        gt::log::StreamStateSaver saver(s);
+        s.nospace()
+            << "NodeEvalState::INVALID(" << (int)state << ')';
+    }
+    return s.doLogSpace();
+}
+
+inline gt::log::Stream&
+operator<<(gt::log::Stream& s, intelli::PortDataState state)
+{
+    switch (state)
+    {
+    case intelli::PortDataState::Outdated: return s << "PortDataState::Outdated";
+    case intelli::PortDataState::Valid: return s << "PortDataState::Valid";
+    }
+
+    {
+        gt::log::StreamStateSaver saver(s);
+        s.nospace()
+            << "PortDataState::INVALID(" << (int)state << ')';
     }
     return s.doLogSpace();
 }

@@ -1,16 +1,15 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 26.7.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/exec/detachedexecutor.h"
 
 #include "intelli/node.h"
-#include "intelli/nodedata.h"
 #include "intelli/graphexecmodel.h"
 
 #include "gt_utilities.h"
@@ -27,13 +26,13 @@ using namespace intelli;
 
 /**
  * @brief The DummyDataModel class.
- * Helper method to set and access node data of a single node
+ * Helper class to set and access data of a single node
  */
 class DummyDataModel : public NodeDataInterface
 {
 public:
 
-    DummyDataModel(Node& node) :
+    explicit DummyDataModel(Node& node) :
         m_node(&node)
     {
         NodeExecutor::setNodeDataInterface(node, this);
@@ -61,10 +60,13 @@ public:
         NodeDataPtrList data;
 
         auto const& ports = type == PortType::In ? &m_data.portsIn : &m_data.portsOut;
-        for (auto& port : *ports)
-        {
-            data.push_back({m_node->portIndex(type, port.id), port.data});
-        }
+        std::transform(ports->begin(), ports->end(),
+                       std::back_inserter(data),
+                       [this, type](auto& port){
+            using T = typename NodeDataPtrList::value_type;
+            return T{m_node->portIndex(type, port.id), port.data};
+        });
+
         return data;
     }
 
@@ -102,10 +104,11 @@ private:
 
         for (auto const* ports : {&m_data.portsIn, &m_data.portsOut})
         {
-            for (auto const& p : *ports)
-            {
-                if (p.id == portId) return p.data;
-            }
+            auto iter = std::find_if(ports->begin(), ports->end(),
+                                     [portId](auto const& port){
+                return port.id == portId;
+            });
+            if (iter != ports->end()) return iter->data;
         }
 
         gtWarning() << QObject::tr("DummyExecModel: Failed to access data of node %1! "
@@ -127,13 +130,14 @@ private:
 
         for (auto* ports : {&m_data.portsIn, &m_data.portsOut})
         {
-            for (auto& p : *ports)
+            auto iter = std::find_if(ports->begin(), ports->end(),
+                                     [portId](auto const& port){
+                return port.id == portId;
+            });
+            if (iter != ports->end())
             {
-                if (p.id == portId)
-                {
-                    p.data = std::move(data);
-                    return true;
-                }
+                iter->data = std::move(data);
+                return true;
             }
         }
 
@@ -149,8 +153,8 @@ private:
 
 //////////////////////////////////////////////////////
 
-// we want to skip signals that are speicifc to Node, GtObject and QObject,
-// therefore we will calculate the offset to the "custom" signals once
+/// we want to skip signals that are speicifc to the Node, GtObject and QObject
+/// class, therefore we will calculate the offset to the "custom" signals once
 int signal_offset(){
     static int const o = [](){
         auto* sourceMetaObject = &Node::staticMetaObject;
@@ -183,6 +187,7 @@ int signal_offset(){
 
 using SignalSignature = QByteArray;
 
+/// searches for all "custom" signals that should be forwarded to the main node
 inline QVector<SignalSignature>
 findSignalsToConnect(QObject& object)
 {
@@ -232,6 +237,8 @@ findSignalsToConnect(QObject& object)
     return signalsToConnect;
 }
 
+/// interconnect signals of the copied node to the actual node in the main
+/// thread. Only connect "custom" signals
 inline bool
 connectSignals(QVector<SignalSignature> const& signalsToConnect,
                QPointer<Node> sourceObject,
@@ -418,7 +425,7 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
             }
 
             // set data
-            DummyDataModel model(*node);
+            DummyDataModel model{*node};
 
             bool success = true;
             success &= model.setNodeData(PortType::In,  inData);

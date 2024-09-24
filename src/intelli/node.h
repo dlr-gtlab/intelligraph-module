@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 3.4.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #ifndef GT_INTELLI_NODE_H
@@ -28,11 +29,11 @@ enum NodeFlag
     Unique      = 1 << 2,
 
     /// Indicates that the widget should be placed so that its size can be maximized
-    MaximizeWidget = 1 << 3,
+    MaximizeWidget = 1 << 4,
     /// Indicates node is resizeable
-    Resizable   = 1 << 4,
+    Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
-    ResizableHOnly = 1 << 5,
+    ResizableHOnly = 1 << 6,
 
     /// Indicates that the node is evaluating (will be set automatically)
     Evaluating  = 1 << 7,
@@ -51,21 +52,21 @@ enum class NodeEvalMode
     /// Indicates that the node will be evaluated non blockingly in a separate
     /// thread
     Detached = 0,
-    /// Indicates the the node should be evaluated exclusively to other nodes in
-    /// a separate thread
+    /// Indicates that the node should be evaluated exclusively to other nodes
     Exclusive,
     /// Indicates that the node should be evaluated in the main thread, thus
     /// blocking the GUI. Should only be used if node evaluates instantly.
-    MainThread,
+    Blocking,
     /// Default behaviour
     Default = Detached,
+    /// deprecated
+    MainThread [[deprecated("Use `Blocking` instead")]] = Blocking,
 };
 
 class NodeExecutor;
 class NodeData;
 class NodeDataInterface;
 class GraphExecutionModel;
-struct NodeImpl;
 
 /**
  * @brief Attempts to convert `data` to into the desired type. If
@@ -133,7 +134,7 @@ public:
         DefaultPortPolicy = Optional
     };
 
-    /// port data struct
+    /// Port info struct
     class PortInfo
     {
     public:
@@ -151,13 +152,27 @@ public:
             optional(_optional)
         {}
 
+        PortInfo(PortInfo const& other) = default;
+        PortInfo(PortInfo&& other) = default;
+        PortInfo& operator=(PortInfo const& other) = delete;
+        PortInfo& operator=(PortInfo&& other) = default;
+        ~PortInfo() = default;
+
         /// creates a PortInfo struct with a custom port id
         template<typename ...T>
-        static PortInfo customId(PortId id, T&&... args)
+        static PortInfo customId(PortId newPortId, T&&... args)
         {
             PortInfo pd(std::forward<T>(args)...);
-            pd.m_id = id;
+            pd.m_id = newPortId;
             return pd;
+        }
+
+        /// Performs a copy assignment using `other` but keeps old id
+        void assign(PortInfo other)
+        {
+            PortInfo tmp(std::move(other));
+            tmp.m_id = m_id;
+            swap(tmp);
         }
 
         /// creates a copy of this object but resets the id parameter
@@ -168,15 +183,37 @@ public:
             return pd;
         }
 
-        // type id for port data (classname)
-        QString typeId;
-        // custom port caption (optional)
+        /// swap
+        void swap(PortInfo& other) noexcept
+        {
+            using std::swap;
+            swap(typeId, other.typeId);
+            swap(caption, other.caption);
+            swap(captionVisible, other.captionVisible);
+            swap(visible, other.visible);
+            swap(optional, other.optional);
+            swap(m_isConnected, other.m_isConnected);
+            swap(m_id, other.m_id);
+        }
+
+        // setters to allow function chaining
+        PortInfo& setCaption(QString v) { caption = std::move(v); return *this; }
+        PortInfo& setToolTip(QString v) { toolTip = std::move(v); return *this; }
+        PortInfo& setCaptionVisible(bool v) { captionVisible = v; return *this; }
+        PortInfo& setVisible(bool v) { visible = v; return *this; }
+        PortInfo& setOptional(bool v) { optional = v; return *this; }
+
+        /// type id for port data (classname)
+        TypeId typeId;
+        /// custom port caption (optional)
         QString caption;
-        // whether port caption should be visible
+        /// custom tooltip
+        QString toolTip;
+        /// whether port caption should be visible
         bool captionVisible = true;
-        // whether the port is visible at all
+        /// whether the port is visible at all
         bool visible = true;
-        // whether the port is required for the node evaluation
+        /// whether the port is required for the node evaluation
         bool optional = true;
 
         /**
@@ -185,14 +222,29 @@ public:
          */
         inline PortId id() const { return m_id; }
 
-    private:
+        /**
+         * @brief Whether port is connected
+         * @return Whether port is connected
+         */
+        inline bool isConnected() const { return m_isConnected; }
 
+    private:
+        /// whether port is connected
+        bool m_isConnected{false};
+        /// read only PortId
         PortId m_id{};
         
         friend class Node;
     };
     using PortData [[deprecated("use PortInfo")]] = PortInfo;
     
+    /**
+     * @brief Helper method to create a `PortInfo` struct given a `TypeId`.
+     * @param typeId TypeId
+     * @return `PortInfo` struct
+     */
+    static PortInfo makePort(TypeId typeId) { return PortInfo{std::move(typeId)}; }
+
     ~Node();
 
     /**
@@ -266,6 +318,19 @@ public:
      * @return Node eval mode
      */
     NodeEvalMode nodeEvalMode() const;
+
+    /**
+     * @brief Setter for the tooltip of the node. Will be displayed when
+     * hovering over the node.
+     * @param tooltip New Tooltip
+     */
+    void setToolTip(QString const& tooltip);
+
+    /**
+     * @brief Tooltip of the node
+     * @return Tooltip
+     */
+    QString const& tooltip() const;
 
     /**
      * @brief Setter for the caption. Will be saved persistently
@@ -343,6 +408,7 @@ public:
      * @param id Port id to check
      * @return Is port connected
      */
+    [[deprecated("Use `PortInfo::isConnected()` instead")]]
     bool isPortConnected(PortId portId) const;
 
 signals:
@@ -592,10 +658,36 @@ protected:
 
 private:
 
-    std::unique_ptr<NodeImpl> pimpl;
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
 
     // hide object name setter
     using GtObject::setObjectName;
+};
+
+inline void swap(Node::PortInfo& a, Node::PortInfo& b) noexcept { a.swap(b); }
+
+/**
+ * @brief Helper struct that yields the desired identification of a node
+ * depending on the template parameter.
+ *
+ * Usage:
+ * - NodeId id = get_node_id<NodeId>{}(ptr);
+ * - NodeUuid uuid = get_node_id<NodeUuid>{}(ptr);
+ */
+template <typename NodeId_t>
+struct get_node_id;
+
+template <>
+struct get_node_id<NodeId>
+{
+    NodeId operator()(Node const* node) { assert(node); return node->id(); }
+};
+
+template <>
+struct get_node_id<NodeUuid>
+{
+    NodeUuid operator()(Node const* node) { assert(node); return node->uuid(); }
 };
 
 } // namespace intelli

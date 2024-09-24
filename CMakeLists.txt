@@ -1,3 +1,8 @@
+# GTlab IntelliGraph
+#
+#  SPDX-License-Identifier: BSD-3-Clause
+#  SPDX-FileCopyrightText: 2024 German Aerospace Center
+
 cmake_minimum_required (VERSION 3.15.0)
 
 project(GTlabIntelliGraph)

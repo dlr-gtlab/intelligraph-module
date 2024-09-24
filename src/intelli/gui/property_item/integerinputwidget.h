@@ -1,13 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * Source File:
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 27.02.2024
- *  Author: Jens Schmeink (AT-TWK)
- *  Tel.: +49 2203 601 2191
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
-#ifndef INTEGERINPUTWIDGET_H
-#define INTEGERINPUTWIDGET_H
+
+#ifndef GT_INTELLI_INTEGERINPUTWIDGET_H
+#define GT_INTELLI_INTEGERINPUTWIDGET_H
 
 #include "abstractnumberinputwidget.h"
 
@@ -48,13 +49,13 @@ public slots:
 private:
     int m_maxTicks;
 
-    QAbstractSlider* m_dial;
+    QAbstractSlider* m_dial{nullptr};
 
-    GtLineEdit* m_text;
+    GtLineEdit* m_text{nullptr};
 
-    EditableIntegerLabel* m_low;
+    EditableIntegerLabel* m_low{nullptr};
 
-    EditableIntegerLabel* m_high;
+    EditableIntegerLabel* m_high{nullptr};
 
     int m_min;
 
@@ -85,5 +86,7 @@ private slots:
 
     void valueLabelChangedReaction();
 };
+
 } // namespace intelli
-#endif // INTEGERINPUTWIDGET_H
+
+#endif // GT_INTELLI_INTEGERINPUTWIDGET_H

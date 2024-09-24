@@ -1,10 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * Source File:
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 22.01.2024
- *  Author: Jens Schmeink (AT-TWK)
- *  Tel.: +49 2203 601 2191
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
 #include "intelli/node/existingdirectorysource.h"
@@ -24,9 +24,7 @@ ExistingDirectorySourceNode::ExistingDirectorySourceNode():
     setFlag(GtObject::UserRenamable);
     setNodeFlag(Resizable);
 
-    PortInfo info = typeId<StringData>();
-    info.captionVisible = false;
-    m_out = addOutPort(std::move(info));
+    m_out = addOutPort(makePort(typeId<StringData>()).setCaptionVisible(false));
 
     connect(&m_value, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);

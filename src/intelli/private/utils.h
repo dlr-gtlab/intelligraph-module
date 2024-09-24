@@ -1,11 +1,11 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 19.7.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #ifndef GT_INTELLI_UTILS_H
 #define GT_INTELLI_UTILS_H
@@ -33,39 +33,6 @@ operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& d
 
 namespace intelli
 {
-
-template <typename Sender, typename SignalSender,
-         typename Reciever, typename SignalReciever>
-struct IgnoreSignal
-{
-    IgnoreSignal(Sender sender_, SignalSender signalSender_,
-                 Reciever reciever_, SignalReciever signalReciever_) :
-        sender(sender_), signalSender(signalSender_), reciever(reciever_), signalReciever(signalReciever_)
-    {
-        QObject::disconnect(sender, signalSender, reciever, signalReciever);
-    }
-
-    ~IgnoreSignal()
-    {
-        QObject::connect(sender, signalSender, reciever, signalReciever, Qt::UniqueConnection);
-    }
-
-    Sender sender;
-    SignalSender signalSender;
-    Reciever reciever;
-    SignalReciever signalReciever;
-};
-
-template <typename Sender, typename SignalSender,
-         typename Reciever, typename SignalReciever>
-GT_NO_DISCARD auto
-ignoreSignal(Sender sender, SignalSender signalSender,
-             Reciever reciever, SignalReciever signalReciever)
-{
-    return IgnoreSignal<Sender, SignalSender, Reciever, SignalReciever>{
-        sender, signalSender, reciever, signalReciever
-    };
-}
 
 template <typename T>
 inline QString toString(T const& t)

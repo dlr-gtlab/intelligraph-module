@@ -1,11 +1,11 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 17.8.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/graphexecmodel.h"
 
@@ -189,6 +189,7 @@ findPortDataEntry(GraphExecutionModel& model, NodeId nodeId, PortId portId)
     }
 
     PortIndex idx(0);
+    // cppcheck-suppress shadowFunction
     for (auto* ports : {&entry->portsIn, &entry->portsOut})
     {
         for (auto& port : *ports)
@@ -374,7 +375,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph, Mode mode) :
 
     connect(&graph, &Graph::nodeAppended,
             this, &GraphExecutionModel::onNodeAppended, Qt::DirectConnection);
-    connect(&graph, &Graph::nodeDeleted,
+    connect(&graph, &Graph::childNodeAboutToBeDeleted,
             this, &GraphExecutionModel::onNodeDeleted, Qt::DirectConnection);
     connect(&graph, &Graph::connectionAppended,
             this, &GraphExecutionModel::onConnectedionAppended, Qt::DirectConnection);
@@ -574,7 +575,6 @@ GraphExecutionModel::autoEvaluate()
             << Impl::graphName(*this)
             << tr("Cannot auto evaluate cyclic graph! The node sequence %1 "
                   "contains a cycle!").arg(toString(cyclicNodes));
-
         m_autoEvaluate = false;
         return {};
     }

@@ -1,11 +1,11 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 5.5.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/node/finddirectchild.h"
 
@@ -14,6 +14,26 @@
 #include <gt_lineedit.h>
 
 #include <QRegExpValidator>
+#include <QRegExp>
+
+namespace gt
+{
+namespace re
+{
+
+namespace intelli
+{
+
+inline QRegExp forClassNames()
+{
+    return QRegExp(R"(^([a-zA-Z_][a-zA-Z0-9_]*::)*[a-zA-Z_][a-zA-Z0-9_]*$)");
+}
+
+} // namespace intelli
+
+} // namespace re
+
+} // namespace gt
 
 using namespace intelli;
 

@@ -1,14 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 13.9.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-
-#ifndef STYLE_H
-#define STYLE_H
+#ifndef GT_INTELLI_STYLE_H
+#define GT_INTELLI_STYLE_H
 
 #include <intelli/exports.h>
 #include <intelli/globals.h>
@@ -196,4 +196,4 @@ GT_INTELLI_EXPORT QColor generateTypeColor(TypeId const& typeId);
 
 } // namespace intelli
 
-#endif // STYLE_H
+#endif // GT_INTELLI_STYLE_H

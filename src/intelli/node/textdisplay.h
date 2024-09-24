@@ -1,15 +1,14 @@
-/* GTlab - Gas Turbine laboratory
+/*
+ * GTlab IntelliGraph
  *
- * SPDX-License-Identifier: MPL-2.0+
- * SPDX-FileCopyrightText: 2024 German Aerospace Center (DLR)
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
  *
- * Created on: 17.6.2024
- * Author: Marius Bröcker (AT-TWK)
- * E-Mail: marius.broecker@dlr.de
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef TEXTDISPLAYNODE_H
-#define TEXTDISPLAYNODE_H
+#ifndef GT_INTELLI_TEXTDISPLAYNODE_H
+#define GT_INTELLI_TEXTDISPLAYNODE_H
 
 #include <intelli/node.h>
 
@@ -43,4 +42,4 @@ private:
 
 } // namespace intelli
 
-#endif // TEXTDISPLAYNODE_H
+#endif // GT_INTELLI_TEXTDISPLAYNODE_H

@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 3.4.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include "intelli/node.h"
@@ -55,7 +56,7 @@ intelli::makeBaseWidget()
 
 Node::Node(QString const& modelName, GtObject* parent) :
     GtObject(parent),
-    pimpl(std::make_unique<NodeImpl>(modelName))
+    pimpl(std::make_unique<Impl>(modelName))
 {
     setFlag(UserDeletable, true);
     setFlag(UserRenamable, false);
@@ -103,6 +104,16 @@ Node::Node(QString const& modelName, GtObject* parent) :
     connect(this, &Node::computingFinished, this, [this](){
         setNodeFlag(NodeFlag::Evaluating, false);
         emit evaluated();
+    }, Qt::DirectConnection);
+
+    connect(this, &Node::portConnected, this, [this](PortId portId){
+        auto* port = this->port(portId);
+        if (port) port->m_isConnected = true;
+    }, Qt::DirectConnection);
+
+    connect(this, &Node::portDisconnected, this, [this](PortId portId){
+        auto* port = this->port(portId);
+        if (port) port->m_isConnected = false;
     }, Qt::DirectConnection);
 }
 
@@ -188,7 +199,8 @@ Node::isValid() const
 void
 Node::setNodeFlag(NodeFlag flag, bool enable)
 {
-    enable ? pimpl->flags |= flag : pimpl->flags &= ~flag;
+    enable ? pimpl->flags |= flag :
+             pimpl->flags &= ~flag;
 }
 
 void
@@ -207,6 +219,18 @@ NodeEvalMode
 Node::nodeEvalMode() const
 {
     return pimpl->evalMode;
+}
+
+void
+Node::setToolTip(QString const& tooltip)
+{
+    pimpl->toolTip = tooltip;
+}
+
+QString const&
+Node::tooltip() const
+{
+    return pimpl->toolTip;
 }
 
 Node&
@@ -275,7 +299,7 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
 {
     auto const makeError = [this, type, idx](){
         return objectName() + QStringLiteral(": ") +
-               tr("Failed to insert port idx %1 (%2)").arg(idx).arg(toString(type));
+               tr("Failed to insert port at idx %1 (%2)").arg(idx).arg(toString(type));
     };
 
     if (port.typeId.isEmpty())
@@ -284,8 +308,10 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
         return PortId{};
     }
 
-    auto& ports = pimpl->ports(type);
+    // reset is connected flag
+    port.m_isConnected = false;
 
+    auto& ports = pimpl->ports(type);
     auto iter = ports.end();
 
     if (idx >= 0 && static_cast<size_t>(idx) < ports.size())
@@ -317,16 +343,16 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
 bool
 Node::removePort(PortId id)
 {
-    auto find = pimpl->find(id);
-    if (!find) return false;
+    auto port = pimpl->findPort(id);
+    if (!port) return false;
 
     // notify model
-    emit portAboutToBeDeleted(find.type, find.idx);
-    auto finally = gt::finally([type = find.type, idx = find.idx, this](){
+    emit portAboutToBeDeleted(port.type, port.idx);
+    auto finally = gt::finally([type = port.type, idx = port.idx, this](){
         emit portDeleted(type, idx);
     });
 
-    find.ports->erase(std::next(find.ports->begin(), find.idx));
+    port.ports->erase(std::next(port.ports->begin(), port.idx));
 
     return true;
 }
@@ -366,7 +392,7 @@ Node::port(PortId id) noexcept
 {
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
     {
-        auto iter = findPort(*ports, id);
+        auto iter = Impl::find(*ports, id);
 
         if (iter != ports->end()) return &(*iter);
     }
@@ -385,7 +411,7 @@ Node::portIndex(PortType type, PortId id) const noexcept(false)
 {
     auto& ports = this->ports(type);
 
-    auto iter = findPort(ports, id);
+    auto iter = Impl::find(ports, id);
 
     if (iter != ports.end())
     {
@@ -398,10 +424,10 @@ Node::portIndex(PortType type, PortId id) const noexcept(false)
 Node::PortType
 Node::portType(PortId id) const noexcept(false)
 {
-    auto find = pimpl->find(id);
-    if (!find) return PortType::NoType;
+    auto port = pimpl->findPort(id);
+    if (!port) return PortType::NoType;
 
-    return find.type;
+    return port.type;
 }
 
 PortId
@@ -417,10 +443,8 @@ Node::portId(PortType type, PortIndex idx) const noexcept(false)
 bool
 Node::isPortConnected(PortId portId) const
 {
-    auto* graph = qobject_cast<Graph const*>(parent());
-    if (!graph) return false;
-
-    return !graph->findConnectedNodes(id(), portId).empty();
+    auto* port = this->port(portId);
+    return port && port->isConnected();
 }
 
 void
@@ -437,7 +461,7 @@ Node::handleNodeEvaluation(GraphExecutionModel& model)
     case NodeEvalMode::Exclusive:
     case NodeEvalMode::Detached:
         return detachedEvaluation(*this, model);
-    case NodeEvalMode::MainThread:
+    case NodeEvalMode::Blocking:
         return blockingEvaluation(*this, model);
     }
 

@@ -1,3 +1,12 @@
+/*
+ * GTlab IntelliGraph
+ *
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marting Siggel <martin.siggel@dlr.de>
+ */
+
 #include "intelli/core.h"
 
 #include "intelli/data/bool.h"
@@ -79,8 +88,6 @@ intelli::registerDefaultDataTypes()
         GT_INTELLI_REGISTER_INLINE_CONVERSION(DoubleData, IntData, data->value());
         GT_INTELLI_REGISTER_INLINE_CONVERSION(IntData, DoubleData, data->value());
 
-        GT_INTELLI_REGISTER_INLINE_CONVERSION(IntData, DoubleData, data->value());
-
         return true;
     }();
 
@@ -110,7 +117,7 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(NumberDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(NumberMathNode, catNumber);
-        GT_INTELLI_REGISTER_NODE(NumberSourceNode, catInput)
+        GT_INTELLI_REGISTER_NODE(NumberSourceNode, catInput);
         GT_INTELLI_REGISTER_NODE(SleepyNode, (gtApp && gtApp->devMode()) ? catOther : hidden);
 
         GT_INTELLI_REGISTER_NODE(LogicDisplayNode, catDisplay);
@@ -121,7 +128,7 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(ObjectMementoNode, catObject);
         GT_INTELLI_REGISTER_NODE(ObjectSourceNode, catInput);
-        GT_INTELLI_REGISTER_NODE(FindDirectChildNode, catObject)
+        GT_INTELLI_REGISTER_NODE(FindDirectChildNode, catObject);
 
         GT_INTELLI_REGISTER_NODE(FileInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(FileReaderNode, catFile);

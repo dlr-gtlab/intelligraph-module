@@ -1,9 +1,7 @@
+# GTlab IntelliGraph
 #
-# GTlab Geometry Module
-# SPDX-FileCopyrightText: 2023 German Aerospace Center (DLR)
-#
-# Author: Martin Siggel <martin.siggel@dlr.de>
-#
+#  SPDX-License-Identifier: BSD-3-Clause
+#  SPDX-FileCopyrightText: 2024 German Aerospace Center
 
 cmake_minimum_required(VERSION 3.15)
 project(IntelliGraph-Unittests)
@@ -47,4 +45,4 @@ target_compile_definitions(IntelliGraphUnitTests PRIVATE
 )
 
 include(GoogleTest)
-gtest_discover_tests(IntelliGraphUnitTests TEST_PREFIX "Intelligraph." DISCOVERY_MODE PRE_TEST)
+gtest_discover_tests(IntelliGraphUnitTests TEST_PREFIX "IntelliGraph." DISCOVERY_MODE PRE_TEST)

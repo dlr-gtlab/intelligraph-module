@@ -1,11 +1,12 @@
-/* GTlab - Gas Turbine laboratory
- * Source File:
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 28.02.2024
- *  Author: Jens Schmeink (AT-TWK)
- *  Tel.: +49 2203 601 2191
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
+
 #include "boolinputnode.h"
 
 #include <intelli/data/bool.h>

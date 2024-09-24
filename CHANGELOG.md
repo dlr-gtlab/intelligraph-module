@@ -6,8 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Allowed nodes and ports to have custom tooltips. - #110
+
 ### Changed
+- The PortId-generation of output- and input-providers had to be reworked, thus nested graphs imported from old version of this module are missing connections - #111 
+- API: Refactored the "connection model" and provided leaner and more flexible access to connection data of nodes. This change may improve general performance of large graphs. - #111
+- API: One can now access a "global connection model" as well, in which an entire graph hierarchy is flattened. To access nodes one has to use `uuid`- property of nodes. - #111
+
 ### Fixed
+- Fixed hidden ports being rendered incorretly. Hidden ports are still accessible through a port id and port index. - #111
+- API: Fixed `portConnected` and `portDisconnected` being emitted incorrectly. - #114
+
 ### Removed
 
 ## [0.11.0] - 2024-07-22

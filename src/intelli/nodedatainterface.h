@@ -1,14 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 4.10.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-
-#ifndef NODEDATAINTERFACE_H
-#define NODEDATAINTERFACE_H
+#ifndef GT_INTELLI_NODEDATAINTERFACE_H
+#define GT_INTELLI_NODEDATAINTERFACE_H
 
 #include <intelli/exports.h>
 #include <intelli/globals.h>
@@ -19,23 +19,6 @@ namespace intelli
 class Node;
 class Graph;
 
-enum class PortDataState
-{
-    /// Port data was outdata
-    Outdated = 0,
-    /// Port data is valid and up-to-date
-    Valid,
-};
-
-enum class NodeEvalState
-{
-    Invalid = 0,
-    Outdated,
-    Evaluating,
-    Paused,
-    Valid
-};
-
 enum class NodeState
 {
     Evaluated,
@@ -44,35 +27,6 @@ enum class NodeState
 
 namespace graph_data
 {
-
-struct PortEntry;
-
-/// helper struct representing node data and its validity state
-struct NodeDataSet
-{
-    NodeDataSet(std::nullptr_t) :
-        ptr(nullptr), state(PortDataState::Outdated)
-    {}
-    NodeDataSet(NodeDataPtr _data = {}) :
-        ptr(std::move(_data)), state(PortDataState::Valid)
-    {}
-    template <typename T>
-    NodeDataSet(std::shared_ptr<T> _data) :
-        ptr(std::move(_data)), state(PortDataState::Valid)
-    {}
-
-    /// actual node data
-    NodeDataPtr ptr;
-    /// data state
-    PortDataState state;
-
-    operator NodeDataPtr&() & { return ptr; }
-    operator NodeDataPtr() && { return std::move(ptr); }
-    operator NodeDataPtr const&() const& { return ptr; }
-
-    template <typename T>
-    inline auto value() const noexcept { return qobject_pointer_cast<T const>(ptr); }
-};
 
 struct PortEntry
 {
@@ -96,7 +50,6 @@ using GraphData = QHash<NodeId, Entry>;
 } // namesace graph_data
 
 using graph_data::GraphData;
-using graph_data::NodeDataSet;
 
 /**
  * @brief The NodeDataInterface class.
@@ -115,4 +68,4 @@ public:
 
 } // namespace intelli
 
-#endif // NODEDATAINTERFACE_H
+#endif // GT_INTELLI_NODEDATAINTERFACE_H

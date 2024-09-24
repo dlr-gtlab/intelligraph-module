@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 21.8.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include "intelli/node/numbermath.h"
@@ -66,8 +67,8 @@ NumberMathNode::NumberMathNode() :
 void
 NumberMathNode::eval()
 {
-    auto* dataA = nodeData<DoubleData*>(m_inA);
-    auto* dataB = nodeData<DoubleData*>(m_inB);
+    auto dataA = nodeData<DoubleData>(m_inA);
+    auto dataB = nodeData<DoubleData>(m_inB);
     if (!dataA && !dataB)
     {
         setNodeData(m_out, nullptr);

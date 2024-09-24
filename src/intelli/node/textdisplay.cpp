@@ -1,11 +1,10 @@
-/* GTlab - Gas Turbine laboratory
+/*
+ * GTlab IntelliGraph
  *
- * SPDX-License-Identifier: MPL-2.0+
- * SPDX-FileCopyrightText: 2024 German Aerospace Center (DLR)
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
  *
- * Created on: 17.6.2024
- * Author: Marius Bröcker (AT-TWK)
- * E-Mail: marius.broecker@dlr.de
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include <intelli/node/textdisplay.h>
@@ -32,12 +31,10 @@ TextDisplayNode::TextDisplayNode() :
     registerProperty(m_textType);
 
     // no eval method
-    setNodeEvalMode(NodeEvalMode::MainThread);
+    setNodeEvalMode(NodeEvalMode::Blocking);
     setNodeFlag(Resizable, true);
 
-    auto info = PortInfo{typeId<StringData>()};
-    info.captionVisible = false;
-    PortId in = addInPort(std::move(info));
+    PortId in = addInPort(makePort(typeId<StringData>()).setCaptionVisible(false));
 
     registerWidgetFactory([this, in](){
         auto base = makeBaseWidget();

@@ -1,11 +1,11 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 3.8.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #ifndef GT_INTELLI_DYNAMICNODE_H
 #define GT_INTELLI_DYNAMICNODE_H
@@ -27,12 +27,6 @@ namespace intelli
 class GT_INTELLI_EXPORT DynamicNode : public Node
 {
     Q_OBJECT
-
-    enum PortOption
-    {
-        StaticPort = 0,
-        DynamicPort,
-    };
 
 public:
 
@@ -110,6 +104,12 @@ public:
 
 protected:
 
+    enum PortOption
+    {
+        StaticPort = 0,
+        DynamicPort,
+    };
+
     /**
      * @brief constructor. Must initialize the model name.
      * @param modelName Model name. May not be altered later
@@ -147,6 +147,17 @@ protected:
      * @return Port id
      */
     PortId addStaticOutPort(PortInfo port);
+
+    /**
+     * @brief Common helper method for inserting a port at a given location.
+     * It can both insert a static and dynamic/user port
+     * @param option Port option (static or dynamic)
+     * @param type Port type
+     * @param port Port to insert
+     * @param idx Where to insert the port
+     * @return Port id
+     */
+    virtual PortId insertPort(PortOption option, PortType type, PortInfo port, int idx = -1);
 
 private slots:
 
@@ -193,17 +204,6 @@ private:
 
     /// Node option
     Option m_option = DynamicInputAndOutput;
-
-    /**
-     * @brief Common helper method for inserting a port at a given location.
-     * It can both insert a static and dynamic/user port
-     * @param option Port option (static or dynamic)
-     * @param type Port type
-     * @param port Port to insert
-     * @param idx Where to insert the port
-     * @return Port id
-     */
-    PortId insertPort(PortOption option, PortType type, PortInfo port, int idx = -1);
 
     /**
      * @brief Returns the offset for to the first index of a dynamic port.

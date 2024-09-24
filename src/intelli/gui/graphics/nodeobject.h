@@ -1,17 +1,16 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2024 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 12.3.2024
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #ifndef GT_INTELLI_NODEGRAPHICSOBJECT_H
 #define GT_INTELLI_NODEGRAPHICSOBJECT_H
 
 #include <intelli/node.h>
-#include <intelli/nodedatainterface.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/nodepainter.h>
 
@@ -52,7 +51,6 @@ public:
      * @param ui Node UI used to access painter and geomtery data
      */
     NodeGraphicsObject(GraphSceneData& data,
-                       Graph& graph,
                        Node& node,
                        NodeUI& ui);
 
@@ -68,13 +66,6 @@ public:
      * @return Node id
      */
     NodeId nodeId() const;
-
-    /**
-     * @brief Returns the associated graph.
-     * @return Graph
-     */
-    Graph& graph();
-    Graph const& graph() const;
 
     /**
      * @brief Returns the scene data object, that is shared by all nodes and
@@ -237,8 +228,6 @@ protected:
 
 signals:
 
-    void makeDraftConnection(NodeGraphicsObject* object, ConnectionId conId);
-
     void makeDraftConnection(NodeGraphicsObject* object, PortType type, PortId port);
 
     /**
@@ -275,8 +264,6 @@ private:
 
     /// Pointer to graph scene data
     GraphSceneData* m_sceneData;
-    /// Pointer to graph
-    QPointer<Graph> m_graph;
     /// Associated node
     QPointer<Node> m_node;
     /// Geometry

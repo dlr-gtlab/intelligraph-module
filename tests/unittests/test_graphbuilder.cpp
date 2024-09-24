@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/* 
+ * GTlab IntelliGraph
  *
- *  Created on: 9.8.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ * 
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include <gtest/gtest.h>
@@ -64,7 +65,7 @@ TEST(GraphBuilder, basic_graph)
         return;
     }
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 }
 
 TEST(GraphBuilder, graph_with_groups)
@@ -120,5 +121,5 @@ TEST(GraphBuilder, graph_with_groups)
         return;
     }
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 }

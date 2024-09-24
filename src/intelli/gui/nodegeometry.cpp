@@ -1,11 +1,12 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2024 by DLR
+/*
+ * GTlab IntelliGraph
  *
- *  Created on: 26.3.2024
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-
 
 #include "intelli/gui/nodegeometry.h"
 
@@ -76,7 +77,10 @@ NodeGeometry::portHeightExtent() const
         auto n = node().ports(type).size();
         if (n == 0) continue;
 
-        height = std::max(height, (int)(portCaptionRect(type, PortIndex::fromValue(n - 1)).bottomLeft().y() + vspacing()));
+        for (PortIndex idx{0}; idx < n; ++idx)
+        {
+            height = std::max(height, (int)(portCaptionRect(type, idx).bottomLeft().y() + vspacing()));
+        }
     }
 
     return height;
@@ -230,21 +234,26 @@ NodeGeometry::widgetPosition() const
         return QPointF{xOffset, yOffset};
     }
 
-    double xOffset = 1.5 * hspacing() + portHorizontalExtent(PortType::In);
-    double yOffset = captionHeightExtend();
 
-    if (node().ports(PortType::In).empty())
-    {
-        xOffset = innerRect().width() - w->width() - 1.5 * hspacing() - portHorizontalExtent(PortType::Out);
-    }
+    int portsDiff = portHorizontalExtent(PortType::Out) -
+                    portHorizontalExtent(PortType::In);
+
+    double xOffset = (innerRect().width() * 0.5) -
+                     (portsDiff * 0.5) -
+                     (w->width() * 0.5);
+
+    double yOffset = captionHeightExtend();
 
     return QPointF{xOffset, yOffset};
 }
 
+// TODO: what if port index is out of bounds?
 QRectF
 NodeGeometry::portRect(PortType type, PortIndex idx) const
 {
     assert(type != PortType::NoType && idx != invalid<PortIndex>());
+
+    auto& node  = this->node();
 
     QFontMetrics metrics{QFont()};
 
@@ -252,7 +261,10 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
 
     for (PortIndex i{0}; i < idx; ++i)
     {
-        height += 1.5 * metrics.height();
+        auto* port = node.port(node.portId(type, i));
+        bool visible = !port || port->visible;
+
+        height += visible * 1.5 * metrics.height();
     }
 
     auto& style = style::currentStyle().node;
@@ -271,19 +283,21 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
 {
     assert(type != PortType::NoType && idx != invalid<PortIndex>());
 
-    QFontMetrics metrics{QFont()};
-
-    auto& factory = NodeDataFactory::instance();
-
     auto& node = this->node();
     auto* port = node.port(node.portId(type, idx));
     assert(port);
+
+    if (!port->visible) return {};
+
+    QFontMetrics metrics{QFont()};
 
     int height = metrics.height();
     int width = 0;
 
     if (port->captionVisible)
     {
+        auto& factory = NodeDataFactory::instance();
+
         width += metrics.horizontalAdvance(port->caption.isEmpty() ?
                                                factory.typeName(port->typeId) :
                                                port->caption);
@@ -321,6 +335,8 @@ NodeGeometry::portHit(QRectF rect) const
     // check each port
     for (auto& port : node.ports(type))
     {
+        if (!port.visible) continue;
+
         auto pRect = this->portRect(type, node.portIndex(type, port.id()));
         if (pRect.intersects(rect))
         {

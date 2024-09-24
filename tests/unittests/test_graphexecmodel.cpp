@@ -1,9 +1,10 @@
-/* GTlab - Gas Turbine laboratory
- * copyright 2009-2023 by DLR
+/* 
+ * GTlab IntelliGraph
  *
- *  Created on: 17.8.2023
- *  Author: Marius Bröcker (AT-TWK)
- *  E-Mail: marius.broecker@dlr.de
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ * 
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include "test_helper.h"
@@ -23,7 +24,7 @@ TEST(GraphExecutionModel, evaluate_node)
 
     ASSERT_TRUE(test::buildLinearGraph(graph));
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 
     GraphExecutionModel model(graph);
 
@@ -78,7 +79,7 @@ TEST(GraphExecutionModel, evaluate_graph)
 
     ASSERT_TRUE(test::buildLinearGraph(graph));
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 
     GraphExecutionModel model(graph);
 
@@ -95,7 +96,7 @@ TEST(GraphExecutionModel, auto_evaluate_basic_graph)
 
     ASSERT_TRUE(test::buildBasicGraph(graph));
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 
     // auto evaluate
 
@@ -159,7 +160,7 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
 
     ASSERT_TRUE(test::buildGraphWithGroup(graph));
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 
     auto subGraphs = graph.graphNodes();
     ASSERT_EQ(subGraphs.size(), 1);
@@ -167,7 +168,7 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
     Graph* subGraph = subGraphs.at(0);
     ASSERT_TRUE(subGraph);
 
-    dag::debugGraph(subGraph->dag());
+    debug(*subGraph);
 
     // auto evaluate
 
@@ -193,9 +194,9 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
     ASSERT_TRUE(C_data);
     EXPECT_EQ(C_data->value(), 42);
     
-    auto D_data = model.nodeData(E_id, PortType::In, PortIndex(0)).value<DoubleData>();
-    ASSERT_TRUE(D_data);
-    EXPECT_EQ(D_data->value(), 8);
+    auto E_data = model.nodeData(E_id, PortType::In, PortIndex(0)).value<DoubleData>();
+    ASSERT_TRUE(E_data);
+    EXPECT_EQ(E_data->value(), 8);
 
 
     gtDebug() << "";
@@ -224,7 +225,7 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_groups)
     ASSERT_TRUE(C_data);
     EXPECT_EQ(C_data->value(), 44);
 
-    auto E_data = model.nodeData(E_id, PortType::In, PortIndex(0)).value<DoubleData>();
+    E_data = model.nodeData(E_id, PortType::In, PortIndex(0)).value<DoubleData>();
     ASSERT_TRUE(E_data);
     EXPECT_EQ(E_data->value(), 10);
 }
@@ -235,7 +236,7 @@ TEST(GraphExecutionModel, auto_evaluate_graph_after_node_deletion)
 
     ASSERT_TRUE(test::buildBasicGraph(graph));
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 
     GraphExecutionModel model(graph);
 
@@ -269,7 +270,7 @@ TEST(GraphExecutionModel, auto_evaluate_subgraph_only)
 
     ASSERT_TRUE(test::buildGraphWithGroup(graph));
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 
     auto subGraphs = graph.graphNodes();
     ASSERT_EQ(subGraphs.size(), 1);
@@ -277,7 +278,7 @@ TEST(GraphExecutionModel, auto_evaluate_subgraph_only)
     Graph* subGraph = subGraphs.at(0);
     ASSERT_TRUE(subGraph);
 
-    dag::debugGraph(subGraph->dag());
+    debug(*subGraph);
 
     EXPECT_FALSE(graph.executionModel());
     EXPECT_FALSE(subGraph->executionModel());
@@ -306,7 +307,7 @@ TEST(GraphExecutionModel, auto_evaluate_subgraph_without_connection_between_inpu
     success &= graph.deleteNode(E_id);
     ASSERT_TRUE(success);
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 
     auto subGraphs = graph.graphNodes();
     ASSERT_EQ(subGraphs.size(), 1);
@@ -314,11 +315,11 @@ TEST(GraphExecutionModel, auto_evaluate_subgraph_without_connection_between_inpu
     Graph& subGraph = *subGraphs.at(0);
     ASSERT_TRUE(&subGraph);
 
-    success &= subGraph.deleteConnection(ConnectionId{group_input_id, PortId(0), group_B_id, PortId(1)});
-    success &= subGraph.deleteConnection(ConnectionId{group_input_id, PortId(1), group_C_id, PortId(1)});
+    success &= subGraph.deleteConnection(subGraph.connectionId(group_input_id, PortIndex(0), group_B_id, PortIndex(1)));
+    success &= subGraph.deleteConnection(subGraph.connectionId(group_input_id, PortIndex(1), group_C_id, PortIndex(1)));
     ASSERT_TRUE(success);
 
-    dag::debugGraph(subGraph.dag());
+    debug(subGraph);
 
     GraphExecutionModel model(graph);
 
@@ -372,7 +373,7 @@ TEST(GraphExecutionModel, do_not_auto_evaluate_inactive_nodes)
 
     ASSERT_TRUE(test::buildBasicGraph(graph));
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 
     // auto evaluate
 
@@ -489,7 +490,7 @@ TEST(GraphExecutionModel, do_not_evaluate_cyclic_graphs)
         return;
     }
 
-    dag::debugGraph(graph.dag());
+    debug(graph);
 
     EXPECT_FALSE(isAcyclic(graph));
 
