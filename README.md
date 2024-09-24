@@ -1,6 +1,9 @@
 # GTlab-IntelliGraph
 
-Base Module for [GTlab](https://github.com/dlr-gtlab) that provides a graph-based workflow. 
+A [GTlab](https://github.com/dlr-gtlab) module to enable the creation of graph-based workflow. 
+
+![Screenshot of a Intelligraph workflow](docs/images/intelligraph-teaser.png)
+
 
 ## Based on QtNodes
 
