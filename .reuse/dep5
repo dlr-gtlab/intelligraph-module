@@ -6,3 +6,7 @@ Source:
 Files: .bumpversion.cfg *.md src/resources/* src/intelli/module.json
 Copyright: 2023 German Aerospace Center (DLR) <marius.broecker@dlr.de>
 License: BSD-3-Clause
+
+Files: docs/images/*
+Copyright: 2024 German Aerospace Center (DLR) <marius.broecker@dlr.de>
+License: CC-BY-SA-4.0
