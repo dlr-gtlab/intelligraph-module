@@ -7,8 +7,8 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef GT_INTELLI_BYTEARRAYDATA_H
-#define GT_INTELLI_BYTEARRAYDATA_H
+#ifndef GT_INTELLI_BYTEARRAY_H
+#define GT_INTELLI_BYTEARRAY_H
 
 #include <intelli/nodedata.h>
 
@@ -35,4 +35,4 @@ private:
 
 } // namespace intelli
 
-#endif // GT_INTELLI_BYTEARRAYDATA_H
+#endif // GT_INTELLI_BYTEARRAY_H
