@@ -8,12 +8,12 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
+#include "intelli/graph.h"
+#include "intelli/graphexecmodel.h"
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
 #include "intelli/gui/style.h"
-#include "intelli/future.h"
-#include "intelli/graph.h"
-#include "intelli/graphexecmodel.h"
+#include "intelli/gui/graphics/nodeobject.h"
 
 #include <gt_objectuiaction.h>
 #include <gt_icons.h>
@@ -37,6 +37,8 @@
 #include <QPrinter>
 
 #include <cmath>
+
+Q_DECLARE_METATYPE(intelli::ConnectionShape)
 
 constexpr int s_major_grid_size = 100;
 constexpr int s_minor_grid_size = s_major_grid_size / 10;
@@ -137,8 +139,6 @@ struct SnapToGridValueChanged
 
 struct ConnectionShapeStateChanged
 {
-    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
-
     void operator()(QVariant const& shape)
     {
         assert(view);
@@ -151,8 +151,6 @@ struct ConnectionShapeStateChanged
 
 struct ConnectionShapeValueChanged
 {
-    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
-
     void operator()()
     {
         assert(conShapeState);
@@ -168,7 +166,7 @@ struct ConnectionShapeValueChanged
         case ConnectionShape::Straight:
             value = ConnectionShape::Cubic;
         }
-        conShapeState->setValue(value);
+        conShapeState->setValue(QVariant::fromValue(value));
     }
 
     GtState* conShapeState{};
@@ -185,7 +183,7 @@ static GtState* setupState(GraphView& view,
                            GtObject& guardian,
                            Graph& graph,
                            QString const& stateId,
-                           Value defaulValue,
+                           Value defaultValue,
                            Sender* sender,
                            Signal signal)
 {
@@ -198,7 +196,7 @@ static GtState* setupState(GraphView& view,
         // entry for this graph
         graph.uuid() + QChar(';') + stateId.toLower().replace(' ', '_'),
         // default value
-        defaulValue,
+        defaultValue,
         // guardian object
         &guardian);
 
@@ -352,8 +350,6 @@ GraphView::GraphView(QWidget* parent) :
 void
 GraphView::setScene(GraphScene& scene)
 {
-    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
-
     QGraphicsView::setScene(&scene);
     centerScene();
 
@@ -381,7 +377,7 @@ GraphView::setScene(GraphScene& scene)
     Impl::setupState<Impl::ConnectionShapeStateChanged,
                      Impl::ConnectionShapeValueChanged>(
         *this, *guardian, graph, tr("Connection Shape"),
-        ConnectionShape::DefaultShape,
+        QVariant::fromValue(ConnectionShape::DefaultShape),
         this, &GraphView::connectionShapeChanged
     );
 

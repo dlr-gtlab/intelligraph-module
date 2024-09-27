@@ -9,8 +9,10 @@
 
 #include "intelli/gui/grapheditor.h"
 
-#include "intelli/gui/graphview.h"
-#include "intelli/gui/style.h"
+#include <intelli/graph.h>
+#include <intelli/gui/graphscene.h>
+#include <intelli/gui/graphview.h>
+#include <intelli/gui/style.h>
 
 #include <gt_logging.h>
 
@@ -52,6 +54,8 @@ GraphEditor::GraphEditor() : m_view(nullptr)
 
     setObjectName(tr("IntelliGraph Editor"));
 }
+
+GraphEditor::~GraphEditor() = default;
 
 void
 GraphEditor::setData(GtObject* obj)

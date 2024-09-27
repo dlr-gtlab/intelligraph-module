@@ -8,10 +8,8 @@
  */
 
 #include <intelli/graphexecmodel.h>
-#include <intelli/future.h>
-
+#include <intelli/graph.h>
 #include <intelli/private/graphexecmodel_impl.h>
-
 #include <intelli/node/groupoutputprovider.h>
 #include <intelli/node/groupinputprovider.h>
 

@@ -11,15 +11,15 @@
 #define GT_INTELLI_GRAPHEDITOR_H
 
 #include <intelli/memory.h>
-#include <intelli/gui/graphscene.h>
 
 #include <gt_mdiitem.h>
 
-class QMenu;
+#include <QPointer>
 
 namespace intelli
 {
 
+class GraphScene;
 class GraphView;
 
 /**
@@ -33,6 +33,7 @@ class GraphEditor : public GtMdiItem
 public:
 
     Q_INVOKABLE GraphEditor();
+    ~GraphEditor();
 
     void setData(GtObject* obj) override;
 
@@ -43,7 +44,7 @@ protected:
 private:
 
     /// scene
-    volatile_ptr<GraphScene, DirectDeleter> m_scene = nullptr;
+    volatile_ptr<GraphScene, DirectDeleter> m_scene;
     /// view
     GraphView* m_view = nullptr;
 };

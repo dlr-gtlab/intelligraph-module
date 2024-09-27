@@ -10,7 +10,6 @@
 #include "graphexeccalculator.h"
 #include <QRegExpValidator>
 
-#include <intelli/future.h>
 #include <intelli/graph.h>
 #include <intelli/graphexecmodel.h>
 

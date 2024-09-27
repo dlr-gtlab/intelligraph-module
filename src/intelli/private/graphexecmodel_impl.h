@@ -13,7 +13,6 @@
 #include <intelli/graphexecmodel.h>
 #include <intelli/graph.h>
 #include <intelli/node.h>
-#include <intelli/future.h>
 
 #include <intelli/private/utils.h>
 

@@ -10,7 +10,6 @@
 #include "test_helper.h"
 #include "node/test_node.h"
 
-#include "intelli/future.h"
 #include "intelli/memory.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"

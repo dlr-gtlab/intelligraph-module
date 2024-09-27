@@ -14,6 +14,8 @@
 #include "intelli/node.h"
 #include "intelli/gui/style.h"
 
+#include <QWidget>
+
 using namespace intelli;
 
 NodeGeometry::NodeGeometry(Node const& node) :
@@ -21,6 +23,8 @@ NodeGeometry::NodeGeometry(Node const& node) :
 {
 
 }
+
+NodeGeometry::~NodeGeometry() = default;
 
 void
 NodeGeometry::setWidget(QPointer<QWidget const> widget)

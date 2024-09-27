@@ -10,6 +10,8 @@
 
 #include <intelli/future.h>
 
+#include <intelli/graph.h>
+#include <intelli/graphexecmodel.h>
 #include <intelli/private/utils.h>
 
 #include <gt_eventloop.h>
@@ -57,6 +59,8 @@ struct ExecFuture::Impl
         }
     };
 };
+
+ExecFuture::~ExecFuture() = default;
 
 ExecFuture::ExecFuture(GraphExecutionModel& model) :
     m_model(&model)

@@ -10,7 +10,6 @@
 
 #include <intelli/gui/graphics/connectionobject.h>
 #include <intelli/gui/graphics/nodeobject.h>
-#include <intelli/gui/style.h>
 
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>

@@ -12,8 +12,7 @@
 #define GT_INTELLI_FUTURE_H
 
 #include <intelli/exports.h>
-#include <intelli/nodedatainterface.h>
-#include <intelli/graphexecmodel.h>
+#include <intelli/globals.h>
 
 #include <gt_platform.h>
 
@@ -25,6 +24,8 @@
 namespace intelli
 {
 
+class GraphExecutionModel;
+
 class ExecFuture
 {
     friend class GraphExecutionModel;
@@ -32,6 +33,8 @@ class ExecFuture
     static constexpr size_t PRE_ALLOC = 5;
 
 public:
+
+    GT_INTELLI_EXPORT ~ExecFuture();
 
     using milliseconds = std::chrono::milliseconds;
 

@@ -10,13 +10,16 @@
 #ifndef GT_INTELLI_DETACHEDEXECUTOR_H
 #define GT_INTELLI_DETACHEDEXECUTOR_H
 
-#include "intelli/node.h"
+#include <intelli/globals.h>
 
 #include <QFutureWatcher>
 #include <QPointer>
 
 namespace intelli
 {
+
+class Node;
+class NodeDataInterface;
 
 /**
  * @brief The DetachedExecutor class.

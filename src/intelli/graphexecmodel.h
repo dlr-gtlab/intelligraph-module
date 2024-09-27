@@ -10,8 +10,10 @@
 #ifndef GT_INTELLI_GRAPHEXECMODEL_H
 #define GT_INTELLI_GRAPHEXECMODEL_H
 
-#include <intelli/graph.h>
+#include <intelli/future.h>
 #include <intelli/nodedatainterface.h>
+
+#include <QPointer>
 
 namespace intelli
 {
@@ -19,8 +21,6 @@ namespace intelli
 class Connection;
 class Graph;
 class Node;
-
-class ExecFuture;
 
 /**
  * @brief The GraphExecutionModel class.

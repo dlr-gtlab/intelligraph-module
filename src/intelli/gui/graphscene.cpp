@@ -10,7 +10,7 @@
 
 #include "intelli/gui/graphscene.h"
 
-#include "intelli/future.h"
+#include <intelli/graph.h>
 #include "intelli/connection.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/nodefactory.h"
@@ -18,7 +18,12 @@
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/gui/nodeui.h"
+#include "intelli/gui/nodegeometry.h"
+#include <intelli/gui/graphscenedata.h>
+#include <intelli/gui/graphics/nodeobject.h>
+#include <intelli/gui/graphics/connectionobject.h>
 #include "intelli/private/utils.h"
+
 
 #include <gt_application.h>
 #include <gt_command.h>
@@ -33,6 +38,7 @@
 
 #include <gt_logging.h>
 
+#include <QMenu>
 #include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
@@ -132,6 +138,74 @@ findItems(GraphScene& scene)
     return items;
 }
 
+static void
+highlightCompatibleNodes(GraphScene& scene,
+                         Node& node,
+                         Node::PortInfo const& port)
+{
+    NodeId nodeId = node.id();
+    PortType type = node.portType(port.id());
+    assert(type != PortType::NoType);
+
+    // "deemphasize" all connections
+    for (auto& con : scene.m_connections)
+    {
+        con.object->makeInactive(true);
+    }
+
+    // find nodes that can potentially recieve connection
+    // -> all nodes that we do not depend on/that do not depend on us
+    QVector<NodeId> targets;
+    auto nodeIds = scene.m_graph->nodeIds();
+    auto dependencies = type == PortType::Out ?
+                            scene.m_graph->findDependencies(nodeId) :
+                            scene.m_graph->findDependentNodes(nodeId);
+
+    std::sort(nodeIds.begin(), nodeIds.end());
+    std::sort(dependencies.begin(), dependencies.end());
+
+    std::set_difference(nodeIds.begin(), nodeIds.end(),
+                        dependencies.begin(), dependencies.end(),
+                        std::back_inserter(targets));
+
+    targets.removeOne(nodeId);
+
+    // frist "unhilight" all nodes
+    for (NodeId node : qAsConst(nodeIds))
+    {
+        NodeGraphicsObject* target = scene.nodeObject(node);
+        assert(target);
+        target->highlights().setAsIncompatible();
+    }
+    // then highlight all nodes that are compatible
+    for (NodeId node : qAsConst(targets))
+    {
+        NodeGraphicsObject* target = scene.nodeObject(node);
+        assert(target);
+        target->highlights().setCompatiblePorts(port.typeId, invert(type));
+    }
+
+    // override source port
+    NodeGraphicsObject* source = scene.nodeObject(nodeId);
+    assert(source);
+    source->highlights().setPortAsCompatible(port.id());
+}
+
+static void
+clearHighlights(GraphScene& scene)
+{
+    // clear target nodes
+    for (auto& entry : scene.m_nodes)
+    {
+        assert(entry.object);
+        entry.object->highlights().clear();
+    }
+    for (auto& con : scene.m_connections)
+    {
+        con.object->makeInactive(false);
+    }
+}
+
 /**
  * @brief Instantiates a draft connection. Appends the object to the scene and
  * sets both end points and grabs the mouse.
@@ -190,7 +264,7 @@ instantiateDraftConnection(GraphScene& scene,
 
     scene.m_draftConnection = std::move(entity);
 
-    scene.highlightCompatibleNodes(sourceNode, *sourcePort);
+    highlightCompatibleNodes(scene, sourceNode, *sourcePort);
 
     return scene.m_draftConnection.get();
 };
@@ -542,7 +616,7 @@ GraphScene::createSceneMenu(QPointF scenePos)
 }
 
 void
-GraphScene::setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape)
+GraphScene::setConnectionShape(ConnectionShape shape)
 {
     m_connectionShape = shape;
     if (m_draftConnection)
@@ -809,7 +883,7 @@ GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     if (m_draftConnection)
     {
-        clearHighlights();
+        Impl::clearHighlights(*this);
 
         ConnectionId conId = m_draftConnection->connectionId();
         bool reverse = conId.inNodeId.isValid();
@@ -1618,70 +1692,4 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object,
 
     // create new connection
     Impl::instantiateDraftConnection(*this, *object, type, portId);
-}
-
-void
-GraphScene::highlightCompatibleNodes(Node& node, PortInfo const& port)
-{
-    NodeId nodeId = node.id();
-    PortType type = node.portType(port.id());
-    assert(type != PortType::NoType);
-
-    // "deemphasize" all connections
-    for (auto& con : m_connections)
-    {
-        con.object->makeInactive(true);
-    }
-
-    // find nodes that can potentially recieve connection
-    // -> all nodes that we do not depend on/that do not depend on us
-    QVector<NodeId> targets;
-    auto nodeIds = m_graph->nodeIds();
-    auto dependencies = type == PortType::Out ?
-        m_graph->findDependencies(nodeId) :
-        m_graph->findDependentNodes(nodeId);
-
-    std::sort(nodeIds.begin(), nodeIds.end());
-    std::sort(dependencies.begin(), dependencies.end());
-
-    std::set_difference(nodeIds.begin(), nodeIds.end(),
-                        dependencies.begin(), dependencies.end(),
-                        std::back_inserter(targets));
-
-    targets.removeOne(nodeId);
-
-    // frist "unhilight" all nodes
-    for (NodeId node : qAsConst(nodeIds))
-    {
-        NodeGraphicsObject* target = nodeObject(node);
-        assert(target);
-        target->highlights().setAsIncompatible();
-    }
-    // then highlight all nodes that are compatible
-    for (NodeId node : qAsConst(targets))
-    {
-        NodeGraphicsObject* target = nodeObject(node);
-        assert(target);
-        target->highlights().setCompatiblePorts(port.typeId, invert(type));
-    }
-
-    // override source port
-    NodeGraphicsObject* source = nodeObject(nodeId);
-    assert(source);
-    source->highlights().setPortAsCompatible(port.id());
-}
-
-void
-GraphScene::clearHighlights()
-{
-    // clear target nodes
-    for (auto& entry : m_nodes)
-    {
-        assert(entry.object);
-        entry.object->highlights().clear();
-    }
-    for (auto& con : m_connections)
-    {
-        con.object->makeInactive(false);
-    }
 }

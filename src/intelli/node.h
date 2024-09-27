@@ -141,7 +141,6 @@ class GT_INTELLI_EXPORT Node : public GtObject
     
     friend class INode;
     friend class NodeGraphicsObject;
-    friend class GraphExecutionModel;
 
 public:
 

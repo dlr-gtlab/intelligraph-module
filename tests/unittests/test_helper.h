@@ -12,6 +12,7 @@
 
 #include <gtest/gtest.h>
 
+#include "intelli/graph.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/graphbuilder.h"
 #include "intelli/data/double.h"
