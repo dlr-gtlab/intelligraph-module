@@ -13,7 +13,9 @@ using namespace intelli;
 
 ObjectData::ObjectData(GtObject const* obj) :
     NodeData(QStringLiteral("object")),
-    m_obj(std::unique_ptr<GtObject>(obj ? obj->clone() : nullptr))
+    m_obj(volatile_ptr<GtObject, DeferredDeleter>(obj ? obj->clone() : nullptr))
 {
 
 }
+
+ObjectData::~ObjectData() = default;
