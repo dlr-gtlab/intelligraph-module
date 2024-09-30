@@ -54,8 +54,9 @@ constexpr size_t IsBlockingMask = 1 << 1;
 /// mask to check if node should be evaluated exclusively
 constexpr size_t IsExclusiveMask = 1 << 2;
 
-enum class NodeEvalMode
+enum class NodeEvalMode : size_t
 {
+    NoEvaluationRequired = 0,
     /// Indicates that the node will be evaluated non blockingly in a separate
     /// thread
     Detached = IsDetachedMask,
@@ -144,15 +145,16 @@ class GT_INTELLI_EXPORT Node : public GtObject
 
 public:
 
-    using NodeId       = intelli::NodeId;
-    using NodeFlag     = intelli::NodeFlag;
-    using NodeFlags    = intelli::NodeFlags;
-    using NodeEvalMode = intelli::NodeEvalMode;
-    using PortType     = intelli::PortType;
-    using PortId       = intelli::PortId;
-    using PortIndex    = intelli::PortIndex;
-    using Position     = intelli::Position;
-    using NodeDataPtr  = intelli::NodeDataPtr;
+    using NodeId        = intelli::NodeId;
+    using NodeFlag      = intelli::NodeFlag;
+    using NodeFlags     = intelli::NodeFlags;
+    using NodeEvalMode  = intelli::NodeEvalMode;
+    using NodeEvalState = intelli::NodeEvalState;
+    using PortType      = intelli::PortType;
+    using PortId        = intelli::PortId;
+    using PortIndex     = intelli::PortIndex;
+    using Position      = intelli::Position;
+    using NodeDataPtr   = intelli::NodeDataPtr;
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
@@ -332,11 +334,6 @@ public:
     QSize size() const;
 
     /**
-     * @brief Will create a unique object name based on the node caption
-     */
-    void updateObjectName();
-
-    /**
      * @brief Returns true if the node (id) is valid
      * @return is valid
      */
@@ -353,6 +350,12 @@ public:
      * @return Node eval mode
      */
     NodeEvalMode nodeEvalMode() const;
+
+    /**
+     * @brief Return the node eval state
+     * @return Node eval state
+     */
+    NodeEvalState nodeEvalState() const;
 
     /**
      * @brief Setter for the tooltip of the node. Will be displayed when
@@ -379,6 +382,11 @@ public:
      * @return Caption
      */
     QString caption() const;
+
+    /**
+     * @brief Will create a unique object name based on the node caption
+     */
+    void updateObjectName();
 
     /**
      * @brief Returns the object name, that does not contain any symbols or
@@ -543,7 +551,15 @@ signals:
      */
     void portDisconnected(PortId id);
 
+    /**
+     * @brief Emitted once the `isActive` flag changes.
+     */
     void isActiveChanged();
+
+    /**
+     * @brief Emitted once the node evaluation state changes
+     */
+    void nodeEvalStateChanged();
 
 protected:
 

@@ -12,6 +12,7 @@
 #include <intelli/gui/graphics/nodeobject.h>
 
 #include <intelli/node.h>
+#include <intelli/gui/nodeui.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/nodepainter.h>
 #include <intelli/gui/graphscenedata.h>
@@ -260,13 +261,6 @@ void
 NodeGraphicsObject::commitPosition()
 {
     m_node->setPos(pos());
-}
-
-void
-NodeGraphicsObject::setNodeEvalState(NodeEvalState state)
-{
-    // forward node eval state
-    m_evalStateObject->setNodeEvalState(state);
 }
 
 void

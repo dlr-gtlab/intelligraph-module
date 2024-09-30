@@ -152,22 +152,11 @@ private:
      */
     void moveConnectionPoint(ConnectionGraphicsObject& object, PortType type);
 
-    /**
-     * @brief Highlights all nodes their ports that are compatible to `port`
-     * @param node Source node
-     * @param port Source port
-     */
-//    void highlightCompatibleNodes(Node& node, PortInfo const& port);
-
-//    void clearHighlights();
-
 private slots:
 
     void onNodeAppended(Node* node);
 
     void onNodeDeleted(NodeId nodeId);
-
-    void onNodeEvalStateChanged(NodeUuid const& nodeUuid);
 
     void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
 

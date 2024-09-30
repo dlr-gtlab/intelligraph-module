@@ -304,12 +304,5 @@ NodeUI::setActive(GtObject* obj, bool state)
     auto* node = toNode(obj);
     if (!node) return;
 
-    auto wasActive = node->isActive();
-
     node->setActive(state);
-
-    if (!wasActive && node->isActive())
-    {
-        emit node->triggerNodeEvaluation();
-    }
 }

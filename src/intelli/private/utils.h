@@ -115,14 +115,6 @@ namespace utils
 /// Helper function that searches for `t` in List and returns the iterator
 template<typename List, typename T>
 inline auto
-find(List& list, T const& t)
-{
-    return std::find(list.begin(), list.end(), t);
-}
-
-/// Helper function that searches for `t` in List and returns the iterator
-template<typename List, typename T>
-inline auto
 contains(List const& list, T const& t)
 {
     return std::find(list.begin(), list.end(), t) != list.end();
@@ -133,7 +125,7 @@ template<typename List, typename T>
 inline bool
 erase(List& list, T const& t)
 {
-    auto iter = find(list, t);
+    auto iter = std::find(list.begin(), list.end(), t);
     if (iter != list.end())
     {
         list.erase(iter);

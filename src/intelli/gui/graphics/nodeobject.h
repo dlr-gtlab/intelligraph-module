@@ -134,13 +134,6 @@ public:
     void commitPosition();
 
     /**
-     * @brief Sets the node eval state to visualize the current evaluation
-     * state of the node to the user
-     * @param state Evaluation state
-     */
-    void setNodeEvalState(NodeEvalState state);
-
-    /**
      * @brief The Highlights class.
      * Denotes whether a node or a port should be highlighted by the painter.
      * This is only intended for visualizations.

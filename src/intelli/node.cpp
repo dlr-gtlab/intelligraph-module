@@ -195,6 +195,17 @@ Node::nodeEvalMode() const
     return pimpl->evalMode;
 }
 
+NodeEvalState
+Node::nodeEvalState() const
+{
+    auto* model = pimpl->dataInterface;
+    if (!model)
+    {
+        return NodeEvalState::Invalid;
+    }
+    return model->nodeEvalState(this->uuid());
+}
+
 void
 Node::setToolTip(QString const& tooltip)
 {
@@ -485,8 +496,10 @@ public:
 
     static bool triggerNodeEvaluation(Node& node, NodeDataInterface& interface)
     {
-        size_t evalFlag = (size_t)node.nodeEvalMode();
+        auto evalMode = node.nodeEvalMode();
+        if (evalMode == NodeEvalMode::NoEvaluationRequired) return true;
 
+        size_t evalFlag = (size_t)node.nodeEvalMode();
         if (evalFlag & IsDetachedMask)
         {
             return exec::detachedEvaluation(node, interface);

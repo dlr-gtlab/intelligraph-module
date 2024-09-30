@@ -75,6 +75,14 @@ public:
                     PortIndex portIdx,
                     milliseconds timeout = milliseconds::max()) const;
 
+    /**
+     * @brief Registers a callback function that is called once the target
+     * nodes have (failed) evaluation or if the timout has been reached.
+     * @param functor Callback functor
+     * @param timeout Timeout to wait until the callback function is called
+     * with a failed status as parameter.
+     * @return Reference for operator chaining.
+     */
     GT_INTELLI_EXPORT
     ExecFuture const& then(CallbackFunctor functor,
                            milliseconds timeout = milliseconds::max()) const;
@@ -114,7 +122,7 @@ private:
     /// pointer to the source execution model
     QPointer<GraphExecutionModel> m_model;
     /// targets to watch, contains only invalid or still evaluating targets
-    QVarLengthArray<TargetNode, PRE_ALLOC> m_targets;
+    QVector<TargetNode> m_targets;
 
     /**
      * @brief Constructs a future object from the model and registers the node

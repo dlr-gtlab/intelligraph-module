@@ -68,6 +68,8 @@ signals:
 
     void connectionShapeChanged(QPrivateSignal);
 
+    void autoEvaluationChanged(QPrivateSignal);
+
 protected:
 
     void contextMenuEvent(QContextMenuEvent* event) override;

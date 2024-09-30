@@ -11,6 +11,7 @@
 #define GT_INTELLI_DETACHEDEXECUTOR_H
 
 #include <intelli/globals.h>
+#include <intelli/nodedatainterface.h>
 
 #include <QFutureWatcher>
 #include <QPointer>

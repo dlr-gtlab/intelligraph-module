@@ -32,7 +32,6 @@ Graph::Graph() :
     auto* group = new ConnectionGroup(this);
     group->setDefault(true);
 
-    setActive(false);
     setNodeEvalMode(NodeEvalMode::Blocking);
 
     connect(group, &ConnectionGroup::mergeConnections, this, [this](){

@@ -65,8 +65,6 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
         };
     }
 
-    graph->setActive(true);
-
     auto success = true;
     for (auto& port : inPorts)
     {

@@ -82,6 +82,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/calculators/graphexeccalculator.h
     intelli/node/abstractgroupprovider.h
     intelli/exec/detachedexecutor.h
+    intelli/exec/dummynodedatamodel.h
     intelli/node/existingdirectorysource.h
     intelli/node/fileinput.h
     intelli/node/filereader.h
@@ -140,6 +141,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/package.cpp
     intelli/calculators/graphexeccalculator.cpp
     intelli/exec/detachedexecutor.cpp
+    intelli/exec/dummynodedatamodel.cpp
     intelli/data/bool.cpp
     intelli/data/bytearray.cpp
     intelli/data/double.cpp

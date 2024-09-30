@@ -370,7 +370,7 @@ GraphScene::~GraphScene()
     auto* model = GraphExecutionModel::accessExecModel(*m_graph);
     if (!model) return;
 
-    model->stopAutoEvaluatingGraph();
+    model->stopAutoEvaluatingGraph(*m_graph);
 }
 
 void
@@ -403,7 +403,10 @@ GraphScene::endReset()
     assert(root);
 
     auto* model = GraphExecutionModel::accessExecModel(*root);
-    if (!model) model = new GraphExecutionModel(*root);
+    if (!model)
+    {
+        model = new GraphExecutionModel(*root);
+    }
 
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
@@ -421,17 +424,6 @@ GraphScene::endReset()
 
     connect(m_graph, &Graph::connectionAppended, this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
     connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
-
-    connect(model, &GraphExecutionModel::nodeEvalStateChanged,
-            this, &GraphScene::onNodeEvalStateChanged, Qt::DirectConnection);
-
-    // update node eval states
-    for (auto* node : nodes)
-    {
-        onNodeEvalStateChanged(node->uuid());
-    }
-
-    if (root->isActive()) model->autoEvaluateGraph(*m_graph);
 }
 
 Graph&
@@ -1199,7 +1191,6 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
 
     groupNode->setCaption(groupNodeName);
     groupNode->setPos(center);
-    groupNode->setActive(true);
 
     // setup input/output provider
     groupNode->initInputOutputProviders();
@@ -1515,21 +1506,6 @@ GraphScene::onNodeDeleted(NodeId nodeId)
     {
         m_nodes.erase(iter);
     }
-}
-
-void
-GraphScene::onNodeEvalStateChanged(NodeUuid const& nodeUuid)
-{
-    auto* node = m_graph->findNodeByUuid(nodeUuid);
-    if (!node || node->parent() != m_graph) return;
-
-    auto* object = nodeObject(node->id());
-    assert(object);
-
-    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
-    assert(model);
-
-    object->setNodeEvalState(model->nodeEvalState(nodeUuid));
 }
 
 void

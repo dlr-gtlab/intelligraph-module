@@ -38,10 +38,14 @@ public:
     GraphExecutionModel(Graph& graph);
     ~GraphExecutionModel();
 
+    GT_NO_DISCARD
     static GraphExecutionModel* accessExecModel(Graph& graph);
+    GT_NO_DISCARD
     static GraphExecutionModel const* accessExecModel(Graph const& graph);
 
+    GT_NO_DISCARD
     Graph& graph();
+    GT_NO_DISCARD
     Graph const& graph() const;
 
     /**
@@ -50,7 +54,7 @@ public:
     void reset();
 
     GT_NO_DISCARD
-    NodeEvalState nodeEvalState(NodeUuid const& nodeUuid) const;
+    NodeEvalState nodeEvalState(NodeUuid const& nodeUuid) const override;
 
     /**
      * @brief Returns whether the root graph is currently beeing evaluated
@@ -83,8 +87,20 @@ public:
     GT_NO_DISCARD
     bool isEvaluating() const;
 
+    /**
+     * @brief Returns whether the associated graph is marked for auto
+     * evaluation. Graphs that are auto evaluating will attempt to keep all
+     * nodes evaluated and valid.
+     * @return Whether the associated graph is marked for auto evaluation
+     */
     GT_NO_DISCARD
     bool isAutoEvaluatingGraph() const;
+    /**
+     * @brief Returns whether the given graph is marked for auto
+     * evaluation. Graphs that are auto evaluating will attempt to keep all
+     * nodes evaluated and valid.
+     * @return Whether the associated graph is marked for auto evaluation
+     */
     GT_NO_DISCARD
     bool isAutoEvaluatingGraph(Graph const& graph) const;
 
@@ -104,12 +120,17 @@ public:
     bool invalidateNode(NodeUuid const& nodeUuid);
     bool invalidateNodeOutputs(NodeUuid const& nodeUuid);
 
+    GT_NO_DISCARD
     [[deprecated]] NodeDataSet nodeData(NodeId nodeId, PortId portId) const;
     [[deprecated]] bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data);
 
+    GT_NO_DISCARD
     NodeDataSet nodeData(Graph const& graph, NodeId nodeId, PortId portId) const;
+    GT_NO_DISCARD
     NodeDataSet nodeData(NodeUuid const& nodeUuid, PortId portId) const override;
+    GT_NO_DISCARD
     NodeDataSet nodeData(NodeUuid const& nodeUuid, PortType type, PortIndex portIdx) const;
+    GT_NO_DISCARD
     NodeDataPtrList nodeData(NodeUuid const& nodeUuid, PortType type) const override;
 
     bool setNodeData(Graph const& graph, NodeId nodeId, PortId portId, NodeDataSet data);
@@ -122,6 +143,7 @@ public:
      * execution states and data of all nodes.
      * @return Execution data
      */
+    GT_NO_DISCARD
     inline auto const& data() const { return m_data; }
 
 protected:
@@ -129,33 +151,26 @@ protected:
     void setNodeEvaluationFailed(NodeUuid const& nodeUuid) override;
 
     void nodeEvaluationStarted(NodeUuid const& nodeUuid) override;
+
     void nodeEvaluationFinished(NodeUuid const& nodeUuid) override;
 
 signals:
 
     /**
-     * @brief Emitted once a node has been evaluated. This signal
-     * is always emitted in the next event loop cycle.
+     * @brief Emitted once a node has been evaluated.
      * @param nodeUuid Uuid of the evaluated node
      */
     void nodeEvaluated(QString const& nodeUuid, QPrivateSignal);
 
     /**
-     * @brief Emitted once a node has failed to evaluate. This signal
-     * may be emitted in the next event loop cycle.
+     * @brief Emitted once a node has failed to evaluate.
      * @param nodeUuid Uuid of the evaluated node
      */
     void nodeEvaluationFailed(QString const& nodeUuid, QPrivateSignal);
 
     /**
-     * @brief Emitted once a node's eval state has changed.
-     * @param nodeUuid Uuid of the affected node
-     */
-    void nodeEvalStateChanged(QString const& nodeUuid, QPrivateSignal);
-
-    /**
      * @brief Emitted once an internal error has occured, that may result due to
-     * a node not being accessible anymore (e.g. because it has been deleted).
+     * a node unexpectedly not being accessible anymore.
      */
     void internalError(QPrivateSignal);
 
@@ -173,16 +188,18 @@ private:
     /// data model for all nodes and their ports
     GraphDataModel m_data;
     /// nodes that should be evaluated
-    QVarLengthArray<NodeUuid, PRE_ALLOC> m_targetNodes;
-    /// nodes that are pending
+    std::vector<NodeUuid> m_targetNodes;
+    /// nodes that should be queued and executed at some point to evaluate
+    /// all target nodes
     std::vector<NodeUuid> m_pendingNodes;
+    /// nodes that should be considered for auto evaluation
+    std::set<NodeUuid> m_autoEvaluatingNodes;
     /// nodes that are ready and waiting for evaluation
-    QVarLengthArray<NodeUuid, PRE_ALLOC> m_queuedNodes;
+    std::vector<NodeUuid> m_queuedNodes;
     /// nodes that are currently evaluating
-    QVarLengthArray<NodeUuid, PRE_ALLOC> m_evaluatingNodes;
-
+    std::vector<NodeUuid> m_evaluatingNodes;
     /// graphs that should be auto evaluated
-    QVarLengthArray<NodeUuid, PRE_ALLOC> m_autoEvaluatingGraphs;
+    std::vector<NodeUuid> m_autoEvaluatingGraphs;
     /// indicator if the exec model is currently beeing modified and thus
     /// should halt execution
     int m_modificationCount = 0;
@@ -193,13 +210,16 @@ private:
 
     /**
      * @brief Will tell the model that new nodes and connections are about to be
-     * inserted and pause the auto evaluation to avoid redundand evaluation of
-     * nodes. Should be called when bulk inserting multiple objects.
-     * Once `endModification` is called and the internal ref count reaches zero,
-     * the model resumes evaluation.
+     * inserted and pause the auto evaluation to avoid unnecessary updates and
+     * evaluations of nodes. Should be called when bulk inserting/deleting nodes
+     * and connections. Once `endModification` is called and the internal ref
+     * count reaches zero, the model resumes evaluation.
      */
     void beginModification();
 
+    /**
+     * @brief Resumes evaluation of nodes if the internal ref count reaches zero.
+     */
     void endModification();
 
     /**

@@ -167,7 +167,7 @@ ExecFuture::then(CallbackFunctor functor, milliseconds timeout) const
 
     // seup timeout
     if (timeout >= milliseconds::zero() &&
-        timeout <= milliseconds::max())
+        timeout  < milliseconds::max())
     {
         auto* timer = new QTimer;
         timer->setParent(observer.get());

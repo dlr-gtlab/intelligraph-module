@@ -8,7 +8,7 @@
  */
 
 #include <intelli/gui/graphics/nodeevalstateobject.h>
-#include <intelli/gui/nodegeometry.h>
+#include <intelli/node.h>
 #include <intelli/gui/nodepainter.h>
 #include <intelli/gui/style.h>
 
@@ -25,6 +25,7 @@ NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent
                                                          NodePainter& painter,
                                                          Node& node) :
     QGraphicsObject(&parent),
+    m_node(&node),
     m_timeLine(1000),
     m_painter(&painter)
 {
@@ -34,11 +35,15 @@ NodeEvalStateGraphicsObject::NodeEvalStateGraphicsObject(QGraphicsObject& parent
     m_timeLine.setLoopCount(0);
     m_timeLine.setFrameRange(0, 24);
 
-    connect(&m_timeLine, &QTimeLine::frameChanged, &node, [=](){
-        this->update();
-    });
+    connect(&m_timeLine, &QTimeLine::frameChanged,
+            m_node, [=](){ this->update(); });
 
-    setNodeEvalState(NodeEvalState::Invalid);
+    connect(m_node, &Node::nodeEvalStateChanged,
+            this, &NodeEvalStateGraphicsObject::onNodeEvalStateChanged,
+            Qt::DirectConnection);
+
+    // update once
+    onNodeEvalStateChanged();
 }
 
 QRectF
@@ -47,36 +52,6 @@ NodeEvalStateGraphicsObject::boundingRect() const
     auto& style = style::currentStyle();
     return QRectF{QPoint{0, 0},
                   QSizeF{style.node.evalStateSize, style.node.evalStateSize}};
-}
-
-void
-NodeEvalStateGraphicsObject::setNodeEvalState(NodeEvalState state)
-{
-    m_state = state;
-
-    m_timeLine.stop();
-
-    switch (m_state)
-    {
-    case NodeEvalState::Invalid:
-        setToolTip(tr("Node failed to evaluate or is not setp correctly"));
-        break;
-    case NodeEvalState::Outdated:
-        setToolTip(tr("Node data is outdated and requires an reevaluation"));
-        break;
-    case NodeEvalState::Paused:
-        setToolTip(tr("Node is paused and will not be evaluated automatically"));
-        break;
-    case NodeEvalState::Valid:
-        setToolTip(tr("Node has evaluated successfully"));
-        break;
-    case NodeEvalState::Evaluating:
-        setToolTip(tr("Node is evaluating"));
-        m_timeLine.start();
-        break;
-    }
-
-    update();
 }
 
 void
@@ -146,6 +121,37 @@ NodeEvalStateGraphicsObject::paintIdleState(QPainter& painter)
     painter.setBrush(brush);
 
     painter.drawEllipse(center.x() - size/2, center.y() - size/2, size, size);
+}
+
+void
+NodeEvalStateGraphicsObject::onNodeEvalStateChanged()
+{
+    assert(m_node);
+    m_state = m_node->nodeEvalState();
+
+    m_timeLine.stop();
+
+    switch (m_state)
+    {
+    case NodeEvalState::Invalid:
+        setToolTip(tr("Node failed to evaluate or is not setup correctly"));
+        break;
+    case NodeEvalState::Outdated:
+        setToolTip(tr("Node data is outdated and must be reevaluated"));
+        break;
+    case NodeEvalState::Paused:
+        setToolTip(tr("Node is paused and will not be evaluated automatically"));
+        break;
+    case NodeEvalState::Valid:
+        setToolTip(tr("Node has been evaluated successfully"));
+        break;
+    case NodeEvalState::Evaluating:
+        setToolTip(tr("Node is currently evaluating"));
+        m_timeLine.start();
+        break;
+    }
+
+    update();
 }
 
 void
