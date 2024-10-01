@@ -484,11 +484,13 @@ public:
         node.eval();
     }
 
+    // cppcheck-suppress constParameter
     static void setNodeDataInterface(Node& node, NodeDataInterface* interface)
     {
         node.pimpl->dataInterface = interface;
     }
 
+    // cppcheck-suppress constParameter
     static NodeDataInterface* nodeDataInterface(Node& node)
     {
         return node.pimpl->dataInterface;

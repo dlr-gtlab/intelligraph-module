@@ -140,11 +140,12 @@ findItems(GraphScene& scene)
 
 static void
 highlightCompatibleNodes(GraphScene& scene,
-                         Node& node,
-                         Node::PortInfo const& port)
+                         Node& sourceNode,
+                         Node::PortInfo const& sourcePort)
 {
-    NodeId nodeId = node.id();
-    PortType type = node.portType(port.id());
+    NodeId sourceNodeId = sourceNode.id();
+    PortId sourcePortId = sourcePort.id();
+    PortType type = sourceNode.portType(sourcePortId);
     assert(type != PortType::NoType);
 
     // "deemphasize" all connections
@@ -158,8 +159,8 @@ highlightCompatibleNodes(GraphScene& scene,
     QVector<NodeId> targets;
     auto nodeIds = scene.m_graph->nodeIds();
     auto dependencies = type == PortType::Out ?
-                            scene.m_graph->findDependencies(nodeId) :
-                            scene.m_graph->findDependentNodes(nodeId);
+                            scene.m_graph->findDependencies(sourceNodeId) :
+                            scene.m_graph->findDependentNodes(sourceNodeId);
 
     std::sort(nodeIds.begin(), nodeIds.end());
     std::sort(dependencies.begin(), dependencies.end());
@@ -168,27 +169,27 @@ highlightCompatibleNodes(GraphScene& scene,
                         dependencies.begin(), dependencies.end(),
                         std::back_inserter(targets));
 
-    targets.removeOne(nodeId);
+    targets.removeOne(sourceNodeId);
 
     // frist "unhilight" all nodes
-    for (NodeId node : qAsConst(nodeIds))
+    for (NodeId nodeId : qAsConst(nodeIds))
     {
-        NodeGraphicsObject* target = scene.nodeObject(node);
+        NodeGraphicsObject* target = scene.nodeObject(nodeId);
         assert(target);
         target->highlights().setAsIncompatible();
     }
     // then highlight all nodes that are compatible
-    for (NodeId node : qAsConst(targets))
+    for (NodeId nodeId : qAsConst(targets))
     {
-        NodeGraphicsObject* target = scene.nodeObject(node);
+        NodeGraphicsObject* target = scene.nodeObject(nodeId);
         assert(target);
-        target->highlights().setCompatiblePorts(port.typeId, invert(type));
+        target->highlights().setCompatiblePorts(sourcePort.typeId, invert(type));
     }
 
     // override source port
-    NodeGraphicsObject* source = scene.nodeObject(nodeId);
+    NodeGraphicsObject* source = scene.nodeObject(sourceNodeId);
     assert(source);
-    source->highlights().setPortAsCompatible(port.id());
+    source->highlights().setPortAsCompatible(sourcePortId);
 }
 
 static void
@@ -402,12 +403,15 @@ GraphScene::endReset()
     auto* root = m_graph->rootGraph();
     assert(root);
 
+    // instantiate exec model
     auto* model = GraphExecutionModel::accessExecModel(*root);
     if (!model)
     {
         model = new GraphExecutionModel(*root);
     }
+    Q_UNUSED(model);
 
+    // instantiate objects
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
     {

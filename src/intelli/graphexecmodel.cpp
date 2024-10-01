@@ -26,7 +26,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
     if (graph.parentGraph())
     {
         gtError() << tr("A graph execution model should only be added to the root Graph!");
-        m_modificationCount++; // deactive this exec model
+        m_modificationCount++; // deactivate this exec model
     }
 
     if (auto* exec = graph.findDirectChild<GraphExecutionModel*>())
@@ -203,8 +203,8 @@ GraphExecutionModel::beginReset()
     {
         auto& entry = *m_data.find(*iter);
         entry.state = NodeEvalState::Outdated;
-        for (auto& entry : entry.portsIn ) entry.data.state = PortDataState::Outdated;
-        for (auto& entry : entry.portsOut) entry.data.state = PortDataState::Outdated;
+        for (auto& e : entry.portsIn ) e.data.state = PortDataState::Outdated;
+        for (auto& e : entry.portsOut) e.data.state = PortDataState::Outdated;
 
         if (Node* node = m_graph->findNodeByUuid(*iter))
         {
@@ -925,9 +925,9 @@ GraphExecutionModel::onEndGraphModification()
 void
 intelli::debug(GraphExecutionModel const& model)
 {
-    QString text;
+    QString debugText;
     auto const& graph = model.graph();
-    text = QStringLiteral("Graph: ") + graph.caption() + QStringLiteral("\n");
+    debugText = QStringLiteral("Graph: ") + graph.caption() + QStringLiteral("\n");
 
     int base_indent = graph.objectPath().count(';');
 
@@ -989,10 +989,10 @@ intelli::debug(GraphExecutionModel const& model)
         if (oldIndent != entry.first)
         {
             oldIndent = entry.first;
-            text += QStringLiteral("\n");
+            debugText += QStringLiteral("\n");
         }
-        text += entry.second;
+        debugText += entry.second;
     }
 
-    gtInfo().nospace() << "Debugging graph exec model...\n\"\n" << text << "\"";
+    gtInfo().nospace() << "Debugging graph exec model...\n\"\n" << debugText << "\"";
 }
