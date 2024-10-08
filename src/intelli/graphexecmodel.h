@@ -11,6 +11,7 @@
 #define GT_INTELLI_GRAPHEXECMODEL_H
 
 #include <intelli/future.h>
+#include <intelli/graphdatamodel.h>
 #include <intelli/nodedatainterface.h>
 
 #include <QPointer>
@@ -18,13 +19,18 @@
 namespace intelli
 {
 
-class Connection;
 class Graph;
 class Node;
 
 /**
  * @brief The GraphExecutionModel class.
  * Manages the evaluation chain of a directed acyclic graph.
+ *
+ * By default all nodes are invalidated (=outdated) and require an evaluation.
+ * No node or graph is auto matically evalauted by default.
+ *
+ * One exec model is required to evaluate a graph hierarchy. To access node
+ * data the uuid is used instead of the node's id.
  */
 class GT_INTELLI_EXPORT GraphExecutionModel : public QObject,
                                               public NodeDataInterface
@@ -43,6 +49,10 @@ public:
     GT_NO_DISCARD
     static GraphExecutionModel const* accessExecModel(Graph const& graph);
 
+    /**
+     * @brief Provides access to the current graph
+     * @return The associated graph of the model
+     */
     GT_NO_DISCARD
     Graph& graph();
     GT_NO_DISCARD
@@ -53,6 +63,11 @@ public:
      */
     void reset();
 
+    /**
+     * @brief Returns the node evaluation state of the given node
+     * @param nodeUuid Node Uuid of the requested node.
+     * @return Node eval state
+     */
     GT_NO_DISCARD
     NodeEvalState nodeEvalState(NodeUuid const& nodeUuid) const override;
 
@@ -104,38 +119,137 @@ public:
     GT_NO_DISCARD
     bool isAutoEvaluatingGraph(Graph const& graph) const;
 
+    /**
+     * @brief Starts the auto evaluation of the associated graph of this model.
+     * Use this method to keep the nodes of the associated graph up-to-date.
+     * @return Whether the auto evaluation could be started successfully.
+     */
     bool autoEvaluateGraph();
+    /**
+     * @brief Starts the auto evaluation of the given graph node.
+     * Use this method to keep the nodes of the given graph up-to-date.
+     * @return Whether the auto evaluation could be started successfully.
+     */
     bool autoEvaluateGraph(Graph& graph);
 
+    /**
+     * @brief Starts the evaluation of all nodes that belong the graph
+     * associated with this exec model. Any inactive node is also evalauted.
+     * Use this method to evaluate the nodes of the associated graph exactly
+     * once.
+     * @return Future object
+     */
     GT_NO_DISCARD
     ExecFuture evaluateGraph();
+    /**
+     * @brief Starts the evaluation of all nodes that belong the given graph.
+     * Any inactive node is also evalauted. Use this method to evaluate the
+     * nodes of the associated graph exactly once.
+     * @return Future object
+     */
     GT_NO_DISCARD
     ExecFuture evaluateGraph(Graph& graph);
+    /**
+     * @brief Starts the evaluation of the given node including all
+     * dependencies. Any inactive node is also evalauted. Use this method to
+     * evaluate the nodes of the associated graph exactly once.
+     * @return Future object
+     */
     GT_NO_DISCARD
     ExecFuture evaluateNode(NodeUuid const& nodeUuid);
 
+    /**
+     * @brief Stops the auto evaluation of the graph that is associated with
+     * this exec model.
+     */
     void stopAutoEvaluatingGraph();
+    /**
+     * @brief Stops the auto evaluation of the given graph.
+     */
     void stopAutoEvaluatingGraph(Graph& graph);
 
+    /**
+     * @brief Invalidates the specified node. All output data is invalidated
+     * but not cleared. The node must be reevaluated to update the node once
+     * more.
+     * @param nodeUuid Uuid of the node to invalidate.
+     * @return success
+     */
     bool invalidateNode(NodeUuid const& nodeUuid);
-    bool invalidateNodeOutputs(NodeUuid const& nodeUuid);
 
     GT_NO_DISCARD
     [[deprecated]] NodeDataSet nodeData(NodeId nodeId, PortId portId) const;
     [[deprecated]] bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data);
 
+    /**
+     * @brief Node-id based overload to access the data of a node.
+     * @param graph Graph that is the direct parent of the spcified node
+     * @param nodeId Node id
+     * @param portId Desired port
+     * @return Node dataset (may be null)
+     */
     GT_NO_DISCARD
     NodeDataSet nodeData(Graph const& graph, NodeId nodeId, PortId portId) const;
+    /**
+     * @brief Returns the node data of the given node at the specified port.
+     * @param nodeUuid Node's uuid
+     * @param portId Desired port
+     * @return Node dataset (may be null)
+     */
     GT_NO_DISCARD
     NodeDataSet nodeData(NodeUuid const& nodeUuid, PortId portId) const override;
+    /**
+     * @brief Returns the node data of the given node at the specified port.
+     * @param nodeUuid Node's uuid
+     * @param type Whether the port is an input or output port
+     * @param portIdx Index of the port
+     * @return Node dataset (may be null)
+     */
     GT_NO_DISCARD
     NodeDataSet nodeData(NodeUuid const& nodeUuid, PortType type, PortIndex portIdx) const;
+    /**
+     * @brief Returns the node data of the given node as a list. Each entry is
+     * associtated with the given port id.
+     * @param nodeUuid Node's uuid
+     * @param type Whether to access the input or output ports
+     * @return List of node datasets (may be null)
+     */
     GT_NO_DISCARD
     NodeDataPtrList nodeData(NodeUuid const& nodeUuid, PortType type) const override;
 
+    /**
+     * @brief Node-id based overload to set the data of a node.
+     * @param graphGraph that is the direct parent of the spcified node
+     * @param nodeId Node id
+     * @param portId Desired port
+     * @param data Data to apply
+     * @return success
+     */
     bool setNodeData(Graph const& graph, NodeId nodeId, PortId portId, NodeDataSet data);
+    /**
+     * @brief Sets the node data of the given node at the specified port.
+     * @param nodeUuid Node's uuid
+     * @param portId Desired port
+     * @param data Data to apply
+     * @return success
+     */
     bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet data) override;
+    /**
+     * @brief Sets the node data of the given node at the specified port.
+     * @param nodeUuid Node's uuid
+     * @param type Whether the port is an input or output port
+     * @param portIdx Index of the port
+     * @param data Data to apply
+     * @return success
+     */
     bool setNodeData(NodeUuid const& nodeUuid, PortType type, PortIndex portIdx, NodeDataSet data);
+    /**
+     * @brief Applies a list of node data to the given node.
+     * @param nodeUuid Node's uuid
+     * @param type Whether to access the input or output ports
+     * @param data Data list to apply
+     * @return success
+     */
     bool setNodeData(NodeUuid const& nodeUuid, PortType type, NodeDataPtrList const& data) override;
 
     /**
@@ -148,10 +262,25 @@ public:
 
 protected:
 
+    /**
+     * @brief Called once a node fails its evaluation. Must be called while
+     * the node is still evalauting
+     * @param nodeUuid Node's Uuid
+     */
     void setNodeEvaluationFailed(NodeUuid const& nodeUuid) override;
 
+    /**
+     * @brief Called once when a node starts its evalaution. Must be followed
+     * by `nodeEvaluationFinished`.
+     * @param nodeUuid Node's Uuid
+     */
     void nodeEvaluationStarted(NodeUuid const& nodeUuid) override;
 
+    /**
+     * @brief Called once when a node finishes its evalaution. Must follow
+     * `nodeEvaluationStarted`.
+     * @param nodeUuid Node's Uuid
+     */
     void nodeEvaluationFinished(NodeUuid const& nodeUuid) override;
 
 signals:
@@ -174,8 +303,15 @@ signals:
      */
     void internalError(QPrivateSignal);
 
+    /**
+     * @brief Emitted if a graph has stalled evaluation.
+     */
     void graphStalled(QPrivateSignal);
 
+    /**
+     * @brief Attempts to trigger the evaluation of nodes that are queued and
+     * could not be evalauted due to cross dependencies to other exec models
+     */
     void wakeup(QPrivateSignal);
 
 private:
@@ -238,28 +374,35 @@ private:
 
 private slots:
 
-    /**
-     * @brief Method is directly invoked once a node has been evaluated.
-     * @param nodeUuid Uuid of the node that was evaluated
-     */
+    /// Called once a node finishes its evalaution. Triggers the evaluation of
+    /// successor nodes.
     void onNodeEvaluated(NodeUuid const& nodeUuid);
 
+    /// Updates the model if a node was appended
     void onNodeAppended(Node* node);
 
+    /// Updates the model if a node was deleted
     void onNodeDeleted(Graph* graph, NodeId nodeId);
 
+    /// Updates the model if a port was inserted
     void onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx);
 
+    /// Updates the model if a port is about to be deleted
     void onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, PortIndex idx);
 
+    /// Updates the model if a connection was appended
     void onConnectionAppended(ConnectionUuid conUuid);
 
+    /// Updates the model if a connection was deleted
     void onConnectionDeleted(ConnectionUuid conUuid);
 
+    /// Updates the model if a graph was deleted
     void onGraphDeleted();
 
+    /// Called if a graph is being modified
     void onBeginGraphModification();
 
+    /// Called if a graph was modified
     void onEndGraphModification();
 };
 

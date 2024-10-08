@@ -48,6 +48,7 @@ inline QString makeIndentation(int indent)
 
 } // namespace intelli
 
+// helper macros for more legible output
 #define INTELLI_LOG_IMPL(MODEL, INDENT) \
     (MODEL).graph().objectName() + QChar{':'} + makeIndentation(INDENT)
 #define INTELLI_LOG_SCOPE(MODEL) \
@@ -99,19 +100,28 @@ inline QString autoEvaluteNodeError(Graph const& graph)
 /// Helper struct to "hide" implementation details and template functions
 struct GraphExecutionModel::Impl
 {
-    // coarse locking
     struct Synchronization
     {
         struct SynchronizationEntry
         {
+            /// pointer to exec model
             QPointer<GraphExecutionModel> ptr = {};
+            /// number of running nodes
             size_t runningNodes = {};
+            /// Indicates whether an exclusive node is running
             bool isExclusiveNodeRunning = false;
         };
 
+        /// mutex for coarse locking
         QMutex mutex;
+        /// registered entries
         QVector<SynchronizationEntry> entries;
 
+        /**
+         * @brief Returns whether any graph exec model is currently evaluating
+         * an exclusive node
+         * @return Whether any exclusive node is being evaluated
+         */
         bool isExclusiveNodeRunning()
         {
             return std::any_of(entries.begin(),
@@ -121,6 +131,10 @@ struct GraphExecutionModel::Impl
             });
         }
 
+        /**
+         * @brief Returns whether any graph model is currently evaluating nodes
+         * @return Whether any nodes are being evaluated
+         */
         bool areNodesRunning()
         {
             return std::any_of(entries.begin(),
@@ -130,6 +144,11 @@ struct GraphExecutionModel::Impl
            });
         }
 
+        /**
+         * @brief Returns the index of the given exec model
+         * @param model Graph exec model
+         * @return Index of exec model (should not be invalid)
+         */
         int indexOf(GraphExecutionModel& model)
         {
             int n = entries.size();
@@ -141,6 +160,12 @@ struct GraphExecutionModel::Impl
             return -1;
         }
 
+        /**
+         * @brief Notifies all other models that a graph exec model has finished
+         * evaluating all of its nodes such that other graph exec models may
+         * start evalauting nodes themselfes.
+         * @param model Exec model that has finished evalauting all nodes
+         */
         void notify(GraphExecutionModel& model)
         {
             for (auto& entry : entries)
@@ -149,6 +174,22 @@ struct GraphExecutionModel::Impl
                 assert(entry.ptr);
                 emit entry.ptr->wakeup(QPrivateSignal());
             }
+        }
+
+        void update(GraphExecutionModel& model)
+        {
+            if (model.m_evaluatingNodes.size() > 0) return;
+
+            QMutexLocker locker{&s_sync.mutex};
+            auto idx = s_sync.indexOf(model);
+            assert(idx >= 0);
+
+            auto& entry = s_sync.entries[idx];
+            entry.runningNodes = 0;
+            entry.isExclusiveNodeRunning = false;
+
+            locker.unlock();
+            notify(model);
         }
     };
 
@@ -169,55 +210,20 @@ struct GraphExecutionModel::Impl
     using MutablePortDataItemHelper = PortDataItemHelper<false>;
     using ConstPortDataItemHelper = PortDataItemHelper<true>;
 
-    /// Finds either all start (root) or end (leaf) nodes of the graph. This can
-    /// be determined if there no ingoing/outgoing connections
-    template<typename List>
-    static inline void
-    findStartAndEndNodes(Graph const& graph, PortType type, List& targetNodes)
-    {
-        auto& conModel = graph.connectionModel();
-        for (auto& entry : conModel)
-        {
-            if (entry.ports(type).empty() && !targetNodes.contains(entry.node->uuid()))
-            {
-                targetNodes.push_back(entry.node->uuid());
-            }
-        }
-
-        if (type != PortType::In) return;
-
-        // recursive search for predecessors
-        auto const& subgraphs = graph.graphNodes();
-        for (auto* subgraph : subgraphs)
-        {
-            findStartAndEndNodes(*subgraph, type, targetNodes);
-        }
-    }
-
-    /// Finds all start/root nodes of the graph.
-    template<typename List>
-    static inline void
-    findRootNodes(Graph const& graph, List& targetNodes)
-    {
-        findStartAndEndNodes(graph, PortType::In, targetNodes);
-    }
-
     /// Finds all end/leaf nodes of the graph.
     template<typename List>
     static inline void
     findLeafNodes(Graph const& graph, List& targetNodes)
     {
-        findStartAndEndNodes(graph, PortType::Out, targetNodes);
-    }
-
-    /// Returns the port type for the given entry and port vector
-    template<typename E, typename P>
-    static inline PortType
-    portType(E& e, P& p)
-    {
-        if (&e.portsIn == &p) return PortType::In;
-        if (&e.portsOut == &p) return PortType::Out;
-        return PortType::NoType;
+        auto& conModel = graph.connectionModel();
+        for (auto& entry : conModel)
+        {
+            if (entry.ports(PortType::Out).empty() &&
+                !targetNodes.contains(entry.node->uuid()))
+            {
+                targetNodes.push_back(entry.node->uuid());
+            }
+        }
     }
 
     static inline bool
@@ -313,9 +319,7 @@ struct GraphExecutionModel::Impl
                  PortId portId,
                  MakeErrorFunction makeError = {})
     {
-        PortType type = PortType::NoType;
-
-        auto* portEntry = item.entry->findPort(portId, &type);
+        auto* portEntry = item.entry->findPort(portId);
         if (!portEntry)
         {
             if (makeError) gtError()
@@ -326,6 +330,7 @@ struct GraphExecutionModel::Impl
                            .arg(portId);
             return {};
         }
+        PortType type = item.node->portType(portId);
         assert(type != PortType::NoType);
 
         return { item, portEntry, type };
@@ -389,16 +394,10 @@ struct GraphExecutionModel::Impl
                  PortIndex portIdx,
                  MakeErrorFunction makeError = {})
     {
-        auto* graph = qobject_cast<Graph*>(model.sender());
-        if (!graph)
-        {
-            if (makeError) gtError()
-                    << makeError(model.graph())
-                    << tr("graph node not found!");
-            return {};
-        }
 
-        return findPortData(model, *graph, nodeId, type, portIdx, makeError);
+        auto item = findData(model, nodeId, makeError);
+        if (!item) return {};
+        return findPortData(model, item, type, portIdx, makeError);
     }
 
     template<typename ExecModel>
@@ -527,6 +526,7 @@ struct GraphExecutionModel::Impl
 
         item->data.state = PortDataState::Outdated;
 
+        // TODO: better solution?
         if (item.node->nodeEvalMode() != NodeEvalMode::ForwardInputsToOutputs)
         {
             return invalidateNode(model, nodeUuid, item);
@@ -566,6 +566,16 @@ struct GraphExecutionModel::Impl
             throw GTlabException(__FUNCTION__, "path is unreachable!");
         }
         return true;
+    }
+
+    static inline bool
+    invalidateNode(GraphExecutionModel& model,
+                   NodeUuid const& nodeUuid)
+    {
+        auto item = Impl::findData(model, nodeUuid);
+        if (!item) return false;
+
+        return Impl::invalidateNode(model, nodeUuid, item);
     }
 
     /**
@@ -656,7 +666,7 @@ struct GraphExecutionModel::Impl
     /**
      * @brief Propagates that a node has started/is finished evaluating to
      * its parent graph. This is used to indicate that a subgraph is evaluating
-     * even though the graph node itself is not currently evaluating.
+     * even though the graph node itself is not evaluating currently.
      * @param model Model
      * @param graph Graph to update
      * @tparam Op Operation (plus/minus)
@@ -665,8 +675,6 @@ struct GraphExecutionModel::Impl
     static inline void
     propagateNodeEvalautionStatus(GraphExecutionModel& model, Graph* graph)
     {
-        constexpr auto invalid = std::numeric_limits<size_t>::max();
-
         assert(graph);
         if (graph == graph->rootGraph()) return;
 
@@ -676,13 +684,14 @@ struct GraphExecutionModel::Impl
         // update counter
         auto& refCounter = item->m_evaluatingChildNodes;
         refCounter = Op<size_t>{}(refCounter, 1);
-        assert(refCounter < invalid);
+        assert(refCounter < std::numeric_limits<size_t>::max());
         emit item.node->nodeEvalStateChanged();
 
         // next parent
         propagateNodeEvalautionStatus<Op>(model, graph->parentGraph());
     }
 
+    /// Helper method that sets the node data for the given node and port
     static inline bool
     setNodeData(GraphExecutionModel& model,
                 NodeUuid const& nodeUuid,
@@ -699,6 +708,7 @@ struct GraphExecutionModel::Impl
                            tryTriggerEvaluation);
     }
 
+    /// Helper method that sets the node data for the given node and port
     static inline bool
     setNodeData(GraphExecutionModel& model,
                 MutableDataItemHelper item,
@@ -715,6 +725,7 @@ struct GraphExecutionModel::Impl
                            tryTriggerEvaluation);
     }
 
+    /// Helper method that sets the node data for the given node and port
     static inline bool
     setNodeData(GraphExecutionModel& model,
                 MutablePortDataItemHelper item,
@@ -804,6 +815,8 @@ struct GraphExecutionModel::Impl
         return true;
     }
 
+    /// Helper method that accumulates all dependencies recursively of the given
+    /// node and appens them to the spcified list.
     template<typename List>
     static void
     accumulateDependencies(GlobalConnectionModel const& conModel,
@@ -820,6 +833,8 @@ struct GraphExecutionModel::Impl
         }
     }
 
+    /// Sorts the given list according to topo sort, such that all nodes
+    /// at the start of the list have no dependencies
     template <typename List>
     static void
     sortDependencies(GraphExecutionModel& model, List& list)
@@ -839,6 +854,12 @@ struct GraphExecutionModel::Impl
         list = gt::topo_sort(adjacencyMatrix);
     }
 
+    /**
+     * @brief Reschedules all target nodes and appends them to the list of
+     * pending nodes
+     * @param model Exec model
+     * @return Whether any node was scheduled
+     */
     static inline bool
     rescheduleTargetNodes(GraphExecutionModel& model)
     {
@@ -862,6 +883,12 @@ struct GraphExecutionModel::Impl
         return schedulePendingNodes(model);
     }
 
+    /**
+     * @brief Reschedules all graphs marked for auto evalaution and appends
+     * the nodes to the list of nodes to auto evaluate
+     * @param model Exec model
+     * @return Whether any node was scheduled
+     */
     static inline bool
     rescheduleAutoEvaluatingNodes(GraphExecutionModel& model)
     {
@@ -912,6 +939,13 @@ struct GraphExecutionModel::Impl
         return model.m_autoEvaluatingNodes.find(nodeUuid) != model.m_autoEvaluatingNodes.end();
     }
 
+    /**
+     * @brief Auto evaluates the specified graph such that all dependencies
+     * required for the evaluation of the leaf nodes of the specified graph are
+     * marked for auto evaluation and are kept up-to-date.
+     * @param model Exec model
+     * @return success
+     */
     static inline bool
     autoEvaluateGraph(GraphExecutionModel& model,
                       Graph& graph)
@@ -932,6 +966,12 @@ struct GraphExecutionModel::Impl
         return true;
     }
 
+    /**
+     * @brief Schedules all successor nodes of the given node for auto
+     * evaluation as long as they are marked for auto evaluation.
+     * @param model Exec model
+     * @return success
+     */
     static inline bool
     scheduleAutoEvaluationOfSuccessors(GraphExecutionModel& model,
                                        NodeUuid const& nodeUuid)
@@ -954,6 +994,11 @@ struct GraphExecutionModel::Impl
         return success;
     }
 
+    /**
+     * @brief Schedules the given node for auto evaluation.
+     * @param model Exec model
+     * @return success
+     */
     static inline bool
     scheduleForAutoEvaluation(GraphExecutionModel& model,
                               NodeUuid const& nodeUuid)
@@ -1008,6 +1053,13 @@ struct GraphExecutionModel::Impl
         return true;
     }
 
+    /**
+     * @brief Evaluates the specified graph such that all dependencies that are
+     * required for the evaluation of the leaf nodes of the specified graph are
+     * evalauted exactly once.
+     * @param model Exec model
+     * @return success
+     */
     static inline ExecFuture
     evaluateGraph(GraphExecutionModel& model,
                   Graph const& graph)
@@ -1049,6 +1101,12 @@ struct GraphExecutionModel::Impl
         return future;
     }
 
+    /**
+     * @brief Evaluates the specified node such that all dependencies that are
+     * required for the evaluation are evalauted exactly once.
+     * @param model Exec model
+     * @return success
+     */
     static inline ExecFuture
     evaluateNode(GraphExecutionModel& model,
                  NodeUuid const& nodeUuid)
@@ -1071,6 +1129,13 @@ struct GraphExecutionModel::Impl
         return ExecFuture{model, nodeUuid};
     }
 
+    /**
+     * @brief Schedules all pending nodes for evaluation that are also ready for
+     * evaluation but does not trigger their evaluation. Assumes a topological
+     * sorted list of pending nodes.
+     * @param model Exec model
+     * @return success
+     */
     static inline bool
     schedulePendingNodes(GraphExecutionModel& model)
     {
@@ -1140,6 +1205,12 @@ struct GraphExecutionModel::Impl
         return (after - before) > 0;
     }
 
+    /**
+     * @brief Schedules all nodes that are marked for auto evaluation but
+     * does not trigger their evaluation.
+     * @param model Exec model
+     * @return success
+     */
     static inline bool
     scheduleAutoEvaluatingNodes(GraphExecutionModel& model)
     {
@@ -1167,6 +1238,11 @@ struct GraphExecutionModel::Impl
         return success;
     }
 
+    /**
+     * @brief Tries to evalaute the specified node.
+     * @param model Exec model
+     * @return success
+     */
     template <typename Iter>
     static inline NodeEvalState
     tryEvaluatingNode(GraphExecutionModel& model,
@@ -1224,6 +1300,7 @@ struct GraphExecutionModel::Impl
                 return NodeEvalState::Paused;
             }
 
+            // exclusive node cannot be evaluated yet
             if (isExclusive && s_sync.areNodesRunning())
             {
                 INTELLI_LOG(model)
@@ -1278,6 +1355,11 @@ struct GraphExecutionModel::Impl
         return item->state;
     }
 
+    /**
+     * @brief Attempts to evalaute all queued nodes.
+     * @param model Exec model
+     * @return success
+     */
     static inline bool
     evaluateNextInQueue(GraphExecutionModel& model)
     {

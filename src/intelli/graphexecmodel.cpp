@@ -45,6 +45,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
         Impl::s_sync.entries.push_back({this});
     }
 
+    // trigger evalaution of nodes that are potentially waiting for evaluation
     connect(this, &GraphExecutionModel::wakeup, this, [this](){
         if (m_queuedNodes.empty()) return;
         Impl::evaluateNextInQueue(*this);
@@ -53,27 +54,27 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 #ifndef GT_INTELLI_DEBUG_NODE_EXEC
     connect(this, &GraphExecutionModel::nodeEvaluated,
             this, [this](QString const& nodeUuid){
-        auto item = Impl::findData(*this, nodeUuid);
-        if (item)
+        Node const* node = this->graph().globalConnectionModel().node(nodeUuid);
+        if (node)
         {
             gtInfo()
                 << gt::quoted(this->graph().caption(), "", ":")
                 << tr("node '%1' (%2) evaluated!")
-                       .arg(relativeNodePath(*item.node))
-                       .arg(item.node->id());
+                       .arg(relativeNodePath(*node))
+                       .arg(node->id());
         }
     }, Qt::DirectConnection);
 
     connect(this, &GraphExecutionModel::nodeEvaluationFailed,
             this, [this](QString const& nodeUuid){
-        auto item = Impl::findData(*this, nodeUuid);
-        if (item)
+        Node const* node = this->graph().globalConnectionModel().node(nodeUuid);
+        if (node)
         {
             gtWarning()
                 << gt::quoted(this->graph().caption(), "", ":")
                 << tr("node '%1' (%2) failed to evaluate!")
-                       .arg(relativeNodePath(*item.node))
-                       .arg(item.node->id());
+                       .arg(relativeNodePath(*node))
+                       .arg(node->id());
         }
     }, Qt::DirectConnection);
 #endif
@@ -303,8 +304,8 @@ GraphExecutionModel::isGraphEvaluated(Graph const& graph) const
 bool
 GraphExecutionModel::isNodeEvaluated(NodeUuid const& nodeUuid) const
 {
-    auto item = Impl::findData(*this, nodeUuid);
-    return (item) && item->state == NodeEvalState::Valid;
+    auto iter = m_data.find(nodeUuid);
+    return iter != m_data.end() && iter->state == NodeEvalState::Valid;
 }
 
 bool
@@ -381,16 +382,7 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
 bool
 GraphExecutionModel::invalidateNode(NodeUuid const& nodeUuid)
 {
-    return invalidateNodeOutputs(nodeUuid);
-}
-
-bool
-GraphExecutionModel::invalidateNodeOutputs(const NodeUuid& nodeUuid)
-{
-    auto item = Impl::findData(*this, nodeUuid);
-    if (!item) return false;
-
-    return Impl::invalidateNode(*this, nodeUuid, item);
+    return Impl::invalidateNode(*this, nodeUuid);
 }
 
 NodeDataSet
@@ -553,21 +545,7 @@ GraphExecutionModel::nodeEvaluationFinished(NodeUuid const& nodeUuid)
     utils::erase(m_evaluatingNodes, nodeUuid);
 
     // update synchronization entity
-    if (m_evaluatingNodes.size() == 0) // no need to update every time
-    {
-        auto& s_sync = Impl::s_sync;
-
-        QMutexLocker locker{&s_sync.mutex};
-        auto idx = s_sync.indexOf(*this);
-        assert(idx >= 0);
-
-        auto& entry = s_sync.entries[idx];
-        entry.runningNodes = 0;
-        entry.isExclusiveNodeRunning = false;
-
-        locker.unlock();
-        s_sync.notify(*this);
-    }
+    Impl::s_sync.update(*this);
 
     onNodeEvaluated(nodeUuid);
 }
@@ -782,7 +760,8 @@ GraphExecutionModel::onNodeDeleted(Graph* graph, NodeId nodeId)
     utils::erase(m_autoEvaluatingGraphs, nodeUuid);
     if (utils::erase(m_evaluatingNodes, nodeUuid))
     {
-        // TODO: notify synchronization entity
+        // update synchronization entity
+        Impl::s_sync.update(*this);
     }
 }
 

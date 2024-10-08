@@ -12,6 +12,7 @@
 #define GT_INTELLI_DUMMYNODEDATAMODEL_H
 
 #include <intelli/nodedatainterface.h>
+#include <intelli/graphdatamodel.h>
 
 namespace intelli
 {
