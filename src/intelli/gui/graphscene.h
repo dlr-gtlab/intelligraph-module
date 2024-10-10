@@ -11,29 +11,30 @@
 #define GT_INTELLI_GRAPHSCENE_H
 
 #include <intelli/memory.h>
-#include <intelli/graph.h>
-#include <intelli/gui/graphscenedata.h>
-#include <intelli/gui/graphics/nodeobject.h>
-#include <intelli/gui/graphics/connectionobject.h>
+#include <intelli/globals.h>
+#include <intelli/gui/style.h>
 
 #include <gt_graphicsscene.h>
 
-#include <map>
+#include <QGraphicsObject>
 
+class QMenu;
 
 namespace intelli
 {
 
-class GraphAdapterModel;
+class Node;
+class NodeGraphicsObject;
+class Graph;
+class GraphSceneData;
+class Connection;
+class ConnectionGraphicsObject;
 
 class GraphScene : public GtGraphicsScene
 {
     Q_OBJECT
 
 public:
-
-    using PortInfo = Node::PortInfo;
-    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
 
     GraphScene(Graph& graph);
     ~GraphScene();
@@ -72,7 +73,7 @@ public:
 
     QMenu* createSceneMenu(QPointF scenePos);
 
-    void setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape);
+    void setConnectionShape(ConnectionShape shape);
 
 public slots:
 
@@ -116,7 +117,7 @@ private:
     };
 
     /// graph this scene refers to
-    QPointer<Graph> m_graph = nullptr;
+    QPointer<Graph> m_graph;
     /// Node objects in this scene
     std::vector<NodeEntry> m_nodes;
     /// Connection objects in this scene
@@ -151,22 +152,11 @@ private:
      */
     void moveConnectionPoint(ConnectionGraphicsObject& object, PortType type);
 
-    /**
-     * @brief Highlights all nodes their ports that are compatible to `port`
-     * @param node Source node
-     * @param port Source port
-     */
-    void highlightCompatibleNodes(Node& node, PortInfo const& port);
-
-    void clearHighlights();
-
 private slots:
 
     void onNodeAppended(Node* node);
 
     void onNodeDeleted(NodeId nodeId);
-
-    void onNodeEvalStateChanged(NodeId nodeId);
 
     void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
 

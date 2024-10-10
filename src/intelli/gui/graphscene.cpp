@@ -10,6 +10,7 @@
 
 #include "intelli/gui/graphscene.h"
 
+#include <intelli/graph.h>
 #include "intelli/connection.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/nodefactory.h"
@@ -17,7 +18,12 @@
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/gui/nodeui.h"
+#include "intelli/gui/nodegeometry.h"
+#include <intelli/gui/graphscenedata.h>
+#include <intelli/gui/graphics/nodeobject.h>
+#include <intelli/gui/graphics/connectionobject.h>
 #include "intelli/private/utils.h"
+
 
 #include <gt_application.h>
 #include <gt_command.h>
@@ -32,6 +38,7 @@
 
 #include <gt_logging.h>
 
+#include <QMenu>
 #include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
@@ -131,6 +138,75 @@ findItems(GraphScene& scene)
     return items;
 }
 
+static void
+highlightCompatibleNodes(GraphScene& scene,
+                         Node& sourceNode,
+                         Node::PortInfo const& sourcePort)
+{
+    NodeId sourceNodeId = sourceNode.id();
+    PortId sourcePortId = sourcePort.id();
+    PortType type = sourceNode.portType(sourcePortId);
+    assert(type != PortType::NoType);
+
+    // "deemphasize" all connections
+    for (auto& con : scene.m_connections)
+    {
+        con.object->makeInactive(true);
+    }
+
+    // find nodes that can potentially recieve connection
+    // -> all nodes that we do not depend on/that do not depend on us
+    QVector<NodeId> targets;
+    auto nodeIds = scene.m_graph->nodeIds();
+    auto dependencies = type == PortType::Out ?
+                            scene.m_graph->findDependencies(sourceNodeId) :
+                            scene.m_graph->findDependentNodes(sourceNodeId);
+
+    std::sort(nodeIds.begin(), nodeIds.end());
+    std::sort(dependencies.begin(), dependencies.end());
+
+    std::set_difference(nodeIds.begin(), nodeIds.end(),
+                        dependencies.begin(), dependencies.end(),
+                        std::back_inserter(targets));
+
+    targets.removeOne(sourceNodeId);
+
+    // frist "unhilight" all nodes
+    for (NodeId nodeId : qAsConst(nodeIds))
+    {
+        NodeGraphicsObject* target = scene.nodeObject(nodeId);
+        assert(target);
+        target->highlights().setAsIncompatible();
+    }
+    // then highlight all nodes that are compatible
+    for (NodeId nodeId : qAsConst(targets))
+    {
+        NodeGraphicsObject* target = scene.nodeObject(nodeId);
+        assert(target);
+        target->highlights().setCompatiblePorts(sourcePort.typeId, invert(type));
+    }
+
+    // override source port
+    NodeGraphicsObject* source = scene.nodeObject(sourceNodeId);
+    assert(source);
+    source->highlights().setPortAsCompatible(sourcePortId);
+}
+
+static void
+clearHighlights(GraphScene& scene)
+{
+    // clear target nodes
+    for (auto& entry : scene.m_nodes)
+    {
+        assert(entry.object);
+        entry.object->highlights().clear();
+    }
+    for (auto& con : scene.m_connections)
+    {
+        con.object->makeInactive(false);
+    }
+}
+
 /**
  * @brief Instantiates a draft connection. Appends the object to the scene and
  * sets both end points and grabs the mouse.
@@ -189,7 +265,7 @@ instantiateDraftConnection(GraphScene& scene,
 
     scene.m_draftConnection = std::move(entity);
 
-    scene.highlightCompatibleNodes(sourceNode, *sourcePort);
+    highlightCompatibleNodes(scene, sourceNode, *sourcePort);
 
     return scene.m_draftConnection.get();
 };
@@ -292,10 +368,10 @@ GraphScene::~GraphScene()
 {
     if (!m_graph) return;
 
-    auto* model = m_graph->executionModel();
+    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
     if (!model) return;
 
-    model->disableAutoEvaluation();
+    model->stopAutoEvaluatingGraph(*m_graph);
 }
 
 void
@@ -308,18 +384,34 @@ GraphScene::reset()
 void
 GraphScene::beginReset()
 {
+    assert(m_graph);
+
     disconnect(m_graph);
+    if (auto* model = GraphExecutionModel::accessExecModel(*m_graph))
+    {
+        model->disconnect(this);
+    }
 }
 
 void
 GraphScene::endReset()
 {
+    assert(m_graph);
+
     m_nodes.clear();
 
-    auto* model = m_graph->executionModel();
-    if (!model) model = m_graph->makeExecutionModel();
-    else if (model->mode() == GraphExecutionModel::ActiveModel) model->reset();
+    auto* root = m_graph->rootGraph();
+    assert(root);
 
+    // instantiate exec model
+    auto* model = GraphExecutionModel::accessExecModel(*root);
+    if (!model)
+    {
+        model = new GraphExecutionModel(*root);
+    }
+    Q_UNUSED(model);
+
+    // instantiate objects
     auto const& nodes = graph().nodes();
     for (auto* node : nodes)
     {
@@ -336,11 +428,6 @@ GraphScene::endReset()
 
     connect(m_graph, &Graph::connectionAppended, this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
     connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
-
-    connect(model, &GraphExecutionModel::nodeEvalStateChanged,
-            this, &GraphScene::onNodeEvalStateChanged, Qt::DirectConnection);
-
-    if ( m_graph->isActive()) model->autoEvaluate().detach();
 }
 
 Graph&
@@ -381,8 +468,8 @@ GraphScene::nodeObject(NodeId nodeId)
                              [nodeId](NodeEntry const& e){
         return e.nodeId == nodeId;
     });
+    if (iter == m_nodes.end()) return nullptr;
 
-    if (iter == m_nodes.end()) return {};
     return iter->object;
 }
 
@@ -396,11 +483,11 @@ ConnectionGraphicsObject*
 GraphScene::connectionObject(ConnectionId conId)
 {
     auto iter = std::find_if(m_connections.begin(), m_connections.end(),
-                             [conId](ConnectionEntry const& e){ return e.conId == conId; });
-    if (iter == m_connections.end())
-    {
-        return nullptr;
-    }
+                             [conId](ConnectionEntry const& e){
+        return e.conId == conId;
+    });
+    if (iter == m_connections.end()) return nullptr;
+
     return iter->object;
 }
 
@@ -525,7 +612,7 @@ GraphScene::createSceneMenu(QPointF scenePos)
 }
 
 void
-GraphScene::setConnectionShape(ConnectionGraphicsObject::ConnectionShape shape)
+GraphScene::setConnectionShape(ConnectionShape shape)
 {
     m_connectionShape = shape;
     if (m_draftConnection)
@@ -792,7 +879,7 @@ GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     if (m_draftConnection)
     {
-        clearHighlights();
+        Impl::clearHighlights(*this);
 
         ConnectionId conId = m_draftConnection->connectionId();
         bool reverse = conId.inNodeId.isValid();
@@ -1108,10 +1195,6 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
 
     groupNode->setCaption(groupNodeName);
     groupNode->setPos(center);
-    groupNode->setActive(true);
-
-    auto exec = groupNode->makeDummyExecutionModel();
-    exec->disableAutoEvaluation();
 
     // setup input/output provider
     groupNode->initInputOutputProviders();
@@ -1382,12 +1465,6 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     {
         groupNode->appendConnection(std::make_unique<Connection>(conId));
     }
-
-    // enable auto evaluation if parent graph is auto evaluating
-    if (auto* parentExec = m_graph->executionModel())
-    {
-        if (parentExec->isAutoEvaluating()) exec->autoEvaluate().detach();
-    }
 }
 
 void
@@ -1433,16 +1510,6 @@ GraphScene::onNodeDeleted(NodeId nodeId)
     {
         m_nodes.erase(iter);
     }
-}
-
-void
-GraphScene::onNodeEvalStateChanged(NodeId nodeId)
-{
-    auto* node = nodeObject(nodeId);
-    if (!node) return;
-
-    auto exec = m_graph->executionModel();
-    node->setNodeEvalState(exec->nodeEvalState(nodeId));
 }
 
 void
@@ -1574,8 +1641,8 @@ GraphScene::moveConnections(NodeGraphicsObject* object)
 {
     assert(object);
 
-    auto connections = m_graph->connectionModel().iterateConnections(object->nodeId());
-    for (auto const& conId : connections)
+    auto& conModel = m_graph->connectionModel();
+    for (auto const& conId : conModel.iterateConnections(object->nodeId()))
     {
         if (ConnectionGraphicsObject* con = connectionObject(conId))
         {
@@ -1605,70 +1672,4 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object,
 
     // create new connection
     Impl::instantiateDraftConnection(*this, *object, type, portId);
-}
-
-void
-GraphScene::highlightCompatibleNodes(Node& node, PortInfo const& port)
-{
-    NodeId nodeId = node.id();
-    PortType type = node.portType(port.id());
-    assert(type != PortType::NoType);
-
-    // "deemphasize" all connections
-    for (auto& con : m_connections)
-    {
-        con.object->makeInactive(true);
-    }
-
-    // find nodes that can potentially recieve connection
-    // -> all nodes that we do not depend on/that do not depend on us
-    QVector<NodeId> targets;
-    auto nodeIds = m_graph->nodeIds();
-    auto dependencies = type == PortType::Out ?
-        m_graph->findDependencies(nodeId) :
-        m_graph->findDependentNodes(nodeId);
-
-    std::sort(nodeIds.begin(), nodeIds.end());
-    std::sort(dependencies.begin(), dependencies.end());
-
-    std::set_difference(nodeIds.begin(), nodeIds.end(),
-                        dependencies.begin(), dependencies.end(),
-                        std::back_inserter(targets));
-
-    targets.removeOne(nodeId);
-
-    // frist "unhilight" all nodes
-    for (NodeId node : qAsConst(nodeIds))
-    {
-        NodeGraphicsObject* target = nodeObject(node);
-        assert(target);
-        target->highlights().setAsIncompatible();
-    }
-    // then highlight all nodes that are compatible
-    for (NodeId node : qAsConst(targets))
-    {
-        NodeGraphicsObject* target = nodeObject(node);
-        assert(target);
-        target->highlights().setCompatiblePorts(port.typeId, invert(type));
-    }
-
-    // override source port
-    NodeGraphicsObject* source = nodeObject(nodeId);
-    assert(source);
-    source->highlights().setPortAsCompatible(port.id());
-}
-
-void
-GraphScene::clearHighlights()
-{
-    // clear target nodes
-    for (auto& entry : m_nodes)
-    {
-        assert(entry.object);
-        entry.object->highlights().clear();
-    }
-    for (auto& con : m_connections)
-    {
-        con.object->makeInactive(false);
-    }
 }

@@ -10,14 +10,17 @@
 #ifndef GT_INTELLI_DETACHEDEXECUTOR_H
 #define GT_INTELLI_DETACHEDEXECUTOR_H
 
-#include "intelli/nodeexecutor.h"
-#include "intelli/node.h"
+#include <intelli/globals.h>
+#include <intelli/nodedatainterface.h>
 
 #include <QFutureWatcher>
 #include <QPointer>
 
 namespace intelli
 {
+
+class Node;
+class NodeDataInterface;
 
 /**
  * @brief The DetachedExecutor class.
@@ -32,19 +35,24 @@ public:
     DetachedExecutor();
     ~DetachedExecutor();
 
-    bool evaluateNode(Node& node, GraphExecutionModel& model);
+    bool evaluateNode(Node& node, NodeDataInterface& model);
 
-protected:
-    
-    bool canEvaluateNode(Node& node);
+    bool canEvaluateNode();
 
 private:
     
     QPointer<Node> m_node;
     
-    QFutureWatcher<NodeDataPtrList> m_watcher;
+    struct ReturnValue
+    {
+        NodeDataPtrList data;
+        bool success = false;
+    };
+
+    QFutureWatcher<ReturnValue> m_watcher;
 
     bool m_collected = true;
+    bool m_destroyed = false;
 
 private slots:
 

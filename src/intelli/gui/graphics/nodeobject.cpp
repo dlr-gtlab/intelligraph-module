@@ -8,11 +8,16 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include <intelli/gui/graphscenedata.h>
+
 #include <intelli/gui/graphics/nodeobject.h>
+
+#include <intelli/node.h>
+#include <intelli/gui/nodeui.h>
+#include <intelli/gui/nodegeometry.h>
+#include <intelli/gui/nodepainter.h>
+#include <intelli/gui/graphscenedata.h>
 #include <intelli/gui/graphics/nodeevalstateobject.h>
 #include <intelli/gui/style.h>
-#include <intelli/graph.h>
 #include <intelli/private/node_impl.h>
 #include <intelli/nodedatafactory.h>
 
@@ -21,6 +26,7 @@
 
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
+#include <QGraphicsProxyWidget>
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsScene>
@@ -127,6 +133,8 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
 
     updateChildItems();
 }
+
+NodeGraphicsObject::~NodeGraphicsObject() = default;
 
 Node&
 NodeGraphicsObject::node()
@@ -253,13 +261,6 @@ void
 NodeGraphicsObject::commitPosition()
 {
     m_node->setPos(pos());
-}
-
-void
-NodeGraphicsObject::setNodeEvalState(NodeEvalState state)
-{
-    // forward node eval state
-    m_evalStateObject->setNodeEvalState(state);
 }
 
 void

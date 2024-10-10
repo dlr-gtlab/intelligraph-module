@@ -10,18 +10,21 @@
 #ifndef GT_INTELLI_NODEGRAPHICSOBJECT_H
 #define GT_INTELLI_NODEGRAPHICSOBJECT_H
 
-#include <intelli/node.h>
-#include <intelli/gui/nodegeometry.h>
-#include <intelli/gui/nodepainter.h>
+#include <intelli/globals.h>
+#include <intelli/exports.h>
 
 #include <QPointer>
 #include <QGraphicsObject>
-#include <QGraphicsProxyWidget>
+
+class QGraphicsProxyWidget;
 
 namespace intelli
 {
 
+class Node;
 class NodeUI;
+class NodePainter;
+class NodeGeometry;
 class NodeEvalStateGraphicsObject;
 struct GraphSceneData;
 
@@ -53,6 +56,7 @@ public:
     NodeGraphicsObject(GraphSceneData& data,
                        Node& node,
                        NodeUI& ui);
+    ~NodeGraphicsObject();
 
     /**
      * @brief Returns the associated node
@@ -128,13 +132,6 @@ public:
      * @brief Commits the position of this object to the associated node
      */
     void commitPosition();
-
-    /**
-     * @brief Sets the node eval state to visualize the current evaluation
-     * state of the node to the user
-     * @param state Evaluation state
-     */
-    void setNodeEvalState(NodeEvalState state);
 
     /**
      * @brief The Highlights class.
@@ -271,7 +268,7 @@ private:
     /// Painter
     std::unique_ptr<NodePainter> m_painter;
     /// Central widget
-    QPointer<QGraphicsProxyWidget> m_proxyWidget = nullptr;
+    QPointer<QGraphicsProxyWidget> m_proxyWidget;
     /// Node eval state object
     NodeEvalStateGraphicsObject* m_evalStateObject = nullptr;
     /// Holds how much the node was shifted since the beginning of a

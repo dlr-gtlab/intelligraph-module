@@ -281,21 +281,6 @@ public:
     DynamicNode const* outputNode() const;
 
     /**
-     * @brief Constructs an execution model. Each graph has it's own
-     * execution model. If one already exists, this will be returned.
-     * @return Execution model, may be null.
-     */
-    GraphExecutionModel* makeExecutionModel();
-
-    /**
-     * @brief Returns the exection model of this graph. Each graph has it's own
-     * execution model.
-     * @return Execution model, may be null.
-     */
-    GraphExecutionModel* executionModel();
-    GraphExecutionModel const* executionModel() const;
-
-    /**
      * @brief Finds all dependencies of the node referred by `nodeId`
      * @param nodeId Node to find dependencies of
      * @return Dependencies
@@ -327,9 +312,27 @@ public:
      * already occupied
      * @param node Node to append
      * @param policy Whether to generate a new id if necessary
-     * @return success
+     * @return Node ptr
      */
     Node* appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy = NodeIdPolicy::Update);
+
+    /**
+     * @brief Overload, that accepts a unique ptr of type `T` and returns a
+     * pointer of type `T`.
+     * @param node Node to append
+     * @param policy Whether to generate a new id if necessary
+     * @return Node ptr of type `T`
+     */
+    template<typename T>
+    inline T* appendNode(std::unique_ptr<T> node, NodeIdPolicy policy = NodeIdPolicy::Update)
+    {
+        using Signature = Node*(Graph::*)(std::unique_ptr<Node>, NodeIdPolicy);
+
+        // avoid recursive calls
+        auto f  = static_cast<Signature>(&Graph::appendNode);
+        Node* r = ((this->*f)(std::move(node), policy));
+        return static_cast<T*>(r);
+    }
 
     /**
      * @brief Appends the connection to intelli graph. Use this function instead
@@ -515,8 +518,6 @@ signals:
     void nodePositionChanged(NodeId nodeId, QPointF pos);
 
 protected:
-
-    bool handleNodeEvaluation(GraphExecutionModel& model) override;
     
     void eval() override;
 
@@ -530,8 +531,6 @@ private:
     ConnectionModel m_local;
     /// shred global connection graph
     std::shared_ptr<GlobalConnectionModel> m_global = nullptr;
-
-    size_t m_evaluationIndicator = 0;
     /// indicator if the connection model is currently beeing modified
     int m_modificationCount = 0;
 
@@ -558,15 +557,7 @@ private:
     void appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targetNode);
     void appendGlobalConnection(Connection* guard, ConnectionUuid conUuid);
 
-    GraphExecutionModel* makeDummyExecutionModel();
-
     void updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr);
-
-private slots:
-
-    void onSubNodeEvaluated(NodeId nodeId);
-
-    void onSubGraphStalled();
 };
 
 } // namespace intelli

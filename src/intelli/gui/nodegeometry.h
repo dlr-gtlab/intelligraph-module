@@ -17,7 +17,6 @@
 
 #include <QPainterPath>
 #include <QPointer>
-#include <QWidget>
 
 namespace intelli
 {
@@ -55,7 +54,7 @@ public:
     NodeGeometry(NodeGeometry&&) = delete;
     NodeGeometry& operator=(NodeGeometry const&) = delete;
     NodeGeometry& operator=(NodeGeometry&&) = delete;
-    virtual ~NodeGeometry() = default;
+    virtual ~NodeGeometry();
 
     /// helper struct to check whether a port was hit
     struct PortHit

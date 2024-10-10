@@ -13,43 +13,12 @@
 #include <intelli/exports.h>
 #include <intelli/globals.h>
 
+#include <gt_finally.h>
+
 namespace intelli
 {
 
-class Node;
-class Graph;
-
-enum class NodeState
-{
-    Evaluated,
-    RequiresReevaluation
-};
-
-namespace graph_data
-{
-
-struct PortEntry
-{
-    /// referenced port
-    PortId id;
-    /// actual data at port
-    NodeDataSet data{nullptr};
-};
-
-struct Entry
-{
-    /// in and out ports
-    QVector<PortEntry> portsIn{}, portsOut{};
-
-    NodeState state = NodeState::RequiresReevaluation;
-};
-
-using DataModel [[deprecated("Use 'GraphData' instead")]] = QHash<NodeId, Entry>;
-using GraphData = QHash<NodeId, Entry>;
-
-} // namesace graph_data
-
-using graph_data::GraphData;
+using NodeDataPtrList = std::vector<std::pair<PortId, NodeDataPtr>>;
 
 /**
  * @brief The NodeDataInterface class.
@@ -61,9 +30,60 @@ public:
 
     virtual ~NodeDataInterface() = default;
 
-    virtual NodeDataSet nodeData(NodeId nodeId, PortId portId) const = 0;
+    virtual NodeDataSet nodeData(NodeUuid const& nodeUuid, PortId portId) const = 0;
+    virtual NodeDataPtrList nodeData(NodeUuid const& nodeUuid, PortType type) const = 0;
 
-    virtual bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data) = 0;
+    virtual bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet data) = 0;
+    virtual bool setNodeData(NodeUuid const& nodeUuid, PortType type, NodeDataPtrList const& data) = 0;
+
+    virtual NodeEvalState nodeEvalState(NodeUuid const& nodeUuid) const = 0;
+
+    /**
+     * @brief Should be called to mark a node as failed.
+     * @param nodeUuid Node that failed evaluation
+     */
+    virtual void setNodeEvaluationFailed(NodeUuid const& nodeUuid) {}
+
+    /// Helper struct to scope the duration of a node evaluation
+    struct NodeEvaluationEndedFunctor
+    {
+        inline void operator()() const noexcept
+        {
+            if (i) i->nodeEvaluationFinished(uuid);
+        }
+        NodeDataInterface* i{};
+        NodeUuid uuid{};
+    };
+
+    using ScopedEvaluation = gt::Finally<NodeEvaluationEndedFunctor>;
+
+    /**
+     * @brief Scoped wrapper around `nodeEvaluationStarted` and
+     * `nodeEvaluationFinished`
+     * @param nodeUuid Node that is being evaluated
+     * @return
+     */
+    ScopedEvaluation nodeEvaluation(NodeUuid const& nodeUuid)
+    {
+        nodeEvaluationStarted(nodeUuid);
+        return gt::finally(NodeEvaluationEndedFunctor{this, nodeUuid});
+    }
+
+    /**
+     * @brief Called once the given node has startet evaluation. This function
+     * must be called only once and should always be followed by
+     * `nodeEvaluationFinished`.
+     * @param nodeUuid Node that startet evaluation.
+     */
+    virtual void nodeEvaluationStarted(NodeUuid const& nodeUuid) {}
+    /**
+     * @brief Called once the given node has finished evaluation. This function
+     * must be called only once and should always followed a call to
+     * `nodeEvaluationStarted`.
+     * @param nodeUuid Node that startet evaluation.
+     */
+    virtual void nodeEvaluationFinished(NodeUuid const& nodeUuid) {}
+
 };
 
 } // namespace intelli

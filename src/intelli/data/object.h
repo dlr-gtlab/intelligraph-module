@@ -11,6 +11,7 @@
 #define GT_INTELLI_OBJECTDATA_H
 
 #include <intelli/nodedata.h>
+#include <intelli/memory.h>
 
 namespace intelli
 {
@@ -30,6 +31,7 @@ public:
      * A copy will be made
      */
     Q_INVOKABLE ObjectData(GtObject const* obj = nullptr);
+    ~ObjectData();
 
     /**
      * @brief getter
@@ -39,7 +41,7 @@ public:
 
 private:
 
-    std::unique_ptr<GtObject const> m_obj;
+    volatile_ptr<GtObject, DeferredDeleter> m_obj;
 };
 
 } // namespace intelli

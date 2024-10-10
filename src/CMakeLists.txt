@@ -24,17 +24,18 @@ set(PUBLIC_HEADERS
     intelli/core.h
     intelli/dynamicnode.h
     intelli/exports.h
+    intelli/future.h
     intelli/globals.h
     intelli/graph.h
     intelli/graphbuilder.h
     intelli/graphconnectionmodel.h
+    intelli/graphdatamodel.h
     intelli/graphexecmodel.h
     intelli/memory.h
     intelli/node.h
     intelli/nodedata.h
     intelli/nodedatafactory.h
     intelli/nodedatainterface.h
-    intelli/nodeexecutor.h
     intelli/nodefactory.h
     intelli/data/bool.h
     intelli/data/bytearray.h
@@ -82,6 +83,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/calculators/graphexeccalculator.h
     intelli/node/abstractgroupprovider.h
     intelli/exec/detachedexecutor.h
+    intelli/exec/dummynodedatamodel.h
     intelli/node/existingdirectorysource.h
     intelli/node/fileinput.h
     intelli/node/filereader.h
@@ -119,6 +121,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/stringselection.h
     intelli/gui/ui/logicnodeui.h
     intelli/private/graph_impl.h
+    intelli/private/graphexecmodel_impl.h
     intelli/private/node_impl.h
     intelli/private/utils.h
 
@@ -126,6 +129,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/connectiongroup.cpp
     intelli/core.cpp
     intelli/dynamicnode.cpp
+    intelli/future.cpp
     intelli/graph.cpp
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp
@@ -134,11 +138,11 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node.cpp
     intelli/nodedata.cpp
     intelli/nodedatafactory.cpp
-    intelli/nodeexecutor.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp
     intelli/calculators/graphexeccalculator.cpp
     intelli/exec/detachedexecutor.cpp
+    intelli/exec/dummynodedatamodel.cpp
     intelli/data/bool.cpp
     intelli/data/bytearray.cpp
     intelli/data/double.cpp

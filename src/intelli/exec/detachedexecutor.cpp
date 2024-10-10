@@ -10,7 +10,8 @@
 #include "intelli/exec/detachedexecutor.h"
 
 #include "intelli/node.h"
-#include "intelli/graphexecmodel.h"
+#include "intelli/exec/dummynodedatamodel.h"
+#include "intelli/private/utils.h"
 
 #include "gt_utilities.h"
 #include "gt_qtutilities.h"
@@ -21,135 +22,6 @@
 #include <QtConcurrent>
 
 using namespace intelli;
-
-//////////////////////////////////////////////////////
-
-/**
- * @brief The DummyDataModel class.
- * Helper class to set and access data of a single node
- */
-class DummyDataModel : public NodeDataInterface
-{
-public:
-
-    explicit DummyDataModel(Node& node) :
-        m_node(&node)
-    {
-        NodeExecutor::setNodeDataInterface(node, this);
-
-        auto const& inPorts  = node.ports(PortType::In);
-        auto const& outPorts = node.ports(PortType::Out);
-
-        m_data.portsIn.reserve(inPorts.size());
-        m_data.portsOut.reserve(outPorts.size());
-
-        for (auto& port : inPorts)
-        {
-            m_data.portsIn.push_back({port.id()});
-        }
-
-        for (auto& port : outPorts)
-        {
-            m_data.portsOut.push_back({port.id()});
-        }
-    }
-
-    NodeDataPtrList nodeData(PortType type) const
-    {
-        assert(m_node);
-        NodeDataPtrList data;
-
-        auto const& ports = type == PortType::In ? &m_data.portsIn : &m_data.portsOut;
-        std::transform(ports->begin(), ports->end(),
-                       std::back_inserter(data),
-                       [this, type](auto& port){
-            using T = typename NodeDataPtrList::value_type;
-            return T{m_node->portIndex(type, port.id), port.data};
-        });
-
-        return data;
-    }
-
-    bool setNodeData(PortId portId, NodeDataSet data)
-    {
-        assert(m_node);
-        return setNodeData(m_node->id(), portId, std::move(data));
-    }
-
-    bool setNodeData(PortType type, NodeDataPtrList const& data)
-    {
-        assert(m_node);
-        for (auto& d : data)
-        {
-            if (!setNodeData(m_node->portId(type, d.first), std::move(d.second)))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-private:
-
-    NodeDataSet nodeData(NodeId nodeId, PortId portId) const override
-    {
-        assert(m_node);
-        if (nodeId != m_node->id())
-        {
-            gtError() << QObject::tr("DummyDataModel: Failed to access node %1! "
-                                     "(Was expecting node %2)")
-                             .arg(nodeId).arg(nodeId);
-            return {};
-        }
-
-        for (auto const* ports : {&m_data.portsIn, &m_data.portsOut})
-        {
-            auto iter = std::find_if(ports->begin(), ports->end(),
-                                     [portId](auto const& port){
-                return port.id == portId;
-            });
-            if (iter != ports->end()) return iter->data;
-        }
-
-        gtWarning() << QObject::tr("DummyExecModel: Failed to access data of node %1! "
-                                   "(Port id %2 not found)")
-                           .arg(nodeId).arg(portId);
-        return {};
-    }
-
-    bool setNodeData(NodeId nodeId, PortId portId, NodeDataSet data) override
-    {
-        assert(m_node);
-        if (nodeId != m_node->id())
-        {
-            gtError() << QObject::tr("DummyDataModel: Failed to access node %1! "
-                                     "(Was expecting node %2)")
-                             .arg(nodeId).arg(nodeId);
-            return false;
-        }
-
-        for (auto* ports : {&m_data.portsIn, &m_data.portsOut})
-        {
-            auto iter = std::find_if(ports->begin(), ports->end(),
-                                     [portId](auto const& port){
-                return port.id == portId;
-            });
-            if (iter != ports->end())
-            {
-                iter->data = std::move(data);
-                return true;
-            }
-        }
-
-        gtWarning() << QObject::tr("DummyDataModel: Failed to set data of node %1! "
-                                   "(Port id %2 not found)")
-                           .arg(nodeId).arg(portId);
-        return {};
-    }
-
-    Node* m_node = nullptr;
-    graph_data::Entry m_data;
-};
 
 //////////////////////////////////////////////////////
 
@@ -176,7 +48,8 @@ int signal_offset(){
 
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
-            << QObject::tr("Signal offset for derived nodes of '%1' is %2")
+            << "[DetachedExecutor]"
+            << QObject::tr("signal offset for derived nodes of '%1' is %2")
                    .arg(sourceMetaObject->className()).arg(offset);
 #endif
 
@@ -254,8 +127,8 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
         if (signalIndex == -1)
         {
             gtWarning()
-                << GT_CLASSNAME(DetachedExecutor) << '-'
-                << QObject::tr("Failed to forward signal from clone to source node!")
+                << "[DetachedExecutor]"
+                << QObject::tr("failed to forward signal from clone to source node!")
                 << gt::brackets(signal);
             return {};
         }
@@ -263,8 +136,9 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
 
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
-            << GT_CLASSNAME(DetachedExecutor) << '-'
-            << QObject::tr("Connecting custom Node signal '%1'").arg(signal.constData());
+            << "[DetachedExecutor]"
+            << QObject::tr("connecting custom signal '%1' of node '%2'")
+                   .arg(signal, sourceMetaObject->className());
 #endif
 
         if (!QObject::connect(sourceObject, sourceMetaObject->method(signalIndex),
@@ -272,8 +146,8 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
                               Qt::QueuedConnection))
         {
             gtWarning()
-                << GT_CLASSNAME(DetachedExecutor) << '-'
-                << QObject::tr("Failed to connect signal of clone with source node!")
+                << "[DetachedExecutor]"
+                << QObject::tr("failed to connect signal of clone with source node!")
                 << gt::brackets(signal);
             return {};
         }
@@ -291,7 +165,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
 
 DetachedExecutor::DetachedExecutor()
 {
-    using Watcher= decltype(m_watcher);
+    using Watcher = decltype(m_watcher);
 
     connect(&m_watcher, &Watcher::finished,
             this, &DetachedExecutor::onFinished);
@@ -301,43 +175,39 @@ DetachedExecutor::DetachedExecutor()
             this, &DetachedExecutor::onResultReady);
 }
 
-bool
-DetachedExecutor::canEvaluateNode(Node& node)
-{
-    if (!m_watcher.isFinished() || !m_collected)
-    {
-        gtWarning() << tr("Cannot evaluate node '%1'! (Node is already running)")
-                           .arg(node.objectName());
-        return false;
-    }
-    return true;
-}
-
 DetachedExecutor::~DetachedExecutor() = default;
+
+bool
+DetachedExecutor::canEvaluateNode()
+{
+    return m_collected && !m_destroyed;
+}
 
 void
 DetachedExecutor::onFinished()
 {
     if (!m_node)
     {
-        gtError() << QObject::tr("Cannot finish transfer of node data! "
-                                 "(Invalid node)");
-        return;
+        gtError() << "[DetachedExecutor]"
+                  << tr("Cannot finish transfer of node data! (Invalid node)");
+
+        m_destroyed = true;
+        return deleteLater();
     }
 
-    m_collected = true;
+    if (m_watcher.isRunning()) return;
 
-    connect(this, &QObject::destroyed, m_node, &Node::computingFinished);
-
-    // commit suicide
+    m_destroyed = true;
     deleteLater();
 }
 
 void
 DetachedExecutor::onCanceled()
 {
-    gtError() << tr("Execution of node '%1' failed!")
-                     .arg(m_node ? m_node->objectName() : QStringLiteral("<null>"));
+    gtError() << "[DetachedExecutor]"
+              << tr("Execution of node '%1' failed!")
+                     .arg(m_node ? m_node->objectName() :
+                                   QStringLiteral("<null>"));
 }
 
 void
@@ -345,56 +215,104 @@ DetachedExecutor::onResultReady(int result)
 {
     if (!m_node)
     {
-        gtError() << tr("Cannot transfer node data! (Invalid node)");
+        gtError() << "[DetachedExecutor]"
+                  << tr("cannot transfer node data! (Invalid node)");
         return;
     }
 
-    auto finally = [this](){
-        m_collected = true;
-        emit m_node->computingFinished();
-    };
+    auto finally = gt::finally([this](){
+        if (m_node) emit m_node->computingFinished();
+    });
     Q_UNUSED(finally);
 
-    auto outData = m_watcher.resultAt(result);
+#ifdef GT_INTELLI_DEBUG_NODE_EXEC
+    gtTrace().verbose()
+        << "[DetachedExecutor]"
+        << tr("collecting data from node '%1' (%2)...")
+               .arg(relativeNodePath(*m_node))
+               .arg(m_node->id());
+#endif
 
-    auto* model = NodeExecutor::accessExecModel(*m_node);
+    ReturnValue const& returnValue = m_watcher.resultAt(result);
+    auto const& outData = returnValue.data;
+
+    m_collected = true;
+
+    auto* model = exec::nodeDataInterface(*m_node);
     if (!model)
     {
-        gtError() << tr("Failed to transfer node data!")
-                  << tr("(Execution model not found)");
+        gtError() << "[DetachedExecutor]"
+                  << tr("failed to transfer node data! (Execution model not found)");
         return;
     }
 
-    if (!model->setNodeData(m_node->id(), PortType::Out, outData))
+    NodeUuid const& nodeUuid = m_node->uuid();
+
+    if (!returnValue.success) model->setNodeEvaluationFailed(nodeUuid);
+
+    if (!model->setNodeData(nodeUuid, PortType::Out, outData))
     {
-        gtError() << tr("Failed to transfer node data!");
-        return;
+        gtError() << "[DetachedExecutor]"
+                  << tr("failed to transfer node data!");
     }
+
+    finally.finalize();
+
+    model->nodeEvaluationFinished(nodeUuid);
 }
 
 bool
-DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
+DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
 {
-    if (!canEvaluateNode(node)) return false;
+    if (!canEvaluateNode())
+    {
+        gtWarning() << "[DetachedExecutor]"
+                    << tr("cannot evaluate node '%1'! (Node is already running)")
+                           .arg(node.objectName());
+        return false;
+    }
+
+#ifdef GT_INTELLI_DEBUG_NODE_EXEC
+    if (!m_watcher.isFinished())
+    {
+        gtTrace().verbose()
+            << "[DetachedExecutor]"
+            << tr("reusing executor")
+            << (void*)this;
+    }
+#endif
+
+    model.nodeEvaluationStarted(node.uuid());
 
     m_node = &node;
     m_collected = false;
     emit m_node->computingStarted();
 
-    auto inData  = model.nodeData(node.id(), PortType::In);
-    auto outData = model.nodeData(node.id(), PortType::Out);
+    NodeUuid const& nodeUuid = node.uuid();
 
-    auto run = [nodeId = node.id(),
-                inData  = model.nodeData(node.id(), PortType::In),
-                outData = model.nodeData(node.id(), PortType::Out),
+    auto inData  = model.nodeData(nodeUuid, PortType::In);
+    auto outData = model.nodeData(nodeUuid, PortType::Out);
+
+    auto run = [nodeUuid,
+                inData  = model.nodeData(nodeUuid, PortType::In),
+                outData = model.nodeData(nodeUuid, PortType::Out),
                 memento = node.toMemento(),
                 signalsToConnect = findSignalsToConnect(node),
                 targetMetaObject = node.metaObject(),
                 targetObject = QPointer<Node>(&node),
-                executor = this]() -> NodeDataPtrList
+                executor = this]() -> ReturnValue
     {
-        auto const makeError = [nodeId](){
-            return tr("Evaluating node %1 failed!").arg(nodeId);
+#ifdef GT_INTELLI_DEBUG_NODE_EXEC
+        gtTrace().verbose()
+            << "[DetachedExecutor]"
+            << tr("beginning evaluation of node '%1' (%2)...")
+                   .arg(memento.ident())
+                   .arg(nodeUuid);
+#endif
+
+        auto const makeError = [nodeUuid](){
+            return QStringLiteral("[DetachedExecutor] ") +
+                   tr("evaluating node %1 failed!").arg(nodeUuid);
         };
 
         try{
@@ -406,7 +324,7 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
             if (!node)
             {
                 gtError() << makeError()
-                          << tr("(Cloning node failed)").arg(memento.ident());
+                          << tr("(cloning node failed)").arg(memento.ident());
                 return {};
             }
 
@@ -425,7 +343,7 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
             }
 
             // set data
-            DummyDataModel model{*node};
+            DummyNodeDataModel model{*node};
 
             bool success = true;
             success &= model.setNodeData(PortType::In,  inData);
@@ -433,14 +351,15 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
 
             if (!success)
             {
-                gtError() << makeError() << tr("(failed to copy source data9");
+                gtError() << makeError()
+                          << tr("(failed to copy source data)");
                 return {};
             }
 
             // evaluate node
-            NodeExecutor::evaluate(*node);
+            exec::blockingEvaluation(*node, model);
 
-            return model.nodeData(PortType::Out);
+            return ReturnValue{model.nodeData(PortType::Out), model.evaluationSuccessful()};
         }
         catch (const std::exception& ex)
         {
@@ -450,7 +369,8 @@ DetachedExecutor::evaluateNode(Node& node, GraphExecutionModel& model)
         }
         catch(...)
         {
-            gtError() << makeError() << tr("(caught unkown exception)");
+            gtError() << makeError()
+                      << tr("(caught unkown exception)");
             return {};
         }
     };

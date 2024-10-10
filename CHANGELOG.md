@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+*This release is not ABI compatible with `0.12.0`*
+
+### Changed
+- Major refactoring of the graph execution model. Now only one exec model is used to manage and evaluate a graph hierarchy, improving the handling of nested graphs and fixing unhandled edge cases. Additionally the future-object returned by the exec model is now far more flexible and user friendly, allowing above else the registration of callback functions. - #112
+
+### Fixed
+- Fixed potential crashes when deletiing instances of `ObjectData` that were created in a separate thread. - #112
+- The graph view should now remeber more consistently whether a graph should be auto-evaluated. - #112
+
 ## [0.12.0] - 2024-09-24
 ### Added
 - Allowed nodes and ports to have custom tooltips. - #110

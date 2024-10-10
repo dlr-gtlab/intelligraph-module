@@ -11,6 +11,7 @@
 #define GT_INTELLI_CONNECTIONGRAPHICSOBJECT_H
 
 #include <intelli/connection.h>
+#include <intelli/gui/style.h>
 
 #include <QGraphicsObject>
 #include <QPointer>
@@ -30,15 +31,6 @@ class ConnectionGraphicsObject : public QGraphicsObject
     Q_OBJECT
 
 public:
-
-    enum ConnectionShape
-    {
-        Cubic = 0,
-        Straight,
-        Rectangle,
-        DefaultShape = Cubic
-    };
-    Q_ENUM(ConnectionShape);
 
     /// Control points for rectangle and cubic shapes
     using ControlPoints = std::pair<QPointF, QPointF>;

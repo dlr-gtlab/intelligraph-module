@@ -324,8 +324,6 @@ enum class PortDataState
 
 using NodeDataPtr = std::shared_ptr<const NodeData>;
 
-using NodeDataPtrList = std::vector<std::pair<PortIndex, NodeDataPtr>>;
-
 struct NodeDataSet
 {
     NodeDataSet(std::nullptr_t) :

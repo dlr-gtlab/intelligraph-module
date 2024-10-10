@@ -8,11 +8,12 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
+#include "intelli/graph.h"
+#include "intelli/graphexecmodel.h"
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
 #include "intelli/gui/style.h"
-#include "intelli/graph.h"
-#include "intelli/graphexecmodel.h"
+#include "intelli/gui/graphics/nodeobject.h"
 
 #include <gt_objectuiaction.h>
 #include <gt_icons.h>
@@ -36,6 +37,8 @@
 #include <QPrinter>
 
 #include <cmath>
+
+Q_DECLARE_METATYPE(intelli::ConnectionShape)
 
 constexpr int s_major_grid_size = 100;
 constexpr int s_minor_grid_size = s_major_grid_size / 10;
@@ -91,16 +94,16 @@ struct GridStateChanged
     GraphView* view{};
 };
 
-struct GridValueChanged
+struct ToggleStateValue
 {
     void operator()()
     {
-        assert(gridState);
+        assert(state);
         // triggers state update
-        gridState->setValue(!gridState->getValue().toBool());
+        state->setValue(!state->getValue().toBool());
     }
 
-    GtState* gridState{};
+    GtState* state{};
 };
 
 struct SnapToGridStateChanged
@@ -122,22 +125,8 @@ struct SnapToGridStateChanged
     GraphView* view{};
 };
 
-struct SnapToGridValueChanged
-{
-    void operator()()
-    {
-        assert(snapToGridState);
-        // triggers state update
-        snapToGridState->setValue(!snapToGridState->getValue().toBool());
-    }
-
-    GtState* snapToGridState{};
-};
-
 struct ConnectionShapeStateChanged
 {
-    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
-
     void operator()(QVariant const& shape)
     {
         assert(view);
@@ -150,8 +139,6 @@ struct ConnectionShapeStateChanged
 
 struct ConnectionShapeValueChanged
 {
-    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
-
     void operator()()
     {
         assert(conShapeState);
@@ -167,16 +154,46 @@ struct ConnectionShapeValueChanged
         case ConnectionShape::Straight:
             value = ConnectionShape::Cubic;
         }
-        conShapeState->setValue(value);
+        conShapeState->setValue(QVariant::fromValue(value));
     }
 
     GtState* conShapeState{};
 };
 
+struct AutoEvaluationStateChanged
+{
+    void operator()(QVariant const& enable)
+    {
+        assert(view);
+        auto scene = view->nodeScene();
+        if (!scene) return;
+
+        auto& graph = scene->graph();
+
+        auto* model = GraphExecutionModel::accessExecModel(graph);
+        if (!model) return;
+
+        bool doAutoEvaluate = enable.toBool();
+        if (doAutoEvaluate)
+        {
+            model->autoEvaluateGraph(graph);
+        }
+        else
+        {
+            model->stopAutoEvaluatingGraph(graph);
+        }
+
+        view->m_startAutoEvalBtn->setVisible(!doAutoEvaluate);
+        view->m_stopAutoEvalBtn->setVisible(doAutoEvaluate);
+    }
+
+    GraphView* view{};
+};
+
 /// helper function to create a state and update it accordingly when signals are
 /// fired.
-template<typename StateChangedSlot,
-         typename ValueChangedSlot,
+template<typename OnStateChanged,
+         typename OnValueChanged,
          typename Value,
          typename Signal,
          typename Sender = GraphView>
@@ -184,7 +201,7 @@ static GtState* setupState(GraphView& view,
                            GtObject& guardian,
                            Graph& graph,
                            QString const& stateId,
-                           Value defaulValue,
+                           Value defaultValue,
                            Sender* sender,
                            Signal signal)
 {
@@ -197,14 +214,14 @@ static GtState* setupState(GraphView& view,
         // entry for this graph
         graph.uuid() + QChar(';') + stateId.toLower().replace(' ', '_'),
         // default value
-        defaulValue,
+        defaultValue,
         // guardian object
         &guardian);
 
     connect(state, qOverload<QVariant const&>(&GtState::valueChanged),
-            &view, StateChangedSlot{&view});
+            &view, OnStateChanged{&view});
     connect(sender, signal,
-            state, ValueChangedSlot{state});
+            state, OnValueChanged{state});
 
     // trigger grid update
     emit state->valueChanged(state->getValue());
@@ -310,6 +327,11 @@ GraphView::GraphView(QWidget* parent) :
     m_stopAutoEvalBtn->setToolTip(tr("Stop automatic graph evaluation"));
     m_stopAutoEvalBtn->setIcon(gt::gui::icon::stop());
 
+    connect(m_startAutoEvalBtn, &QPushButton::clicked,
+            this, std::bind(&GraphView::autoEvaluationChanged, this, QPrivateSignal()));
+    connect(m_stopAutoEvalBtn, &QPushButton::clicked,
+            this, std::bind(&GraphView::autoEvaluationChanged, this, QPrivateSignal()));
+
     m_snapToGridBtn = setupBtn();
     m_snapToGridBtn->setCheckable(true);
     m_snapToGridBtn->setToolTip(tr("Toggle snap to grid"));
@@ -351,8 +373,6 @@ GraphView::GraphView(QWidget* parent) :
 void
 GraphView::setScene(GraphScene& scene)
 {
-    using ConnectionShape = ConnectionGraphicsObject::ConnectionShape;
-
     QGraphicsView::setScene(&scene);
     centerScene();
 
@@ -364,14 +384,14 @@ GraphView::setScene(GraphScene& scene)
     /// grid change state
     auto* gridState =
         Impl::setupState<Impl::GridStateChanged,
-                         Impl::GridValueChanged>(
+                         Impl::ToggleStateValue>(
             *this, *guardian, graph, tr("Show Grid"), true,
             this, &GraphView::gridChanged
     );
 
     /// snap to grid state
     Impl::setupState<Impl::SnapToGridStateChanged,
-                     Impl::SnapToGridValueChanged>(
+                     Impl::ToggleStateValue>(
         *this, *guardian, graph, tr("Snap to Grid"), true,
         m_snapToGridBtn, &QPushButton::clicked
     );
@@ -380,8 +400,16 @@ GraphView::setScene(GraphScene& scene)
     Impl::setupState<Impl::ConnectionShapeStateChanged,
                      Impl::ConnectionShapeValueChanged>(
         *this, *guardian, graph, tr("Connection Shape"),
-        ConnectionShape::DefaultShape,
+        QVariant::fromValue(ConnectionShape::DefaultShape),
         this, &GraphView::connectionShapeChanged
+    );
+
+    /// auto evaluate state
+    Impl::setupState<Impl::AutoEvaluationStateChanged,
+                     Impl::ToggleStateValue>(
+        *this, *guardian, graph, tr("Auto Evaluation"),
+        QVariant::fromValue(false),
+        this, &GraphView::autoEvaluationChanged
     );
 
     /// snap nodes to minor grid
@@ -447,41 +475,10 @@ GraphView::setScene(GraphScene& scene)
             &scene, &QGraphicsScene::clearSelection,
             Qt::UniqueConnection);
 
-    auto updateAutoEvalBtns = [this, &graph](){
-        if (auto* s = nodeScene())
-        {
-            if (&s->graph() != &graph) return;
-
-            auto* exec = graph.executionModel();
-            bool isAutoEvaluating = exec && exec->isAutoEvaluating();
-
-            m_startAutoEvalBtn->setVisible(!isAutoEvaluating);
-            m_stopAutoEvalBtn->setVisible(isAutoEvaluating);
-        }
-    };
-
     m_startAutoEvalBtn->setEnabled(true);
     m_stopAutoEvalBtn->setEnabled(true);
     m_snapToGridBtn->setEnabled(true);
 
-    updateAutoEvalBtns();
-
-    connect(&graph, &Graph::isActiveChanged, this, updateAutoEvalBtns);
-
-    connect(m_startAutoEvalBtn, &QPushButton::clicked,
-            this, [this](){
-        if (auto* s = nodeScene())
-        {
-            s->graph().setActive(true);
-        }
-    });
-    connect(m_stopAutoEvalBtn, &QPushButton::clicked,
-            this, [this](){
-        if (auto* s = nodeScene())
-        {
-            s->graph().setActive(false);
-        }
-    });
     connect(m_snapToGridBtn, &QPushButton::clicked,
             this, [this](){
         if (auto* s = nodeScene())

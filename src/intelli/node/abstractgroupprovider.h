@@ -39,7 +39,7 @@ public:
         setFlag(UserDeletable, false);
         setNodeFlag(Unique, true);
 
-        setNodeEvalMode(NodeEvalMode::Blocking);
+        setNodeEvalMode(NodeEvalMode::ForwardInputsToOutputs);
 
         if (!gtApp || !gtApp->devMode()) setFlag(UserHidden, true);
 

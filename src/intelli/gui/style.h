@@ -17,6 +17,16 @@
 
 namespace intelli
 {
+
+/// enum for the possible connection shapes
+enum class ConnectionShape : size_t
+{
+    Cubic = 0,
+    Straight,
+    Rectangle,
+    DefaultShape = Cubic
+};
+
 namespace style
 {
 

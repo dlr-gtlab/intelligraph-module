@@ -10,9 +10,7 @@
 #ifndef GT_INTELLI_NODEEVALSTATEGRAPHICSOBJECT_H
 #define GT_INTELLI_NODEEVALSTATEGRAPHICSOBJECT_H
 
-#include <intelli/node.h>
-#include <intelli/gui/nodeui.h>
-#include <intelli/nodedatainterface.h>
+#include <intelli/globals.h>
 
 #include <QPointer>
 #include <QTimeLine>
@@ -20,6 +18,9 @@
 
 namespace intelli
 {
+
+class Node;
+class NodePainter;
 
 /**
  * @brief Graphic object used to visualize the eval state of the node in the
@@ -45,12 +46,6 @@ public:
      */
     QRectF boundingRect() const override;
 
-    /**
-     * @brief Sets the node eval state, used for the visualization
-     * @param state
-     */
-    void setNodeEvalState(NodeEvalState state);
-
 protected:
 
     void paint(QPainter* painter,
@@ -59,6 +54,8 @@ protected:
 
 private:
 
+    /// Associated node
+    QPointer<Node> m_node;
     /// Timeline for anmation
     QTimeLine m_timeLine;
     /// Painter used for rendering
@@ -71,6 +68,14 @@ private:
     void paintPausedState(QPainter& painter);
 
     void paintIdleState(QPainter& painter);
+
+private slots:
+
+    /**
+     * @brief Updates the node eval state, used for the visualization of the
+     * eval state for the user.
+     */
+    void onNodeEvalStateChanged();
 };
 
 } // namespace intelli
