@@ -50,6 +50,16 @@ public:
     static GraphExecutionModel const* accessExecModel(Graph const& graph);
 
     /**
+     * @brief Creates and appends a execution model to the graph hierarchy of
+     * `graph` and returns a pointer to the newely created exec model. The
+     * ownership is taken care of. If a exec model already exists for `graph`,
+     * it is returned instead.
+     * @param graph Graph to create and append exec model for.
+     * @return Pointer to current exec model.
+     */
+    static GraphExecutionModel* make(Graph& graph);
+
+    /**
      * @brief Provides access to the current graph
      * @return The associated graph of the model
      */
@@ -313,6 +323,8 @@ signals:
      * could not be evalauted due to cross dependencies to other exec models
      */
     void wakeup(QPrivateSignal);
+
+    void autoEvaluationChanged(Graph* graph);
 
 private:
 

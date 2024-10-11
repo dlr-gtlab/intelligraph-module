@@ -13,6 +13,7 @@
 #include <intelli/globals.h>
 #include <intelli/exports.h>
 
+#include <gt_typetraits.h>
 #include <gt_object.h>
 
 #include <QWidget>
@@ -748,6 +749,20 @@ struct get_node_id<NodeUuid>
 {
     NodeUuid operator()(Node const* node) { assert(node); return node->uuid(); }
 };
+
+/**
+ * @brief Returns the relative path to the root node.
+ * @param node Target node
+ * @return Relative node path
+ */
+inline QString
+relativeNodePath(Node const& node)
+{
+    auto const* root = node.template findRoot<Node const*>();
+    if (!root) return node.caption();
+
+    return root->caption() + (node.objectPath().remove(root->objectPath())).replace(';', '/');
+}
 
 } // namespace intelli
 

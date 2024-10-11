@@ -963,6 +963,8 @@ struct GraphExecutionModel::Impl
 
         evaluateNextInQueue(model);
 
+        emit model.autoEvaluationChanged(&graph);
+
         return true;
     }
 

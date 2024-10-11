@@ -107,7 +107,11 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/connectionui.h
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
+    intelli/gui/graphscenemanager.h
+    intelli/gui/graphsceneselector.h
+    intelli/gui/graphstatemanager.h
     intelli/gui/graphview.h
+    intelli/gui/graphviewoverlay.h
     intelli/gui/packageui.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/nodeevalstateobject.h
@@ -181,7 +185,11 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/nodeui.cpp
     intelli/gui/grapheditor.cpp
     intelli/gui/graphscene.cpp
+    intelli/gui/graphscenemanager.cpp
+    intelli/gui/graphsceneselector.cpp
+    intelli/gui/graphstatemanager.cpp
     intelli/gui/graphview.cpp
+    intelli/gui/graphviewoverlay.cpp
     intelli/gui/icons.cpp
     intelli/gui/packageui.cpp
     intelli/gui/style.cpp

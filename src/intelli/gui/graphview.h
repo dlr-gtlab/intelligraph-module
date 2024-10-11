@@ -14,12 +14,14 @@
 
 class QMenu;
 class QPushButton;
-class GtGrid;
+class GtObject;
 
 namespace intelli
 {
 
+class Graph;
 class GraphScene;
+class GraphSceneSelector;
 
 class GraphView : public GtGraphicsView
 {
@@ -34,7 +36,7 @@ public:
     };
     
     GraphView(QWidget* parent = nullptr);
-    
+
     void setScene(GraphScene& scene);
 
     /// @brief max=0/min=0 indicates infinite zoom in/out
@@ -42,8 +44,20 @@ public:
 
     void setScaleRange(ScaleRange range);
 
+    /// Returns the current major grid size
+    int minorGridSize() const;
+    /// Returns the current major grid size
+    int majorGridSize() const;
+
+    /// Returns whether the grid is visible
+    bool isGridVisible() const;
+    /// Sets whether the grid should be visible or not
+    void showGrid(bool show = true);
+
+    /// Returns the current scale
     double scale() const;
-    
+
+    /// Returns the current graph scene
     GraphScene* nodeScene();
 
 public slots:
@@ -56,19 +70,15 @@ public slots:
 
     void setScale(double scale);
 
-private slots:
-
-    void printPDF();
+    void printToPDF();
 
 signals:
 
-    void scaleChanged(double scale);
+    void scaleChanged(double scale, QPrivateSignal);
 
-    void gridChanged(QPrivateSignal);
+    void sceneChanged(GraphScene* scene);
 
-    void connectionShapeChanged(QPrivateSignal);
-
-    void autoEvaluationChanged(QPrivateSignal);
+    void gridVisibilityChanged();
 
 protected:
 
@@ -85,17 +95,18 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
+
+    /// hide grid API as is provides a poor interface
+    using GtGraphicsView::grid;
+
     struct Impl;
 
+    /// scale range
     ScaleRange m_scaleRange;
+    /// last pan position
     QPointF m_panPosition;
-
-    QMenu* m_sceneMenu = nullptr;
-    QMenu* m_editMenu = nullptr;
-
-    QPushButton* m_startAutoEvalBtn = nullptr;
-    QPushButton* m_stopAutoEvalBtn = nullptr;
-    QPushButton* m_snapToGridBtn = nullptr;
+    /// accessing grid visibility through grid API is not possible
+    bool m_gridVisible = true;
 };
 
 } // namespace intelli

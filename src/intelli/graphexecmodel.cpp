@@ -127,6 +127,20 @@ GraphExecutionModel::accessExecModel(const Graph& graph)
     return accessExecModel(const_cast<Graph&>(graph));
 }
 
+GraphExecutionModel*
+GraphExecutionModel::make(Graph& graph)
+{
+    auto* root = &graph;
+    assert(root);
+
+    auto* model = accessExecModel(*root);
+    if (!model)
+    {
+        model = new GraphExecutionModel(*root);
+    }
+    return model;
+}
+
 Graph&
 GraphExecutionModel::graph()
 {
@@ -372,6 +386,8 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
     assert(Impl::containsGraph(*this, graph));
 
     utils::erase(m_autoEvaluatingGraphs, graph.uuid());
+
+    emit autoEvaluationChanged(&graph);
 
     if (Impl::rescheduleAutoEvaluatingNodes(*this))
     {

@@ -39,8 +39,6 @@ public:
     GraphScene(Graph& graph);
     ~GraphScene();
 
-    void reset();
-
     Graph& graph();
     Graph const& graph() const;
 
@@ -65,6 +63,13 @@ public:
      */
     void setSnapToGrid(bool enable = true);
 
+    /// Returns whether snap to grid is enabled
+    bool snapToGrid() const;
+
+    void setConnectionShape(ConnectionShape shape);
+
+    ConnectionShape connectionShape() const;
+
     NodeGraphicsObject* nodeObject(NodeId nodeId);
     NodeGraphicsObject const* nodeObject(NodeId nodeId) const;
 
@@ -72,8 +77,6 @@ public:
     ConnectionGraphicsObject const* connectionObject(ConnectionId conId) const;
 
     QMenu* createSceneMenu(QPointF scenePos);
-
-    void setConnectionShape(ConnectionShape shape);
 
 public slots:
 
@@ -89,6 +92,14 @@ public slots:
     bool copySelectedObjects();
 
     void pasteObjects();
+
+signals:
+
+    void graphNodeDoubleClicked(Graph* graph);
+
+    void connectionShapeChanged();
+
+    void snapToGridChanged();
 
 protected:
 
@@ -107,13 +118,13 @@ private:
     struct NodeEntry
     {
         NodeId nodeId;
-        volatile_ptr<NodeGraphicsObject, DirectDeleter> object;
+        unique_qptr<NodeGraphicsObject, DirectDeleter> object;
     };
 
     struct ConnectionEntry
     {
         ConnectionId conId;
-        volatile_ptr<ConnectionGraphicsObject, DirectDeleter> object;
+        unique_qptr<ConnectionGraphicsObject, DirectDeleter> object;
     };
 
     /// graph this scene refers to
@@ -123,15 +134,11 @@ private:
     /// Connection objects in this scene
     std::vector<ConnectionEntry> m_connections;
     /// Draft connection if active
-    volatile_ptr<ConnectionGraphicsObject> m_draftConnection;
+    unique_qptr<ConnectionGraphicsObject> m_draftConnection;
     /// Shared scene data
     std::unique_ptr<GraphSceneData> m_sceneData;
     /// Shape style of the connections in this scene
     ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
-
-    void beginReset();
-
-    void endReset();
     
     void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
 
@@ -161,6 +168,8 @@ private slots:
     void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
 
     void onNodeMoved(NodeGraphicsObject* sender);
+
+    void onNodeDoubleClicked(NodeGraphicsObject* sender);
 
     void onConnectionAppended(Connection* con);
 

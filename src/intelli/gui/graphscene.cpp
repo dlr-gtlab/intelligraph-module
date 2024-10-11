@@ -12,7 +12,6 @@
 
 #include <intelli/graph.h>
 #include "intelli/connection.h"
-#include "intelli/graphexecmodel.h"
 #include "intelli/nodefactory.h"
 #include "intelli/nodedatafactory.h"
 #include "intelli/node/groupinputprovider.h"
@@ -22,8 +21,7 @@
 #include <intelli/gui/graphscenedata.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/connectionobject.h>
-#include "intelli/private/utils.h"
-
+#include <intelli/private/utils.h>
 
 #include <gt_application.h>
 #include <gt_command.h>
@@ -272,8 +270,8 @@ instantiateDraftConnection(GraphScene& scene,
 
 static void
 makeDraftConnection(GraphScene& scene,
-                           NodeGraphicsObject& object,
-                           ConnectionId conId)
+                    NodeGraphicsObject& object,
+                    ConnectionId conId)
 {
     auto const getEndPoint = [&scene](ConnectionId conId, PortType type){
         ConnectionGraphicsObject* oldCon = scene.connectionObject(conId);
@@ -361,63 +359,13 @@ GraphScene::GraphScene(Graph& graph) :
     m_graph(&graph),
     m_sceneData(std::make_unique<GraphSceneData>())
 {
-    reset();
-}
-
-GraphScene::~GraphScene()
-{
-    if (!m_graph) return;
-
-    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
-    if (!model) return;
-
-    model->stopAutoEvaluatingGraph(*m_graph);
-}
-
-void
-GraphScene::reset()
-{
-    beginReset();
-    endReset();
-}
-
-void
-GraphScene::beginReset()
-{
-    assert(m_graph);
-
-    disconnect(m_graph);
-    if (auto* model = GraphExecutionModel::accessExecModel(*m_graph))
-    {
-        model->disconnect(this);
-    }
-}
-
-void
-GraphScene::endReset()
-{
-    assert(m_graph);
-
-    m_nodes.clear();
-
-    auto* root = m_graph->rootGraph();
-    assert(root);
-
-    // instantiate exec model
-    auto* model = GraphExecutionModel::accessExecModel(*root);
-    if (!model)
-    {
-        model = new GraphExecutionModel(*root);
-    }
-    Q_UNUSED(model);
-
     // instantiate objects
-    auto const& nodes = graph().nodes();
+    auto const& nodes = m_graph->nodes();
     for (auto* node : nodes)
     {
         onNodeAppended(node);
     }
-    auto const& connections = graph().connections();
+    auto const& connections = m_graph->connections();
     for (auto* con : connections)
     {
         onConnectionAppended(con);
@@ -429,6 +377,8 @@ GraphScene::endReset()
     connect(m_graph, &Graph::connectionAppended, this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
     connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
 }
+
+GraphScene::~GraphScene() = default;
 
 Graph&
 GraphScene::graph()
@@ -458,7 +408,39 @@ GraphScene::setGridSize(double gridSize)
 void
 GraphScene::setSnapToGrid(bool enable)
 {
+    if (enable == m_sceneData->snapToGrid) return;
+
     m_sceneData->snapToGrid = enable;
+    emit snapToGridChanged();
+}
+
+bool
+GraphScene::snapToGrid() const
+{
+    return m_sceneData->snapToGrid;
+}
+
+void
+GraphScene::setConnectionShape(ConnectionShape shape)
+{
+    if (shape == m_connectionShape) return;
+
+    m_connectionShape = shape;
+    if (m_draftConnection)
+    {
+        m_draftConnection->setConnectionShape(shape);
+    }
+    for (auto& con : m_connections)
+    {
+        con.object->setConnectionShape(shape);
+    }
+    emit connectionShapeChanged();
+}
+
+ConnectionShape
+GraphScene::connectionShape() const
+{
+    return m_connectionShape;
 }
 
 NodeGraphicsObject*
@@ -609,20 +591,6 @@ GraphScene::createSceneMenu(QPointF scenePos)
 
     return menu;
 // SPDX-SnippetEnd
-}
-
-void
-GraphScene::setConnectionShape(ConnectionShape shape)
-{
-    m_connectionShape = shape;
-    if (m_draftConnection)
-    {
-        m_draftConnection->setConnectionShape(shape);
-    }
-    for (auto& con : m_connections)
-    {
-        con.object->setConnectionShape(shape);
-    }
 }
 
 void
@@ -1490,6 +1458,8 @@ GraphScene::onNodeAppended(Node* node)
             this, &GraphScene::onNodeShifted, Qt::DirectConnection);
     connect(entity, &NodeGraphicsObject::nodeMoved,
             this, &GraphScene::onNodeMoved, Qt::DirectConnection);
+    connect(entity, &NodeGraphicsObject::nodeDoubleClicked,
+            this, &GraphScene::onNodeDoubleClicked, Qt::DirectConnection);
     connect(entity, &NodeGraphicsObject::nodeGeometryChanged,
             this, &GraphScene::moveConnections, Qt::DirectConnection);
 
@@ -1529,6 +1499,22 @@ GraphScene::onNodeMoved(NodeGraphicsObject* sender)
     {
         o->commitPosition();
     }
+}
+
+void
+GraphScene::onNodeDoubleClicked(NodeGraphicsObject* sender)
+{
+    assert(sender);
+
+    Node& node = sender->node();
+
+    Graph* graph = qobject_cast<Graph*>(&node);
+    if (!graph)
+    {
+        return gt::gui::handleObjectDoubleClick(node);
+    }
+
+    emit graphNodeDoubleClicked(graph);
 }
 
 void

@@ -241,6 +241,8 @@ signals:
      */
     void nodeMoved(NodeGraphicsObject* object);
 
+    void nodeDoubleClicked(NodeGraphicsObject* object);
+
     void nodeGeometryChanged(NodeGraphicsObject* object);
 
     void portContextMenuRequested(NodeGraphicsObject* object, PortId port, QPointF pos);
