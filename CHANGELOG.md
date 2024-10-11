@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Major refactoring of the graph execution model. Now only one exec model is used to manage and evaluate a graph hierarchy, improving the handling of nested graphs and fixing unhandled edge cases. Additionally the future-object returned by the exec model is now far more flexible and user friendly, allowing above else the registration of callback functions. - #112
 
 ### Fixed
+- Fixed error when creating and loading a project with an empty IntelliGraph package in GTlab 2.1.0 - #193
 - Fixed potential crashes when deletiing instances of `ObjectData` that were created in a separate thread. - #112
 - The graph view should now remeber more consistently whether a graph should be auto-evaluated. - #112
 
