@@ -11,8 +11,11 @@
 
 #include <intelli/graph.h>
 #include <intelli/gui/graphscene.h>
+#include <intelli/gui/graphscenemanager.h>
 #include <intelli/gui/graphview.h>
+#include <intelli/gui/graphviewoverlay.h>
 #include <intelli/gui/style.h>
+#include <intelli/private/utils.h>
 
 #include <gt_logging.h>
 
@@ -61,28 +64,23 @@ void
 GraphEditor::setData(GtObject* obj)
 {
     assert(m_view);
+    assert(m_sceneManager);
 
-    auto graph  = qobject_cast<Graph*>(obj);
+    auto* graph  = qobject_cast<Graph*>(obj);
     if (!graph)
     {
         gtError().verbose() << tr("Not an intelli graph!") << obj;
         return;
     }
 
-    if (m_scene)
+    auto* scene = m_sceneManager->createScene(*graph);
+    if (!scene)
     {
         gtError().verbose()
-            << tr("Expected null intelli graph scene, aborting!");
+            << tr("Failed to create scene for graph '%1'!")
+                   .arg(relativeNodePath(*graph));
         return;
     }
-
-    // instantly commit suicide if widget is destroyed (avoids issue #87)
-    connect(graph, &QObject::destroyed, this, [this](){ delete this; });
-
-    // close graph model if its no longer used
-    m_scene = make_volatile<GraphScene, DirectDeleter>(*graph);
-
-    m_view->setScene(*m_scene);
 
     setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + graph->caption());
 }
@@ -97,4 +95,9 @@ GraphEditor::initialized()
     auto* l = new QVBoxLayout(widget());
     l->addWidget(m_view);
     l->setContentsMargins(0, 0, 0, 0);
+
+    m_sceneManager = new GraphSceneManager(*m_view);
+
+    auto* overlay = makeOverlay(*m_view);
+    Q_UNUSED(overlay);
 }

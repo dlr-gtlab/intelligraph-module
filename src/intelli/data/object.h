@@ -40,8 +40,8 @@ public:
     Q_INVOKABLE GtObject const* object() const { return m_obj.get(); }
 
 private:
-
-    volatile_ptr<GtObject, DeferredDeleter> m_obj;
+    
+    unique_qptr<GtObject, DeferredDeleter> m_obj;
 };
 
 } // namespace intelli

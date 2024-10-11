@@ -21,6 +21,7 @@ namespace intelli
 
 class GraphScene;
 class GraphView;
+class GraphSceneManager;
 
 /**
  * @generated 1.2.0
@@ -43,8 +44,9 @@ protected:
 
 private:
 
+    GraphSceneManager* m_sceneManager = nullptr;
     /// scene
-    volatile_ptr<GraphScene, DirectDeleter> m_scene;
+    unique_qptr<GraphScene, DirectDeleter> m_scene;
     /// view
     GraphView* m_view = nullptr;
 };
