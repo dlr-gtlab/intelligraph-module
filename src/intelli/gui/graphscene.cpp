@@ -12,7 +12,6 @@
 
 #include <intelli/graph.h>
 #include "intelli/connection.h"
-#include "intelli/graphexecmodel.h"
 #include "intelli/nodefactory.h"
 #include "intelli/nodedatafactory.h"
 #include "intelli/node/groupinputprovider.h"
@@ -364,15 +363,7 @@ GraphScene::GraphScene(Graph& graph) :
     reset();
 }
 
-GraphScene::~GraphScene()
-{
-    if (!m_graph) return;
-
-    auto* model = GraphExecutionModel::accessExecModel(*m_graph);
-    if (!model) return;
-
-    model->stopAutoEvaluatingGraph(*m_graph);
-}
+GraphScene::~GraphScene() = default;
 
 void
 GraphScene::reset()
@@ -387,10 +378,6 @@ GraphScene::beginReset()
     assert(m_graph);
 
     disconnect(m_graph);
-    if (auto* model = GraphExecutionModel::accessExecModel(*m_graph))
-    {
-        model->disconnect(this);
-    }
 }
 
 void
@@ -402,14 +389,6 @@ GraphScene::endReset()
 
     auto* root = m_graph->rootGraph();
     assert(root);
-
-    // instantiate exec model
-    auto* model = GraphExecutionModel::accessExecModel(*root);
-    if (!model)
-    {
-        model = new GraphExecutionModel(*root);
-    }
-    Q_UNUSED(model);
 
     // instantiate objects
     auto const& nodes = graph().nodes();
@@ -1490,6 +1469,8 @@ GraphScene::onNodeAppended(Node* node)
             this, &GraphScene::onNodeShifted, Qt::DirectConnection);
     connect(entity, &NodeGraphicsObject::nodeMoved,
             this, &GraphScene::onNodeMoved, Qt::DirectConnection);
+    connect(entity, &NodeGraphicsObject::nodeDoubleClicked,
+            this, &GraphScene::onNodeDoubleClicked, Qt::DirectConnection);
     connect(entity, &NodeGraphicsObject::nodeGeometryChanged,
             this, &GraphScene::moveConnections, Qt::DirectConnection);
 
@@ -1529,6 +1510,22 @@ GraphScene::onNodeMoved(NodeGraphicsObject* sender)
     {
         o->commitPosition();
     }
+}
+
+void
+GraphScene::onNodeDoubleClicked(NodeGraphicsObject* sender)
+{
+    assert(sender);
+
+    Node& node = sender->node();
+
+    Graph* graph = qobject_cast<Graph*>(&node);
+    if (!graph)
+    {
+        return gt::gui::handleObjectDoubleClick(node);
+    }
+
+    emit graphNodeDoubleClicked(graph);
 }
 
 void

@@ -14,12 +14,13 @@
 
 class QMenu;
 class QPushButton;
-class GtGrid;
 
 namespace intelli
 {
 
+class Graph;
 class GraphScene;
+class GraphSceneSelector;
 
 class GraphView : public GtGraphicsView
 {
@@ -34,7 +35,7 @@ public:
     };
     
     GraphView(QWidget* parent = nullptr);
-    
+
     void setScene(GraphScene& scene);
 
     /// @brief max=0/min=0 indicates infinite zoom in/out
@@ -42,8 +43,14 @@ public:
 
     void setScaleRange(ScaleRange range);
 
+    /// Returns the current major grid size
+    int minorGridSize() const;
+    /// Returns the current major grid size
+    int majorGridSize() const;
+
+    /// returns the current scale
     double scale() const;
-    
+    /// returns the current graph scene
     GraphScene* nodeScene();
 
 public slots:
@@ -56,19 +63,11 @@ public slots:
 
     void setScale(double scale);
 
-private slots:
-
-    void printPDF();
+    void printToPDF();
 
 signals:
 
-    void scaleChanged(double scale);
-
-    void gridChanged(QPrivateSignal);
-
-    void connectionShapeChanged(QPrivateSignal);
-
-    void autoEvaluationChanged(QPrivateSignal);
+    void scaleChanged(double scale, QPrivateSignal);
 
 protected:
 
@@ -85,17 +84,11 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
+
     struct Impl;
 
     ScaleRange m_scaleRange;
     QPointF m_panPosition;
-
-    QMenu* m_sceneMenu = nullptr;
-    QMenu* m_editMenu = nullptr;
-
-    QPushButton* m_startAutoEvalBtn = nullptr;
-    QPushButton* m_stopAutoEvalBtn = nullptr;
-    QPushButton* m_snapToGridBtn = nullptr;
 };
 
 } // namespace intelli

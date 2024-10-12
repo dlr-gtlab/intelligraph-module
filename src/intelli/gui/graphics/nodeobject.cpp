@@ -496,8 +496,7 @@ NodeGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 void
 NodeGraphicsObject::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
-    gt::gui::handleObjectDoubleClick(*m_node);
-
+    emit nodeDoubleClicked(this);
     event->accept();
 }
 

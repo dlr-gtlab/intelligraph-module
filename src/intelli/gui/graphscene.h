@@ -90,6 +90,10 @@ public slots:
 
     void pasteObjects();
 
+signals:
+
+    void graphNodeDoubleClicked(Graph* graph);
+
 protected:
 
     void keyPressEvent(QKeyEvent* event) override;
@@ -107,13 +111,13 @@ private:
     struct NodeEntry
     {
         NodeId nodeId;
-        volatile_ptr<NodeGraphicsObject, DirectDeleter> object;
+        unique_qptr<NodeGraphicsObject, DirectDeleter> object;
     };
 
     struct ConnectionEntry
     {
         ConnectionId conId;
-        volatile_ptr<ConnectionGraphicsObject, DirectDeleter> object;
+        unique_qptr<ConnectionGraphicsObject, DirectDeleter> object;
     };
 
     /// graph this scene refers to
@@ -123,7 +127,7 @@ private:
     /// Connection objects in this scene
     std::vector<ConnectionEntry> m_connections;
     /// Draft connection if active
-    volatile_ptr<ConnectionGraphicsObject> m_draftConnection;
+    unique_qptr<ConnectionGraphicsObject> m_draftConnection;
     /// Shared scene data
     std::unique_ptr<GraphSceneData> m_sceneData;
     /// Shape style of the connections in this scene
@@ -161,6 +165,8 @@ private slots:
     void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
 
     void onNodeMoved(NodeGraphicsObject* sender);
+
+    void onNodeDoubleClicked(NodeGraphicsObject* sender);
 
     void onConnectionAppended(Connection* con);
 
