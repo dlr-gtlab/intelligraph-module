@@ -86,8 +86,8 @@ struct Package::Impl
 
             if (!dir.rmdir(catName))
             {
-                gtWarning() << tr("Failed to remove category '%1'! "
-                                  "(Directory is not empty)").arg(catName);
+                gtWarning() << tr("Failed to remove category '%1' "
+                                  "(directory is not empty)!").arg(catName);
             }
         }
     }
@@ -433,7 +433,7 @@ bool
 Package::saveMiscData(QDir const& projectDir)
 {
     auto const makeError = [](){
-        return tr("Failed to save package data!");
+        return tr("Failed to save package data");
     };
 
     QDir dir(projectDir);
@@ -478,23 +478,23 @@ bool
 Package::readMiscData(QDir const& projectDir)
 {
     auto const makeError = [](){
-        return tr("Failed to save package data!");
+        return tr("Failed to read package data");
     };
 
     QDir dir(projectDir);
 
     if (!dir.cd(MODULE_DIR) || !dir.exists())
     {
-        gtInfo().verbose()
+        gtWarning().verbose()
             << tr("Module dir '%1' does not exists.").arg(MODULE_DIR);
-        return false;
+        return true;
     }
 
     if (dir.isEmpty(QDir::Dirs | QDir::NoDotAndDotDot))
     {
-        gtInfo().verbose()
-            << tr("Empty module '%1' dir.arg(MODULE_DIR)");
-        return false;
+        gtWarning().verbose()
+            << tr("Empty module '%1' dir").arg(MODULE_DIR);
+        return true;
     }
 
     QDirIterator iter{
