@@ -121,5 +121,7 @@ GraphEditor::initialized()
     m_sceneManager = GraphSceneManager::make(*m_view);
 
     m_overlay = GraphViewOverlay::make(*m_view);
-    Q_UNUSED(m_overlay);
+    
+    connect(m_overlay, &GraphViewOverlay::sceneChangeRequested,
+            m_sceneManager, &GraphSceneManager::openGraphByUuid);
 }

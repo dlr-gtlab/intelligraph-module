@@ -10,8 +10,6 @@
 #ifndef GT_INTELLI_GRAPHSCENESELECTOR_H
 #define GT_INTELLI_GRAPHSCENESELECTOR_H
 
-#include <intelli/globals.h>
-
 #include <QWidget>
 #include <QPointer>
 
@@ -49,7 +47,7 @@ public slots:
 
 signals:
 
-    void graphSelected(NodeUuid const& graphUuid);
+    void graphClicked(QString const& graphUuid);
 
 private:
 

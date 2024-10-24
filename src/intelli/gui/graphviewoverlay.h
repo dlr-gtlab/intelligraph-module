@@ -46,6 +46,10 @@ public:
      */
     static GraphViewOverlay* make(GraphView& view);
 
+signals:
+
+    void sceneChangeRequested(QString const& graphUuid);
+
 private:
 
     QPointer<GraphView> m_view;

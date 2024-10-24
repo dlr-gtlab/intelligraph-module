@@ -166,6 +166,9 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
     /* SCENE-LINK */
     m_sceneSelector = new GraphSceneSelector;
 
+    connect(m_sceneSelector, &GraphSceneSelector::graphClicked,
+            this, &GraphViewOverlay::sceneChangeRequested);
+
     /* OVERLAY */
     setContentsMargins(5, 5, 5, 0);
     setAlignment(Qt::AlignLeft | Qt::AlignTop);
@@ -174,6 +177,7 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
     insertWidget(idx++, m_startAutoEvalBtn);
     insertWidget(idx++, m_stopAutoEvalBtn);
     insertWidget(idx++, m_snapToGridBtn);
+    insertSpacing(idx , m_snapToGridBtn->width());
     insertWidget(idx++, m_sceneSelector);
     addStretch();
 

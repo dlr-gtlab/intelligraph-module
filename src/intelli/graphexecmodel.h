@@ -324,6 +324,10 @@ signals:
      */
     void wakeup(QPrivateSignal);
 
+    /**
+     * @brief Emiited once the auto evalaution state of `graph` has changed.
+     * @param graph Graph that has changed its auto evaluation state.
+     */
     void autoEvaluationChanged(Graph* graph);
 
 private:

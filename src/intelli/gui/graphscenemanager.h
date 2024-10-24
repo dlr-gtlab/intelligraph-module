@@ -11,7 +11,6 @@
 #define GT_INTELLI_GRAPHSCENEMANAGER_H
 
 #include <intelli/memory.h>
-#include <intelli/globals.h>
 
 #include <QObject>
 #include <QPointer>
@@ -44,7 +43,37 @@ public:
      */
     static GraphSceneManager* make(GraphView& view);
 
+    /**
+     * @brief Returns the current scene of the view.
+     * @return Current scene (may be null if no scene was registered)
+     */
+    GraphScene* currentScene();
+    GraphScene const* currentScene() const;
+
+    /**
+     * @brief Creates a new scene for the given graph. Fails if a scene is
+     * already registered for the given graph. If the scene is the only one
+     * registered it is also set as the current scene.
+     * @param graph Graph to create a scene for.
+     * @return
+     */
     GraphScene* createScene(Graph& graph);
+
+public slots:
+
+    /**
+     * @brief Opens the graph in a new scene. The scene is created if it does
+     * not exist already.
+     * @param graph Graph to open
+     */
+    void openGraph(Graph* graph);
+
+    /**
+     * @brief Opens the graph referenced by the given uuid in a new scene.
+     * The scene is created if it does not exist already.
+     * @param graph Graph to open
+     */
+    void openGraphByUuid(QString const& graphUuid);
 
 private:
 

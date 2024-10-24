@@ -13,6 +13,7 @@
 
 #include <QLabel>
 #include <QVBoxLayout>
+#include <QFontDatabase>
 
 using namespace intelli;
 
@@ -25,12 +26,12 @@ GraphSceneSelector::GraphSceneSelector(QWidget* parent) :
     m_scenePath->setTextFormat(Qt::RichText);
     m_scenePath->setTextInteractionFlags(Qt::LinksAccessibleByMouse);
 
-    connect(this, &GraphSceneSelector::graphSelected,
-            this, [](QString const& link){
-        gtDebug() << "CLICKED:" << link;
-    });
+    QFont font = m_scenePath->font();
+    font.setPointSize(font.pointSize() + 2);
+    m_scenePath->setFont(font);
+
     connect(m_scenePath, &QLabel::linkActivated,
-            this, &GraphSceneSelector::graphSelected);
+            this, &GraphSceneSelector::graphClicked);
 
     auto* lay = new QVBoxLayout(this);
     lay->addWidget(m_scenePath);
@@ -40,7 +41,7 @@ GraphSceneSelector::GraphSceneSelector(QWidget* parent) :
 void
 GraphSceneSelector::setCurrentGraph(Graph& graph)
 {
-    m_currentGraph = graph.rootGraph();
+    m_currentGraph = &graph;
     assert(m_currentGraph);
 
     refresh();
