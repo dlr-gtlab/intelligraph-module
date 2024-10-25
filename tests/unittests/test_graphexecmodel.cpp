@@ -546,7 +546,7 @@ TEST(GraphExecutionModel, evaluate_graph_with_node_appended)
 
     bool functionCalled = false;
 
-    gtTrace() << "Scheudling callback function...";
+    gtTrace() << "Scheduling callback function...";
 
     model.evaluateNode(A_uuid).then([&graph, &functionCalled](bool success){
         gtTrace() << "Callback function called!";

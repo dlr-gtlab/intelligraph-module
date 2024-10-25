@@ -170,16 +170,14 @@ GraphExecutionModel::setupConnections(Graph& graph)
         onNodeDeleted(g, nodeId);
     }, Qt::DirectConnection);
 
-    if (&this->graph() == &graph)
-    {
-        connect(&graph, &Graph::globalConnectionAppended,
-                this, &GraphExecutionModel::onConnectionAppended,
-                Qt::DirectConnection);
-        connect(&graph, &Graph::globalConnectionDeleted,
-                this, &GraphExecutionModel::onConnectionDeleted,
-                Qt::DirectConnection);
-    }
-    connect(&graph, &Graph::nodePortInserted,
+    connect(&graph, &Graph::globalConnectionAppended,
+            this, &GraphExecutionModel::onConnectionAppended,
+            Qt::DirectConnection);
+    connect(&graph, &Graph::globalConnectionDeleted,
+            this, &GraphExecutionModel::onConnectionDeleted,
+            Qt::DirectConnection);
+
+        connect(&graph, &Graph::nodePortInserted,
             this, &GraphExecutionModel::onNodePortInserted,
             Qt::DirectConnection);
     connect(&graph, &Graph::nodePortAboutToBeDeleted,
