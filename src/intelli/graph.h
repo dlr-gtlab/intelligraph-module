@@ -127,6 +127,14 @@ public:
                               NodeId inNodeId, PortIndex inPortIdx) const;
 
     /**
+     * @brief Converts the connection uuid into a connection id (used for the
+     * local connection model)
+     * @param conUuid Connection uuid to convert
+     * @return Connection id
+     */
+    ConnectionId connectionId(ConnectionUuid const&  conUuid) const;
+
+    /**
      * @brief Converts the connection id into a connection uuid (used for the
      * global connection model)
      * @param conId Connection id to convert
@@ -378,17 +386,33 @@ public:
     bool deleteConnection(ConnectionId connectionId);
 
     /**
-     * @brief Moves the node (given by nodeId) from this graph to the target
-     * graph. Depending on the given `NodeIdPolicy` the node id may be updated.
-     * If the node cannot be moved or was not found a nullptr is returned.
+     * @brief Moves the node (given by NodeId) from this graph to the target
+     * graph. Depending on the given `NodeIdPolicy` the node's id may be
+     * updated. Failing to move a node may will not restore the previous state
+     * of the graph. Use a MementoDiff for this purpose. The underlying node
+     * object is guranteed to be kept alive.
      * @param nodeId Node to move to other graph
      * @param policy Whether to update the node's id if necessary (if the
      * node id should be kept, moving the node may fail)
-     * @return Pointer to new node.
+     * @return success
      */
-    Node* moveNodeToGraph(NodeId nodeId,
-                          Graph& targetGraph,
-                          NodeIdPolicy policy = NodeIdPolicy::Update);
+    bool moveNode(NodeId nodeId, Graph& targetGraph,
+                  NodeIdPolicy policy = NodeIdPolicy::Update);
+
+    /**
+     * @brief Moves the nodes (given by their NodeId) from this graph to the
+     * target graph. Depending on the given `NodeIdPolicy` the node's ids may be
+     * updated. Failing to move a node may will not restore the previous state
+     * of the graph. Use a MementoDiff for this purpose. The underlying node
+     * objects are guranteed to be kept alive whereas the connection objects
+     * are deleted. Thus, raw pointers to connection objects must be updated.
+     * @param nodeIds
+     * @param targetGraph
+     * @param policy
+     * @return
+     */
+    bool moveNodesAndConnections(QVector<NodeId> const& nodeIds, Graph& targetGraph,
+                                 NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
      * @brief Access the directed acyclic graph model used to manage the nodes
@@ -568,6 +592,10 @@ private:
      */
     ConnectionGroup& connectionGroup();
     ConnectionGroup const& connectionGroup() const;
+
+    bool appendNode(Node* node, NodeIdPolicy policy = NodeIdPolicy::Update);
+
+    bool appendConnection(Connection* connection);
 
     void restoreNode(Node* node);
     void restoreConnection(Connection* connection);

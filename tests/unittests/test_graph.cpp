@@ -1,4 +1,4 @@
-/* 
+/*
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
@@ -749,8 +749,7 @@ TEST(Graph, move_node_to_subgraph)
     EXPECT_FALSE(subgraph->findNodeByUuid(A_uuid));
 
     // move node
-    Node* movedNodeA = root.moveNodeToGraph(A_id, *subgraph);
-    ASSERT_EQ(movedNodeA, nodeA);
+    EXPECT_TRUE(root.moveNode(A_id, *subgraph));
     EXPECT_EQ(nodeA->parent(), subgraph);
 
     // after move
@@ -780,7 +779,7 @@ TEST(Graph, move_node_to_other_graph)
     EXPECT_FALSE(graph2.findNodeByUuid(A_uuid));
 
     // move node
-    ASSERT_EQ(graph1.moveNodeToGraph(A_id, graph2), nodeA);
+    EXPECT_TRUE(graph1.moveNode(A_id, graph2));
     EXPECT_EQ(nodeA->parent(), &graph2);
 
     // after move
@@ -788,4 +787,34 @@ TEST(Graph, move_node_to_other_graph)
     EXPECT_FALSE(graph1.findNodeByUuid(A_uuid));
     EXPECT_TRUE(graph2.findNode(A_id));
     EXPECT_TRUE(graph2.findNodeByUuid(A_uuid));
+}
+
+TEST(Graph, move_nodes_to_other_graph)
+{
+    Graph graph1;
+    Graph graph2;
+
+    ASSERT_TRUE(test::buildLinearGraph(graph1));
+
+    auto model = graph1.connectionModel();
+    int connections = model.size();
+
+    // before move
+    EXPECT_FALSE(graph1.connectionModel().empty());
+    EXPECT_TRUE(graph2.connectionModel().empty());
+    EXPECT_TRUE(graph1.connectionModel() == model);
+    EXPECT_FALSE(graph2.connectionModel() == model);
+    EXPECT_EQ(graph1.connectionModel().size(), connections);
+    EXPECT_NE(graph2.connectionModel().size(), connections);
+
+    // move node
+    EXPECT_TRUE(graph1.moveNodesAndConnections({A_id, B_id, C_id, D_id}, graph2));
+
+    // after move
+    EXPECT_TRUE(graph1.connectionModel().empty());
+    EXPECT_FALSE(graph2.connectionModel().empty());
+    EXPECT_FALSE(graph1.connectionModel() == model);
+    EXPECT_TRUE(graph2.connectionModel() == model);
+    EXPECT_NE(graph1.connectionModel().size(), connections);
+    EXPECT_EQ(graph2.connectionModel().size(), connections);
 }
