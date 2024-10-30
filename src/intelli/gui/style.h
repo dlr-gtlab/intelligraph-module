@@ -27,6 +27,21 @@ enum class ConnectionShape : size_t
     DefaultShape = Cubic
 };
 
+inline constexpr ConnectionShape
+nextConnectionShape(ConnectionShape shape)
+{
+    switch (shape)
+    {
+    case ConnectionShape::Cubic:
+        return ConnectionShape::Rectangle;
+    case ConnectionShape::Rectangle:
+        return ConnectionShape::Straight;
+    case ConnectionShape::Straight:
+        return ConnectionShape::Cubic;
+    }
+    return ConnectionShape::DefaultShape;
+}
+
 namespace style
 {
 

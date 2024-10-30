@@ -854,6 +854,17 @@ struct GraphExecutionModel::Impl
         list = gt::topo_sort(adjacencyMatrix);
     }
 
+    /// Removes all nodes from the given list that were already evaluated
+    static inline void
+    removeEvaluatedNodes(GraphExecutionModel& model, std::vector<NodeUuid>& nodes)
+    {
+        nodes.erase(std::remove_if(nodes.begin(), nodes.end(), [&model](const auto& uuid) {
+            auto item = findData(model, uuid);
+            assert(item);
+            return item.isEvaluated();
+        }), nodes.end());
+    }
+
     /**
      * @brief Reschedules all target nodes and appends them to the list of
      * pending nodes
@@ -876,6 +887,8 @@ struct GraphExecutionModel::Impl
         }
 
         sortDependencies(model, model.m_pendingNodes);
+
+        removeEvaluatedNodes(model, model.m_pendingNodes);
 
         INTELLI_LOG(model) << "pending nodes:"
                            << model.m_pendingNodes;
@@ -962,6 +975,8 @@ struct GraphExecutionModel::Impl
         rescheduleAutoEvaluatingNodes(model);
 
         evaluateNextInQueue(model);
+
+        emit model.autoEvaluationChanged(&graph);
 
         return true;
     }
@@ -1086,6 +1101,14 @@ struct GraphExecutionModel::Impl
                 << QObject::tr("scheduling target node '%1'...")
                        .arg(nodeUuid);
 
+            if (!model.m_data.contains(nodeUuid))
+            {
+                INTELLI_LOG_WARN(model)
+                    << QObject::tr("node not found!");
+                // should make future fail
+                return ExecFuture{model};
+            }
+
             if (!utils::contains(model.m_targetNodes, nodeUuid))
             {
                 model.m_targetNodes.push_back(nodeUuid);
@@ -1114,6 +1137,13 @@ struct GraphExecutionModel::Impl
         INTELLI_LOG_SCOPE(model)
             << QObject::tr("scheduling target node '%1'...")
                    .arg(nodeUuid);
+
+        if (!model.m_data.contains(nodeUuid))
+        {
+            INTELLI_LOG_WARN(model)
+                << QObject::tr("node not found!");
+            return ExecFuture{model};
+        }
 
         // append to target nodes
         if (!utils::contains(model.m_targetNodes, nodeUuid))
@@ -1222,6 +1252,8 @@ struct GraphExecutionModel::Impl
             model.m_autoEvaluatingNodes.end()
         };
         sortDependencies(model, dummy);
+
+        removeEvaluatedNodes(model, dummy);
 
         INTELLI_LOG_SCOPE(model)
             << tr("scheduling auto evaluating nodes:")

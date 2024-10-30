@@ -48,7 +48,6 @@
 #include <QDomNodeList>
 
 using namespace intelli;
-
 // non namespace variants
 static const int meta_port_index = [](){
     return qRegisterMetaType<PortIndex>("PortIndex");

@@ -38,6 +38,9 @@ struct ExecFuture::Impl
         QObject::connect(future.m_model, &GraphExecutionModel::nodeEvaluationFailed,
                          &loop, performUpdate);
 
+        // loop failed
+        if (future.m_targets.empty()) return emit loop.failed();
+
         performUpdate();
     }
 

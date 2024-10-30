@@ -32,37 +32,37 @@ struct DirectDeleter
 };
 
 
-/// if you just dont know whether Qt took the ownership of your object...
+/// if you just dont know whether Qt took the ownership of your object
 /// (works like unique_ptr but checks if ptr exists using a QPointer under the hood)
 template <typename T, typename Deleter = DeferredDeleter>
-class volatile_ptr
+class unique_qptr
 {
 public:
 
-    volatile_ptr(std::nullptr_t) :
-        volatile_ptr((T*)nullptr)
+    unique_qptr(std::nullptr_t) :
+        unique_qptr((T*)nullptr)
     { }
-    explicit volatile_ptr(T* ptr = nullptr) :
+    explicit unique_qptr(T* ptr = nullptr) :
         m_ptr(ptr)
     { }
 
-    ~volatile_ptr()
+    ~unique_qptr()
     {
         if (m_ptr) reset();
     }
 
-    volatile_ptr(volatile_ptr const& o) = delete;
-    volatile_ptr& operator=(volatile_ptr const& o) = delete;
+    unique_qptr(unique_qptr const& o) = delete;
+    unique_qptr& operator=(unique_qptr const& o) = delete;
 
     template <typename U = T, gt::trait::enable_if_base_of<T, U> = true>
-    volatile_ptr(volatile_ptr<U, Deleter>&& o) :
+    unique_qptr(unique_qptr<U, Deleter>&& o) :
         m_ptr(o.release())
     { }
 
     template <typename U = T, gt::trait::enable_if_base_of<T, U> = true>
-    volatile_ptr& operator=(volatile_ptr<U, Deleter>&& o)
+    unique_qptr& operator=(unique_qptr<U, Deleter>&& o)
     {
-        volatile_ptr tmp(std::move(o));
+        unique_qptr tmp(std::move(o));
         swap(tmp);
         return *this;
     }
@@ -93,12 +93,12 @@ public:
     T const* operator ->() const { return get(); }
 
     template <typename U = T, gt::trait::enable_if_base_of<U, T> = true>
-    operator volatile_ptr<U>&() { return *this; }
+    operator unique_qptr<U>&() { return *this; }
 
     template <typename U = T, gt::trait::enable_if_base_of<U, T> = true>
-    operator volatile_ptr<U> const&() const { return *this; }
+    operator unique_qptr<U> const&() const { return *this; }
 
-    void swap(volatile_ptr& o) noexcept
+    void swap(unique_qptr& o) noexcept
     {
         using std::swap; // ADL
         swap(m_ptr, o.m_ptr);
@@ -110,16 +110,26 @@ private:
 };
 
 template <typename T, typename Deleter = DeferredDeleter, typename ...Args>
-inline volatile_ptr<T, Deleter> make_volatile(Args&&... args) noexcept
+inline unique_qptr<T, Deleter> make_unique_qptr(Args&&... args) noexcept
 {
-    return volatile_ptr<T, Deleter>(new T{std::forward<Args>(args)...});
+    return unique_qptr<T, Deleter>(new T{std::forward<Args>(args)...});
 }
+
+template <typename T, typename Deleter = DeferredDeleter, typename ...Args>
+[[deprecated("use `make_qpointer` instead")]]
+inline unique_qptr<T, Deleter> make_volatile(Args&&... args) noexcept
+{
+    return unique_qptr<T, Deleter>(new T{std::forward<Args>(args)...});
+}
+
+template <typename T, typename Deleter = DeferredDeleter>
+using volatile_ptr [[deprecated("use `unique_qptr` instead")]] = unique_qptr<T, Deleter>;
 
 } // namespace intelli
 
 template <typename T>
-inline void swap(intelli::volatile_ptr<T>& a,
-                 intelli::volatile_ptr<T>& b) noexcept
+inline void swap(intelli::unique_qptr<T>& a,
+                 intelli::unique_qptr<T>& b) noexcept
 {
     a.swap(b);
 }

@@ -127,6 +127,20 @@ GraphExecutionModel::accessExecModel(const Graph& graph)
     return accessExecModel(const_cast<Graph&>(graph));
 }
 
+GraphExecutionModel*
+GraphExecutionModel::make(Graph& graph)
+{
+    auto* root = &graph;
+    assert(root);
+
+    auto* model = accessExecModel(*root);
+    if (!model)
+    {
+        model = new GraphExecutionModel(*root);
+    }
+    return model;
+}
+
 Graph&
 GraphExecutionModel::graph()
 {
@@ -156,16 +170,14 @@ GraphExecutionModel::setupConnections(Graph& graph)
         onNodeDeleted(g, nodeId);
     }, Qt::DirectConnection);
 
-    if (&this->graph() == &graph)
-    {
-        connect(&graph, &Graph::globalConnectionAppended,
-                this, &GraphExecutionModel::onConnectionAppended,
-                Qt::DirectConnection);
-        connect(&graph, &Graph::globalConnectionDeleted,
-                this, &GraphExecutionModel::onConnectionDeleted,
-                Qt::DirectConnection);
-    }
-    connect(&graph, &Graph::nodePortInserted,
+    connect(&graph, &Graph::globalConnectionAppended,
+            this, &GraphExecutionModel::onConnectionAppended,
+            Qt::DirectConnection);
+    connect(&graph, &Graph::globalConnectionDeleted,
+            this, &GraphExecutionModel::onConnectionDeleted,
+            Qt::DirectConnection);
+
+        connect(&graph, &Graph::nodePortInserted,
             this, &GraphExecutionModel::onNodePortInserted,
             Qt::DirectConnection);
     connect(&graph, &Graph::nodePortAboutToBeDeleted,
@@ -372,6 +384,8 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
     assert(Impl::containsGraph(*this, graph));
 
     utils::erase(m_autoEvaluatingGraphs, graph.uuid());
+
+    emit autoEvaluationChanged(&graph);
 
     if (Impl::rescheduleAutoEvaluatingNodes(*this))
     {

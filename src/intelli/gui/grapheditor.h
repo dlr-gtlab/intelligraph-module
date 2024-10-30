@@ -20,7 +20,9 @@ namespace intelli
 {
 
 class GraphScene;
+class GraphSceneManager;
 class GraphView;
+class GraphViewOverlay;
 
 /**
  * @generated 1.2.0
@@ -43,10 +45,12 @@ protected:
 
 private:
 
-    /// scene
-    volatile_ptr<GraphScene, DirectDeleter> m_scene;
+    /// scene manager
+    GraphSceneManager* m_sceneManager = nullptr;
     /// view
     GraphView* m_view = nullptr;
+    /// overlay
+    GraphViewOverlay* m_overlay = nullptr;
 };
 
 } // namespace intelli

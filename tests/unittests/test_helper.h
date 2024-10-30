@@ -19,6 +19,8 @@
 
 #include "intelli/private/utils.h"
 
+#include <cmath>
+
 namespace intelli
 {
 

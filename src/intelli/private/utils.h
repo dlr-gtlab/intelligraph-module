@@ -13,10 +13,12 @@
 #include <intelli/globals.h>
 #include <intelli/data/double.h>
 
-#include <gt_logstream.h>
-#include <gt_platform.h>
+#include <intelli/graph.h>
 
-#include <gt_intproperty.h>
+#include <gt_state.h>
+#include <gt_statehandler.h>
+
+#include <gt_logstream.h>
 
 #define GT_INTELLI_PROFILE() \
 intelli::Profiler profiler__{__FUNCTION__}; (void)profiler__;
@@ -98,17 +100,6 @@ inline QString toString(T const& t)
     return QString::fromStdString(s.str());
 }
 
-/// Returns the node path to the root graph node
-template <typename N>
-inline QString
-relativeNodePath(N const& node)
-{
-    N const* root = node.template findRoot<std::remove_reference_t<N>*>();
-    if (!root) return node.caption();
-
-    return root->caption() + (node.objectPath().remove(root->objectPath())).replace(';', '/');
-}
-
 namespace utils
 {
 
@@ -132,6 +123,91 @@ erase(List& list, T const& t)
         return true;
     }
     return false;
+}
+
+/// helper struct to make state creation more explicit and ledgible
+template <typename GetValue>
+struct SetupStateHelper
+{
+    GtState* state = nullptr;
+    GetValue getValue;
+
+    /**
+     * @brief Registers a slot that is called when the state's value changes
+     * @param reciever Reciever object
+     * @param slot Slot object to call when the state changes its value
+     * @return Reference for operator chaining
+     */
+    template<typename Reciever,
+             typename Slot>
+    SetupStateHelper& onStateChange(Reciever* reciever, Slot slot)
+    {
+        QObject::connect(state, qOverload<QVariant const&>(&GtState::valueChanged),
+                         reciever, slot);
+        return *this;
+    }
+
+    /**
+     * @brief Registers a signal that triggers the update of the state
+     * @param sender Sender object
+     * @param signal Signal to trigger the update of the state
+     * @return Reference for operator chaining
+     */
+    template<typename Signal,
+             typename Sender>
+    SetupStateHelper& onValueChange(Sender* sender, Signal signal)
+    {
+        QObject::connect(sender, signal, state, [s = state, value = getValue](){
+            s->setValue(value());
+        });
+        return *this;
+    }
+
+    /**
+     * @brief Finalizes the state creation by triggering the `onStateChanged`
+     * slot.
+     */
+    GtState* finalize()
+    {
+        emit state->valueChanged(state->getValue());
+        return state;
+    }
+};
+
+/**
+ * @brief Helper function to create a state and update it accordingly when
+   a signal is triggered.
+ * @param guardian Guardian object that keeps the state alive
+ * @param graph Graph to register state for
+ * @param stateId State text
+ * @param getValue Getter for the value
+ * @return State helper used to further setup the state
+ */
+template<typename SourceObject, typename GetValue>
+inline SetupStateHelper<GetValue>
+setupState(GtObject& guardian,
+           Graph const& graph,
+           QString const& stateId,
+           GetValue getValue)
+{
+    auto* root = graph.rootGraph();
+    assert(root);
+
+    /// grid change state
+    auto* state = gtStateHandler->initializeState(
+        // group id
+        root->uuid() + QChar('(') + GT_CLASSNAME(Graph) + QChar(')'),
+        // state id
+        stateId,
+        // entry for this graph
+        QString{GT_CLASSNAME(SourceObject)} + QChar(';') + stateId.toLower().replace(' ', '_'),
+        // default value
+        getValue(),
+        // guardian object
+        &guardian
+    );
+
+    return SetupStateHelper<GetValue>{state, std::move(getValue)};
 }
 
 } // namespace utils

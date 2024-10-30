@@ -10,15 +10,22 @@
 #include "intelli/gui/grapheditor.h"
 
 #include <intelli/graph.h>
+#include <intelli/graphexecmodel.h>
 #include <intelli/gui/graphscene.h>
+#include <intelli/gui/graphscenemanager.h>
+#include <intelli/gui/graphstatemanager.h>
 #include <intelli/gui/graphview.h>
+#include <intelli/gui/graphviewoverlay.h>
 #include <intelli/gui/style.h>
+#include <intelli/private/utils.h>
 
 #include <gt_logging.h>
 
 #include <gt_application.h>
+#include <gt_icons.h>
 
 #include <QVBoxLayout>
+#include <QPushButton>
 
 /*
  * generated 1.2.0
@@ -61,28 +68,38 @@ void
 GraphEditor::setData(GtObject* obj)
 {
     assert(m_view);
+    assert(m_sceneManager);
 
-    auto graph  = qobject_cast<Graph*>(obj);
+    auto* graph  = qobject_cast<Graph*>(obj);
     if (!graph)
     {
         gtError().verbose() << tr("Not an intelli graph!") << obj;
         return;
     }
 
-    if (m_scene)
+    // setup exec model
+    auto* model = GraphExecutionModel::make(*graph);
+    if (!model)
     {
-        gtError().verbose()
-            << tr("Expected null intelli graph scene, aborting!");
+        gtError()
+            << tr("Failed to create exec model for graph '%1'!")
+                   .arg(relativeNodePath(*graph));
         return;
     }
+    model->reset();
 
-    // instantly commit suicide if widget is destroyed (avoids issue #87)
-    connect(graph, &QObject::destroyed, this, [this](){ delete this; });
+    // setup state manager
+    GraphStateManager::make(*graph, *m_view);
 
-    // close graph model if its no longer used
-    m_scene = make_volatile<GraphScene, DirectDeleter>(*graph);
-
-    m_view->setScene(*m_scene);
+    // create initial scene
+    auto* scene = m_sceneManager->createScene(*graph);
+    if (!scene)
+    {
+        gtError().verbose()
+            << tr("Failed to create scene for graph '%1'!")
+                   .arg(relativeNodePath(*graph));
+        return;
+    }
 
     setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + graph->caption());
 }
@@ -91,10 +108,20 @@ void
 GraphEditor::initialized()
 {
     assert(!m_view);
+    assert(!m_sceneManager);
+    assert(!m_overlay);
+
     m_view = new GraphView;
     m_view->setFrameShape(QFrame::NoFrame);
 
     auto* l = new QVBoxLayout(widget());
     l->addWidget(m_view);
     l->setContentsMargins(0, 0, 0, 0);
+
+    m_sceneManager = GraphSceneManager::make(*m_view);
+
+    m_overlay = GraphViewOverlay::make(*m_view);
+    
+    connect(m_overlay, &GraphViewOverlay::sceneChangeRequested,
+            m_sceneManager, &GraphSceneManager::openGraphByUuid);
 }
