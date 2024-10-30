@@ -314,7 +314,8 @@ public:
      * @param policy Whether to generate a new id if necessary
      * @return Node ptr
      */
-    Node* appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy = NodeIdPolicy::Update);
+    Node* appendNode(std::unique_ptr<Node> node,
+                     NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
      * @brief Overload, that accepts a unique ptr of type `T` and returns a
@@ -324,7 +325,8 @@ public:
      * @return Node ptr of type `T`
      */
     template<typename T>
-    inline T* appendNode(std::unique_ptr<T> node, NodeIdPolicy policy = NodeIdPolicy::Update)
+    inline T* appendNode(std::unique_ptr<T> node,
+                         NodeIdPolicy policy = NodeIdPolicy::Update)
     {
         using Signature = Node*(Graph::*)(std::unique_ptr<Node>, NodeIdPolicy);
 
@@ -374,6 +376,19 @@ public:
      * @return True if successful else false
      */
     bool deleteConnection(ConnectionId connectionId);
+
+    /**
+     * @brief Moves the node (given by nodeId) from this graph to the target
+     * graph. Depending on the given `NodeIdPolicy` the node id may be updated.
+     * If the node cannot be moved or was not found a nullptr is returned.
+     * @param nodeId Node to move to other graph
+     * @param policy Whether to update the node's id if necessary (if the
+     * node id should be kept, moving the node may fail)
+     * @return Pointer to new node.
+     */
+    Node* moveNodeToGraph(NodeId nodeId,
+                          Graph& targetGraph,
+                          NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
      * @brief Access the directed acyclic graph model used to manage the nodes

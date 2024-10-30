@@ -725,3 +725,67 @@ TEST(Graph, restore_connections_only_on_memento_diff)
 
     EXPECT_EQ(graph.findConnections(C_id, PortType::Out).size(), 0);
 }
+
+TEST(Graph, move_node_to_subgraph)
+{
+    Graph root;
+
+    ASSERT_TRUE(test::buildGraphWithGroup(root));
+
+    auto const& subgraphs = root.graphNodes();
+    ASSERT_FALSE(subgraphs.empty());
+
+    Graph* subgraph = subgraphs[0];
+    ASSERT_TRUE(subgraph);
+    Node* nodeA = root.findNode(A_id);
+    ASSERT_TRUE(nodeA);
+
+    ASSERT_EQ(nodeA->parent(), &root);
+
+    // before move
+    EXPECT_TRUE(root.findNode(A_id));
+    EXPECT_TRUE(root.findNodeByUuid(A_uuid));
+    EXPECT_NE(subgraph->findNode(A_id), nodeA);
+    EXPECT_FALSE(subgraph->findNodeByUuid(A_uuid));
+
+    // move node
+    Node* movedNodeA = root.moveNodeToGraph(A_id, *subgraph);
+    ASSERT_EQ(movedNodeA, nodeA);
+    EXPECT_EQ(nodeA->parent(), subgraph);
+
+    // after move
+    EXPECT_FALSE(root.findNode(A_id));
+    EXPECT_TRUE(root.findNodeByUuid(A_uuid));
+    EXPECT_TRUE(subgraph->findNode(A_id));
+    EXPECT_TRUE(subgraph->findNodeByUuid(A_uuid));
+}
+
+TEST(Graph, move_node_to_other_graph)
+{
+    Graph graph1;
+    Graph graph2;
+
+    ASSERT_TRUE(test::buildLinearGraph(graph1));
+    ASSERT_TRUE(test::buildLinearGraph(graph2));
+
+    Node* nodeA = graph1.findNode(A_id);
+    ASSERT_TRUE(nodeA);
+
+    ASSERT_EQ(nodeA->parent(), &graph1);
+
+    // before move
+    EXPECT_TRUE(graph1.findNode(A_id));
+    EXPECT_TRUE(graph1.findNodeByUuid(A_uuid));
+    EXPECT_FALSE(graph2.findNode(A_id));
+    EXPECT_FALSE(graph2.findNodeByUuid(A_uuid));
+
+    // move node
+    ASSERT_EQ(graph1.moveNodeToGraph(A_id, graph2), nodeA);
+    EXPECT_EQ(nodeA->parent(), &graph2);
+
+    // after move
+    EXPECT_FALSE(graph1.findNode(A_id));
+    EXPECT_FALSE(graph1.findNodeByUuid(A_uuid));
+    EXPECT_TRUE(graph2.findNode(A_id));
+    EXPECT_TRUE(graph2.findNodeByUuid(A_uuid));
+}

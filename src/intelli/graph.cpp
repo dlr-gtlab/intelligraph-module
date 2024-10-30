@@ -727,6 +727,29 @@ Graph::deleteConnection(ConnectionId connectionId)
     return false;
 }
 
+Node*
+Graph::moveNodeToGraph(NodeId nodeId,
+                       Graph& targetGraph,
+                       NodeIdPolicy policy)
+{
+    Node* node = findNode(nodeId);
+    if (!node) return {};
+
+    node->disconnect(this);
+    node->disconnectFromParent();
+    assert(node->parent() == nullptr);
+
+    // update connection model
+    Impl::NodeDeleted(this)(node->id());
+
+    auto nodePtr = std::unique_ptr<Node>(node);
+    Node* movedNode = targetGraph.appendNode(std::move(nodePtr), policy);
+    if (!movedNode) return {};
+
+    assert(movedNode == node);
+    return movedNode;
+}
+
 bool
 Graph::isBeingModified() const
 {
