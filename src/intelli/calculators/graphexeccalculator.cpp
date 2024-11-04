@@ -39,10 +39,16 @@ GraphExecCalculator::GraphExecCalculator() :
 
     auto makeStringWithEmptySpace = [](QString const& id)
     {
-        auto* val = new QRegExpValidator(gt::re::onlyLettersAndNumbersAndSpace());
-        auto* stringProp = new GtStringProperty(id, QObject::tr("NodeName"),
-                                              QObject::tr("NodeName"), "",
-                                              val);
+#if GT_VERSION < 0x020100
+        auto* val = new QRegExpValidator(
+                    gt::re::onlyLettersAndNumbersAndSpace());
+#else
+        auto val = QRegularExpression(
+                    gt::re::onlyLettersAndNumbersAndSpace().pattern());
+#endif
+        auto* stringProp = new GtStringProperty(
+                    id, QObject::tr("NodeName"), QObject::tr("NodeName"), "",
+                    val);
         return stringProp;
     };
 
