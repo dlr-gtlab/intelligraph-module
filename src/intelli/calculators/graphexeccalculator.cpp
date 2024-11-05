@@ -8,7 +8,6 @@
  */
 
 #include "graphexeccalculator.h"
-#include <QRegExpValidator>
 
 #include <intelli/graph.h>
 #include <intelli/graphexecmodel.h>
@@ -24,6 +23,10 @@
 #include "gt_intproperty.h"
 #include "gt_stringproperty.h"
 #include "gt_boolproperty.h"
+#include "gt_version.h"
+
+#include <QRegularExpression>
+#include <QRegExpValidator>
 
 using namespace intelli;
 
@@ -39,7 +42,11 @@ GraphExecCalculator::GraphExecCalculator() :
 
     auto makeStringWithEmptySpace = [](QString const& id)
     {
+#if GT_VERSION >= 0x020100
+        QRegularExpression val(gt::re::onlyLettersAndNumbersAndSpace().pattern());
+#else
         auto* val = new QRegExpValidator(gt::re::onlyLettersAndNumbersAndSpace());
+#endif
         auto* stringProp = new GtStringProperty(id, QObject::tr("NodeName"),
                                               QObject::tr("NodeName"), "",
                                               val);
