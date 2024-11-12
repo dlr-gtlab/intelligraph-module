@@ -1275,11 +1275,10 @@ struct GraphExecutionModel::Impl
      * @param model Exec model
      * @return success
      */
-    template <typename Iter>
     static inline NodeEvalState
     tryEvaluatingNode(GraphExecutionModel& model,
                       MutableDataItemHelper item,
-                      Iter iter)
+                      size_t& queueIdx)
     {
         assert(item);
         if (!item.isReadyForEvaluation())
@@ -1355,8 +1354,11 @@ struct GraphExecutionModel::Impl
         NodeUuid const& nodeUuid = item.node->uuid();
 
         // dequeue and mark as evaluating
-        assert(model.m_queuedNodes.end() != iter);
+        assert(model.m_queuedNodes.size() > queueIdx);
+        auto iter = model.m_queuedNodes.begin() + queueIdx;
         model.m_queuedNodes.erase(iter);
+        // update queue index
+        queueIdx--;
 
         // trigger node evaluation
         if (!exec::triggerNodeEvaluation(*item.node, model))
@@ -1397,6 +1399,14 @@ struct GraphExecutionModel::Impl
     {
         if (model.m_queuedNodes.empty()) return false;
 
+        // queue should be evalauted only one at a time
+        if (model.m_isEvaluatingQueue) return false;
+
+        model.m_isEvaluatingQueue = true;
+        auto finally = gt::finally([&model](){
+            model.m_isEvaluatingQueue = false;
+        });
+
         INTELLI_LOG_SCOPE(model)
             << "evaluating next in queue:"
             << std::vector<NodeUuid>{model.m_queuedNodes.begin(), model.m_queuedNodes.end()} << "...";
@@ -1412,11 +1422,9 @@ struct GraphExecutionModel::Impl
         bool triggeredNodes = false;
 
         // for each node in queue
-        for (auto iter = model.m_queuedNodes.begin();
-             iter != model.m_queuedNodes.end();
-             iter  = model.m_queuedNodes.begin())
+        for (size_t idx = 0; idx < model.m_queuedNodes.size(); idx++)
         {
-            auto const& nodeUuid = *iter;
+            auto const& nodeUuid = model.m_queuedNodes[idx];
 
             auto item = findData(model, nodeUuid);
             if (!item)
@@ -1425,11 +1433,12 @@ struct GraphExecutionModel::Impl
                           << tr("node %1 not found!")
                                  .arg(nodeUuid);
 
+                auto iter = model.m_queuedNodes.begin() + idx;
                 model.m_queuedNodes.erase(iter);
                 continue;
             }
 
-            auto state = tryEvaluatingNode(model, item, iter);
+            auto state = tryEvaluatingNode(model, item, idx);
             switch (state)
             {
             case NodeEvalState::Valid:
