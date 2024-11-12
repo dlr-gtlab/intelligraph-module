@@ -33,8 +33,6 @@ public:
 signals:
     void valueChanged(double newVal);
 
-    void sliderReleased();
-
     void onMinLabelChanged(double newVal);
 
     void onMaxLabelChanged(double newVal);
@@ -78,7 +76,7 @@ private:
     void connectDial();
 
 private slots:
-    void onDialChanged(int newDialVal);
+    void onDialChanged();
 
     void minLabelChangedReaction(double newVal);
 

@@ -251,24 +251,24 @@ DoubleInputWidget::toSliderVLayout()
 void
 DoubleInputWidget::disconnectDial()
 {
-    disconnect(m_dial, SIGNAL(valueChanged(int)),
-               this, SLOT(onDialChanged(int)));
     disconnect(m_dial, SIGNAL(sliderReleased()),
-               this, SIGNAL(sliderReleased()));
+               this, SLOT(onDialChanged()));
 }
 
 void
 DoubleInputWidget::connectDial()
 {
-    connect(m_dial, SIGNAL(valueChanged(int)),
-            this, SLOT(onDialChanged(int)));
     connect(m_dial, SIGNAL(sliderReleased()),
-            this, SIGNAL(sliderReleased()));
+            this, SLOT(onDialChanged()));
 }
 
 void
-DoubleInputWidget::onDialChanged(int newDialVal)
+DoubleInputWidget::onDialChanged()
 {
+    if (m_dial == nullptr) return;
+
+    int newDialVal = m_dial->value();
+
     double newVal =
             m_min + double(newDialVal) / double(m_maxTicks) * (m_max - m_min);
 

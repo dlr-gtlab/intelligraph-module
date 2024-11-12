@@ -101,8 +101,11 @@ DoubleInputNode::DoubleInputNode() :
 
         auto onValueLabelChanged = [=](double newVal)
         {
-            if (value() != newVal) setValue(newVal);
-            triggerNodeEvaluation();
+            if (value() != newVal)
+            {
+                setValue(newVal);
+                triggerNodeEvaluation();
+            }
         };
 
         auto onDisplyModeChanged = [=]()
@@ -112,8 +115,6 @@ DoubleInputNode::DoubleInputNode() :
 
         connect(overallW, SIGNAL(valueChanged(double)),
                 this, SLOT(onWidgetValueChanges(double)));
-        connect(overallW, &DoubleInputWidget::sliderReleased,
-                this, &Node::triggerNodeEvaluation);
 
         connect(overallW, &DoubleInputWidget::onMinLabelChanged,
                 this, onMinLabelChanged);
@@ -153,12 +154,16 @@ void
 DoubleInputNode::setValue(double value)
 {
     auto prop = static_cast<GtDoubleProperty*>(m_value.get());
-    prop->setVal(value);
+    if (prop->getVal() != value)
+    {
+        prop->setVal(value);
+        emit triggerNodeEvaluation();
+    }
 }
 
 void
 DoubleInputNode::eval()
-{
+{   
     setNodeData(m_out, std::make_shared<DoubleData>(value()));
 }
 

@@ -242,24 +242,23 @@ IntegerInputWidget::toSliderVLayout()
 void
 IntegerInputWidget::disconnectDial()
 {
-    disconnect(m_dial, SIGNAL(valueChanged(int)),
-               this, SLOT(onDialChanged(int)));
     disconnect(m_dial, SIGNAL(sliderReleased()),
-               this, SIGNAL(sliderReleased()));
+               this, SLOT(onDialChanged()));
 }
 
 void
 IntegerInputWidget::connectDial()
 {
-    connect(m_dial, SIGNAL(valueChanged(int)),
-            this, SLOT(onDialChanged(int)));
     connect(m_dial, SIGNAL(sliderReleased()),
-            this, SIGNAL(sliderReleased()));
+            this, SLOT(onDialChanged()));
 }
 
 void
-IntegerInputWidget::onDialChanged(int newDialVal)
+IntegerInputWidget::onDialChanged()
 {
+    if (m_dial == nullptr) return;
+
+    int newDialVal = m_dial->value();
     m_text->setText(QString::number(newDialVal));
 
     emit valueChanged(newDialVal);
