@@ -809,8 +809,8 @@ Graph::moveNodesAndConnections(QVector<NodeId> const& nodeIds,
                                NodeIdPolicy policy)
 {
     auto const findNodeFunctor = [](ConnectionId conId){
-        return [conId](Node const* n){
-            return n->id() == conId.inNodeId;
+        return [conId](NodeId nodeId){
+            return nodeId == conId.inNodeId;
         };
     };
 
@@ -834,7 +834,7 @@ Graph::moveNodesAndConnections(QVector<NodeId> const& nodeIds,
     }
 
     // reinstantiate internal connections
-    for (ConnectionUuid conUuid : connectionsToMove)
+    for (ConnectionUuid const& conUuid : connectionsToMove)
     {
         if (!appendConnection(std::make_unique<Connection>(connectionId(conUuid))))
         {
