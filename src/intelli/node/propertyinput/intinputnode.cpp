@@ -68,10 +68,10 @@ IntInputNode::IntInputNode() :
         auto base = makeBaseWidget();
 
         auto overallW = new IntegerInputWidget(value(),
-                                                 m_min.getVal(),
-                                                 m_max.getVal(),
-                                                 base.get(),
-                                                 t);
+                                               m_min.getVal(),
+                                               m_max.getVal(),
+                                               base.get(),
+                                               t);
 
         base->layout()->addWidget(overallW);
 
@@ -102,8 +102,11 @@ IntInputNode::IntInputNode() :
 
         auto onValueLabelChanged = [=](int newVal)
         {
-            if (value() != newVal) setValue(newVal);
-            emit triggerNodeEvaluation();
+            if (value() != newVal)
+            {
+                setValue(newVal);
+                emit triggerNodeEvaluation();
+            }
         };
 
         auto onDisplyModeChanged = [=]()
@@ -113,9 +116,6 @@ IntInputNode::IntInputNode() :
 
         connect(overallW, SIGNAL(valueChanged(int)),
                 this, SLOT(onWidgetValueChanges(int)));
-        connect(overallW, &IntegerInputWidget::sliderReleased,
-                this, &Node::triggerNodeEvaluation);
-
         connect(overallW, &IntegerInputWidget::onMinLabelChanged,
                 this, onMinLabelChanged);
         connect(overallW, &IntegerInputWidget::onMaxLabelChanged,
@@ -154,7 +154,12 @@ void
 IntInputNode::setValue(int value)
 {
     auto prop = static_cast<GtIntProperty*>(m_value.get());
-    prop->setVal(value);
+
+    if (prop->getVal() != value)
+    {
+        prop->setVal(value);
+        emit triggerNodeEvaluation();
+    }
 }
 
 void
