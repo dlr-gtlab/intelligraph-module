@@ -1407,6 +1407,14 @@ struct GraphExecutionModel::Impl
     {
         if (model.m_queuedNodes.empty()) return false;
 
+        // queue should be evalauted only once at a time
+        if (model.m_isEvaluatingQueue) return false;
+
+        model.m_isEvaluatingQueue = true;
+        auto finally = gt::finally([&model](){
+            model.m_isEvaluatingQueue = false;
+        });
+
         INTELLI_LOG_SCOPE(model)
             << "evaluating next in queue:"
             << std::vector<NodeUuid>{model.m_queuedNodes.begin(), model.m_queuedNodes.end()} << "...";
