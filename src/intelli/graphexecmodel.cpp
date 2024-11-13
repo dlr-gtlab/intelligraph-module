@@ -177,12 +177,13 @@ GraphExecutionModel::setupConnections(Graph& graph)
             this, &GraphExecutionModel::onConnectionDeleted,
             Qt::DirectConnection);
 
-        connect(&graph, &Graph::nodePortInserted,
+    connect(&graph, &Graph::nodePortInserted,
             this, &GraphExecutionModel::onNodePortInserted,
             Qt::DirectConnection);
     connect(&graph, &Graph::nodePortAboutToBeDeleted,
             this, &GraphExecutionModel::onNodePortAboutToBeDeleted,
             Qt::DirectConnection);
+
     connect(&graph, &Graph::beginModification,
             this, &GraphExecutionModel::onBeginGraphModification,
             Qt::DirectConnection);
@@ -680,6 +681,33 @@ GraphExecutionModel::onNodeAppended(Node* node)
         }
     };
 
+    NodeUuid const& nodeUuid = node->uuid();
+    assert(node->id() != invalid<NodeId>());
+    assert(!nodeUuid.isEmpty());
+
+    if (m_data.contains(nodeUuid))
+    {
+        INTELLI_LOG_WARN(*this)
+            << tr("Node %1 already appended!")
+                   .arg(nodeUuid);
+        return;
+    }
+
+    node->disconnect(this);
+
+    // append entry
+    DataItem entry{};
+    appendPorts(entry.portsIn, node->ports(PortType::In));
+    appendPorts(entry.portsOut, node->ports(PortType::Out));
+
+    INTELLI_LOG(*this)
+        << tr("Node %1 (%2) appended!")
+               .arg(relativeNodePath(*node), nodeUuid);
+
+    m_data.insert(nodeUuid, std::move(entry));
+
+    exec::setNodeDataInterface(*node, this);
+
     // append subgraph recursively
     if (auto* subgraph = qobject_cast<Graph*>(node))
     {
@@ -692,31 +720,7 @@ GraphExecutionModel::onNodeAppended(Node* node)
         }
     }
 
-    NodeId nodeId = node->id();
-    assert(nodeId != invalid<NodeId>());
-    NodeUuid const& nodeUuid = node->uuid();
-    assert(!nodeUuid.isEmpty());
-
-    if (m_data.contains(nodeUuid))
-    {
-        INTELLI_LOG(*this)
-            << tr("Node %1 already appended!")
-                   .arg(nodeUuid);
-        return;
-    }
-
-    DataItem entry{};
-    appendPorts(entry.portsIn, node->ports(PortType::In));
-    appendPorts(entry.portsOut, node->ports(PortType::Out));
-
-    INTELLI_LOG(*this)
-        << tr("Node %1 (%2) appended!")
-               .arg(relativeNodePath(*node), nodeUuid);
-
-    m_data.insert(nodeUuid, std::move(entry));
-
-    disconnect(node);
-
+    // setup connections
     auto autoEvaluate = [this](NodeUuid const& nodeUuid){
         if (isBeingModified()) return;
 
@@ -739,8 +743,6 @@ GraphExecutionModel::onNodeAppended(Node* node)
         Node const* n = graph().findNodeByUuid(nodeUuid);
         if (n && n->isActive()) autoEvaluate(nodeUuid);
     }, Qt::DirectConnection);
-
-    exec::setNodeDataInterface(*node, this);
 
     // auto evaluate if necessary
     Impl::rescheduleAutoEvaluatingNodes(*this);

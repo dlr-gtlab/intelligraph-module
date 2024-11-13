@@ -859,7 +859,7 @@ struct GraphExecutionModel::Impl
     removeEvaluatedNodes(GraphExecutionModel& model, std::vector<NodeUuid>& nodes)
     {
         nodes.erase(std::remove_if(nodes.begin(), nodes.end(), [&model](const auto& uuid) {
-            auto item = findData(model, uuid);
+            auto item = findData(model, uuid, evaluteNodeError);
             assert(item);
             return item.isEvaluated();
         }), nodes.end());
