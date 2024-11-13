@@ -1431,7 +1431,8 @@ struct GraphExecutionModel::Impl
         // when evaluating a node
         for (size_t idx = 0; idx < model.m_queuedNodes.size();)
         {
-            auto iter = model.m_queuedNodes.begin() + idx;
+            auto iter = model.m_queuedNodes.begin();
+            std::advance(iter, idx);
             auto const& nodeUuid = *iter;
 
             auto item = findData(model, nodeUuid);
