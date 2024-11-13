@@ -6,7 +6,7 @@
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
- 
+
 #ifndef GT_INTELLI_GRAPHEXECMODEL_IMPL_H
 #define GT_INTELLI_GRAPHEXECMODEL_IMPL_H
 
@@ -1273,17 +1273,26 @@ struct GraphExecutionModel::Impl
     /**
      * @brief Tries to evalaute the specified node.
      * @param model Exec model
-     * @return success
+     * @param item  Item referencing the node that should be evaluated
+     * @param iter  Iterator to entry in queue.
+     * @param nodeRemovedFromQueue OUT: Whether the node was removed from the
+     * queue.
+     * @return Evaluation state
      */
-    template <typename Iter>
     static inline NodeEvalState
     tryEvaluatingNode(GraphExecutionModel& model,
                       MutableDataItemHelper item,
-                      Iter iter)
+                      std::vector<NodeUuid>::iterator iter,
+                      bool& nodeRemovedFromQueue)
     {
         assert(item);
+        assert(model.m_queuedNodes.end() != iter);
+
         if (!item.isReadyForEvaluation())
         {
+            // dequeue
+            model.m_queuedNodes.erase(iter);
+            nodeRemovedFromQueue = true;
             return NodeEvalState::Outdated;
         }
 
@@ -1355,8 +1364,8 @@ struct GraphExecutionModel::Impl
         NodeUuid const& nodeUuid = item.node->uuid();
 
         // dequeue and mark as evaluating
-        assert(model.m_queuedNodes.end() != iter);
         model.m_queuedNodes.erase(iter);
+        nodeRemovedFromQueue = true;
 
         // trigger node evaluation
         if (!exec::triggerNodeEvaluation(*item.node, model))
@@ -1397,6 +1406,14 @@ struct GraphExecutionModel::Impl
     {
         if (model.m_queuedNodes.empty()) return false;
 
+        // queue should be evalauted only once at a time
+        if (model.m_isEvaluatingQueue) return false;
+
+        model.m_isEvaluatingQueue = true;
+        auto finally = gt::finally([&model](){
+            model.m_isEvaluatingQueue = false;
+        });
+
         INTELLI_LOG_SCOPE(model)
             << "evaluating next in queue:"
             << std::vector<NodeUuid>{model.m_queuedNodes.begin(), model.m_queuedNodes.end()} << "...";
@@ -1411,11 +1428,12 @@ struct GraphExecutionModel::Impl
 
         bool triggeredNodes = false;
 
-        // for each node in queue
-        for (auto iter = model.m_queuedNodes.begin();
-             iter != model.m_queuedNodes.end();
-             iter  = model.m_queuedNodes.begin())
+        // using index to iterate over queue since size and capacity may change
+        // when evaluating a node
+        for (size_t idx = 0; idx < model.m_queuedNodes.size();)
         {
+            auto iter = model.m_queuedNodes.begin();
+            std::advance(iter, idx);
             auto const& nodeUuid = *iter;
 
             auto item = findData(model, nodeUuid);
@@ -1425,23 +1443,27 @@ struct GraphExecutionModel::Impl
                           << tr("node %1 not found!")
                                  .arg(nodeUuid);
 
-                model.m_queuedNodes.erase(iter);
+                iter = model.m_queuedNodes.erase(iter);
                 continue;
             }
 
-            auto state = tryEvaluatingNode(model, item, iter);
+            bool nodeRemovedFromQueue = false;
+
+            auto state = tryEvaluatingNode(model, item, iter, nodeRemovedFromQueue);
             switch (state)
             {
             case NodeEvalState::Valid:
             case NodeEvalState::Evaluating:
                 triggeredNodes = true;
-                continue;
+                break;
             case NodeEvalState::Invalid:
             case NodeEvalState::Outdated:
-                continue;
+                break;
             case NodeEvalState::Paused:
                 return triggeredNodes;
             }
+
+            if (!nodeRemovedFromQueue) idx++;
         }
 
         if (!triggeredNodes)

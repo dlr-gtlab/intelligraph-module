@@ -323,7 +323,7 @@ GraphExecutionModel::isNodeEvaluated(NodeUuid const& nodeUuid) const
 bool
 GraphExecutionModel::isEvaluating() const
 {
-    return !m_evaluatingNodes.empty();
+    return !m_evaluatingNodes.empty() || m_isEvaluatingQueue;
 }
 
 bool

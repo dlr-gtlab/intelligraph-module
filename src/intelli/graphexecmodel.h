@@ -355,6 +355,8 @@ private:
     /// indicator if the exec model is currently beeing modified and thus
     /// should halt execution
     int m_modificationCount = 0;
+    /// indicator if queue is currently being evaluated
+    bool m_isEvaluatingQueue = false;
 
     void beginReset();
 
