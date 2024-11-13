@@ -1274,17 +1274,15 @@ struct GraphExecutionModel::Impl
      * @brief Tries to evalaute the specified node.
      * @param model Exec model
      * @param item  Item referencing the node that should be evaluated
-     * @param iter  IN/OUT: Iterator to entry in queue. Is updated if node was
-     * removed from queue
-     * @param updatedIter OUT: Whether the iterator was updated
+     * @param iter  Iterator to entry in queue.
+     * @param updatedQueue OUT: Whether the queue was updated
      * @return Evaluation state
      */
-    template <typename Iter>
     static inline NodeEvalState
     tryEvaluatingNode(GraphExecutionModel& model,
                       MutableDataItemHelper item,
-                      Iter& iter,
-                      bool& updatedIter)
+                      std::vector<NodeUuid>::iterator iter,
+                      bool& updatedQueue)
     {
         assert(item);
         assert(model.m_queuedNodes.end() != iter);
@@ -1292,8 +1290,8 @@ struct GraphExecutionModel::Impl
         if (!item.isReadyForEvaluation())
         {
             // dequeue
-            iter = model.m_queuedNodes.erase(iter);
-            updatedIter = true;
+            model.m_queuedNodes.erase(iter);
+            updatedQueue = true;
             return NodeEvalState::Outdated;
         }
 
@@ -1365,8 +1363,8 @@ struct GraphExecutionModel::Impl
         NodeUuid const& nodeUuid = item.node->uuid();
 
         // dequeue and mark as evaluating
-        iter = model.m_queuedNodes.erase(iter);
-        updatedIter = true;
+        model.m_queuedNodes.erase(iter);
+        updatedQueue = true;
 
         // trigger node evaluation
         if (!exec::triggerNodeEvaluation(*item.node, model))
@@ -1429,9 +1427,11 @@ struct GraphExecutionModel::Impl
 
         bool triggeredNodes = false;
 
-        // for each node in queue
-        for (auto iter = model.m_queuedNodes.begin(); iter != model.m_queuedNodes.end();)
+        // using index to iterate over queue since size and capacity may change
+        // when evaluating a node
+        for (size_t idx = 0; idx < model.m_queuedNodes.size();)
         {
+            auto iter = model.m_queuedNodes.begin() + idx;
             auto const& nodeUuid = *iter;
 
             auto item = findData(model, nodeUuid);
@@ -1445,9 +1445,9 @@ struct GraphExecutionModel::Impl
                 continue;
             }
 
-            bool updatedIter = false;
+            bool updatedQueue = false;
 
-            auto state = tryEvaluatingNode(model, item, iter, updatedIter);
+            auto state = tryEvaluatingNode(model, item, iter, updatedQueue);
             switch (state)
             {
             case NodeEvalState::Valid:
@@ -1461,7 +1461,7 @@ struct GraphExecutionModel::Impl
                 return triggeredNodes;
             }
 
-            if (!updatedIter) iter++;
+            if (!updatedQueue) idx++;
         }
 
         if (!triggeredNodes)
