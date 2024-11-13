@@ -1275,14 +1275,15 @@ struct GraphExecutionModel::Impl
      * @param model Exec model
      * @param item  Item referencing the node that should be evaluated
      * @param iter  Iterator to entry in queue.
-     * @param updatedQueue OUT: Whether the queue was updated
+     * @param nodeRemovedFromQueue OUT: Whether the node was removed from the
+     * queue.
      * @return Evaluation state
      */
     static inline NodeEvalState
     tryEvaluatingNode(GraphExecutionModel& model,
                       MutableDataItemHelper item,
                       std::vector<NodeUuid>::iterator iter,
-                      bool& updatedQueue)
+                      bool& nodeRemovedFromQueue)
     {
         assert(item);
         assert(model.m_queuedNodes.end() != iter);
@@ -1291,7 +1292,7 @@ struct GraphExecutionModel::Impl
         {
             // dequeue
             model.m_queuedNodes.erase(iter);
-            updatedQueue = true;
+            nodeRemovedFromQueue = true;
             return NodeEvalState::Outdated;
         }
 
@@ -1364,7 +1365,7 @@ struct GraphExecutionModel::Impl
 
         // dequeue and mark as evaluating
         model.m_queuedNodes.erase(iter);
-        updatedQueue = true;
+        nodeRemovedFromQueue = true;
 
         // trigger node evaluation
         if (!exec::triggerNodeEvaluation(*item.node, model))
@@ -1446,9 +1447,9 @@ struct GraphExecutionModel::Impl
                 continue;
             }
 
-            bool updatedQueue = false;
+            bool nodeRemovedFromQueue = false;
 
-            auto state = tryEvaluatingNode(model, item, iter, updatedQueue);
+            auto state = tryEvaluatingNode(model, item, iter, nodeRemovedFromQueue);
             switch (state)
             {
             case NodeEvalState::Valid:
@@ -1462,7 +1463,7 @@ struct GraphExecutionModel::Impl
                 return triggeredNodes;
             }
 
-            if (!updatedQueue) idx++;
+            if (!nodeRemovedFromQueue) idx++;
         }
 
         if (!triggeredNodes)
