@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed error when creating and loading a project with an empty IntelliGraph package in GTlab 2.1.0 - #193
 - Fixed potential crashes when deletiing instances of `ObjectData` that were created in a separate thread. - #112
+- Fixed port captions spanning multiple words being truncated. - #212
 - The graph view should now remeber more consistently whether a graph should be auto-evaluated. - #112
 
 ## [0.12.0] - 2024-09-24

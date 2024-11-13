@@ -232,9 +232,14 @@ NodePainter::drawPortCaption(QPainter& painter,
                        gt::gui::color::text() :
                        gt::gui::color::disabled());
 
-    painter.drawText(geometry().portCaptionRect(type, idx),
-                     port.caption.isEmpty() ? factory.typeName(port.typeId) : port.caption,
-                     type == PortType::In ? QTextOption{Qt::AlignLeft} : QTextOption{Qt::AlignRight});
+    auto option = type == PortType::In ? QTextOption{Qt::AlignLeft} :
+                                         QTextOption{Qt::AlignRight};
+    option.setWrapMode(QTextOption::WrapMode::NoWrap);
+
+    auto const& text = port.caption.isEmpty() ? factory.typeName(port.typeId) :
+                                                port.caption;
+
+    painter.drawText(geometry().portCaptionRect(type, idx), text, option);
 }
 
 void
