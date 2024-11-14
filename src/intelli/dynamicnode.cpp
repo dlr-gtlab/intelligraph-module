@@ -61,7 +61,9 @@ DynamicNode::DynamicNode(QString const& modelName,
         QStringList outputTypes = outputWhiteList.empty() ?
                                      NodeDataFactory::instance().registeredTypeIds() :
                                      std::move(outputWhiteList);
-
+        inputTypes.sort();
+        outputTypes.sort();
+      
         GtPropertyStructDefinition portInfoIn{S_PORT_INFO_IN};
         portInfoIn.defineMember(S_PORT_TYPE, makeStringSelectionProperty(std::move(inputTypes)));
         portInfoIn.defineMember(S_PORT_CAPTION, gt::makeStringProperty());
