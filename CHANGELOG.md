@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Major refactoring of the graph execution model. Now only one exec model is used to manage and evaluate a graph hierarchy, improving the handling of nested graphs and fixing unhandled edge cases. Additionally the future-object returned by the exec model is now far more flexible and user friendly, allowing above else the registration of callback functions. - #112
+- IntelliGraph specific compile flags were renamed; node's size and position properties are now always hidden unless the associated compiler flag was set. - #205
 
 ### Fixed
 - Fixed error when creating and loading a project with an empty IntelliGraph package in GTlab 2.1.0 - #193

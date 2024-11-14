@@ -62,11 +62,14 @@ Node::Node(QString const& modelName, GtObject* parent) :
     pimpl->sizeWidth.setReadOnly(true);
     pimpl->sizeHeight.setReadOnly(true);
 
+#ifndef GT_INTELLI_DEBUG_NODE_PROPERTIES
     bool hide = !gtApp || !gtApp->devMode();
-    pimpl->posX.hide(hide);
-    pimpl->posY.hide(hide);
-    pimpl->sizeWidth.hide(hide);
-    pimpl->sizeHeight.hide(hide);
+    pimpl->id.hide(hide);
+    pimpl->posX.hide(true);
+    pimpl->posY.hide(true);
+    pimpl->sizeWidth.hide(true);
+    pimpl->sizeHeight.hide(true);
+#endif
 
     setCaption(modelName);
     
