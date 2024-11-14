@@ -1,4 +1,3 @@
-```suggestion
 /*
  * GTlab IntelliGraph
  *
