@@ -8,16 +8,20 @@ set(CMAKE_DEBUG_POSTFIX -d)
 set(INTELLIGRAPH_VERSION 0.12.0)
 
 option(
-    _DEBUG_NODE_GRAPHICS
+    INTELLIGRAPH_DEBUG_NODE_GRAPHICS
     "Draws debugging information into the scene to show bounds of node objects" OFF
 )
 option(
-    _DEBUG_CONNECTION_GRAPHICS
+    INTELLIGRAPH_DEBUG_CONNECTION_GRAPHICS
     "Draws debugging information into the scene to show bounds of connection objects" OFF
 )
 option(
-    _DEBUG_NODE_EXECUTION
+    INTELLIGRAPH_DEBUG_NODE_EXECUTION
     "Logs additional debugging information when execution graphs" OFF
+)
+option(
+    INTELLIGRAPH_DEBUG_NODE_PROPERTIES
+    "SHows node properties in property dock widget" OFF
 )
 
 set(PUBLIC_HEADERS
@@ -224,19 +228,24 @@ target_compile_definitions(GTlabIntelliGraph PRIVATE
     GT_LOG_USE_QT_BINDINGS # enable Qt operator<< for logging
 )
 
-if (_DEBUG_NODE_GRAPHICS)
+if (INTELLIGRAPH_DEBUG_NODE_GRAPHICS)
     target_compile_definitions(GTlabIntelliGraph PRIVATE
         GT_INTELLI_DEBUG_NODE_GRAPHICS
     )
 endif()
-if (_DEBUG_CONNECTION_GRAPHICS)
+if (INTELLIGRAPH_DEBUG_CONNECTION_GRAPHICS)
     target_compile_definitions(GTlabIntelliGraph PRIVATE
         GT_INTELLI_DEBUG_CONNECTION_GRAPHICS
     )
 endif()
-if (_DEBUG_NODE_EXECUTION)
+if (INTELLIGRAPH_DEBUG_NODE_EXECUTION)
     target_compile_definitions(GTlabIntelliGraph PRIVATE
         GT_INTELLI_DEBUG_NODE_EXEC
+    )
+endif()
+if (INTELLIGRAPH_DEBUG_NODE_PROPERTIES)
+    target_compile_definitions(GTlabIntelliGraph PRIVATE
+        GT_INTELLI_DEBUG_NODE_PROPERTIES
     )
 endif()
 
