@@ -699,6 +699,8 @@ GraphScene::pasteObjects()
     if (!dummy) return;
 
     dummy->newUuid(true);
+    dummy->resetGlobalConnectionModel();
+
     auto const& srcNodes = dummy->nodes();
     auto const& srcConnections = dummy->connections();
 

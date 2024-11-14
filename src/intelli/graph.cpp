@@ -495,7 +495,7 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     }
 
     // register node in local model
-    m_local.insert(node->id(), node.get() );
+    m_local.insert(node->id(), node.get());
 
     // register node in global model if not present already (avoid overwrite)
     NodeUuid const& nodeUuid = node->uuid();
@@ -835,6 +835,13 @@ Graph::initInputOutputProviders()
 }
 
 void
+Graph::resetGlobalConnectionModel()
+{
+    m_global->clear();
+    Impl::repopulateGlobalConnectionModel(*this);
+}
+
+void
 Graph::eval()
 {
     for (auto& port : ports(PortType::Out))
@@ -887,7 +894,7 @@ Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const&
     m_global = ptr;
 
     // apply recursively
-    for (auto& subgraph : graphNodes())
+    for (Graph* subgraph : graphNodes())
     {
         subgraph->updateGlobalConnectionModel(ptr);
     }

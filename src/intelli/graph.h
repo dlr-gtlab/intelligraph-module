@@ -400,6 +400,12 @@ public:
      */
     void initInputOutputProviders();
 
+    /**
+     * @brief Resets the global connection model. This might be necessary
+     * because NodeUuids have changed.
+     */
+    void resetGlobalConnectionModel();
+
     struct EndModificationFunctor
     {
         inline void operator()() const noexcept
