@@ -14,6 +14,7 @@
 #include <gt_objectfactory.h>
 #include <gt_lineedit.h>
 #include <gt_stringproperty.h>
+#include <gt_application.h>
 
 namespace intelli
 {
@@ -34,8 +35,20 @@ FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
     m_objectNameEdit = new GtLineEdit;
     m_objectNameEdit->setPlaceholderText(QStringLiteral("object name"));
 
-    lay->addWidget(m_classNameEdit);
     lay->addWidget(m_objectNameEdit);
+    lay->addWidget(m_classNameEdit);
+
+
+    setMinimumWidth(120);
+    if (!gtApp->devMode())
+    {
+        m_classNameEdit->hide();
+        setFixedHeight(40);
+    }
+    else
+    {
+        setFixedHeight(65);
+    }
 
     connect(m_classNameEdit, SIGNAL(focusOut()),
             this, SLOT(reactOnClassNameWidgetChange()));
@@ -46,6 +59,8 @@ FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
             this, SLOT(reactOnObjectNameWidgetChange()));
     connect(m_objectNameEdit, SIGNAL(clearFocusOut()),
             this, SLOT(reactOnObjectNameWidgetChange()));
+
+
 }
 
 void
@@ -61,8 +76,7 @@ FindDirectChildNodeWidget::setObjectNameWidget(const QString& objectName)
 }
 
 void
-FindDirectChildNodeWidget::updateNameCompleter(
-        std::shared_ptr<const ObjectData> data)
+FindDirectChildNodeWidget::updateNameCompleter(const ObjectData* data)
 {
     QStringList allChildrenNames;
 

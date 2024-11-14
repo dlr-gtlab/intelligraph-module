@@ -30,6 +30,10 @@ public:
     /**
      * @brief FindDirectChildNodeWidget
      * Constructor to define the basic structure of the widget and its elements
+     *
+     * The edit widget for the class name is only available in the dev mode
+     * as basic users would not know the class names
+     *
      * @param parent - optional parent widget of the widget
      */
     Q_INVOKABLE FindDirectChildNodeWidget(QWidget* parent = nullptr);
@@ -52,7 +56,7 @@ public slots:
      * the given object
      * @param data
      */
-    void updateNameCompleter(std::shared_ptr<const ObjectData> data);
+    void updateNameCompleter(const ObjectData* data);
 
     void reactOnClassNameWidgetChange();
 

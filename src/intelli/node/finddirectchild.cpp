@@ -30,6 +30,8 @@ FindDirectChildNode::FindDirectChildNode() :
     registerProperty(m_childClassName);
     registerProperty(m_objectName);
     
+    setNodeFlag(Resizable, true);
+
     m_in = addInPort(typeId<ObjectData>());
     
     m_out = addOutPort(typeId<ObjectData>());
@@ -37,7 +39,7 @@ FindDirectChildNode::FindDirectChildNode() :
     registerWidgetFactory([this]() {
         auto w = std::make_unique<FindDirectChildNodeWidget>();
 
-        w->updateNameCompleter(nodeData<intelli::ObjectData>(m_in));
+        w->updateNameCompleter(nodeData<intelli::ObjectData>(m_in).get());
 
         connect(w.get(), SIGNAL(updateClass(QString)),
                 this, SLOT(updateClass(QString)));
@@ -51,8 +53,8 @@ FindDirectChildNode::FindDirectChildNode() :
         connect(&m_objectName, SIGNAL(changed()),
                 w.get(), SLOT(updateNameText()));
 
-        connect(this, SIGNAL(emitCompleterUpdate(const intelli::ObjectData*)),
-                w.get(), SLOT(updateNameCompleter(const intelli::ObjectData*)));
+        connect(this, SIGNAL(emitCompleterUpdate(const ObjectData*)),
+                w.get(), SLOT(updateNameCompleter(const ObjectData*)));
 
         w->setClassNameWidget(m_childClassName.getVal());
         w->setObjectNameWidget(m_objectName.getVal());
@@ -75,6 +77,7 @@ FindDirectChildNode::eval()
     auto parent = nodeData<ObjectData>(m_in);
     if (!parent)
     {
+        gtTrace() << "FindDirectChildNode" << tr("Invalid parent");
         setNodeData(m_out, nullptr);
         return;
     }
@@ -117,5 +120,5 @@ FindDirectChildNode::updateObjName(const QString &newObjName)
 void
 FindDirectChildNode::onInputDataRecevied()
 {
-    emit emitCompleterUpdate(nodeData<intelli::ObjectData>(m_in));
+    emit emitCompleterUpdate(nodeData<intelli::ObjectData>(m_in).get());
 }

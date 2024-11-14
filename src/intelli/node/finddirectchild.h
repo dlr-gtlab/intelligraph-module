@@ -21,9 +21,12 @@ class ObjectData;
 
 /**
  * @brief The FindDirectChildNode class
- * Node to find a child of an object based on the class name of the child
- * and optional its name. If the name is not defined the first child of the
- * specified class will be selected
+ * Node to find a child of an object based on the name of the child
+ * and its class. If of it this is not defined the first child of the
+ * specified name/class will be selected
+ *
+ * The edit widget for the class name is only available in the dev mode
+ * as basic users would not know the class names
  */
 class FindDirectChildNode : public Node
 {
@@ -68,7 +71,7 @@ private:
     /// ports for parent objet input and child object output
     PortId m_in, m_out;
 signals:
-    void emitCompleterUpdate(std::shared_ptr<const ObjectData>);
+    void emitCompleterUpdate(const ObjectData*);
 };
 
 } // namespace intelli
