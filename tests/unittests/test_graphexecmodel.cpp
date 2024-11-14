@@ -13,6 +13,8 @@
 #include "intelli/memory.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
+#include "intelli/node/groupinputprovider.h"
+#include "intelli/node/groupoutputprovider.h"
 
 #include <gt_objectmemento.h>
 #include <gt_objectmementodiff.h>
@@ -1406,6 +1408,55 @@ TEST(GraphExecutionModel, auto_evaluate_graph_with_paused_subgraph)
             {C_uuid, NodeEvalState::Outdated},
             {D_uuid, NodeEvalState::Outdated}
         }));
+}
+
+/// Append a subgraph to a graph that has auto evaluation enabled
+TEST(GraphExecutionModel, auto_evaluate_graph_wihle_appending_subgraph)
+{
+    // creating temporary subgraph
+    gtTrace() << "Creating subgraph...";
+
+    auto subgraph  = std::make_unique<Graph>();
+    subgraph->setCaption("Subgraph");
+    subgraph->initInputOutputProviders();
+
+    {
+        auto* inputNode = subgraph->inputProvider();
+        auto* outputNode = subgraph->outputProvider();
+        ASSERT_TRUE(inputNode);
+        ASSERT_TRUE(outputNode);
+
+        ASSERT_TRUE(inputNode->addPort(typeId<DoubleData>()).isValid());
+        ASSERT_TRUE(outputNode->addPort(typeId<DoubleData>()).isValid());
+
+        GraphBuilder builder(*subgraph);
+        auto change = subgraph->modify();
+        Node& graphNodeA = builder.addNode("intelli::NumberMathNode");
+        builder.connect(*inputNode, PortIndex(0), graphNodeA, PortIndex(0));
+        builder.connect(graphNodeA, PortIndex(0), *outputNode, PortIndex(0));
+        change.finalize();
+    }
+
+    // creating root graph
+    gtTrace() << "Creating root graph...";
+    Graph root;
+
+    GraphExecutionModel model(root);
+    EXPECT_TRUE(model.autoEvaluateGraph());
+
+    test::buildLinearGraph(root);
+
+    gtTrace() << "Appending subgraph...";
+    EXPECT_TRUE(root.appendNode(std::move(subgraph)));
+
+    EXPECT_FALSE(model.isGraphEvaluated());
+
+    gtTrace() << "Waiting for auto evaluation...";
+    GtEventLoop loop{maxTimeout};
+    loop.exec();
+
+    gtTrace() << "Validating...";
+    EXPECT_TRUE(model.isGraphEvaluated());
 }
 
 /// Evalauting a nodes that is "exclusive" should be evaluated separatly to

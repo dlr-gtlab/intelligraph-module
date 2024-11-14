@@ -839,7 +839,6 @@ Graph::resetGlobalConnectionModel()
 {
     m_global->clear();
     Impl::repopulateGlobalConnectionModel(*this);
-    debug(*this);
 }
 
 void
