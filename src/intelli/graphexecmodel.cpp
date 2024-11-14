@@ -711,6 +711,11 @@ GraphExecutionModel::onNodeAppended(Node* node)
     // append subgraph recursively
     if (auto* subgraph = qobject_cast<Graph*>(node))
     {
+        // avoid auto evaluating nodes if graph has not been appended fully
+        m_modificationCount++;
+        auto finally = gt::finally([this](){ m_modificationCount--; });
+        Q_UNUSED(finally);
+
         setupConnections(*subgraph);
 
         auto const& nodes = subgraph->nodes();
@@ -745,7 +750,7 @@ GraphExecutionModel::onNodeAppended(Node* node)
     }, Qt::DirectConnection);
 
     // auto evaluate if necessary
-    Impl::rescheduleAutoEvaluatingNodes(*this);
+    if (!isBeingModified()) Impl::rescheduleAutoEvaluatingNodes(*this);
 }
 
 void

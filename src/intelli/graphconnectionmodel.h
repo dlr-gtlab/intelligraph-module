@@ -847,6 +847,8 @@ public:
     iterator insert(key_type const& key, value_type const& value) { return m_data.insert(key, value); }
     void insert(ConnectionModel_t const& other) { m_data.insert(other.m_data); }
 
+    void clear() { m_data.clear(); }
+
     iterator erase(iterator iter) { return m_data.erase(iter); }
     iterator erase(const_iterator iter) { return m_data.erase(iter); }
 

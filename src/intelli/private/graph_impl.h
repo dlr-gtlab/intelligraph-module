@@ -219,6 +219,35 @@ struct Graph::Impl
         return true;
     }
 
+    /// recursively updates the global connection model of `graph` by inserting
+    /// nodes and setting connections
+    static inline void
+    repopulateGlobalConnectionModel(Graph& graph)
+    {
+        // append nodes
+        for (auto& entry : graph.m_local)
+        {
+            graph.m_global->insert(entry.node->uuid(), entry.node);
+        }
+        // recurisvely append nodes and connections
+        for (Graph* subgraph : graph.graphNodes())
+        {
+            repopulateGlobalConnectionModel(*subgraph);
+        }
+        // append connections of this graph
+        for (auto& entry : graph.m_local)
+        {
+            for (auto& conId : entry.iterateConnections(PortType::Out))
+            {
+                Connection* connection = graph.findConnection(conId);
+                assert(connection);
+                Node* targetNode = graph.findNode(conId.inNodeId);
+                assert(targetNode);
+                graph.appendGlobalConnection(connection, conId, *targetNode);
+            }
+        }
+    }
+
     /// Functor to handle port deletion
     struct PortDeleted
     {
