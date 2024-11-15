@@ -87,14 +87,28 @@ FindDirectChildNode::eval()
     auto const children = parent->object()->findDirectChildren();
 
     auto iter = std::find_if(std::begin(children), std::end(children),
-                             [this](GtObject const* c) {
+                             [this](GtObject const* c)
+    {
         auto const& targetClass = m_targetClassName.get();
-        bool classMatch = targetClass == c->metaObject()->className();
-        if (!classMatch) return false;
-
         auto const& targetName = m_targetObjectName.get();
-        bool nameMatch = targetName.isEmpty() || targetName == c->objectName();
-        return nameMatch;
+
+        if (targetClass.isEmpty() && targetName.isEmpty()) return false;
+
+        bool classMatch = targetClass == c->metaObject()->className();
+        bool nameMatch = targetName == c->objectName();
+
+        if (!targetClass.isEmpty() && !targetName.isEmpty())
+        {
+            return (classMatch && nameMatch);
+        }
+        else if (!targetClass.isEmpty())
+        {
+            return classMatch;
+        }
+        else //!targetName.isEmpty()
+        {
+            return nameMatch;
+        }
     });
 
     if (iter == std::end(children))
