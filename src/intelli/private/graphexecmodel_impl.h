@@ -210,6 +210,18 @@ struct GraphExecutionModel::Impl
     using MutablePortDataItemHelper = PortDataItemHelper<false>;
     using ConstPortDataItemHelper = PortDataItemHelper<true>;
 
+    /// Flags for `setNodeData` method to alter default behavior
+    using SetDataFlags = size_t;
+
+    enum SetDataFlag : SetDataFlags
+    {
+        NoSetDataFlag = 0,
+        /// Do not trigger the nodes evaluation when called on an input port
+        DontTriggerEvaluation = 1 << 0,
+        /// Do not invalidate the node when called on an input port
+        DontInvalidate        = 1 << 1
+    };
+
     /// Finds all end/leaf nodes of the graph.
     template<typename List>
     static inline void
@@ -651,6 +663,15 @@ struct GraphExecutionModel::Impl
         if (item->state == NodeEvalState::Invalid) return;
 
         item->state = NodeEvalState::Invalid;
+
+        constexpr SetDataFlags flags = DontInvalidate | DontTriggerEvaluation;
+
+        // reset output data
+        for (auto const& port : item.node->ports(PortType::Out))
+        {
+            setNodeData(model, item, port.id(), nullptr, flags);
+        }
+
         emit item.node->nodeEvalStateChanged();
 
         auto& conModel = model.graph().globalConnectionModel();
@@ -697,15 +718,12 @@ struct GraphExecutionModel::Impl
                 NodeUuid const& nodeUuid,
                 PortId portId,
                 NodeDataSet data,
-                bool tryTriggerEvaluation = true)
+                SetDataFlags flags = {})
     {
         auto item = Impl::findPortData(model, nodeUuid, portId, setNodeDataError);
         if (!item) return false;
 
-        return setNodeData(model,
-                           item,
-                           std::move(data),
-                           tryTriggerEvaluation);
+        return setNodeData(model, item, std::move(data), flags);
     }
 
     /// Helper method that sets the node data for the given node and port
@@ -714,15 +732,12 @@ struct GraphExecutionModel::Impl
                 MutableDataItemHelper item,
                 PortId portId,
                 NodeDataSet data,
-                bool tryTriggerEvaluation = true)
+                SetDataFlags flags = {})
     {
         auto portItem = Impl::findPortData(model, item, portId, setNodeDataError);
         if (!portItem) return false;
 
-        return setNodeData(model,
-                           portItem,
-                           std::move(data),
-                           tryTriggerEvaluation);
+        return setNodeData(model, portItem, std::move(data), flags);
     }
 
     /// Helper method that sets the node data for the given node and port
@@ -730,7 +745,7 @@ struct GraphExecutionModel::Impl
     setNodeData(GraphExecutionModel& model,
                 MutablePortDataItemHelper item,
                 NodeDataSet data,
-                bool tryTriggerEvaluation = true)
+                SetDataFlags flags = {})
     {
         assert(item);
 
@@ -748,11 +763,14 @@ struct GraphExecutionModel::Impl
         {
         case PortType::In:
         {
-            invalidateNode(model, nodeUuid, item);
+            if (!(flags & DontInvalidate))
+            {
+                invalidateNode(model, nodeUuid, item);
+            }
 
             emit item.node->inputDataRecieved(portId);
 
-            if (!tryTriggerEvaluation || model.isBeingModified()) break;
+            if ((flags & DontTriggerEvaluation) || model.isBeingModified()) break;
 
             // this node is evaluating
             if (utils::contains(model.m_evaluatingNodes, nodeUuid)) break;
@@ -790,6 +808,9 @@ struct GraphExecutionModel::Impl
         }
         case PortType::Out:
         {
+            bool isInvalid = item.entry->state == NodeEvalState::Invalid;
+            if (isInvalid) flags |= DontInvalidate;
+
             if (item.requiresReevaluation())
             {
                 item->data.state = PortDataState::Outdated;
@@ -800,11 +821,7 @@ struct GraphExecutionModel::Impl
             auto& conModel = model.graph().globalConnectionModel();
             for (auto& con : conModel.iterate(nodeUuid, portId))
             {
-                setNodeData(model,
-                                  con.node,
-                                  con.port,
-                                  item->data,
-                                  tryTriggerEvaluation);
+                setNodeData(model, con.node, con.port, item->data, flags);
             }
             break;
         }

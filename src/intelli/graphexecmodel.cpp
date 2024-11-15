@@ -635,14 +635,15 @@ GraphExecutionModel::onNodeEvaluated(NodeUuid const& nodeUuid)
 
     if (item->state != NodeEvalState::Invalid)
     {
+        constexpr Impl::SetDataFlags flags = Impl::DontTriggerEvaluation;
+
         // node not failed -> mark outdated outputs as valid
-        constexpr bool triggerEval = false;
         for (auto& port : item->portsOut)
         {
             if (port.data.state == PortDataState::Outdated)
             {
                 port.data.state = PortDataState::Valid;
-                Impl::setNodeData(*this, item, port.portId, port.data, triggerEval);
+                Impl::setNodeData(*this, item,port.portId, port.data, flags);
             }
         }
 

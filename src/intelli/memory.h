@@ -116,7 +116,7 @@ inline unique_qptr<T, Deleter> make_unique_qptr(Args&&... args) noexcept
 }
 
 template <typename T, typename Deleter = DeferredDeleter, typename ...Args>
-[[deprecated("use `make_qpointer` instead")]]
+[[deprecated("use `make_unique_qptr` instead")]]
 inline unique_qptr<T, Deleter> make_volatile(Args&&... args) noexcept
 {
     return unique_qptr<T, Deleter>(new T{std::forward<Args>(args)...});
