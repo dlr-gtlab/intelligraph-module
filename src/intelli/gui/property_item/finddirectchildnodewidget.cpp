@@ -6,7 +6,8 @@
  *
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
-#include "finddirectchildnodewidget.h"
+
+#include "intelli/gui/property_item/finddirectchildnodewidget.h"
 
 #include <QVBoxLayout>
 #include <QCompleter>
@@ -16,8 +17,7 @@
 #include <gt_stringproperty.h>
 #include <gt_application.h>
 
-namespace intelli
-{
+using namespace intelli;
 
 FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
     QWidget(parent)
@@ -62,19 +62,19 @@ FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
 }
 
 void
-FindDirectChildNodeWidget::setClassNameWidget(const QString& className)
+FindDirectChildNodeWidget::setClassNameWidget(QString const& className)
 {
     if (m_classNameEdit) m_classNameEdit->setText(className);
 }
 
 void
-FindDirectChildNodeWidget::setObjectNameWidget(const QString& objectName)
+FindDirectChildNodeWidget::setObjectNameWidget(QString const& objectName)
 {
     if (m_objectNameEdit) m_objectNameEdit->setText(objectName);
 }
 
 void
-FindDirectChildNodeWidget::updateNameCompleter(const ObjectData* data)
+FindDirectChildNodeWidget::updateNameCompleter(ObjectData const* data)
 {
     QStringList allChildrenNames;
 
@@ -135,4 +135,3 @@ FindDirectChildNodeWidget::updateNameText()
 
     m_objectNameEdit->setText(prop->getVal());
 }
-} // namespace intelli

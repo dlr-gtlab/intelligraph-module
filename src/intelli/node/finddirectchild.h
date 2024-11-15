@@ -40,38 +40,15 @@ protected:
 
     void eval() override;
 
-private slots:
-    /**
-     * @brief updateClass - updates the value of the string property for the
-     * class name to the given value
-     * @param newClass
-     */
-    void updateClass(QString const& newClass);
-
-    /**
-     * @brief updateObjName - updates the value of the string property for the
-     * object name to the given value
-     * @param newObjName
-     */
-    void updateObjName(QString const& newObjName);
-
-    /**
-     * @brief onInputDataRecevied - emits a signal based on the current
-     * selected object
-     */
-    void onInputDataRecevied();
-
 private:
 
     /// target class name
-    GtStringProperty m_childClassName;
+    GtStringProperty m_targetClassName;
 
-    GtStringProperty m_objectName;
+    GtStringProperty m_targetObjectName;
 
     /// ports for parent objet input and child object output
     PortId m_in, m_out;
-signals:
-    void emitCompleterUpdate(const ObjectData*);
 };
 
 } // namespace intelli
