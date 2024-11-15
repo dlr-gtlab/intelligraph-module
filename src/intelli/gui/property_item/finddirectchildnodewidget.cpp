@@ -18,6 +18,7 @@
 
 namespace intelli
 {
+
 FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
     QWidget(parent)
 {
@@ -37,7 +38,6 @@ FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
 
     lay->addWidget(m_objectNameEdit);
     lay->addWidget(m_classNameEdit);
-
 
     setMinimumWidth(120);
     if (!gtApp->devMode())
@@ -59,8 +59,6 @@ FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
             this, SLOT(reactOnObjectNameWidgetChange()));
     connect(m_objectNameEdit, SIGNAL(clearFocusOut()),
             this, SLOT(reactOnObjectNameWidgetChange()));
-
-
 }
 
 void

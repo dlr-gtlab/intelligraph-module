@@ -112,7 +112,7 @@ FindDirectChildNode::updateClass(const QString& newClass)
 }
 
 void
-FindDirectChildNode::updateObjName(const QString &newObjName)
+FindDirectChildNode::updateObjName(const QString& newObjName)
 {
     m_objectName.setVal(newObjName);
 }
