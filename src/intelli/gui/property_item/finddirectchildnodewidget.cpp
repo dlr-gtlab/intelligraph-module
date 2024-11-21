@@ -38,16 +38,15 @@ FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
 
     lay->addWidget(m_objectNameEdit);
     lay->addWidget(m_classNameEdit);
+    lay->setContentsMargins(0, 0, 0, 0);
+
+    m_objectNameEdit->setFixedHeight(16);
+    m_classNameEdit->setFixedHeight(16);
 
     setMinimumWidth(120);
     if (!gtApp->devMode())
     {
         m_classNameEdit->hide();
-        setFixedHeight(40);
-    }
-    else
-    {
-        setFixedHeight(65);
     }
 
     connect(m_classNameEdit, SIGNAL(focusOut()),
@@ -59,6 +58,8 @@ FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
             this, SLOT(reactOnObjectNameWidgetChange()));
     connect(m_objectNameEdit, SIGNAL(clearFocusOut()),
             this, SLOT(reactOnObjectNameWidgetChange()));
+
+    resize(minimumSizeHint());
 }
 
 void

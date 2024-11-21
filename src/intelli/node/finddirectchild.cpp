@@ -32,11 +32,10 @@ FindDirectChildNode::FindDirectChildNode() :
     registerProperty(m_targetClassName);
     registerProperty(m_targetObjectName);
     
-    setNodeFlag(Resizable, true);
+    setNodeFlag(ResizableHOnly, true);
 
     m_in = addInPort(typeId<ObjectData>());
-    
-    m_out = addOutPort(typeId<ObjectData>());
+    m_out = addOutPort(makePort(typeId<ObjectData>()).setCaption(tr("child")));
 
     registerWidgetFactory([this]() {
         auto w = std::make_unique<FindDirectChildNodeWidget>();
@@ -45,20 +44,20 @@ FindDirectChildNode::FindDirectChildNode() :
 
         connect(w.get(), &FindDirectChildNodeWidget::updateClass,
                 this, [this](QString const& newClass) {
-                    m_targetClassName.setVal(newClass);
-                });
+            m_targetClassName.setVal(newClass);
+        });
         connect(&m_targetClassName, SIGNAL(changed()),
                 w.get(), SLOT(updateClassText()));
 
         connect(w.get(), &FindDirectChildNodeWidget::updateObjectName,
                 this, [this](QString const& newObjName) {
-                    m_targetObjectName.setVal(newObjName);
-                });
+            m_targetObjectName.setVal(newObjName);
+        });
         connect(&m_targetObjectName, SIGNAL(changed()),
                 w.get(), SLOT(updateNameText()));
 
         connect(this, &Node::inputDataRecieved,
-                w.get(), [this, wid = w.get()](){
+                w.get(), [this, wid = w.get()]() {
             wid->updateNameCompleter(nodeData<ObjectData>(m_in).get());
         });
 
@@ -87,8 +86,7 @@ FindDirectChildNode::eval()
     auto const children = parent->object()->findDirectChildren();
 
     auto iter = std::find_if(std::begin(children), std::end(children),
-                             [this](GtObject const* c)
-    {
+                             [this](GtObject const* c) {
         auto const& targetClass = m_targetClassName.get();
         auto const& targetName = m_targetObjectName.get();
 
@@ -97,18 +95,18 @@ FindDirectChildNode::eval()
         bool classMatch = targetClass == c->metaObject()->className();
         bool nameMatch = targetName == c->objectName();
 
+        // both specified -> search by class and object name
         if (!targetClass.isEmpty() && !targetName.isEmpty())
         {
             return (classMatch && nameMatch);
         }
-        else if (!targetClass.isEmpty())
+        // only class name given -> search by class name
+        if (!targetClass.isEmpty())
         {
             return classMatch;
         }
-        else //!targetName.isEmpty()
-        {
-            return nameMatch;
-        }
+        // only object name given -> search by object name
+        return nameMatch;
     });
 
     if (iter == std::end(children))

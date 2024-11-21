@@ -49,7 +49,6 @@ private:
 
     /// ports for parent objet input and child object output
     PortId m_in, m_out;
-
 };
 
 } // namespace intelli
