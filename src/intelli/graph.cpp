@@ -547,18 +547,18 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
             Qt::DirectConnection);
 
     connect(node, &Node::portInserted,
-        this, [this, nodeId = node->id()](PortType type, PortIndex idx){
-            emit nodePortInserted(nodeId, type, idx);
-        }, Qt::DirectConnection);
+            this, [this, nodeId = node->id()](PortType type, PortIndex idx){
+        emit nodePortInserted(nodeId, type, idx);
+    }, Qt::DirectConnection);
 
     connect(node, &Node::portAboutToBeDeleted,
             this, Impl::PortDeleted(this, node),
             Qt::DirectConnection);
 
     connect(node, &Node::portDeleted,
-        this, [this, nodeId = node->id()](PortType type, PortIndex idx){
-            emit nodePortDeleted(nodeId, type, idx);
-        }, Qt::DirectConnection);
+            this, [this, nodeId = node->id()](PortType type, PortIndex idx){
+        emit nodePortDeleted(nodeId, type, idx);
+    }, Qt::DirectConnection);
 
     connect(node, &Node::nodeAboutToBeDeleted,
             this, Impl::NodeDeleted(this),
