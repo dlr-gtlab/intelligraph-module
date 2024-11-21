@@ -11,88 +11,109 @@
 
 #include "intelli/data/object.h"
 
+#include "intelli/gui/property_item/finddirectchildnodewidget.h"
+
 #include <gt_lineedit.h>
 
 #include <QRegExpValidator>
 #include <QRegExp>
 
-namespace gt
-{
-namespace re
-{
-
-namespace intelli
-{
-
-inline QRegExp forClassNames()
-{
-    return QRegExp(R"(^([a-zA-Z_][a-zA-Z0-9_]*::)*[a-zA-Z_][a-zA-Z0-9_]*$)");
-}
-
-} // namespace intelli
-
-} // namespace re
-
-} // namespace gt
-
 using namespace intelli;
 
 FindDirectChildNode::FindDirectChildNode() :
     Node(tr("Find Direct Child")),
-    m_childClassName("targetClassName",
+    m_targetClassName("targetClassName",
                      tr("Target class name"),
-                     tr("Target class name for child"))
+                     tr("Target class name for child")),
+    m_targetObjectName("targetObjectName",
+                         tr("Target object name"),
+                         tr("Target object name"))
 {
-    registerProperty(m_childClassName);
+    registerProperty(m_targetClassName);
+    registerProperty(m_targetObjectName);
     
+    setNodeFlag(ResizableHOnly, true);
+
     m_in = addInPort(typeId<ObjectData>());
-    
-    m_out = addOutPort(typeId<ObjectData>());
+    m_out = addOutPort(makePort(typeId<ObjectData>()).setCaption(tr("child")));
 
     registerWidgetFactory([this]() {
-        auto w = std::make_unique<GtLineEdit>();
-        w->setValidator(new QRegExpValidator(gt::re::intelli::forClassNames()));
-        w->setPlaceholderText(QStringLiteral("class name"));
+        auto w = std::make_unique<FindDirectChildNodeWidget>();
 
-        auto const updateProp = [this, w_ = w.get()](){
-            m_childClassName = w_->text();
-        };
-        auto const updateText = [this, w_ = w.get()](){
-            w_->setText(m_childClassName);
-        };
+        w->updateNameCompleter(nodeData<ObjectData>(m_in).get());
 
-        connect(w.get(), &GtLineEdit::focusOut, this, updateProp);
-        connect(w.get(), &GtLineEdit::clearFocusOut, this, updateProp);
-        connect(&m_childClassName, &GtAbstractProperty::changed, w.get(), updateText);
+        connect(w.get(), &FindDirectChildNodeWidget::updateClass,
+                this, [this](QString const& newClass) {
+            m_targetClassName.setVal(newClass);
+        });
+        connect(&m_targetClassName, SIGNAL(changed()),
+                w.get(), SLOT(updateClassText()));
 
-        updateText();
+        connect(w.get(), &FindDirectChildNodeWidget::updateObjectName,
+                this, [this](QString const& newObjName) {
+            m_targetObjectName.setVal(newObjName);
+        });
+        connect(&m_targetObjectName, SIGNAL(changed()),
+                w.get(), SLOT(updateNameText()));
+
+        connect(this, &Node::inputDataRecieved,
+                w.get(), [this, wid = w.get()]() {
+            wid->updateNameCompleter(nodeData<ObjectData>(m_in).get());
+        });
+
+        w->setClassNameWidget(m_targetClassName.getVal());
+        w->setObjectNameWidget(m_targetObjectName.getVal());
 
         return w;
     });
 
-    connect(&m_childClassName, &GtAbstractProperty::changed,
+    connect(&m_targetClassName, &GtAbstractProperty::changed,
+            this, &Node::triggerNodeEvaluation);
+    connect(&m_targetObjectName, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
 }
 
 void
 FindDirectChildNode::eval()
 {
-    auto* parent = nodeData<ObjectData*>(m_in);
+    auto parent = nodeData<ObjectData>(m_in);
     if (!parent)
     {
         setNodeData(m_out, nullptr);
-        return;
+        return evalFailed();
     }
 
     auto const children = parent->object()->findDirectChildren();
 
     auto iter = std::find_if(std::begin(children), std::end(children),
-                             [this](GtObject const* c){
-        return m_childClassName.get() == c->metaObject()->className();
+                             [this](GtObject const* c) {
+        auto const& targetClass = m_targetClassName.get();
+        auto const& targetName = m_targetObjectName.get();
+
+        if (targetClass.isEmpty() && targetName.isEmpty()) return false;
+
+        bool classMatch = targetClass == c->metaObject()->className();
+        bool nameMatch = targetName == c->objectName();
+
+        // both specified -> search by class and object name
+        if (!targetClass.isEmpty() && !targetName.isEmpty())
+        {
+            return (classMatch && nameMatch);
+        }
+        // only class name given -> search by class name
+        if (!targetClass.isEmpty())
+        {
+            return classMatch;
+        }
+        // only object name given -> search by object name
+        return nameMatch;
     });
 
-    if (iter != std::end(children))
+    if (iter == std::end(children))
     {
-        setNodeData(m_out, std::make_shared<ObjectData>(*iter));
+        setNodeData(m_out, nullptr);
+        return evalFailed();
     }
+
+    setNodeData(m_out, std::make_shared<ObjectData>(*iter));
 }

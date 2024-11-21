@@ -127,6 +127,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/logicdisplay.h
     intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
+    intelli/gui/property_item/finddirectchildnodewidget.h
     intelli/gui/ui/logicnodeui.h
     intelli/private/graph_impl.h
     intelli/private/graphexecmodel_impl.h
@@ -208,6 +209,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/logicdisplay.cpp
     intelli/gui/property_item/objectlink.cpp
     intelli/gui/property_item/stringselection.cpp
+    intelli/gui/property_item/finddirectchildnodewidget.cpp
     intelli/gui/ui/logicnodeui.cpp
     intelli/property/color.cpp
     intelli/property/stringselection.cpp
