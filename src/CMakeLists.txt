@@ -108,7 +108,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/sleepy.h
     intelli/node/stringbuilder.h
     intelli/node/textdisplay.h
-    intelli/gui/connectionui.h
+    intelli/gui/ui/connectionui.h
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
     intelli/gui/graphscenemanager.h
@@ -116,7 +116,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphstatemanager.h
     intelli/gui/graphview.h
     intelli/gui/graphviewoverlay.h
-    intelli/gui/packageui.h
+    intelli/gui/ui/packageui.h
+    intelli/gui/ui/categoryui.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/property_item/abstractnumberinputwidget.h
@@ -184,7 +185,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/propertyinput/intinputnode.cpp
     intelli/node/propertyinput/objectinputnode.cpp
     intelli/node/propertyinput/stringinputnode.cpp
-    intelli/gui/connectionui.cpp
+    intelli/gui/ui/connectionui.cpp
     intelli/gui/nodegeometry.cpp
     intelli/gui/nodepainter.cpp
     intelli/gui/nodeui.cpp
@@ -196,7 +197,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphview.cpp
     intelli/gui/graphviewoverlay.cpp
     intelli/gui/icons.cpp
-    intelli/gui/packageui.cpp
+    intelli/gui/ui/packageui.cpp
+    intelli/gui/ui/categoryui.cpp
     intelli/gui/style.cpp
     intelli/gui/graphics/connectionobject.cpp
     intelli/gui/graphics/nodeobject.cpp
