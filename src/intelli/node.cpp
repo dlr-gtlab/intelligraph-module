@@ -44,7 +44,12 @@ Node::Node(QString const& modelName, GtObject* parent) :
     pimpl(std::make_unique<Impl>(modelName))
 {
     setFlag(UserDeletable, true);
+
+#if GT_VERSION >= 0x020100
+    setFlag(UserRenamable, true);
+#else
     setFlag(UserRenamable, false);
+#endif
 
     static const QString catData = QStringLiteral("Node-Data");
     registerProperty(pimpl->id, catData);

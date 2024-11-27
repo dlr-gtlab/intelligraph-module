@@ -79,11 +79,19 @@ NodeUI::NodeUI(Option option)
 
     addSeparator();
 
+#if GT_VERSION >= 0x020100
+    setRegExpHint(tr("It is only allowed to use letters, numbers, '_', '-' "
+                     "and '[ ]' to rename the object and is not allowed to "
+                     "use the name of sibling elements."));
+
+
+#else
     addSingleAction(tr("Rename Node"), renameNode)
         .setIcon(gt::gui::icon::rename())
         .setVisibilityMethod(toNode)
         .setVerificationMethod(canRenameNodeObject)
         .setShortCut(gtApp->getShortCutSequence("rename"));
+#endif
 
     addSingleAction(tr("Clear Intelli Graph"), clearNodeGraph)
         .setIcon(gt::gui::icon::clear())
@@ -306,3 +314,30 @@ NodeUI::setActive(GtObject* obj, bool state)
 
     node->setActive(state);
 }
+
+#if GT_VERSION >= 0x020100
+bool
+NodeUI::hasValidationRegExp(GtObject* obj)
+{
+    return true;
+}
+
+QRegExp
+NodeUI::validatorRegExp(GtObject* obj)
+{
+    assert(obj);
+
+    QRegExp retVal = gt::re::onlyLettersAndNumbersAndSpace();
+
+    if (toGraph(obj))
+    {
+        utils::restrictRegExpWithSiblingsNames<Graph>(*obj, retVal);
+    }
+    else
+    {
+        utils::restrictRegExpWithSiblingsNames<Node>(*obj, retVal);
+    }
+
+    return retVal;
+}
+#endif

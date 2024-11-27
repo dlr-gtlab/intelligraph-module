@@ -277,8 +277,14 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
     QString allNames = names.join("|");
 
-    QString pattern = "^(?!.*\\b(" + allNames + ")\\b)"
-                      + defaultRegExp.pattern();
+    QString pattern = "^";
+
+    for (QString name : names)
+    {
+        pattern += "(?!" + name + "$)";
+    }
+
+    pattern += defaultRegExp.pattern();
 
     defaultRegExp = QRegExp(pattern);
 }
