@@ -808,7 +808,8 @@ TEST(Graph, move_nodes_to_other_graph)
     EXPECT_NE(graph2.connectionModel().size(), connections);
 
     // move node
-    EXPECT_TRUE(graph1.moveNodesAndConnections({A_id, B_id, C_id, D_id}, graph2));
+    QVector<NodeId> nodeIds = {A_id, B_id, C_id, D_id};
+    EXPECT_TRUE(graph1.moveNodesAndConnections(nodeIds, graph2));
 
     // after move
     EXPECT_TRUE(graph1.connectionModel().empty());

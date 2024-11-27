@@ -396,7 +396,16 @@ public:
      * node id should be kept, moving the node may fail)
      * @return success
      */
-    bool moveNode(NodeId nodeId, Graph& targetGraph,
+    bool moveNode(NodeId nodeId,
+                  Graph& targetGraph,
+                  NodeIdPolicy policy = NodeIdPolicy::Update)
+    {
+        Node* node = findNode(nodeId);
+        return node && moveNode(*node, targetGraph, policy);
+    }
+
+    bool moveNode(Node& node,
+                  Graph& targetGraph,
                   NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
@@ -411,7 +420,8 @@ public:
      * @param policy
      * @return
      */
-    bool moveNodesAndConnections(QVector<NodeId> const& nodeIds, Graph& targetGraph,
+    bool moveNodesAndConnections(QVector<NodeId>& nodeIds,
+                                 Graph& targetGraph,
                                  NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**

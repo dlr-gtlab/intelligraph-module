@@ -776,35 +776,33 @@ Graph::deleteConnection(ConnectionId connectionId)
 }
 
 bool
-Graph::moveNode(NodeId nodeId, Graph& targetGraph, NodeIdPolicy policy)
+Graph::moveNode(Node& node, Graph& targetGraph, NodeIdPolicy policy)
 {
-    Node* node = findNode(nodeId);
-    if (!node) return false;
-
     auto change = modify();
 
-    assert(node->parent() == this);
+    assert(node.parent() == this);
 
     // restore ownership on failure
     auto restoreOnFailure = gt::finally([&node, this](){
-        ((QObject*)node)->setParent(this);
+        ((QObject*)&node)->setParent(this);
     });
 
-    node->disconnect(this);
-    node->disconnectFromParent();
-    ((QObject*)node)->setParent(nullptr);
+    node.disconnect(this);
+    node.disconnectFromParent();
+    ((QObject*)&node)->setParent(nullptr);
+
 
     // update connection model
-    Impl::NodeDeleted(this)(node->id());
+    Impl::NodeDeleted(this)(node.id());
 
-    if (!targetGraph.appendNode(node, policy)) return {};
+    if (!targetGraph.appendNode(&node, policy)) return {};
 
     restoreOnFailure.clear();
     return true;
 }
 
 bool
-Graph::moveNodesAndConnections(QVector<NodeId> const& nodeIds,
+Graph::moveNodesAndConnections(QVector<NodeId>& nodeIds,
                                Graph& targetGraph,
                                NodeIdPolicy policy)
 {
@@ -817,26 +815,35 @@ Graph::moveNodesAndConnections(QVector<NodeId> const& nodeIds,
     auto change = modify();
 
     QVector<ConnectionUuid> connectionsToMove;
-    for (NodeId nodeId : nodeIds)
+    for (NodeId& nodeId : nodeIds)
     {
-        auto& model = connectionModel();
-        for (ConnectionId conId : model.iterateConnections(nodeId, PortType::Out))
+        for (ConnectionId conId : m_local.iterateConnections(nodeId, PortType::Out))
         {
             // check if connection is internal
             auto iter = std::find_if(nodeIds.cbegin(), nodeIds.cend(),
                                      findNodeFunctor(conId));
-            if (iter != nodeIds.end()) continue;
+            if (iter == nodeIds.cend()) continue;
 
             connectionsToMove.push_back(connectionUuid(conId));
         }
-
-        if (!moveNode(nodeId, targetGraph, policy)) return false;
     }
+
+    for (NodeId& nodeId : nodeIds)
+    {
+        Node* node = m_local.node(nodeId);
+        if (!node) return false;
+        if (!moveNode(*node, targetGraph, policy)) return false;
+        nodeId = node->id();
+    }
+
+    gtDebug() << connectionsToMove;
 
     // reinstantiate internal connections
     for (ConnectionUuid const& conUuid : connectionsToMove)
     {
-        if (!appendConnection(std::make_unique<Connection>(connectionId(conUuid))))
+        if (!targetGraph.appendConnection(
+                std::make_unique<Connection>(
+                    targetGraph.connectionId(conUuid))))
         {
             return false;
         }
@@ -844,6 +851,7 @@ Graph::moveNodesAndConnections(QVector<NodeId> const& nodeIds,
 
     return true;
 }
+
 
 bool
 Graph::isBeingModified() const
