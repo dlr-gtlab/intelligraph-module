@@ -235,6 +235,19 @@ struct ConnectionData
     }
 
     /**
+     * @brief Equality operator
+     * @param other Other entry
+     * @return Is equal
+     */
+    bool operator==(ConnectionData const& other) const
+    {
+        return node == other.node &&
+               predecessors == other.predecessors &&
+               successors == other.successors;
+    }
+    bool operator!=(ConnectionData const& other) const { return !(*this == other); }
+
+    /**
      * @brief Helper object to iterate only over all predecessors OR successors
      * of this object
      */
