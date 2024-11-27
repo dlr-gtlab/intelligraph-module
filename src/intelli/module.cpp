@@ -25,8 +25,9 @@
 #include "intelli/node/logicoperation.h"
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/gui/ui/logicnodeui.h"
-#include "intelli/gui/connectionui.h"
-#include "intelli/gui/packageui.h"
+#include "intelli/gui/ui/connectionui.h"
+#include "intelli/gui/ui/packageui.h"
+#include "intelli/gui/ui/graphcategoryui.h"
 #include "intelli/gui/nodeui.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/property_item/objectlink.h"
@@ -255,7 +256,7 @@ GtIntelliGraphModule::uiItems()
     map.insert(GT_CLASSNAME(Package),
                GT_METADATA(PackageUI));
     map.insert(GT_CLASSNAME(GraphCategory),
-               GT_METADATA(PackageUI));
+               GT_METADATA(CategoryUI));
 
     map.insert(GT_CLASSNAME(LogicNode),
                GT_METADATA(LogicNodeUI));

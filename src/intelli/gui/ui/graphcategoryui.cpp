@@ -7,7 +7,7 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include "intelli/gui/ui/categoryui.h"
+#include "intelli/gui/ui/graphcategoryui.h"
 
 #include "intelli/graph.h"
 #include "intelli/graphcategory.h"
@@ -34,7 +34,7 @@ inline void setObjectName(Node& obj, QString const& name)
 
 
 
-CategoryUI::CategoryUI()
+GraphCategoryUI::GraphCategoryUI()
 {
     setObjectName(QStringLiteral("IntelliGraphCategoryUI"));
 
@@ -44,19 +44,19 @@ CategoryUI::CategoryUI()
 }
 
 QIcon
-CategoryUI::icon(GtObject* obj) const
+GraphCategoryUI::icon(GtObject* obj) const
 {
     return gt::gui::icon::objectEmpty();
 }
 
 void
-CategoryUI::addNodeGraph(GtObject* obj)
+GraphCategoryUI::addNodeGraph(GtObject* obj)
 {
     utils::addNamedChild<Graph>(*obj);
 }
 
 bool
-CategoryUI::isCategoryObject(GtObject* obj)
+GraphCategoryUI::isCategoryObject(GtObject* obj)
 {
     return qobject_cast<GraphCategory*>(obj);
 }

@@ -7,7 +7,7 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include "intelli/gui/connectionui.h"
+#include "intelli/gui/ui/connectionui.h"
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
 

@@ -117,7 +117,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphview.h
     intelli/gui/graphviewoverlay.h
     intelli/gui/ui/packageui.h
-    intelli/gui/ui/categoryui.h
+    intelli/gui/ui/graphcategoryui.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/property_item/abstractnumberinputwidget.h
@@ -198,7 +198,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphviewoverlay.cpp
     intelli/gui/icons.cpp
     intelli/gui/ui/packageui.cpp
-    intelli/gui/ui/categoryui.cpp
+    intelli/gui/ui/graphcategoryui.cpp
     intelli/gui/style.cpp
     intelli/gui/graphics/connectionobject.cpp
     intelli/gui/graphics/nodeobject.cpp
