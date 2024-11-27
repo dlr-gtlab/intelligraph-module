@@ -230,6 +230,37 @@ TEST(Graph, connection_model_iterate_over_connected_nodes_by_port)
     EXPECT_EQ(std::distance(riPort.begin(), riPort.end()), 2);
 }
 
+struct IntProxy
+{
+    using value_type = int;
+    using reference = value_type&;
+    using pointer = value_type*;
+    template <typename Iter> void init(Iter&) {};
+    template <typename Iter> reference get(Iter& i) { return (*i).value; };
+    template <typename Iter> void advance(Iter& i) { ++i; };
+};
+
+TEST(Graph, connection_model_custom_iterator)
+{
+    struct MyStruct
+    {
+        int value;
+        QString str;
+    };
+    QVector<MyStruct> data{
+        {42, "Test"},
+        {10, "32"}
+    };
+
+    // use a proxy to access `value` member of `MyStruct`
+    auto iter = makeProxy<IntProxy>(data.begin(), data.end());
+
+    QVector<int> reference{42, 10};
+    ASSERT_EQ(iter.size(), reference.size());
+    EXPECT_TRUE(std::equal(iter.begin(), iter.end(),
+                           reference.begin(), reference.end()));
+}
+
 TEST(Graph, predessecors_and_successors)
 {
     Graph graph;
