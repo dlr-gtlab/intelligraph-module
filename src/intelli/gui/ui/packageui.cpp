@@ -23,16 +23,6 @@
 
 using namespace intelli;
 
-inline void setObjectName(GtObject& obj, QString const& name)
-{
-    obj.setObjectName(name);
-}
-inline void setObjectName(Node& obj, QString const& name)
-{
-    obj.setCaption(name);
-}
-
-
 
 PackageUI::PackageUI()
 {
@@ -46,33 +36,13 @@ PackageUI::PackageUI()
 QIcon
 PackageUI::icon(GtObject* obj) const
 {
-    if (qobject_cast<Package*>(obj))
-    {
-        return gt::gui::icon::applicationVar();
-    }
-    return gt::gui::icon::objectEmpty();
+    return gt::gui::icon::applicationVar();
 }
 
 void
 PackageUI::addNodeCategory(GtObject* obj)
-{
-    if (!isPackageObject(obj)) return;
-    
+{   
     utils::addNamedChild<GraphCategory>(*obj);
-}
-
-void
-PackageUI::addNodeGraph(GtObject* obj)
-{
-    if (!isCategoryObject(obj)) return;
-    
-    utils::addNamedChild<Graph>(*obj);
-}
-
-bool
-PackageUI::isCategoryObject(GtObject* obj)
-{
-    return false;
 }
 
 bool

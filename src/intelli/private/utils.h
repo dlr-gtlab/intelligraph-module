@@ -217,6 +217,17 @@ setupState(GtObject& guardian,
     return SetupStateHelper<GetValue>{state, std::move(getValue)};
 }
 
+
+inline void setObjectName(GtObject& obj, QString const& name)
+{
+    obj.setObjectName(name);
+}
+
+inline void setObjectName(Node& obj, QString const& name)
+{
+    obj.setCaption(name);
+}
+
 template <typename T>
 inline void addNamedChild(GtObject& obj)
 {
@@ -242,6 +253,36 @@ inline void addNamedChild(GtObject& obj)
         child.release();
     }
 }
+
+template <typename T>
+inline void restrictRegExpWithSiblingsNames(GtObject& obj,
+                                            QRegExp& defaultRegExp)
+{
+    GtObject* parent = obj.parentObject();
+
+    if (!parent) return;
+
+    QList<T*> siblings = parent->findDirectChildren<T*>();
+
+    if (siblings.isEmpty()) return;
+
+    QStringList names;
+
+    for (auto* s : qAsConst(siblings))
+    {
+        names.append(s->objectName());
+    }
+
+    names.removeAll(obj.objectName());
+
+    QString allNames = names.join("|");
+
+    QString pattern = "^(?!.*\\b(" + allNames + ")\\b)"
+                      + defaultRegExp.pattern();
+
+    defaultRegExp = QRegExp(pattern);
+}
+
 
 } // namespace utils
 

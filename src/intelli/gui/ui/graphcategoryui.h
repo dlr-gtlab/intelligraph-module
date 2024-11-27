@@ -27,7 +27,21 @@ public:
 
     static void addNodeGraph(GtObject* obj);
 
-    static bool isCategoryObject(GtObject* obj);
+#if GT_VERSION >= 0x020100
+    /**
+     * @brief hasValidationRegExp
+     * @param obj - the underlying object to evaluate
+     * @return true, because element has validator
+     */
+    bool hasValidationRegExp(GtObject* obj) override;
+
+    /**
+     * @brief validatorRegExp
+     * @param obj - the underlying object to evaluate
+     * @return Regexp to accept letters, digits, -, _
+     */
+    QRegExp validatorRegExp(GtObject* obj) override;
+#endif
 };
 
 } // namespace intelli

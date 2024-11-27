@@ -256,7 +256,7 @@ GtIntelliGraphModule::uiItems()
     map.insert(GT_CLASSNAME(Package),
                GT_METADATA(PackageUI));
     map.insert(GT_CLASSNAME(GraphCategory),
-               GT_METADATA(CategoryUI));
+               GT_METADATA(GraphCategoryUI));
 
     map.insert(GT_CLASSNAME(LogicNode),
                GT_METADATA(LogicNodeUI));

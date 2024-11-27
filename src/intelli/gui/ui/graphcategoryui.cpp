@@ -12,6 +12,7 @@
 #include "intelli/graph.h"
 #include "intelli/graphcategory.h"
 #include "intelli/private/utils.h"
+#include "gt_logging.h"
 
 #include "gt_icons.h"
 
@@ -23,24 +24,18 @@
 
 using namespace intelli;
 
-inline void setObjectName(GtObject& obj, QString const& name)
-{
-    obj.setObjectName(name);
-}
-inline void setObjectName(Node& obj, QString const& name)
-{
-    obj.setCaption(name);
-}
-
-
-
 GraphCategoryUI::GraphCategoryUI()
 {
     setObjectName(QStringLiteral("IntelliGraphCategoryUI"));
 
     addSingleAction(tr("Add Intelli Graph"), addNodeGraph)
-        .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(isCategoryObject);
+        .setIcon(gt::gui::icon::add());
+
+#if GT_VERSION >= 0x020100
+    setRegExpHint(tr("It is only allowed to use letters, numbers, '_', '-' "
+                     "and '[ ]' to rename the object and is not allowed to "
+                     "use the name of another category"));
+#endif
 }
 
 QIcon
@@ -55,8 +50,22 @@ GraphCategoryUI::addNodeGraph(GtObject* obj)
     utils::addNamedChild<Graph>(*obj);
 }
 
+#if GT_VERSION >= 0x020100
 bool
-GraphCategoryUI::isCategoryObject(GtObject* obj)
+GraphCategoryUI::hasValidationRegExp(GtObject* obj)
 {
-    return qobject_cast<GraphCategory*>(obj);
+    return true;
 }
+
+QRegExp
+GraphCategoryUI::validatorRegExp(GtObject* obj)
+{
+    assert(obj);
+
+    QRegExp retVal = gt::re::onlyLettersAndNumbersAndSpace();
+
+    utils::restrictRegExpWithSiblingsNames<GraphCategory>(*obj, retVal);
+
+    return retVal;
+}
+#endif
