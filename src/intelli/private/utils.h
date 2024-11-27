@@ -279,7 +279,7 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
     QString pattern = std::accumulate(
         std::begin(names), std::end(names), QString("^"),
-        [](QString a, QString const& name)
+        [](QString const& a, QString const& name)
         {
             return a + "(?!" + name + "$)";
         });
