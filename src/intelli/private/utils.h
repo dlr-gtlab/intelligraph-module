@@ -13,6 +13,8 @@
 #include <intelli/globals.h>
 #include <intelli/data/double.h>
 
+#include "algorithm"
+
 #include <intelli/graph.h>
 
 #include <gt_state.h>
@@ -275,14 +277,12 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
     names.removeAll(obj.objectName());
 
-    QString allNames = names.join("|");
-
-    QString pattern = "^";
-
-    for (QString name : names)
-    {
-        pattern += "(?!" + name + "$)";
-    }
+    QString pattern = std::accumulate(
+        std::begin(names), std::end(names), QString("^"),
+        [](QString a, QString const& name)
+        {
+            return a + "(?!" + name + "$)";
+        });
 
     pattern += defaultRegExp.pattern();
 
