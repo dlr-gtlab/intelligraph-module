@@ -13,6 +13,7 @@
 #include <intelli/graph.h>
 #include <intelli/nodedatafactory.h>
 #include <intelli/private/utils.h>
+#include <intelli/connection.h>
 
 #include <gt_logging.h>
 
@@ -224,6 +225,10 @@ struct Graph::Impl
     static inline void
     repopulateGlobalConnectionModel(Graph& graph)
     {
+        for (Connection* connection : graph.connections())
+        {
+            connection->disconnect(&graph);
+        }
         // append nodes
         for (auto& entry : graph.m_local)
         {
@@ -441,9 +446,9 @@ struct Graph::Impl
             if (targetNode == model->end() || sourceNode == model->end())
             {
                 gtWarning() << tr("Failed to delete connection %1").arg(toString(conId))
-                            << tr("(in-node %1, out-node %2!)")
-                                   .arg(targetNode == model->end() ? "found" : "not found")
-                                   .arg(sourceNode == model->end() ? "found" : "not found");
+                            << tr("(in-node entry %1, out-node entry %2!)")
+                                   .arg(targetNode != model->end() ? "found" : "not found")
+                                   .arg(sourceNode != model->end() ? "found" : "not found");
                 return false;
             }
 
