@@ -75,6 +75,7 @@ public slots:
      */
     void openGraphByUuid(QString const& graphUuid);
 
+    void onSceneRemoved(QObject*);
 private:
 
     QPointer<GraphView> m_view;
