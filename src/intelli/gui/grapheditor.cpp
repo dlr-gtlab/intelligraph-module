@@ -101,6 +101,8 @@ GraphEditor::setData(GtObject* obj)
         return;
     }
 
+    connect(obj, SIGNAL(destroyed(QObject*)), SLOT(deleteLater()));
+
     setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + graph->caption());
 }
 
