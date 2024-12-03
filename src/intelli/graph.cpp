@@ -370,7 +370,7 @@ Graph::clearGraph()
 PortId
 Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
 {
-    static auto const makeError = [=](){
+    auto const makeError = [=](){
         return tr("Failed to get port id for node %1!").arg(nodeId);
     };
 
@@ -395,13 +395,13 @@ Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
 ConnectionId
 Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, PortIndex inPortIdx) const
 {
-    static auto const makeError = [](){
+    auto const makeError = [](){
         return  tr("Failed to create connection id!");
     };
-    static auto const nodeNotFound = [](NodeId id){
-        return tr("(node %1 not found)").arg(id);
+    auto const nodeNotFound = [](NodeId id){
+        return tr("(node '%1' not found)").arg(id);
     };
-    static auto const portOutOfBounds = [](NodeId id, PortIndex idx){
+    auto const portOutOfBounds = [](NodeId id, PortIndex idx){
         return tr("(port %1 of node %2 is out of bounds)").arg(idx, id);
     };
 
@@ -415,7 +415,7 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
     }
 
     auto outPort = outNode->portId(PortType::Out, outPortIdx);
-    auto inPort = inNode->portId(PortType::In, inPortIdx);
+    auto inPort  = inNode->portId(PortType::In, inPortIdx);
     if (outPort == invalid<PortId>() || inPort == invalid<PortId>())
     {
         gtWarning() << makeError() << (outPort == invalid<PortId>() ?
@@ -430,10 +430,10 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
 ConnectionUuid
 Graph::connectionUuid(ConnectionId conId) const
 {
-    static auto const makeError = [](){
+    auto const makeError = [](){
         return  tr("Failed to create connection uuid!");
     };
-    static auto const nodeNotFound = [](NodeId id){
+    auto const nodeNotFound = [](NodeId id){
         return tr("(node %1 not found)").arg(id);
     };
 
