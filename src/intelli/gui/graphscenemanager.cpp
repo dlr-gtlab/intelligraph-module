@@ -159,4 +159,6 @@ GraphSceneManager::onSceneRemoved(QObject* scene)
         assert(s);
         m_view->setScene(*s);
     }
+    // no scene
+    if (!currentScene()) m_view->clearScene();
 }

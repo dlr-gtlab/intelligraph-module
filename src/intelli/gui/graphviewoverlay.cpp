@@ -204,7 +204,16 @@ void
 GraphViewOverlay::onSceneChanged(GraphScene* scene)
 {
     assert(m_view);
-    if (!scene) return;
+    if (!scene)
+    {
+        m_startAutoEvalBtn->setEnabled(false);
+        m_stopAutoEvalBtn->setEnabled(false);
+        m_snapToGridBtn->setEnabled(false);
+        m_snapToGridBtn->setVisible(false);
+        m_sceneMenu->setEnabled(false);
+        m_viewMenu->setEnabled(false);
+        return;
+    }
 
     auto& graph = scene->graph();
 
@@ -215,6 +224,7 @@ GraphViewOverlay::onSceneChanged(GraphScene* scene)
     m_snapToGridBtn->setEnabled(true);
     m_snapToGridBtn->setVisible(m_view->isGridVisible());
 
+    m_viewMenu->setEnabled(true);
     m_sceneMenu->setEnabled(true);
 
     auto onSnapToGridChanged = [this](){
