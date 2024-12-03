@@ -143,12 +143,20 @@ GraphSceneManager::openGraphByUuid(QString const& graphUuid)
 }
 
 void
-GraphSceneManager::onSceneRemoved(QObject* /*obj*/)
+GraphSceneManager::onSceneRemoved(QObject* scene)
 {
+    // remove null scenes
+    auto const isNull = [](GraphScene* scene) -> bool { return !scene; };
+    m_scenes.erase(std::remove_if(m_scenes.begin(), m_scenes.end(), isNull),
+                   m_scenes.end());
+
+    // current scene is still alive
+    if (currentScene()) return;
+
+    // switch scene
     for (GraphScene* s : m_scenes)
     {
-        if (s)
-        // switch scene
+        assert(s);
         m_view->setScene(*s);
     }
 }

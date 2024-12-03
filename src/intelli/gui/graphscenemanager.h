@@ -75,7 +75,14 @@ public slots:
      */
     void openGraphByUuid(QString const& graphUuid);
 
-    void onSceneRemoved(QObject*);
+private slots:
+
+    /**
+     * @brief Updates scene mamager if a scene was deleted
+     * @param scene Scene that was deleted
+     */
+    void onSceneRemoved(QObject* scene);
+
 private:
 
     QPointer<GraphView> m_view;
