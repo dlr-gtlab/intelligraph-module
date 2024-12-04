@@ -155,6 +155,22 @@ public:
      */
     QList<PortUIAction> const& portActions() const { return m_portActions; }
 
+#if GT_VERSION >= 0x020100
+    /**
+     * @brief hasValidationRegExp
+     * @param obj - the underlying object to evaluate
+     * @return true, because element has validator
+     */
+    bool hasValidationRegExp(GtObject* obj) override;
+
+    /**
+     * @brief validatorRegExp
+     * @param obj - the underlying object to evaluate
+     * @return Regexp to accept letters, digits, -, _
+     */
+    QRegExp validatorRegExp(GtObject* obj) override;
+#endif
+
 protected:
 
     /**
@@ -199,22 +215,6 @@ private:
      * @param state New active state
      */
     static void setActive(GtObject* obj, bool state);
-
-#if GT_VERSION >= 0x020100
-    /**
-     * @brief hasValidationRegExp
-     * @param obj - the underlying object to evaluate
-     * @return true, because element has validator
-     */
-    bool hasValidationRegExp(GtObject* obj) override;
-
-    /**
-     * @brief validatorRegExp
-     * @param obj - the underlying object to evaluate
-     * @return Regexp to accept letters, digits, -, _
-     */
-    QRegExp validatorRegExp(GtObject* obj) override;
-#endif
 };
 
 } // namespace intelli

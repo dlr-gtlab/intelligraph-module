@@ -12,9 +12,6 @@
 
 #include <intelli/globals.h>
 #include <intelli/data/double.h>
-
-#include "algorithm"
-
 #include <intelli/graph.h>
 
 #include <gt_state.h>
@@ -28,6 +25,8 @@
 #include <gt_logstream.h>
 
 #include <QRegExpValidator>
+
+#include <algorithm>
 
 #define GT_INTELLI_PROFILE() \
 intelli::Profiler profiler__{__FUNCTION__}; (void)profiler__;
@@ -278,9 +277,8 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
     names.removeAll(obj.objectName());
 
     QString pattern = std::accumulate(
-        std::begin(names), std::end(names), QString("^"),
-        [](QString const& a, QString const& name)
-        {
+        std::begin(names), std::end(names), QString{'^'},
+        [](QString const& a, QString const& name) {
             return a + "(?!" + name + "$)";
         });
 

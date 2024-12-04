@@ -83,15 +83,12 @@ NodeUI::NodeUI(Option option)
     setRegExpHint(tr("It is only allowed to use letters, numbers, '_', '-' "
                      "and '[ ]' to rename the object and is not allowed to "
                      "use the name of sibling elements."));
-
-
-#else
+#endif
     addSingleAction(tr("Rename Node"), renameNode)
         .setIcon(gt::gui::icon::rename())
         .setVisibilityMethod(toNode)
         .setVerificationMethod(canRenameNodeObject)
         .setShortCut(gtApp->getShortCutSequence("rename"));
-#endif
 
     addSingleAction(tr("Clear Intelli Graph"), clearNodeGraph)
         .setIcon(gt::gui::icon::clear())
