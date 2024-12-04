@@ -37,7 +37,15 @@ public:
     
     GraphView(QWidget* parent = nullptr);
 
+    /**
+     * @brief Sets the current scene
+     * @param scene Scene
+     */
     void setScene(GraphScene& scene);
+    /**
+     * @brief Clears the current scene
+     */
+    void clearScene();
 
     /// @brief max=0/min=0 indicates infinite zoom in/out
     void setScaleRange(double minimum = 0, double maximum = 0);

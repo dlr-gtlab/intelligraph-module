@@ -77,6 +77,9 @@ GraphSceneManager::createScene(Graph& graph)
     connect(scene, &GraphScene::graphNodeDoubleClicked,
             this, &GraphSceneManager::openGraph);
 
+    connect(scene, &GraphScene::destroyed,
+            this, &GraphSceneManager::onSceneRemoved);
+
     // if view has no scene -> set scene
     if (!m_view->nodeScene()) m_view->setScene(*scene);
 
@@ -137,4 +140,25 @@ GraphSceneManager::openGraphByUuid(QString const& graphUuid)
     }
 
     openGraph(graph);
+}
+
+void
+GraphSceneManager::onSceneRemoved(QObject* scene)
+{
+    // remove null scenes
+    auto const isNull = [](GraphScene* scene) -> bool { return !scene; };
+    m_scenes.erase(std::remove_if(m_scenes.begin(), m_scenes.end(), isNull),
+                   m_scenes.end());
+
+    // current scene is still alive
+    if (currentScene()) return;
+
+    // switch scene
+    for (GraphScene* s : m_scenes)
+    {
+        assert(s);
+        m_view->setScene(*s);
+    }
+    // no scene
+    if (!currentScene()) m_view->clearScene();
 }

@@ -376,6 +376,8 @@ GraphScene::GraphScene(Graph& graph) :
 
     connect(m_graph, &Graph::connectionAppended, this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
     connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
+
+    setParent(&graph);
 }
 
 GraphScene::~GraphScene() = default;

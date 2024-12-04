@@ -163,6 +163,15 @@ GraphView::setScene(GraphScene& scene)
 }
 
 void
+GraphView::clearScene()
+{
+    QGraphicsView::setScene(nullptr);
+    centerScene();
+    setScale(1.0);
+    emit sceneChanged(nullptr);
+}
+
+void
 GraphView::setScaleRange(double minimum, double maximum)
 {
     if (maximum < minimum) std::swap(minimum, maximum);
@@ -275,6 +284,9 @@ GraphView::setScale(double scale)
 void
 GraphView::printToPDF()
 {
+    auto* scene = this->scene();
+    if (!scene) return;
+
     QString filePath =
         GtFileDialog::getSaveFileName(parentWidget(),
                                       tr("Choose File"),
@@ -301,25 +313,25 @@ GraphView::printToPDF()
         return;
     }
 
-    scene()->render(&p);
+    scene->render(&p);
     p.end();
 }
 
 void
 GraphView::centerScene()
 {
-    if (scene())
+    auto* scene = this->scene();
+    if (!scene) return;
+
+    QRectF sceneRect = scene->sceneRect();
+
+    if (sceneRect.width()  > rect().width() ||
+        sceneRect.height() > rect().height())
     {
-        QRectF sceneRect = scene()->sceneRect();
-
-        if (sceneRect.width()  > rect().width() ||
-            sceneRect.height() > rect().height())
-        {
-            fitInView(sceneRect, Qt::KeepAspectRatio);
-        }
-
-        centerOn(sceneRect.center());
+        fitInView(sceneRect, Qt::KeepAspectRatio);
     }
+
+    centerOn(sceneRect.center());
 }
 
 void
@@ -330,9 +342,12 @@ GraphView::contextMenuEvent(QContextMenuEvent* event)
         return QGraphicsView::contextMenuEvent(event);
     }
 
+    auto* scene = nodeScene();
+    if (!scene) return;
+
     auto const scenePos = mapToScene(mapFromGlobal(QCursor::pos()));
 
-    if (QMenu* menu = nodeScene()->createSceneMenu(scenePos))
+    if (QMenu* menu = scene->createSceneMenu(scenePos))
     {
         menu->exec(event->globalPos());
     }
