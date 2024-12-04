@@ -27,10 +27,6 @@ public:
 
     static void addNodeCategory(GtObject* obj);
 
-    static void addNodeGraph(GtObject* obj);
-
-    static bool isCategoryObject(GtObject* obj);
-
     static bool isPackageObject(GtObject* obj);
 };
 
