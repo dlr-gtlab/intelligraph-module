@@ -642,70 +642,75 @@ GraphScene::copySelectedObjects()
     auto selected = Impl::findSelectedItems(*this);
     if (selected.nodes.empty()) return false;
 
+    // only duplicate internal connections
     auto const containsNode = [&selected](NodeId nodeId){
         return std::find_if(selected.nodes.begin(), selected.nodes.end(), [nodeId](NodeGraphicsObject* o){
             return o->nodeId() == nodeId;
         }) != selected.nodes.end();
     };
 
-    // only duplicate internal connections
-    int iter = 0;
-    foreach (ConnectionGraphicsObject* o, selected.connections)
-    {
+    auto const isExternalConnection = [containsNode](ConnectionGraphicsObject const* o){
         auto con = o->connectionId();
-        if (!containsNode(con.inNodeId) || !containsNode(con.outNodeId))
-        {
-            selected.connections.removeAt(iter);
-            continue;
-        }
-        iter++;
-    }
+        return !containsNode(con.inNodeId) || !containsNode(con.outNodeId);
+    };
 
-    iter = 0;
-    foreach (NodeGraphicsObject const* node, selected.nodes)
-    {
-        if (node->node().nodeFlags() & NodeFlag::Unique)
-        {
-            selected.nodes.removeAt(iter);
-            continue;
-        }
-        iter++;
-    }
+    selected.connections.erase(
+        std::remove_if(selected.connections.begin(),
+                       selected.connections.end(),
+                       isExternalConnection),
+        selected.connections.end());
+
+    // remove unqiue nodes
+    auto const isUnique = [](NodeGraphicsObject const* o){
+        return o->node().nodeFlags() & NodeFlag::Unique;
+    };
+
+    selected.nodes.erase(
+        std::remove_if(selected.nodes.begin(),
+                       selected.nodes.end(),
+                       isUnique),
+        selected.nodes.end());
 
     // at least one node should be selected
     if (selected.nodes.empty()) return false;
 
     // append nodes and connections to dummy graph
     Graph dummy;
-    for (auto* o : qAsConst(selected.nodes)) dummy.appendNode(makeCopy(o->node()));
-    for (auto* o : qAsConst(selected.connections)) dummy.appendConnection(std::make_unique<Connection>(o->connectionId()));
+    for (auto* o : qAsConst(selected.nodes))
+    {
+        dummy.appendNode(makeCopy(o->node()));
+    }
+    for (auto* o : qAsConst(selected.connections))
+    {
+        dummy.appendConnection(std::make_unique<Connection>(o->connectionId()));
+    }
 
     QApplication::clipboard()->setText(dummy.toMemento().toByteArray());
-
     cleanup.clear();
     return true;
 }
+
 void
 GraphScene::pasteObjects()
 {
     auto text = QApplication::clipboard()->text();
     if (text.isEmpty()) return;
 
-    QDomDocument doc;
-    if (!doc.setContent(text)) return;
-
     // restore objects
-    GtObjectMemento mem(doc.documentElement());
+    GtObjectMemento mem(text.toUtf8());
+    if (mem.isNull()) return;
+
     auto dummy = gt::unique_qobject_cast<Graph>(mem.toObject(*gtObjectFactory));
     if (!dummy) return;
 
+    // regenerate uuids
     dummy->newUuid(true);
     dummy->resetGlobalConnectionModel();
 
     auto& conModel = dummy->connectionModel();
     if (conModel.empty()) return;
 
-    auto nodeIds = dummy->nodeIds();
+    auto nodes = dummy->nodes();
     bool hasConnections = conModel.hasConnections();
 
     // shift node positions
@@ -713,7 +718,7 @@ GraphScene::pasteObjects()
 
     for (auto& entry : conModel)
     {
-        auto node = entry.node;
+        Node* node = entry.node;
         node->setPos(node->pos() + offset);
     }
 
@@ -721,11 +726,12 @@ GraphScene::pasteObjects()
     Q_UNUSED(cmd);
 
     // append objects
-    bool success = dummy->moveNodesAndConnections(nodeIds, *m_graph);
+    bool success = dummy->moveNodesAndConnections(nodes, *m_graph);
     if (!success)
     {
         gtWarning() << tr("Pasting selection failed!");
 
+        // restore previous state
         cmd.finalize();
         gtApp->undoStack()->undo();
         return;
@@ -734,10 +740,12 @@ GraphScene::pasteObjects()
     // find affected graphics objects and set selection
     clearSelection();
 
-    auto nodes = Impl::findItems<NodeGraphicsObject*>(*this);
-    for (auto* nodeObj : qAsConst(nodes))
+    auto nodeObjects = Impl::findItems<NodeGraphicsObject*>(*this);
+    for (auto* nodeObj : qAsConst(nodeObjects))
     {
-        if (nodeIds.contains(nodeObj->nodeId()))
+        auto iter = std::find_if(nodes.begin(), nodes.end(),
+                                 [nodeObj](Node* node){ return node->id() == nodeObj->nodeId(); });
+        if (iter != nodes.end())
         {
             nodeObj->setSelected(true);
         }
@@ -745,12 +753,15 @@ GraphScene::pasteObjects()
 
     if (!hasConnections) return;
 
-    auto connections = Impl::findItems<ConnectionGraphicsObject*>(*this);
-    for (auto* conObj : qAsConst(connections))
+    auto connectionObjects = Impl::findItems<ConnectionGraphicsObject*>(*this);
+    for (auto* conObj : qAsConst(connectionObjects))
     {
         auto conId = conObj->connectionId();
-        if (nodeIds.contains(conId.inNodeId) &&
-            nodeIds.contains(conId.outNodeId))
+        auto iterIn  = std::find_if(nodes.begin(), nodes.end(),
+                                   [inId = conId.inNodeId](Node* node){ return node->id() == inId; });
+        auto iterOut = std::find_if(nodes.begin(), nodes.end(),
+                                    [outId = conId.outNodeId](Node* node){ return node->id() == outId; });
+        if (iterIn != nodes.end() && iterOut != nodes.end())
         {
             conObj->setSelected(true);
         }
