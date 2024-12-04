@@ -964,6 +964,43 @@ TEST(GraphExecutionModel, propagate_failed_evaluation)
         }));
     }
 
+    // model may still nodes marked for evaluation
+    model.resetTargetNodes();
+
+    gtDebug() << "Deleting connection...";
+
+    // delete connection with invalid node
+    ASSERT_TRUE(graph.deleteConnection(
+        graph.connectionId(B_id, PortIndex(0), C_id, PortIndex(0))));
+
+    {
+        EXPECT_FALSE(model.isGraphEvaluated());
+
+        EXPECT_TRUE(test::compareNodeEvalState(graph, model, {
+            {A_uuid, NodeEvalState::Valid},
+            {B_uuid, NodeEvalState::Invalid},
+            {C_uuid, NodeEvalState::Outdated},
+            {D_uuid, NodeEvalState::Outdated}
+        }));
+    }
+
+    gtDebug() << "Reconnecting...";
+
+    // reconnect
+    {
+        GraphBuilder builder(graph);
+        builder.connect(B_id, PortIndex(0), C_id, PortIndex(0));
+
+        EXPECT_FALSE(model.isGraphEvaluated());
+
+        EXPECT_TRUE(test::compareNodeEvalState(graph, model, {
+            {A_uuid, NodeEvalState::Valid},
+            {B_uuid, NodeEvalState::Invalid},
+            {C_uuid, NodeEvalState::Invalid},
+            {D_uuid, NodeEvalState::Invalid}
+        }));
+    }
+
     gtDebug() << "Invalidating #2...";
 
     // Invalidating a node will make all its successor nodes become outdated again

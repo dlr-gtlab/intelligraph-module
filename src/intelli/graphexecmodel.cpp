@@ -205,6 +205,13 @@ GraphExecutionModel::reset()
 }
 
 void
+GraphExecutionModel::resetTargetNodes()
+{
+    m_targetNodes.clear();
+    m_pendingNodes.clear();
+}
+
+void
 GraphExecutionModel::beginReset()
 {
     assert(m_graph);
@@ -855,6 +862,13 @@ GraphExecutionModel::onConnectionAppended(ConnectionUuid conUuid)
     INTELLI_LOG(*this)
         << tr("Connection appended: updated execution model! ('%1')")
                .arg(toString(conUuid));
+
+    // check if source node is invalid -> propagate invalidation
+    bool isInvalid = itemOut->state == NodeEvalState::Invalid;
+    if (isInvalid)
+    {
+        return Impl::propagateNodeEvaluationFailure(*this, conUuid.inNodeId, itemIn);
+    }
 
     // set node data
     auto data = nodeData(itemOut.node->uuid(), conUuid.outPort);
