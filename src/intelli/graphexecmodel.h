@@ -74,6 +74,12 @@ public:
     void reset();
 
     /**
+     * @brief Resets all nodes that were previously marked for evaluation using
+     * `evaluateGraph` or `evaluateNode`.
+     */
+    void resetTargetNodes();
+
+    /**
      * @brief Returns the node evaluation state of the given node
      * @param nodeUuid Node Uuid of the requested node.
      * @return Node eval state
