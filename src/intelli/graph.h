@@ -78,6 +78,16 @@ enum class NodeIdPolicy
 /// prints the graph as a mermaid flow chart useful for debugging
 GT_INTELLI_EXPORT void debug(Graph const& graph);
 
+template <typename NodeId_t, typename NodeList>
+static bool containsNodeId(NodeId_t const& nodeId, NodeList const& nodes)
+{
+    // check if connection is internal
+    auto iter = std::find_if(nodes.begin(), nodes.end(), [&nodeId](auto node){
+        return nodeId == get_node_id<NodeId_t>{}(node);
+    });
+    return iter != nodes.end();
+}
+
 /**
  * @brief The Graph class.
  * Represents an entire intelli graph and manages all its nodes and connections.
@@ -125,6 +135,14 @@ public:
      */
     ConnectionId connectionId(NodeId outNodeId, PortIndex outPortIdx,
                               NodeId inNodeId, PortIndex inPortIdx) const;
+
+    /**
+     * @brief Converts the connection uuid into a connection id (used for the
+     * local connection model)
+     * @param conUuid Connection uuid to convert
+     * @return Connection id
+     */
+    ConnectionId connectionId(ConnectionUuid const&  conUuid) const;
 
     /**
      * @brief Converts the connection id into a connection uuid (used for the
@@ -314,7 +332,8 @@ public:
      * @param policy Whether to generate a new id if necessary
      * @return Node ptr
      */
-    Node* appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy = NodeIdPolicy::Update);
+    Node* appendNode(std::unique_ptr<Node> node,
+                     NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
      * @brief Overload, that accepts a unique ptr of type `T` and returns a
@@ -324,7 +343,8 @@ public:
      * @return Node ptr of type `T`
      */
     template<typename T>
-    inline T* appendNode(std::unique_ptr<T> node, NodeIdPolicy policy = NodeIdPolicy::Update)
+    inline T* appendNode(std::unique_ptr<T> node,
+                         NodeIdPolicy policy = NodeIdPolicy::Update)
     {
         using Signature = Node*(Graph::*)(std::unique_ptr<Node>, NodeIdPolicy);
 
@@ -374,6 +394,106 @@ public:
      * @return True if successful else false
      */
     bool deleteConnection(ConnectionId connectionId);
+
+    /**
+     * @brief Moves the node (given by NodeId) from this graph to the target
+     * graph. Depending on the given `NodeIdPolicy` the node's id may be
+     * updated. Failing to move a node may will not restore the previous state
+     * of the graph. Use a MementoDiff for this purpose. The underlying node
+     * object is guranteed to be kept alive.
+     * @param nodeId Node to move to other graph
+     * @param policy Whether to update the node's id if necessary (if the
+     * node id should be kept, moving the node may fail)
+     * @return success
+     */
+    bool moveNode(NodeId nodeId,
+                  Graph& targetGraph,
+                  NodeIdPolicy policy = NodeIdPolicy::Update)
+    {
+        Node* node = findNode(nodeId);
+        return node && moveNode(*node, targetGraph, policy);
+    }
+
+    bool moveNode(Node& node,
+                  Graph& targetGraph,
+                  NodeIdPolicy policy = NodeIdPolicy::Update);
+
+    /**
+     * @brief Moves the nodes from this graph to the target graph. The
+     * connections inbetween these nodes are moved as well. Depending
+     * on the given `NodeIdPolicy` the node's ids may be updated. Failing to
+     * move a node may will not restore the previous state of the graph. The
+     * underlying node objects are guranteed to be kept alive whereas the
+     * connection objects are deleted. Thus, raw pointers to connection objects
+     * must be updated.
+     * @param nodes Nodes to move
+     * @param targetGraph Target graph to move nodes to
+     * @param policy Whether to generate a new id if necessary
+     * @return success
+     */
+    template <typename NodeList>
+    bool moveNodesAndConnections(NodeList const& nodes,
+                                 Graph& targetGraph,
+                                 NodeIdPolicy policy = NodeIdPolicy::Update)
+    {
+        auto change = modify();
+
+        auto const& conModel = connectionModel();
+
+        QVector<ConnectionUuid> connectionsToMove;
+        for (auto node : nodes)
+        {
+            for (ConnectionId conId : conModel.iterateConnections(get_node_id<NodeId>{}(node), PortType::Out))
+            {
+                // check if connection is internal
+                auto iter = std::find_if(nodes.begin(), nodes.end(), [conId](auto node){
+                    return get_node_id<NodeId>{}(node) == conId.inNodeId;
+                });
+                if (iter == nodes.end()) continue;
+
+                connectionsToMove.push_back(connectionUuid(conId));
+            }
+        }
+
+        if (!moveNodes(nodes, targetGraph, policy)) return false;
+
+        // reinstantiate internal connections
+        for (ConnectionUuid const& conUuid : connectionsToMove)
+        {
+            if (!targetGraph.appendConnection(
+                    std::make_unique<Connection>(
+                        targetGraph.connectionId(conUuid))))
+            {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * @brief Moves the nodes from this graph to the target graph. The
+     * connections inbetween these nodes are deleted from the model. Depending
+     * on the given `NodeIdPolicy` the node's ids may be updated. Failing to
+     * move a node may will not restore the previous state of the graph. The
+     * underlying node objects are guranteed to be kept alive whereas the
+     * connection objects are deleted. Thus, raw pointers to connection objects
+     * must be updated.
+     * @param nodes Nodes to move
+     * @param targetGraph Target graph to move nodes to
+     * @param policy Whether to generate a new id if necessary
+     * @return success
+     */
+    template <typename NodeList>
+    bool moveNodes(NodeList const& nodes,
+                   Graph& targetGraph,
+                   NodeIdPolicy policy = NodeIdPolicy::Update)
+    {
+        auto change = modify();
+
+        return std::all_of(nodes.begin(), nodes.end(),
+                           [this, &targetGraph, policy](auto node){
+            return moveNode(get_node_id<NodeId>{}(node), targetGraph, policy);
+        });
+    }
 
     /**
      * @brief Access the directed acyclic graph model used to manage the nodes
@@ -553,6 +673,10 @@ private:
      */
     ConnectionGroup& connectionGroup();
     ConnectionGroup const& connectionGroup() const;
+
+    bool appendNode(Node* node, NodeIdPolicy policy = NodeIdPolicy::Update);
+
+    bool appendConnection(Connection* connection);
 
     void restoreNode(Node* node);
     void restoreConnection(Connection* connection);
