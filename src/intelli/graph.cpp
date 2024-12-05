@@ -793,13 +793,12 @@ Graph::moveNode(Node& node, Graph& targetGraph, NodeIdPolicy policy)
         ((QObject*)&node)->setParent(this);
     });
 
+    // update connection model
+    Impl::NodeDeleted(this)(node.id());
+
     node.disconnect(this);
     node.disconnectFromParent();
     ((QObject*)&node)->setParent(nullptr);
-
-
-    // update connection model
-    Impl::NodeDeleted(this)(node.id());
 
     if (!targetGraph.appendNode(&node, policy)) return {};
 
