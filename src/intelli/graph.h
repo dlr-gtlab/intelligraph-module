@@ -187,6 +187,7 @@ public:
      * @brief Returns a list of all node ids in this graph
      * @return Node ids
      */
+    [[deprecated("Use `connectionModel().iterateNodeIds()` instead.")]]
     QVector<NodeId> nodeIds() const;
     
     /**
@@ -229,6 +230,7 @@ public:
      * @param type Connection filter (in/out going only or both)
      * @return Connections
      */
+    [[deprecated("Use `connectionModel().iterateConnections(nodeId, type)` instead.")]]
     QVector<ConnectionId> findConnections(NodeId nodeId, PortType type = PortType::NoType) const;
 
     /**
@@ -238,6 +240,7 @@ public:
      * @param portId Port id
      * @return Connections
      */
+    [[deprecated("Use `connectionModel().iterateConnections(nodeId, portId)` instead.")]]
     QVector<ConnectionId> findConnections(NodeId nodeId, PortId portId) const;
 
     /**
@@ -247,6 +250,7 @@ public:
      * @param type Connection filter (in/out going only or both)
      * @return Connections
      */
+    [[deprecated("Use `connectionModel().iterateUniqueNodes(nodeId, type)` instead.")]]
     QVector<NodeId> findConnectedNodes(NodeId nodeId, PortType type = PortType::NoType) const;
 
     /**
@@ -256,6 +260,7 @@ public:
      * @param portId Port id
      * @return Connections
      */
+    [[deprecated("Use `connectionModel().iterateUniqueNodes(nodeId, portId)` instead.")]]
     QVector<NodeId> findConnectedNodes(NodeId nodeId, PortId portId) const;
 
     /**
@@ -277,24 +282,32 @@ public:
     QList<Graph const*> graphNodes() const;
     
     /**
-     * @brief Returns the input provider of this graph. May be null if sub graph
-     * was not yet initialized or it is the root graph.
+     * @brief Returns the input provider of this graph. May be null if the sub
+     * graph was not yet initialized or it is the root graph.
      * @return Input provider
      */
     GroupInputProvider* inputProvider();
     GroupInputProvider const* inputProvider() const;
 
+    /**
+     * @brief Returns the input provider of this graph as a plain Node object.
+     * @return Input provider
+     */
     DynamicNode* inputNode();
     DynamicNode const* inputNode() const;
 
     /**
-     * @brief Returns the output provider of this graph. May be null if sub graph
-     * was not yet initialized or it is the root graph.
+     * @brief Returns the output provider of this graph. May be null if the sub
+     * graph was not yet initialized or it is the root graph.
      * @return Output provider
      */
     GroupOutputProvider* outputProvider();
     GroupOutputProvider const* outputProvider() const;
 
+    /**
+     * @brief Returns the output provider of this graph as a plain Node object.
+     * @return Input provider
+     */
     DynamicNode* outputNode();
     DynamicNode const* outputNode() const;
 
@@ -303,6 +316,7 @@ public:
      * @param nodeId Node to find dependencies of
      * @return Dependencies
      */
+    [[deprecated]]
     QVector<NodeId> findDependencies(NodeId nodeId) const;
 
     /**
@@ -310,6 +324,7 @@ public:
      * @param nodeId Node to find depent nodes of
      * @return Dependent nodes
      */
+    [[deprecated]]
     QVector<NodeId> findDependentNodes(NodeId nodeId) const;
 
     /**
@@ -336,7 +351,7 @@ public:
                      NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
-     * @brief Overload, that accepts a unique ptr of type `T` and returns a
+     * @brief Overload that accepts a unique ptr of type `T` and returns a
      * pointer of type `T`.
      * @param node Node to append
      * @param policy Whether to generate a new id if necessary
@@ -355,8 +370,17 @@ public:
     }
 
     /**
+     * @brief Appends a connection given by `conId`. Fails if the connection
+     * already exists or the input and output ports were not found.
+     * @param connection Connection to append
+     * @return success
+     */
+    bool appendConnection(ConnectionId conId);
+
+    /**
      * @brief Appends the connection to intelli graph. Use this function instead
-     * of appending the child directly. Aborts if the connection already exists
+     * of appending a connection object as a child directly. Aborts if the
+     * connection already exists.
      * @param connection Connection to append
      * @return success
      */
@@ -377,6 +401,7 @@ public:
      * @return List of new node ids. The order is kept. The operation failed,
      * if the size does not match the input size
      */
+    [[deprecated("Use `moveNodes` instead.")]]
     QVector<NodeId> appendObjects(std::vector<std::unique_ptr<Node>>& nodes,
                                   std::vector<std::unique_ptr<Connection>>& connections);
 
@@ -398,9 +423,10 @@ public:
     /**
      * @brief Moves the node (given by NodeId) from this graph to the target
      * graph. Depending on the given `NodeIdPolicy` the node's id may be
-     * updated. Failing to move a node may will not restore the previous state
+     * updated. Failing to move a node will not restore the previous state
      * of the graph. Use a MementoDiff for this purpose. The underlying node
      * object is guranteed to be kept alive.
+     * Note: All connections to this node are destroyed.
      * @param nodeId Node to move to other graph
      * @param policy Whether to update the node's id if necessary (if the
      * node id should be kept, moving the node may fail)
@@ -414,6 +440,13 @@ public:
         return node && moveNode(*node, targetGraph, policy);
     }
 
+    /**
+     * @brief Overload that the node given by reference.
+     * @param nodeId Node to move to other graph
+     * @param policy Whether to update the node's id if necessary (if the
+     * node id should be kept, moving the node may fail)
+     * @return success
+     */
     bool moveNode(Node& node,
                   Graph& targetGraph,
                   NodeIdPolicy policy = NodeIdPolicy::Update);
@@ -436,47 +469,40 @@ public:
                                  Graph& targetGraph,
                                  NodeIdPolicy policy = NodeIdPolicy::Update)
     {
-        auto change = modify();
+        auto changeThis   = modify();
+        auto changeTarget = targetGraph.modify();
+        Q_UNUSED(changeThis);
+        Q_UNUSED(changeTarget);
 
         auto const& conModel = connectionModel();
 
         QVector<ConnectionUuid> connectionsToMove;
+        // find internal connections
         for (auto node : nodes)
         {
-            for (ConnectionId conId : conModel.iterateConnections(get_node_id<NodeId>{}(node), PortType::Out))
+            auto iter = conModel.iterateConnections(get_node_id<NodeId>{}(node), PortType::Out);
+            for (ConnectionId conId : iter)
             {
-                // check if connection is internal
-                auto iter = std::find_if(nodes.begin(), nodes.end(), [conId](auto node){
-                    return get_node_id<NodeId>{}(node) == conId.inNodeId;
-                });
-                if (iter == nodes.end()) continue;
-
-                connectionsToMove.push_back(connectionUuid(conId));
+                if (containsNodeId(conId.inNodeId, nodes))
+                {
+                    connectionsToMove.push_back(connectionUuid(conId));
+                }
             }
         }
 
         if (!moveNodes(nodes, targetGraph, policy)) return false;
 
         // reinstantiate internal connections
-        for (ConnectionUuid const& conUuid : connectionsToMove)
-        {
-            if (!targetGraph.appendConnection(
-                    std::make_unique<Connection>(
-                        targetGraph.connectionId(conUuid))))
-            {
-                return false;
-            }
-        }
+        return std::all_of(connectionsToMove.begin(),
+                           connectionsToMove.end(),
+                           [&targetGraph](auto const& conUuid){
+            return targetGraph.appendConnection(targetGraph.connectionId(conUuid));
+        });
     }
 
     /**
-     * @brief Moves the nodes from this graph to the target graph. The
-     * connections inbetween these nodes are deleted from the model. Depending
-     * on the given `NodeIdPolicy` the node's ids may be updated. Failing to
-     * move a node may will not restore the previous state of the graph. The
-     * underlying node objects are guranteed to be kept alive whereas the
-     * connection objects are deleted. Thus, raw pointers to connection objects
-     * must be updated.
+     * @brief Same as `moveNodesAndConnections' except that no connection is
+     * moved. These must be restored manually.
      * @param nodes Nodes to move
      * @param targetGraph Target graph to move nodes to
      * @param policy Whether to generate a new id if necessary
@@ -487,7 +513,10 @@ public:
                    Graph& targetGraph,
                    NodeIdPolicy policy = NodeIdPolicy::Update)
     {
-        auto change = modify();
+        auto changeThis   = modify();
+        auto changeTarget = targetGraph.modify();
+        Q_UNUSED(changeThis);
+        Q_UNUSED(changeTarget);
 
         return std::all_of(nodes.begin(), nodes.end(),
                            [this, &targetGraph, policy](auto node){

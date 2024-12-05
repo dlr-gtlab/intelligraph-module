@@ -251,7 +251,7 @@ instantiateDraftConnection(GraphScene& scene,
 
     assert(draftConId.draftType() == sourceType);
 
-    auto entity = make_volatile<ConnectionGraphicsObject>(draftConId, *outType, *inType);
+    auto entity = make_unique_qptr<ConnectionGraphicsObject>(draftConId, *outType, *inType);
     entity->setConnectionShape(scene.m_connectionShape);
     scene.addItem(entity);
 
@@ -351,6 +351,139 @@ moveConnectionPoint(ConnectionGraphicsObject& object,
     PortIndex portIdx = node.node().portIndex(type, port);
 
     moveConnectionPoint(object, node, type, portIdx);
+}
+
+/**
+ * @brief Copies the current selection (only eligible nodes and connections)
+ * to the `dummy` graph
+ * @param scene Scene
+ * @param dummy Dummy graph to copy selection to
+ * @return success
+ */
+static bool
+copySelectionTo(GraphScene& scene, Graph& dummy)
+{
+    auto selected = Impl::findSelectedItems(scene);
+    if (selected.nodes.empty()) return false;
+
+    // only duplicate internal connections
+    auto const containsNode = [&selected](NodeId nodeId){
+        return std::find_if(selected.nodes.begin(), selected.nodes.end(), [nodeId](NodeGraphicsObject* o){
+                   return o->nodeId() == nodeId;
+               }) != selected.nodes.end();
+    };
+
+    auto const isExternalConnection = [containsNode](ConnectionGraphicsObject const* o){
+        auto con = o->connectionId();
+        return !containsNode(con.inNodeId) || !containsNode(con.outNodeId);
+    };
+
+    selected.connections.erase(
+        std::remove_if(selected.connections.begin(),
+                       selected.connections.end(),
+                       isExternalConnection),
+        selected.connections.end());
+
+    // remove unqiue nodes
+    auto const isUnique = [](NodeGraphicsObject const* o){
+        return o->node().nodeFlags() & NodeFlag::Unique;
+    };
+
+    selected.nodes.erase(
+        std::remove_if(selected.nodes.begin(),
+                       selected.nodes.end(),
+                       isUnique),
+        selected.nodes.end());
+
+    // at least one node should be selected
+    if (selected.nodes.empty()) return false;
+
+    // append nodes and connections to dummy graph
+    bool success = true;
+    for (auto* o : qAsConst(selected.nodes))
+    {
+        success &= !!dummy.appendNode(makeCopy(o->node()));
+    }
+    for (auto* o : qAsConst(selected.connections))
+    {
+        success &= !!dummy.appendConnection(std::make_unique<Connection>(o->connectionId()));
+    }
+    return true;
+}
+
+/**
+ * @brief Pastes the objects in the `dummy` graph to the current graph
+ * and updates the selection
+ * @param scene Scene
+ * @param dummy Dummy graph to paste from
+ * @return success
+ */
+static bool
+pasteFrom(GraphScene& scene, Graph& dummy)
+{
+    // regenerate uuids
+    dummy.newUuid(true);
+    dummy.resetGlobalConnectionModel();
+
+    auto& conModel = dummy.connectionModel();
+    if (conModel.empty()) return false;
+
+    auto nodes = dummy.nodes();
+    bool hasConnections = conModel.hasConnections();
+
+    // shift node positions
+    constexpr QPointF offset{50, 50};
+    for (auto& entry : conModel)
+    {
+        Node* node = entry.node;
+        node->setPos(node->pos() + offset);
+    }
+
+    auto cmd = gtApp->makeCommand(&scene.graph(), tr("Paste objects"));
+    Q_UNUSED(cmd);
+
+    // append objects
+    bool success = dummy.moveNodesAndConnections(nodes, scene.graph());
+    if (!success)
+    {
+        gtWarning() << tr("Pasting selection failed!");
+
+        // restore previous state
+        cmd.finalize();
+        gtApp->undoStack()->undo();
+        return false;
+    }
+
+    // find affected graphics objects and set selection
+    scene.clearSelection();
+
+    auto nodeObjects = Impl::findItems<NodeGraphicsObject*>(scene);
+    for (auto* nodeObj : qAsConst(nodeObjects))
+    {
+        auto iter = std::find_if(nodes.begin(), nodes.end(),
+                                 [nodeObj](Node* node){ return node->id() == nodeObj->nodeId(); });
+        if (iter != nodes.end())
+        {
+            nodeObj->setSelected(true);
+        }
+    }
+
+    if (!hasConnections) return true;
+
+    auto connectionObjects = Impl::findItems<ConnectionGraphicsObject*>(scene);
+    for (auto* conObj : qAsConst(connectionObjects))
+    {
+        auto conId = conObj->connectionId();
+        auto iterIn  = std::find_if(nodes.begin(), nodes.end(),
+                                   [inId = conId.inNodeId](Node* node){ return node->id() == inId; });
+        auto iterOut = std::find_if(nodes.begin(), nodes.end(),
+                                    [outId = conId.outNodeId](Node* node){ return node->id() == outId; });
+        if (iterIn != nodes.end() && iterOut != nodes.end())
+        {
+            conObj->setSelected(true);
+        }
+    }
+    return true;
 }
 
 }; // struct Impl
@@ -627,72 +760,29 @@ GraphScene::deleteSelectedObjects()
 void
 GraphScene::duplicateSelectedObjects()
 {
-    if (!copySelectedObjects()) return;
-
-    pasteObjects();
+    // bypass clipboard
+    Graph dummy;
+    if (Impl::copySelectionTo(*this, dummy))
+    {
+        Impl::pasteFrom(*this, dummy);
+    }
 }
 
 bool
 GraphScene::copySelectedObjects()
 {
-    auto cleanup = gt::finally([](){
-        QApplication::clipboard()->setText(QString{});
-    });
-
-    auto selected = Impl::findSelectedItems(*this);
-    if (selected.nodes.empty()) return false;
-
-    // only duplicate internal connections
-    auto const containsNode = [&selected](NodeId nodeId){
-        return std::find_if(selected.nodes.begin(), selected.nodes.end(), [nodeId](NodeGraphicsObject* o){
-            return o->nodeId() == nodeId;
-        }) != selected.nodes.end();
-    };
-
-    auto const isExternalConnection = [containsNode](ConnectionGraphicsObject const* o){
-        auto con = o->connectionId();
-        return !containsNode(con.inNodeId) || !containsNode(con.outNodeId);
-    };
-
-    selected.connections.erase(
-        std::remove_if(selected.connections.begin(),
-                       selected.connections.end(),
-                       isExternalConnection),
-        selected.connections.end());
-
-    // remove unqiue nodes
-    auto const isUnique = [](NodeGraphicsObject const* o){
-        return o->node().nodeFlags() & NodeFlag::Unique;
-    };
-
-    selected.nodes.erase(
-        std::remove_if(selected.nodes.begin(),
-                       selected.nodes.end(),
-                       isUnique),
-        selected.nodes.end());
-
-    // at least one node should be selected
-    if (selected.nodes.empty()) return false;
-
-    // append nodes and connections to dummy graph
     Graph dummy;
-    for (auto* o : qAsConst(selected.nodes))
-    {
-        dummy.appendNode(makeCopy(o->node()));
-    }
-    for (auto* o : qAsConst(selected.connections))
-    {
-        dummy.appendConnection(std::make_unique<Connection>(o->connectionId()));
-    }
+    if (!Impl::copySelectionTo(*this, dummy)) return false;
 
-    QApplication::clipboard()->setText(dummy.toMemento().toByteArray());
-    cleanup.clear();
+    QByteArray mementoData = dummy.toMemento().toByteArray();
+    QApplication::clipboard()->setText(std::move(mementoData));
     return true;
 }
 
 void
 GraphScene::pasteObjects()
 {
+    // read from clipboard
     auto text = QApplication::clipboard()->text();
     if (text.isEmpty()) return;
 
@@ -703,69 +793,7 @@ GraphScene::pasteObjects()
     auto dummy = gt::unique_qobject_cast<Graph>(mem.toObject(*gtObjectFactory));
     if (!dummy) return;
 
-    // regenerate uuids
-    dummy->newUuid(true);
-    dummy->resetGlobalConnectionModel();
-
-    auto& conModel = dummy->connectionModel();
-    if (conModel.empty()) return;
-
-    auto nodes = dummy->nodes();
-    bool hasConnections = conModel.hasConnections();
-
-    // shift node positions
-    constexpr QPointF offset{50, 50};
-
-    for (auto& entry : conModel)
-    {
-        Node* node = entry.node;
-        node->setPos(node->pos() + offset);
-    }
-
-    auto cmd = gtApp->makeCommand(m_graph, tr("Paste objects"));
-    Q_UNUSED(cmd);
-
-    // append objects
-    bool success = dummy->moveNodesAndConnections(nodes, *m_graph);
-    if (!success)
-    {
-        gtWarning() << tr("Pasting selection failed!");
-
-        // restore previous state
-        cmd.finalize();
-        gtApp->undoStack()->undo();
-        return;
-    }
-
-    // find affected graphics objects and set selection
-    clearSelection();
-
-    auto nodeObjects = Impl::findItems<NodeGraphicsObject*>(*this);
-    for (auto* nodeObj : qAsConst(nodeObjects))
-    {
-        auto iter = std::find_if(nodes.begin(), nodes.end(),
-                                 [nodeObj](Node* node){ return node->id() == nodeObj->nodeId(); });
-        if (iter != nodes.end())
-        {
-            nodeObj->setSelected(true);
-        }
-    }
-
-    if (!hasConnections) return;
-
-    auto connectionObjects = Impl::findItems<ConnectionGraphicsObject*>(*this);
-    for (auto* conObj : qAsConst(connectionObjects))
-    {
-        auto conId = conObj->connectionId();
-        auto iterIn  = std::find_if(nodes.begin(), nodes.end(),
-                                   [inId = conId.inNodeId](Node* node){ return node->id() == inId; });
-        auto iterOut = std::find_if(nodes.begin(), nodes.end(),
-                                    [outId = conId.outNodeId](Node* node){ return node->id() == outId; });
-        if (iterIn != nodes.end() && iterOut != nodes.end())
-        {
-            conObj->setSelected(true);
-        }
-    }
+    Impl::pasteFrom(*this, *dummy);
 }
 
 void
@@ -915,7 +943,7 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
         }
     }
 
-    // add custom action
+    // add custom actions
     QHash<QAction*, typename PortUIAction::ActionMethod> actions;
 
     for (auto* nodeUi : nodeUis)
@@ -1437,7 +1465,7 @@ GraphScene::onNodeAppended(Node* node)
     NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
     if (!ui) ui = &defaultUI;
 
-    auto entity = make_volatile<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *node, *ui);
+    auto entity = make_unique_qptr<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *node, *ui);
     // add to scene
     addItem(entity);
 
@@ -1530,7 +1558,7 @@ GraphScene::onConnectionAppended(Connection* con)
     auto* outPort = outNode->port(conId.outPort);
     assert(outPort);
 
-    auto entity = make_volatile<ConnectionGraphicsObject, DirectDeleter>(conId, outPort->typeId, inPort->typeId);
+    auto entity = make_unique_qptr<ConnectionGraphicsObject, DirectDeleter>(conId, outPort->typeId, inPort->typeId);
     entity->setConnectionShape(m_connectionShape);
 
     // add to scene

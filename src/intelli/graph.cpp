@@ -496,6 +496,12 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 }
 
 bool
+Graph::appendConnection(ConnectionId conId)
+{
+    return appendConnection(std::make_unique<Connection>(conId));
+}
+
+bool
 Graph::appendNode(Node* node, NodeIdPolicy policy)
 {
     if (!node) return false;
