@@ -34,6 +34,8 @@ GraphSceneManager::GraphSceneManager(GraphView& view) :
 
 }
 
+GraphSceneManager::~GraphSceneManager() = default;
+
 GraphSceneManager*
 GraphSceneManager::make(GraphView& view)
 {
@@ -69,7 +71,7 @@ GraphSceneManager::createScene(Graph& graph)
     }
 
     // create scene
-    auto scenePtr = make_unique_qptr<GraphScene, DirectDeleter>(graph);
+    auto scenePtr = make_unique_qptr<GraphScene, DeferredDeleter>(graph);
     GraphScene* scene = scenePtr.get();
 
     m_scenes.push_back(std::move(scenePtr));
@@ -154,11 +156,7 @@ GraphSceneManager::onSceneRemoved(QObject* scene)
     if (currentScene()) return;
 
     // switch scene
-    for (GraphScene* s : m_scenes)
-    {
-        assert(s);
-        m_view->setScene(*s);
-    }
-    // no scene
-    if (!currentScene()) m_view->clearScene();
+    m_scenes.empty() ?
+        m_view->clearScene() :
+        m_view->setScene(*m_scenes.back());
 }

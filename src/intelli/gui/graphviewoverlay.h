@@ -37,6 +37,7 @@ class GraphViewOverlay : public QHBoxLayout
 public:
 
     GraphViewOverlay(GraphView& view);
+    ~GraphViewOverlay();
 
     /**
      * @brief Creates an overlay widget ontop the view object. Ownership is

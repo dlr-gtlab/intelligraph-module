@@ -36,6 +36,7 @@ public:
     };
     
     GraphView(QWidget* parent = nullptr);
+    ~GraphView();
 
     /**
      * @brief Sets the current scene
