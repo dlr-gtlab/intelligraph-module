@@ -148,6 +148,8 @@ GraphView::GraphView(QWidget* parent) :
     clearSelectionAction->setShortcut(Qt::Key_Escape);
 }
 
+GraphView::~GraphView() = default;
+
 void
 GraphView::setScene(GraphScene& scene)
 {

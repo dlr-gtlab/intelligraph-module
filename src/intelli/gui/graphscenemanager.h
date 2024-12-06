@@ -33,6 +33,7 @@ class GraphSceneManager : public QObject
 public:
 
     GraphSceneManager(GraphView& view);
+    ~GraphSceneManager();
 
     /**
      * @brief Creates a scene manager object for the view. Ownership is
@@ -87,7 +88,7 @@ private:
 
     QPointer<GraphView> m_view;
 
-    std::vector<unique_qptr<GraphScene, DirectDeleter>> m_scenes;
+    std::vector<unique_qptr<GraphScene, DeferredDeleter>> m_scenes;
 };
 
 } // namespace intelli

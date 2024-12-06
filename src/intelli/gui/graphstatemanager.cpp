@@ -43,6 +43,8 @@ GraphStateManager::GraphStateManager(Graph& graph, GraphView& view) :
     }
 }
 
+GraphStateManager::~GraphStateManager() = default;
+
 GraphStateManager*
 GraphStateManager::make(Graph& graph, GraphView &view)
 {

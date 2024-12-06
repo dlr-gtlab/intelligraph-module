@@ -36,6 +36,7 @@ class GraphStateManager : public QObject
 public:
 
     GraphStateManager(Graph& graph, GraphView& view);
+    ~GraphStateManager();
 
     /**
      * @brief Creates a state manager instance for view object. Ownership is
