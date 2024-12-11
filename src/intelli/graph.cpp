@@ -43,8 +43,8 @@ Graph::~Graph()
 {
     emit graphAboutToBeDeleted(QPrivateSignal());
 
-    auto change = modify();
-    Q_UNUSED(change);
+    Modification cmd = modify();
+    Q_UNUSED(cmd);
 
     auto const& nodes = this->nodes();
     qDeleteAll(nodes);
@@ -782,9 +782,17 @@ Graph::deleteConnection(ConnectionId connectionId)
 }
 
 bool
+Graph::moveNode(NodeId nodeId, Graph& targetGraph, NodeIdPolicy policy)
+{
+    Node* node = findNode(nodeId);
+    return node && moveNode(*node, targetGraph, policy);
+}
+
+bool
 Graph::moveNode(Node& node, Graph& targetGraph, NodeIdPolicy policy)
 {
-    auto change = modify();
+    Modification cmd = modify();
+    Q_UNUSED(cmd);
 
     assert(node.parent() == this);
 

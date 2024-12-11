@@ -1359,49 +1359,46 @@ GraphScene::expandGroupNode(Graph* groupNode)
     // gather input and output connections
     QVector<ConnectionUuid> expandedInputConnections, expandedOutputConnections;
 
+    // extra scope since group node will be deleted eventually -> avoid dangling
+    // references
     {
-        auto const& groupConModel = groupNode->connectionModel();
-
-        auto inputCons  = groupConModel.iterateConnections(inputProvider->id(), PortType::Out);
-        for (ConnectionId conId : inputCons)
-        {
+        // "flatten" connections between parent graph and subgraph
+        auto convertConnection =
+            [this, &conModel, groupNode](ConnectionId conId,
+                                         auto& convertedConnections,
+                                         PortType type){
             ConnectionUuid conUuid = groupNode->connectionUuid(conId);
+
+            bool const isInput = type == PortType::In;
+            if (isInput) conUuid.reverse();
+
             auto connections = conModel.iterate(groupNode->id(), conUuid.outPort);
-            if (connections.empty()) continue;
-
-            for (auto const& connection : connections)
-            {
-                NodeId sourceNodeId = connection.node;
-                Node* sourceNode = m_graph->findNode(sourceNodeId);
-                assert(sourceNode);
-                gtDebug() << sourceNode->caption() << "TO" << groupNode->findNode(conId.inNodeId)->caption();
-                conUuid.outNodeId = sourceNode->uuid();
-                conUuid.outPort   = connection.port;
-
-                expandedInputConnections.push_back(conUuid);
-            }
-        }
-
-        gtDebug() << "SWITCH";
-
-        auto outputCons = groupConModel.iterateConnections(outputProvider->id(), PortType::In);
-        for (ConnectionId conId : outputCons)
-        {
-            ConnectionUuid conUuid = groupNode->connectionUuid(conId);
-            auto connections = conModel.iterate(groupNode->id(), conUuid.inPort);
-
-            assert(connections.size() <= 1);
             for (auto const& connection : connections)
             {
                 NodeId targetNodeId = connection.node;
                 Node* targetNode = m_graph->findNode(targetNodeId);
                 assert(targetNode);
-                gtDebug() << groupNode->findNode(conId.outNodeId)->caption() << "TO" << targetNode->caption();
-                conUuid.inNodeId = targetNode->uuid();
-                conUuid.inPort   = connection.port;
+                conUuid.outNodeId = targetNode->uuid();
+                conUuid.outPort   = connection.port;
 
-                expandedOutputConnections.push_back(conUuid);
+                convertedConnections.push_back(isInput ? conUuid.reversed() : conUuid);
             }
+        };
+
+        auto const& groupConModel = groupNode->connectionModel();
+
+        PortType type = PortType::Out;
+        auto inputCons  = groupConModel.iterateConnections(inputProvider->id(), type);
+        for (ConnectionId conId : inputCons)
+        {
+            convertConnection(conId, expandedInputConnections, type);
+        }
+
+        type = PortType::In;
+        auto outputCons = groupConModel.iterateConnections(outputProvider->id(), type);
+        for (ConnectionId conId : outputCons)
+        {
+            convertConnection(conId, expandedInputConnections, type);
         }
     }
 

@@ -765,7 +765,6 @@ TEST(Graph, move_node_to_other_graph)
     Graph graph2;
 
     ASSERT_TRUE(test::buildLinearGraph(graph1));
-//    ASSERT_TRUE(test::buildLinearGraph(graph2));
 
     Node* nodeA = graph1.findNode(A_id);
     ASSERT_TRUE(nodeA);
@@ -802,8 +801,8 @@ TEST(Graph, move_nodes_to_other_graph)
     // before move
     EXPECT_FALSE(graph1.connectionModel().empty());
     EXPECT_TRUE(graph2.connectionModel().empty());
-//    EXPECT_TRUE(graph1.connectionModel() == model);
-//    EXPECT_FALSE(graph2.connectionModel() == model);
+    EXPECT_TRUE(graph1.connectionModel() == model);
+    EXPECT_FALSE(graph2.connectionModel() == model);
     EXPECT_EQ(graph1.connectionModel().size(), connections);
     EXPECT_NE(graph2.connectionModel().size(), connections);
 
@@ -814,8 +813,8 @@ TEST(Graph, move_nodes_to_other_graph)
     // after move
     EXPECT_TRUE(graph1.connectionModel().empty());
     EXPECT_FALSE(graph2.connectionModel().empty());
-//    EXPECT_FALSE(graph1.connectionModel() == model);
-//    EXPECT_TRUE(graph2.connectionModel() == model);
+    EXPECT_FALSE(graph1.connectionModel() == model);
+    EXPECT_TRUE(graph2.connectionModel() == model);
     EXPECT_NE(graph1.connectionModel().size(), connections);
     EXPECT_EQ(graph2.connectionModel().size(), connections);
 }

@@ -823,8 +823,8 @@ public:
 
     using key_type = NodeId_t;
     using value_type = ConnectionData<NodeId_t>;
-    using size_type = int;
     using data_type = QHash<key_type, value_type>;
+    using size_type = typename data_type::size_type;
 
     using iterator = typename data_type::iterator;
     using const_iterator = typename data_type::const_iterator;

@@ -434,11 +434,7 @@ public:
      */
     bool moveNode(NodeId nodeId,
                   Graph& targetGraph,
-                  NodeIdPolicy policy = NodeIdPolicy::Update)
-    {
-        Node* node = findNode(nodeId);
-        return node && moveNode(*node, targetGraph, policy);
-    }
+                  NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
      * @brief Overload that the node given by reference.
@@ -469,10 +465,10 @@ public:
                                  Graph& targetGraph,
                                  NodeIdPolicy policy = NodeIdPolicy::Update)
     {
-        auto changeThis   = modify();
-        auto changeTarget = targetGraph.modify();
-        Q_UNUSED(changeThis);
-        Q_UNUSED(changeTarget);
+        Modification changeCmd = modify();
+        Modification changeTargetCmd = targetGraph.modify();
+        Q_UNUSED(changeCmd);
+        Q_UNUSED(changeTargetCmd);
 
         auto const& conModel = connectionModel();
 
@@ -513,10 +509,10 @@ public:
                    Graph& targetGraph,
                    NodeIdPolicy policy = NodeIdPolicy::Update)
     {
-        auto changeThis   = modify();
-        auto changeTarget = targetGraph.modify();
-        Q_UNUSED(changeThis);
-        Q_UNUSED(changeTarget);
+        Modification changeCmd = modify();
+        Modification changeTargetCmd = targetGraph.modify();
+        Q_UNUSED(changeCmd);
+        Q_UNUSED(changeTargetCmd);
 
         return std::all_of(nodes.begin(), nodes.end(),
                            [this, &targetGraph, policy](auto node){
@@ -704,7 +700,6 @@ private:
     ConnectionGroup const& connectionGroup() const;
 
     bool appendNode(Node* node, NodeIdPolicy policy = NodeIdPolicy::Update);
-
     bool appendConnection(Connection* connection);
 
     void restoreNode(Node* node);
