@@ -742,12 +742,14 @@ template <>
 struct get_node_id<NodeId>
 {
     NodeId operator()(Node const* node) { assert(node); return node->id(); }
+    NodeId operator()(NodeId nodeId) { return nodeId; }
 };
 
 template <>
 struct get_node_id<NodeUuid>
 {
     NodeUuid operator()(Node const* node) { assert(node); return node->uuid(); }
+    NodeUuid operator()(NodeUuid nodeUuid) { return nodeUuid; }
 };
 
 /**
