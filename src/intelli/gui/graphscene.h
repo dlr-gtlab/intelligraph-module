@@ -139,8 +139,10 @@ private:
     std::unique_ptr<GraphSceneData> m_sceneData;
     /// Shape style of the connections in this scene
     ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
-    
+
     void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
+
+    void expandGroupNode(Graph* groupNode);
 
     /**
      * @brief Updates the connection's end points. If a node graphics object

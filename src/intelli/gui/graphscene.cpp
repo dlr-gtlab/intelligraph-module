@@ -408,7 +408,7 @@ copySelectionTo(GraphScene& scene, Graph& dummy)
     {
         success &= !!dummy.appendConnection(std::make_unique<Connection>(o->connectionId()));
     }
-    return true;
+    return success;
 }
 
 /**
@@ -1020,13 +1020,21 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
         return o->node().objectFlags() & GtObject::ObjectFlag::UserDeletable;
     });
 
+    Node* selectedNode = &selected.nodes.at(0)->node();
+    assert(selectedNode);
+    Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
+
     // create menu
     QMenu menu;
+
+    QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
+    ungroupAction->setIcon(gt::gui::icon::stretch());
+    ungroupAction->setEnabled(allDeletable);
+    ungroupAction->setVisible(selectedGraphNode);
 
     QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
     groupAction->setEnabled(allDeletable);
-    groupAction->setVisible(!selected.nodes.empty());
 
     menu.addSeparator();
 
@@ -1047,6 +1055,10 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     if (triggered == groupAction)
     {
         return groupNodes(selected.nodes);
+    }
+    if (triggered == ungroupAction)
+    {
+        return expandGroupNode(selectedGraphNode);
     }
     if (triggered == deleteAction)
     {
@@ -1154,16 +1166,14 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
 
     auto boundingRect = selectionPoly.boundingRect();
     auto center = boundingRect.center();
-    auto offset = QPointF{boundingRect.width() * 0.5, boundingRect.height() * 0.5};
+    auto offset = QPointF{boundingRect.width() * 0.5,
+                          boundingRect.height() * 0.5};
 
     targetGraph->setPos(center);
     inputProvider->setPos(inputProvider->pos() + center - 2 * offset);
     outputProvider->setPos(outputProvider->pos() + center);
 
-    for (Node* node : selectedNodes)
-    {
-        node->setPos(node->pos() - offset);
-    }
+    for (Node* node : selectedNodes) node->setPos(node->pos() - offset);
 
     // find connections that share the same outgoing node and port
     auto const extractSharedConnections = [](auto& connections){
@@ -1318,6 +1328,133 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         makeSharedConnetions(connectionsOutShared, conId, outputProvider, index, type);
 
         index++;
+    }
+
+    restoreCmd.clear();
+}
+
+void
+GraphScene::expandGroupNode(Graph* groupNode)
+{
+    assert(groupNode);
+
+    // create undo command
+    auto appCmd = gtApp->makeCommand(m_graph, tr("Expand group node '%1'").arg(groupNode->caption()));
+    auto modifyGroupCmd = groupNode->modify();
+    auto modifyCmd = m_graph->modify();
+    Q_UNUSED(modifyCmd);
+
+    auto restoreCmd = gt::finally([&appCmd](){
+        appCmd.finalize();
+        gtApp->undoStack()->undo();
+    });
+
+    auto const& conModel = m_graph->connectionModel();
+
+    auto* inputProvider  = groupNode->inputProvider();
+    auto* outputProvider = groupNode->outputProvider();
+    assert(inputProvider);
+    assert(outputProvider);
+
+    // gather input and output connections
+    QVector<ConnectionUuid> expandedInputConnections, expandedOutputConnections;
+
+    {
+        auto const& groupConModel = groupNode->connectionModel();
+
+        auto inputCons  = groupConModel.iterateConnections(inputProvider->id(), PortType::Out);
+        for (ConnectionId conId : inputCons)
+        {
+            ConnectionUuid conUuid = groupNode->connectionUuid(conId);
+            auto connections = conModel.iterate(groupNode->id(), conUuid.outPort);
+            if (connections.empty()) continue;
+
+            for (auto const& connection : connections)
+            {
+                NodeId sourceNodeId = connection.node;
+                Node* sourceNode = m_graph->findNode(sourceNodeId);
+                assert(sourceNode);
+                gtDebug() << sourceNode->caption() << "TO" << groupNode->findNode(conId.inNodeId)->caption();
+                conUuid.outNodeId = sourceNode->uuid();
+                conUuid.outPort   = connection.port;
+
+                expandedInputConnections.push_back(conUuid);
+            }
+        }
+
+        gtDebug() << "SWITCH";
+
+        auto outputCons = groupConModel.iterateConnections(outputProvider->id(), PortType::In);
+        for (ConnectionId conId : outputCons)
+        {
+            ConnectionUuid conUuid = groupNode->connectionUuid(conId);
+            auto connections = conModel.iterate(groupNode->id(), conUuid.inPort);
+
+            assert(connections.size() <= 1);
+            for (auto const& connection : connections)
+            {
+                NodeId targetNodeId = connection.node;
+                Node* targetNode = m_graph->findNode(targetNodeId);
+                assert(targetNode);
+                gtDebug() << groupNode->findNode(conId.outNodeId)->caption() << "TO" << targetNode->caption();
+                conUuid.inNodeId = targetNode->uuid();
+                conUuid.inPort   = connection.port;
+
+                expandedOutputConnections.push_back(conUuid);
+            }
+        }
+    }
+
+    // delete provider nodes
+    if (!groupNode->deleteNode(groupNode->inputNode()->id()) ||
+        !groupNode->deleteNode(groupNode->outputNode()->id()))
+    {
+        gtError() << tr("Expanding group node '%1' failed! "
+                        "(Failed to remove provider nodes)")
+                         .arg(relativeNodePath(*groupNode));
+        return;
+    }
+
+    inputProvider = nullptr;
+    outputProvider = nullptr;
+    auto nodes = groupNode->nodes();
+
+    // update node positions
+    QPolygonF selectionPoly;
+    std::transform(nodes.begin(), nodes.end(),
+                   std::back_inserter(selectionPoly), [](auto const* node){
+        return node->pos();
+    });
+
+    auto boundingRect = selectionPoly.boundingRect();
+    auto center = boundingRect.center();
+    for (Node* node : nodes)
+    {
+        auto offset = (node->pos() - center);
+        node->setPos(groupNode->pos() + offset);
+    }
+
+    // move internal connections
+    if (!groupNode->moveNodesAndConnections(nodes, *m_graph))
+    {
+        gtError() << tr("Expanding group node '%1' failed! "
+                        "(Failed to move internal nodes)")
+                         .arg(relativeNodePath(*groupNode));
+        return;
+    }
+
+    // delete group node
+    modifyGroupCmd.finalize();
+    delete groupNode;
+    groupNode = nullptr;
+
+    // install connections to moved nodes
+    for (auto* connections : {&expandedInputConnections, &expandedOutputConnections})
+    {
+        for (ConnectionUuid const& conUuid : *connections)
+        {
+            m_graph->appendConnection(m_graph->connectionId(conUuid));
+        }
     }
 
     restoreCmd.clear();
