@@ -251,7 +251,7 @@ instantiateDraftConnection(GraphScene& scene,
 
     assert(draftConId.draftType() == sourceType);
 
-    auto entity = make_volatile<ConnectionGraphicsObject>(draftConId, *outType, *inType);
+    auto entity = make_unique_qptr<ConnectionGraphicsObject>(draftConId, *outType, *inType);
     entity->setConnectionShape(scene.m_connectionShape);
     scene.addItem(entity);
 
@@ -351,6 +351,133 @@ moveConnectionPoint(ConnectionGraphicsObject& object,
     PortIndex portIdx = node.node().portIndex(type, port);
 
     moveConnectionPoint(object, node, type, portIdx);
+}
+
+/**
+ * @brief Copies the current selection (only eligible nodes and connections)
+ * to the `dummy` graph
+ * @param scene Scene
+ * @param dummy Dummy graph to copy selection to
+ * @return success
+ */
+static bool
+copySelectionTo(GraphScene& scene, Graph& dummy)
+{
+    auto selected = Impl::findSelectedItems(scene);
+    if (selected.nodes.empty()) return false;
+
+    // only duplicate internal connections
+    auto const containsNode = [&selected](NodeId nodeId){
+        return std::find_if(selected.nodes.begin(), selected.nodes.end(), [nodeId](NodeGraphicsObject* o){
+                   return o->nodeId() == nodeId;
+               }) != selected.nodes.end();
+    };
+
+    auto const isExternalConnection = [containsNode](ConnectionGraphicsObject const* o){
+        auto con = o->connectionId();
+        return !containsNode(con.inNodeId) || !containsNode(con.outNodeId);
+    };
+
+    selected.connections.erase(
+        std::remove_if(selected.connections.begin(),
+                       selected.connections.end(),
+                       isExternalConnection),
+        selected.connections.end());
+
+    // remove unqiue nodes
+    auto const isUnique = [](NodeGraphicsObject const* o){
+        return o->node().nodeFlags() & NodeFlag::Unique;
+    };
+
+    selected.nodes.erase(
+        std::remove_if(selected.nodes.begin(),
+                       selected.nodes.end(),
+                       isUnique),
+        selected.nodes.end());
+
+    // at least one node should be selected
+    if (selected.nodes.empty()) return false;
+
+    // append nodes and connections to dummy graph
+    bool success = true;
+    for (auto* o : qAsConst(selected.nodes))
+    {
+        success &= !!dummy.appendNode(makeCopy(o->node()));
+    }
+    for (auto* o : qAsConst(selected.connections))
+    {
+        success &= !!dummy.appendConnection(std::make_unique<Connection>(o->connectionId()));
+    }
+    return success;
+}
+
+/**
+ * @brief Pastes the objects in the `dummy` graph to the current graph
+ * and updates the selection
+ * @param scene Scene
+ * @param dummy Dummy graph to paste from
+ * @return success
+ */
+static bool
+pasteFrom(GraphScene& scene, Graph& dummy)
+{
+    // regenerate uuids
+    dummy.newUuid(true);
+    dummy.resetGlobalConnectionModel();
+
+    auto& conModel = dummy.connectionModel();
+    if (conModel.empty()) return false;
+
+    auto nodes = dummy.nodes();
+    bool hasConnections = conModel.hasConnections();
+
+    // shift node positions
+    constexpr QPointF offset{50, 50};
+    for (auto& entry : conModel)
+    {
+        Node* node = entry.node;
+        node->setPos(node->pos() + offset);
+    }
+
+    auto cmd = gtApp->makeCommand(&scene.graph(), tr("Paste objects"));
+    Q_UNUSED(cmd);
+
+    // append objects
+    bool success = dummy.moveNodesAndConnections(nodes, scene.graph());
+    if (!success)
+    {
+        gtWarning() << tr("Pasting selection failed!");
+
+        // restore previous state
+        cmd.finalize();
+        gtApp->undoStack()->undo();
+        return false;
+    }
+
+    // find affected graphics objects and set selection
+    scene.clearSelection();
+
+    auto nodeObjects = Impl::findItems<NodeGraphicsObject*>(scene);
+    for (auto* nodeObj : qAsConst(nodeObjects))
+    {
+        if (containsNodeId(nodeObj->nodeId(), nodes))
+        {
+            nodeObj->setSelected(true);
+        }
+    }
+
+    if (!hasConnections) return true;
+
+    auto connectionObjects = Impl::findItems<ConnectionGraphicsObject*>(scene);
+    for (auto* conObj : qAsConst(connectionObjects))
+    {
+        auto conId = conObj->connectionId();
+        if (containsNodeId(conId.inNodeId, nodes) && containsNodeId(conId.outNodeId, nodes))
+        {
+            conObj->setSelected(true);
+        }
+    }
+    return true;
 }
 
 }; // struct Impl
@@ -627,156 +754,40 @@ GraphScene::deleteSelectedObjects()
 void
 GraphScene::duplicateSelectedObjects()
 {
-    if (!copySelectedObjects()) return;
-
-    pasteObjects();
+    // bypass clipboard
+    Graph dummy;
+    if (Impl::copySelectionTo(*this, dummy))
+    {
+        Impl::pasteFrom(*this, dummy);
+    }
 }
 
 bool
 GraphScene::copySelectedObjects()
 {
-    auto cleanup = gt::finally([](){
-        QApplication::clipboard()->setText(QString{});
-    });
-
-    auto selected = Impl::findSelectedItems(*this);
-    if (selected.nodes.empty()) return false;
-
-    auto const containsNode = [&selected](NodeId nodeId){
-        return std::find_if(selected.nodes.begin(), selected.nodes.end(), [nodeId](NodeGraphicsObject* o){
-            return o->nodeId() == nodeId;
-        }) != selected.nodes.end();
-    };
-
-    // only duplicate internal connections
-    int iter = 0;
-    foreach (ConnectionGraphicsObject* o, selected.connections)
-    {
-        auto con = o->connectionId();
-        if (!containsNode(con.inNodeId) || !containsNode(con.outNodeId))
-        {
-            selected.connections.removeAt(iter);
-            continue;
-        }
-        iter++;
-    }
-
-    iter = 0;
-    foreach (NodeGraphicsObject const* node, selected.nodes)
-    {
-        if (node->node().nodeFlags() & NodeFlag::Unique)
-        {
-            selected.nodes.removeAt(iter);
-            continue;
-        }
-        iter++;
-    }
-
-    // at least one node should be selected
-    if (selected.nodes.empty()) return false;
-
-    // append nodes and connections to dummy graph
     Graph dummy;
-    for (auto* o : qAsConst(selected.nodes)) dummy.appendNode(makeCopy(o->node()));
-    for (auto* o : qAsConst(selected.connections)) dummy.appendConnection(std::make_unique<Connection>(o->connectionId()));
+    if (!Impl::copySelectionTo(*this, dummy)) return false;
 
-    QApplication::clipboard()->setText(dummy.toMemento().toByteArray());
-
-    cleanup.clear();
+    QByteArray mementoData = dummy.toMemento().toByteArray();
+    QApplication::clipboard()->setText(std::move(mementoData));
     return true;
 }
 
 void
 GraphScene::pasteObjects()
 {
+    // read from clipboard
     auto text = QApplication::clipboard()->text();
     if (text.isEmpty()) return;
 
-    QDomDocument doc;
-    if (!doc.setContent(text)) return;
-
     // restore objects
-    GtObjectMemento mem(doc.documentElement());
+    GtObjectMemento mem(text.toUtf8());
+    if (mem.isNull()) return;
+
     auto dummy = gt::unique_qobject_cast<Graph>(mem.toObject(*gtObjectFactory));
     if (!dummy) return;
 
-    dummy->newUuid(true);
-    dummy->resetGlobalConnectionModel();
-
-    auto const& srcNodes = dummy->nodes();
-    auto const& srcConnections = dummy->connections();
-
-    if (srcNodes.empty()) return;
-
-    // make unique
-    std::vector<std::unique_ptr<Node>> uniqueNodes;
-    std::vector<std::unique_ptr<Connection>> uniqueConnections;
-    uniqueNodes.reserve(srcNodes.size());
-    uniqueConnections.reserve(srcConnections.size());
-
-    std::transform(srcNodes.begin(), srcNodes.end(),
-                   std::back_inserter(uniqueNodes), [](Node* node){
-        return std::unique_ptr<Node>{node};
-    });
-    std::transform(srcConnections.begin(), srcConnections.end(),
-                   std::back_inserter(uniqueConnections), [](Connection* con){
-        return std::unique_ptr<Connection>{con};
-    });
-
-    // shift node positions
-    constexpr QPointF offset{50, 50};
-
-    for (auto& node : srcNodes)
-    {
-        node->setPos(node->pos() + offset);
-    }
-
-    auto cmd = gtApp->makeCommand(m_graph, tr("Paste objects"));
-    Q_UNUSED(cmd);
-
-    // append objects
-    auto newNodeIds = m_graph->appendObjects(uniqueNodes, uniqueConnections);
-    if (newNodeIds.size() != srcNodes.size())
-    {
-        gtWarning() << tr("Pasting selection failed!");
-        return;
-    }
-
-    // find affected graphics objects and set selection
-    auto nodes = Impl::findItems<NodeGraphicsObject*>(*this);
-    auto iter = 0;
-    foreach (auto* node, nodes)
-    {
-        NodeId nodeId = node->nodeId();
-        if (!newNodeIds.contains(nodeId))
-        {
-            nodes.removeAt(iter);
-            continue;
-        }
-        iter++;
-    }
-
-    clearSelection();
-    for (auto* item : qAsConst(nodes)) item->setSelected(true);
-
-    if (!srcConnections.empty())
-    {
-        auto connections = Impl::findItems<ConnectionGraphicsObject*>(*this);
-        iter = 0;
-        foreach (auto* con, connections)
-        {
-            auto conId = con->connectionId();
-            if (!newNodeIds.contains(conId.inNodeId) ||
-                !newNodeIds.contains(conId.outNodeId))
-            {
-                connections.removeAt(iter);
-                continue;
-            }
-            iter++;
-        }
-
-        for (auto* item : qAsConst(connections)) item->setSelected(true);
-    }
+    Impl::pasteFrom(*this, *dummy);
 }
 
 void
@@ -926,7 +937,7 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
         }
     }
 
-    // add custom action
+    // add custom actions
     QHash<QAction*, typename PortUIAction::ActionMethod> actions;
 
     for (auto* nodeUi : nodeUis)
@@ -1009,13 +1020,21 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
         return o->node().objectFlags() & GtObject::ObjectFlag::UserDeletable;
     });
 
+    Node* selectedNode = &selected.nodes.at(0)->node();
+    assert(selectedNode);
+    Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
+
     // create menu
     QMenu menu;
+
+    QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
+    ungroupAction->setIcon(gt::gui::icon::stretch());
+    ungroupAction->setEnabled(allDeletable);
+    ungroupAction->setVisible(selectedGraphNode);
 
     QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
     groupAction->setEnabled(allDeletable);
-    groupAction->setVisible(!selected.nodes.empty());
 
     menu.addSeparator();
 
@@ -1037,6 +1056,10 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     {
         return groupNodes(selected.nodes);
     }
+    if (triggered == ungroupAction)
+    {
+        return expandGroupNode(selectedGraphNode);
+    }
     if (triggered == deleteAction)
     {
         GtObjectList list;
@@ -1047,9 +1070,6 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
         return (void)gtDataModel->deleteFromModel(list);
     }
 }
-
-// this is quite the convoluted mess...
-constexpr size_t PRE_ALLOC = 32;
 
 void
 GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
@@ -1069,128 +1089,100 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         return;
     }
 
-#ifndef NDEBUG
-    // timmer to track elapsed time
-    QElapsedTimer timer;
-    timer.start();
-    auto finally = gt::finally([&timer](){
-        gtTrace().verbose()
-            << tr("Grouping nodes took %1 ms!").arg(timer.elapsed());
-    });
-#endif
-
-    // separate connections into connections that are ingoing and outgoing to the group node
-    // and internal connections that can be kept as is
-    QVarLengthArray<ConnectionId, PRE_ALLOC> connectionsInternal, connectionsIn, connectionsOut;
-
-    for (auto const* object : selectedNodeObjects)
-    {
-        NodeId nodeId = object->nodeId();
-        assert (m_graph->findNode(object->nodeId()));
-
-        // check connections
-        auto& conModel = m_graph->connectionModel();
-        for (ConnectionId conId : conModel.iterateConnections(nodeId))
-        {
-            auto const findNodeFunctor = [&conId](NodeGraphicsObject* o){
-                return o->nodeId() == conId.inNodeId;
-            };
-
-            // if ingoing node is not part of nodes to group it is an outside connection
-            if(std::find_if(selectedNodeObjects.begin(),
-                            selectedNodeObjects.end(),
-                            findNodeFunctor) == selectedNodeObjects.end())
-            {
-                connectionsOut.push_back(conId);
-                continue;
-            }
-
-            // reverse conId so that outNodeId is now inNodeId
-            conId.reverse();
-
-            // if outgoing node is not part of nodes to group it is an outside connection
-            if(std::find_if(selectedNodeObjects.begin(),
-                            selectedNodeObjects.end(),
-                            findNodeFunctor) == selectedNodeObjects.end())
-            {
-                // revert reverse
-                conId.reverse();
-                connectionsIn.push_back(conId);
-                continue;
-            }
-
-            // revert reverse
-            conId.reverse();
-            // internal connections may already be contained
-            if (!connectionsInternal.contains(conId))
-            {
-                connectionsInternal.push_back(conId);
-            }
-        }
-    }
-
-    // sort in and out going connections to avoid crossing connections
-    auto const sortByScenePos = [this](ConnectionId a, ConnectionId b, bool reverse = false){
-        auto oA = connectionObject(a);
-        auto oB = connectionObject(b);
-        assert(oA);
-        assert(oB);
-        return oA->endPoint(PortType::In).y() < oB->endPoint(PortType::In).y();
-    };
-
-    std::sort(connectionsIn.begin(),  connectionsIn.end(),
-              std::bind(sortByScenePos, std::placeholders::_1, std::placeholders::_2, false));
-    std::sort(connectionsOut.begin(), connectionsOut.end(),
-              std::bind(sortByScenePos, std::placeholders::_1, std::placeholders::_2, true));
-
-    // preprocess selected nodes
+    // preprocess nodes
     QVector<Node*> selectedNodes;
     std::transform(selectedNodeObjects.begin(),
                    selectedNodeObjects.end(),
                    std::back_inserter(selectedNodes),
                    [](NodeGraphicsObject* o){ return &o->node(); });
 
+    QVector<ConnectionUuid> connectionsIn, connectionsOut;
+
+    auto& conModel = m_graph->connectionModel();
+
+    // separate connections into ingoing and outgoing of the group node
+    for (Node const* node : selectedNodes)
+    {
+        for (ConnectionId conId : conModel.iterateConnections(node->id()))
+        {
+            if (!containsNodeId(conId.inNodeId, selectedNodes))
+            {
+                connectionsOut.push_back(m_graph->connectionUuid(conId));
+            }
+            if (!containsNodeId(conId.outNodeId, selectedNodes))
+            {
+                connectionsIn.push_back(m_graph->connectionUuid(conId));
+            }
+        }
+    }
+
+    // sort in and out going connections to avoid crossing connections
+    auto const sortByEndPoint = [this](ConnectionUuid const& a,
+                                       ConnectionUuid const& b){
+        auto oA = connectionObject(m_graph->connectionId(a));
+        auto oB = connectionObject(m_graph->connectionId(b));
+        assert(oA);
+        assert(oB);
+        return oA->endPoint(PortType::In).y() <
+               oB->endPoint(PortType::In).y();
+    };
+
+    std::sort(connectionsIn.begin(),  connectionsIn.end(),  sortByEndPoint);
+    std::sort(connectionsOut.begin(), connectionsOut.end(), sortByEndPoint);
+
+    // create undo command
+    auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'").arg(groupNodeName));
+    auto modifyCmd = m_graph->modify();
+    Q_UNUSED(modifyCmd);
+
+    auto restoreCmd = gt::finally([&appCmd](){
+        appCmd.finalize();
+        gtApp->undoStack()->undo();
+    });
+
+    // create group node
+    auto targetGraphPtr = std::make_unique<Graph>();
+    auto* targetGraph = targetGraphPtr.get();
+    targetGraph->setCaption(groupNodeName);
+
+    // setup input/output provider
+    targetGraph->initInputOutputProviders();
+    auto* inputProvider  = targetGraph->inputProvider();
+    auto* outputProvider = targetGraph->outputProvider();
+
+    if (!inputProvider || !outputProvider)
+    {
+        gtError() << tr("Failed to group nodes! "
+                        "(Invalid input or output provider)");
+        return;
+    }
+
+    // update node positions
     QPolygonF selectionPoly;
     std::transform(selectedNodes.begin(), selectedNodes.end(),
                    std::back_inserter(selectionPoly), [](auto const* node){
         return node->pos();
     });
 
-    // update node positions
     auto boundingRect = selectionPoly.boundingRect();
     auto center = boundingRect.center();
-    auto offset = QPointF{boundingRect.width() * 0.5, boundingRect.height() * 0.5};
+    auto offset = QPointF{boundingRect.width() * 0.5,
+                          boundingRect.height() * 0.5};
 
-    // create group node
-    auto tmpGraph = std::make_unique<Graph>();
-    auto* groupNode = tmpGraph.get();
+    targetGraph->setPos(center);
+    inputProvider->setPos(inputProvider->pos() + center - 2 * offset);
+    outputProvider->setPos(outputProvider->pos() + center);
 
-    groupNode->setCaption(groupNodeName);
-    groupNode->setPos(center);
+    for (Node* node : selectedNodes) node->setPos(node->pos() - offset);
 
-    // setup input/output provider
-    groupNode->initInputOutputProviders();
-    auto* inputProvider  = groupNode->inputProvider();
-    auto* outputProvider = groupNode->outputProvider();
-
-    if (!inputProvider || !outputProvider)
-    {
-        gtError() << tr("Failed to group nodes! "
-                    "(Invalid input or output provider)");
-        return;
-    }
-
-    inputProvider->setPos(inputProvider->pos() - offset);
-    outputProvider->setPos(outputProvider->pos() + offset);
-
-    // find commections that share the same outgoing node and port
+    // find connections that share the same outgoing node and port
     auto const extractSharedConnections = [](auto& connections){
-        QVarLengthArray<ConnectionId, PRE_ALLOC> shared;
+        QVector<ConnectionUuid> shared;
 
         for (auto begin = connections.begin(); begin != connections.end(); ++begin)
         {
-            auto iter = std::find_if(begin + 1, connections.end(),
-                                     [conId = *begin](ConnectionId other){
+            auto iter = std::find_if(std::next(begin, 1), connections.end(),
+                                     [conId = *begin](ConnectionUuid const& other){
                 return conId.outNodeId == other.outNodeId &&
                        conId.outPort == other.outPort;
             });
@@ -1203,16 +1195,16 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         return shared;
     };
 
-    QVarLengthArray<ConnectionId, PRE_ALLOC> connectionsInShared  = extractSharedConnections(connectionsIn);
-    QVarLengthArray<ConnectionId, PRE_ALLOC> connectionsOutShared = extractSharedConnections(connectionsOut);
+    auto connectionsInShared  = extractSharedConnections(connectionsIn);
+    auto connectionsOutShared = extractSharedConnections(connectionsOut);
 
     // helper function to extract and check typeIds
     auto const extractTypeIds = [this](auto const& connections){
-        QVarLengthArray<QString, PRE_ALLOC> retval;
+        QVector<QString> retval;
 
-        for (ConnectionId conId : connections)
+        for (ConnectionUuid const& conId : connections)
         {
-            auto* node = m_graph->findNode(conId.inNodeId);
+            auto* node = m_graph->findNodeByUuid(conId.inNodeId);
             assert(node);
             auto* port = node->port(conId.inPort);
             assert(port);
@@ -1244,161 +1236,67 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     for (QString const& typeId : dtypeIn ) inputProvider->addPort(typeId);
     for (QString const& typeId : dtypeOut) outputProvider->addPort(typeId);
 
-    {
-
-    // helper maps to track which index was already updated
-    std::vector<bool> updatedIngoingConnectionsMap;
-    updatedIngoingConnectionsMap.resize(connectionsIn.size());
-    std::vector<bool> updatedOutgoingConnectionsMap;
-    updatedOutgoingConnectionsMap.resize(connectionsOut.size());
-    std::vector<bool> updatedInternalInConnectionsMap;
-    updatedInternalInConnectionsMap.resize(connectionsInternal.size());
-    std::vector<bool> updatedInternalOutConnectionsMap;
-    updatedInternalOutConnectionsMap.resize(connectionsInternal.size());
-    std::vector<bool> updatedSharedIngoingConnectionsMap;
-    updatedSharedIngoingConnectionsMap.resize(connectionsInShared.size());
-    std::vector<bool> updatedSharedOutgoingConnectionsMap;
-    updatedSharedOutgoingConnectionsMap.resize(connectionsOutShared.size());
-
-    // move selected nodes to subgraph and update their id
-    for (auto* node : qAsConst(selectedNodes))
-    {
-        auto newNode = gt::unique_qobject_cast<Node>(
-            std::unique_ptr<GtObject>(node->copy())
-        );
-
-
-        if (!newNode)
-        {
-            gtError() << tr("Failed to create group node! "
-                            "(Nodes %1 could not be copied)").arg(node->id());
-            return;
-        }
-
-        NodeId oldId = node->id();
-
-        // reset nodeId
-        newNode->setId(NodeId(0));
-        newNode->setPos(newNode->pos() - center);
-
-        // append new node
-        auto* movedNode = groupNode->appendNode(std::move(newNode));
-        if (!movedNode)
-        {
-            gtError() << tr("Failed to create group node! "
-                            "(Node could not be moved)").arg(node->id());
-            return;
-        }
-
-        // udpate connections if node id has changed
-        NodeId newId = movedNode->id();
-        if (newId == oldId) continue;
-
-#ifndef NDEBUG
-        gtTrace().verbose() << "Updating node id from" << oldId << "to" << newId << "...";
-#endif
-
-        // helper function to update the old node ids without overriding each entry multiple times
-        auto const updateConnections = [](auto& connections,
-                                          auto& map,
-                                          size_t& index,
-                                          NodeId oldId,
-                                          NodeId newId,
-                                          PortType type){
-            index = 0;
-            if (type == PortType::In)  for (ConnectionId& conId : connections)
-            {
-                if (!map[index] && conId.inNodeId == oldId)
-                {
-                    map[index] = true;
-                    conId.inNodeId = newId;
-                }
-                index++;
-            }
-            index = 0;
-            if (type == PortType::Out) for (ConnectionId& conId : connections)
-            {
-                if (!map[index] && conId.outNodeId == oldId)
-                {
-                    map[index] = true;
-                    conId.outNodeId = newId;
-                }
-                index++;
-            }
-        };
-
-        size_t index = 0;
-        updateConnections(connectionsInShared,  updatedSharedIngoingConnectionsMap,  index, oldId, newId, PortType::In);
-        updateConnections(connectionsIn,        updatedIngoingConnectionsMap,        index, oldId, newId, PortType::In);
-        updateConnections(connectionsOutShared, updatedSharedOutgoingConnectionsMap, index, oldId, newId, PortType::Out);
-        updateConnections(connectionsOut,       updatedOutgoingConnectionsMap,       index, oldId, newId, PortType::Out);
-        // ingoing and outgoing connections must be tracked individually here
-        updateConnections(connectionsInternal,  updatedInternalInConnectionsMap,     index, oldId, newId, PortType::In);
-        updateConnections(connectionsInternal,  updatedInternalOutConnectionsMap,    index, oldId, newId, PortType::Out);
-    }
-
-    }
-
-    // move group to graph
-    auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'").arg(groupNodeName));
-    auto modifyCmd = m_graph->modify();
-
-    Q_UNUSED(appCmd);
-    Q_UNUSED(modifyCmd);
-
-    if (!m_graph->appendNode(std::move(tmpGraph)))
+    // append node first
+    if (!m_graph->appendNode(std::move(targetGraphPtr)))
     {
         gtError() << tr("Failed to group nodes! (Appending group node failed)");
         return;
     }
 
-    // remove old nodes and connections. Connections must be deleted before
-    // appending new connections
-    qDeleteAll(selectedNodes);
+    // move nodes and internal connections
+    if (!m_graph->moveNodesAndConnections(selectedNodes, *targetGraph))
+    {
+        gtError() << tr("Failed to group nodes! (Moving nodes failed)");
+        return;
+    }
 
     // helper function to create ingoing and outgoing connections
-    auto const makeConnections = [this, groupNode](ConnectionId conId,
-                                                   auto* provider,
-                                                   PortIndex index,
-                                                   PortType type,
-                                                   bool addToMainGraph = true){
-        if (type == PortType::Out) conId.reverse();
+    auto const makeConnections = [this, targetGraph](ConnectionUuid conUuid,
+                                                     auto* provider,
+                                                     PortIndex index,
+                                                     PortType type,
+                                                     bool addToMainGraph = true) {
+        if (type == PortType::Out) conUuid.reverse();
 
-        // create connection in parent graph
-        ConnectionId newCon = conId;
-        newCon.inNodeId = groupNode->id();
-        newCon.inPort   = groupNode->portId(type, index);
-
-        // create connection in subgraph
-        conId.outNodeId = provider->id();
-        conId.outPort   = provider->portId(invert(type), index);
-
-        assert(newCon.isValid());
-        assert(conId .isValid());
-
-        if (type == PortType::Out)
-        {
-            conId.reverse();
-            newCon.reverse();
-        }
         if (addToMainGraph)
         {
-            m_graph->appendConnection(  std::make_unique<Connection>(newCon));
+            // create connection in parent graph
+            ConnectionUuid newCon = conUuid;
+            newCon.inNodeId = targetGraph->uuid();
+            newCon.inPort   = targetGraph->portId(type, index);
+
+            assert(newCon.isValid());
+
+            if (type == PortType::Out) newCon.reverse();
+
+            m_graph->appendConnection(m_graph->connectionId(newCon));
         }
-        groupNode->appendConnection(std::make_unique<Connection>(conId ));
+
+        // create connection in subgraph
+        conUuid.outNodeId = provider->uuid();
+        conUuid.outPort   = provider->portId(invert(type), index);
+
+        assert(conUuid .isValid());
+
+        if (type == PortType::Out) conUuid.reverse();
+
+
+        targetGraph->appendConnection(targetGraph->connectionId(conUuid));
     };
 
     // create connections that share the same node and port
     auto const makeSharedConnetions = [makeConnections](auto& shared,
-                                                        ConnectionId conId,
+                                                        ConnectionUuid conUuid,
                                                         auto* provider,
                                                         PortIndex index,
                                                         PortType type){
         bool success = true;
         while (success)
         {
-            auto iter = std::find_if(shared.begin(), shared.end(), [conId](ConnectionId other){
-                return conId.outNodeId == other.outNodeId && conId.outPort == other.outPort;
+            auto iter = std::find_if(shared.begin(), shared.end(),
+                                     [conUuid](ConnectionUuid const& other){
+                return conUuid.outNodeId == other.outNodeId &&
+                       conUuid.outPort == other.outPort;
             });
             if ((success = (iter != shared.end())))
             {
@@ -1411,7 +1309,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     // make input connections
     PortIndex index{0};
     PortType type = PortType::In;
-    for (ConnectionId conId : qAsConst(connectionsIn))
+    for (ConnectionUuid const& conId : qAsConst(connectionsIn))
     {
         makeConnections(conId, inputProvider, index, type);
 
@@ -1423,20 +1321,140 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     // make output connections
     index = PortIndex{0};
     type  = PortType::Out;
-    for (ConnectionId conId : qAsConst(connectionsOut))
+    for (ConnectionUuid const& conId : qAsConst(connectionsOut))
     {
         makeConnections(conId, outputProvider, index, type);
 
-        makeSharedConnetions(connectionsOutShared, conId, inputProvider, index, type);
+        makeSharedConnetions(connectionsOutShared, conId, outputProvider, index, type);
 
         index++;
     }
 
-    // make internal connections
-    for (ConnectionId const& conId : qAsConst(connectionsInternal))
+    restoreCmd.clear();
+}
+
+void
+GraphScene::expandGroupNode(Graph* groupNode)
+{
+    assert(groupNode);
+
+    // create undo command
+    auto appCmd = gtApp->makeCommand(m_graph, tr("Expand group node '%1'").arg(groupNode->caption()));
+    auto modifyGroupCmd = groupNode->modify();
+    auto modifyCmd = m_graph->modify();
+    Q_UNUSED(modifyCmd);
+
+    auto restoreCmd = gt::finally([&appCmd](){
+        appCmd.finalize();
+        gtApp->undoStack()->undo();
+    });
+
+    auto const& conModel = m_graph->connectionModel();
+
+    auto* inputProvider  = groupNode->inputProvider();
+    auto* outputProvider = groupNode->outputProvider();
+    assert(inputProvider);
+    assert(outputProvider);
+
+    // gather input and output connections
+    QVector<ConnectionUuid> expandedInputConnections, expandedOutputConnections;
+
+    // extra scope since group node will be deleted eventually -> avoid dangling
+    // references
     {
-        groupNode->appendConnection(std::make_unique<Connection>(conId));
+        // "flatten" connections between parent graph and subgraph
+        auto convertConnection =
+            [this, &conModel, groupNode](ConnectionId conId,
+                                         auto& convertedConnections,
+                                         PortType type){
+            ConnectionUuid conUuid = groupNode->connectionUuid(conId);
+
+            bool const isInput = type == PortType::In;
+            if (isInput) conUuid.reverse();
+
+            auto connections = conModel.iterate(groupNode->id(), conUuid.outPort);
+            for (auto const& connection : connections)
+            {
+                NodeId targetNodeId = connection.node;
+                Node* targetNode = m_graph->findNode(targetNodeId);
+                assert(targetNode);
+                conUuid.outNodeId = targetNode->uuid();
+                conUuid.outPort   = connection.port;
+
+                convertedConnections.push_back(isInput ? conUuid.reversed() : conUuid);
+            }
+        };
+
+        auto const& groupConModel = groupNode->connectionModel();
+
+        PortType type = PortType::Out;
+        auto inputCons  = groupConModel.iterateConnections(inputProvider->id(), type);
+        for (ConnectionId conId : inputCons)
+        {
+            convertConnection(conId, expandedInputConnections, type);
+        }
+
+        type = PortType::In;
+        auto outputCons = groupConModel.iterateConnections(outputProvider->id(), type);
+        for (ConnectionId conId : outputCons)
+        {
+            convertConnection(conId, expandedInputConnections, type);
+        }
     }
+
+    // delete provider nodes
+    if (!groupNode->deleteNode(groupNode->inputNode()->id()) ||
+        !groupNode->deleteNode(groupNode->outputNode()->id()))
+    {
+        gtError() << tr("Expanding group node '%1' failed! "
+                        "(Failed to remove provider nodes)")
+                         .arg(relativeNodePath(*groupNode));
+        return;
+    }
+
+    inputProvider = nullptr;
+    outputProvider = nullptr;
+    auto nodes = groupNode->nodes();
+
+    // update node positions
+    QPolygonF selectionPoly;
+    std::transform(nodes.begin(), nodes.end(),
+                   std::back_inserter(selectionPoly), [](auto const* node){
+        return node->pos();
+    });
+
+    auto boundingRect = selectionPoly.boundingRect();
+    auto center = boundingRect.center();
+    for (Node* node : nodes)
+    {
+        auto offset = (node->pos() - center);
+        node->setPos(groupNode->pos() + offset);
+    }
+
+    // move internal connections
+    if (!groupNode->moveNodesAndConnections(nodes, *m_graph))
+    {
+        gtError() << tr("Expanding group node '%1' failed! "
+                        "(Failed to move internal nodes)")
+                         .arg(relativeNodePath(*groupNode));
+        return;
+    }
+
+    // delete group node
+    modifyGroupCmd.finalize();
+    delete groupNode;
+    groupNode = nullptr;
+
+    // install connections to moved nodes
+    for (auto* connections : {&expandedInputConnections, &expandedOutputConnections})
+    {
+        for (ConnectionUuid const& conUuid : *connections)
+        {
+            m_graph->appendConnection(m_graph->connectionId(conUuid));
+        }
+    }
+
+    restoreCmd.clear();
 }
 
 void
@@ -1448,7 +1466,7 @@ GraphScene::onNodeAppended(Node* node)
     NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
     if (!ui) ui = &defaultUI;
 
-    auto entity = make_volatile<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *node, *ui);
+    auto entity = make_unique_qptr<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *node, *ui);
     // add to scene
     addItem(entity);
 
@@ -1541,7 +1559,7 @@ GraphScene::onConnectionAppended(Connection* con)
     auto* outPort = outNode->port(conId.outPort);
     assert(outPort);
 
-    auto entity = make_volatile<ConnectionGraphicsObject, DirectDeleter>(conId, outPort->typeId, inPort->typeId);
+    auto entity = make_unique_qptr<ConnectionGraphicsObject, DirectDeleter>(conId, outPort->typeId, inPort->typeId);
     entity->setConnectionShape(m_connectionShape);
 
     // add to scene

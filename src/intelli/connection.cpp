@@ -42,6 +42,8 @@ Connection::Connection(ConnectionId conId, GtObject* parent) :
     fromConnectionId(conId);
 }
 
+Connection::~Connection() = default;
+
 intelli::ConnectionId
 Connection::connectionId() const
 {

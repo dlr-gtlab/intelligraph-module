@@ -1,4 +1,4 @@
-/* 
+/*
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
@@ -724,4 +724,97 @@ TEST(Graph, restore_connections_only_on_memento_diff)
     EXPECT_EQ(graph.findNode(E_id), E);
 
     EXPECT_EQ(graph.findConnections(C_id, PortType::Out).size(), 0);
+}
+
+TEST(Graph, move_node_to_subgraph)
+{
+    Graph root;
+
+    ASSERT_TRUE(test::buildGraphWithGroup(root));
+
+    auto const& subgraphs = root.graphNodes();
+    ASSERT_FALSE(subgraphs.empty());
+
+    Graph* subgraph = subgraphs[0];
+    ASSERT_TRUE(subgraph);
+    Node* nodeA = root.findNode(A_id);
+    ASSERT_TRUE(nodeA);
+
+    ASSERT_EQ(nodeA->parent(), &root);
+
+    // before move
+    EXPECT_TRUE(root.findNode(A_id));
+    EXPECT_TRUE(root.findNodeByUuid(A_uuid));
+    EXPECT_NE(subgraph->findNode(A_id), nodeA);
+    EXPECT_FALSE(subgraph->findNodeByUuid(A_uuid));
+
+    // move node
+    EXPECT_TRUE(root.moveNode(A_id, *subgraph));
+    EXPECT_EQ(nodeA->parent(), subgraph);
+
+    // after move
+    EXPECT_FALSE(root.findNode(A_id));
+    EXPECT_TRUE(root.findNodeByUuid(A_uuid));
+    EXPECT_TRUE(subgraph->findNode(A_id));
+    EXPECT_TRUE(subgraph->findNodeByUuid(A_uuid));
+}
+
+TEST(Graph, move_node_to_other_graph)
+{
+    Graph graph1;
+    Graph graph2;
+
+    ASSERT_TRUE(test::buildLinearGraph(graph1));
+
+    Node* nodeA = graph1.findNode(A_id);
+    ASSERT_TRUE(nodeA);
+
+    ASSERT_EQ(nodeA->parent(), &graph1);
+
+    // before move
+    EXPECT_TRUE(graph1.findNode(A_id));
+    EXPECT_TRUE(graph1.findNodeByUuid(A_uuid));
+    EXPECT_NE(graph2.findNode(A_id), nodeA);
+    EXPECT_NE(graph2.findNodeByUuid(A_uuid), nodeA);
+
+    // move node
+    EXPECT_TRUE(graph1.moveNode(A_id, graph2));
+    EXPECT_EQ(nodeA->parent(), &graph2);
+
+    // after move
+    EXPECT_FALSE(graph1.findNode(A_id));
+    EXPECT_FALSE(graph1.findNodeByUuid(A_uuid));
+    EXPECT_TRUE(graph2.findNode(A_id));
+    EXPECT_TRUE(graph2.findNodeByUuid(A_uuid));
+}
+
+TEST(Graph, move_nodes_to_other_graph)
+{
+    Graph graph1;
+    Graph graph2;
+
+    ASSERT_TRUE(test::buildLinearGraph(graph1));
+
+    auto model = graph1.connectionModel();
+    int connections = model.size();
+
+    // before move
+    EXPECT_FALSE(graph1.connectionModel().empty());
+    EXPECT_TRUE(graph2.connectionModel().empty());
+    EXPECT_TRUE(graph1.connectionModel() == model);
+    EXPECT_FALSE(graph2.connectionModel() == model);
+    EXPECT_EQ(graph1.connectionModel().size(), connections);
+    EXPECT_NE(graph2.connectionModel().size(), connections);
+
+    // move node
+    QVector<NodeId> nodeIds = {A_id, B_id, C_id, D_id};
+    EXPECT_TRUE(graph1.moveNodesAndConnections(nodeIds, graph2));
+
+    // after move
+    EXPECT_TRUE(graph1.connectionModel().empty());
+    EXPECT_FALSE(graph2.connectionModel().empty());
+    EXPECT_FALSE(graph1.connectionModel() == model);
+    EXPECT_TRUE(graph2.connectionModel() == model);
+    EXPECT_NE(graph1.connectionModel().size(), connections);
+    EXPECT_EQ(graph2.connectionModel().size(), connections);
 }

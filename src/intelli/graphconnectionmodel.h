@@ -824,6 +824,7 @@ public:
     using key_type = NodeId_t;
     using value_type = ConnectionData<NodeId_t>;
     using data_type = QHash<key_type, value_type>;
+    using size_type = typename data_type::size_type;
 
     using iterator = typename data_type::iterator;
     using const_iterator = typename data_type::const_iterator;
@@ -1019,6 +1020,12 @@ public:
 
     bool containts(key_type const& key) const { return m_data.contains(key); }
 
+    bool empty() const { return m_data.empty(); }
+    bool isEmpty() const { return m_data.empty(); }
+
+    size_type size() const { return m_data.size(); }
+    size_type length() const { return m_data.size(); }
+
     value_type value(key_type const& key) const { return m_data.value(key); }
 
     iterator begin() { return m_data.begin(); }
@@ -1030,6 +1037,9 @@ public:
     key_value_iterator keyValueEnd() { return m_data.keyValueEnd(); }
     const_key_value_iterator keyValueBegin() const { return m_data.keyValueBegin(); }
     const_key_value_iterator keyValueEnd() const { return m_data.keyValueEnd(); }
+
+    bool operator==(ConnectionModel_t const& other) const { return m_data == other.m_data; }
+    bool operator!=(ConnectionModel_t const& other) const { return !(*this == other); }
 
 private:
 

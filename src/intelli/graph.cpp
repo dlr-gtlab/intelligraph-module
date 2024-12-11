@@ -43,15 +43,15 @@ Graph::~Graph()
 {
     emit graphAboutToBeDeleted(QPrivateSignal());
 
-    auto change = modify();
-    Q_UNUSED(change);
+    Modification cmd = modify();
+    Q_UNUSED(cmd);
+
+    auto const& nodes = this->nodes();
+    qDeleteAll(nodes);
 
     // remove connections
     auto& conGroup = this->connectionGroup();
     delete& conGroup;
-
-    auto const& nodes = this->nodes();
-    qDeleteAll(nodes);
 }
 
 Graph*
@@ -154,7 +154,8 @@ Graph::connectionGroup()
     return *group;
 }
 
-ConnectionGroup const& Graph::connectionGroup() const
+ConnectionGroup const&
+Graph::connectionGroup() const
 {
     return const_cast<Graph*>(this)->connectionGroup();
 }
@@ -427,11 +428,42 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
     return { outNode->id(), outPort, inNode->id(), inPort };
 }
 
+ConnectionId
+Graph::connectionId(ConnectionUuid const& conUuid) const
+{
+    auto const makeError = [&conUuid](){
+        return  tr("Failed to convert connection uuid (%1)!")
+            .arg(toString(conUuid));
+    };
+    auto const nodeNotFound = [](NodeUuid uuid){
+        return tr("(node '%1' not found)").arg(uuid);
+    };
+
+    auto* outNode = findNodeByUuid(conUuid.outNodeId);
+    auto* inNode  = findNodeByUuid(conUuid.inNodeId);
+    if (!outNode || !inNode)
+    {
+        gtWarning() << makeError() << (!outNode ? nodeNotFound(conUuid.outNodeId) :
+                                                  nodeNotFound(conUuid.inNodeId));
+        return invalid<ConnectionId>();
+    }
+    if (outNode->parent() != this || inNode->parent() != this)
+    {
+        gtWarning() << makeError()
+                    << tr("(nodes do not belong to this graph '%3')")
+                           .arg(relativeNodePath(*this));
+        return invalid<ConnectionId>();
+    }
+
+    return { outNode->id(), conUuid.outPort, inNode->id(), conUuid.inPort };
+}
+
 ConnectionUuid
 Graph::connectionUuid(ConnectionId conId) const
 {
-    auto const makeError = [](){
-        return  tr("Failed to create connection uuid!");
+    auto const makeError = [conId](){
+        return  tr("Failed to convert connection id (%1)!")
+            .arg(toString(conId));
     };
     auto const nodeNotFound = [](NodeId id){
         return tr("(node %1 not found)").arg(id);
@@ -458,9 +490,23 @@ Graph::canAppendConnections(ConnectionId conId)
 Node*
 Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 {
-    if (!node) return {};
+    if (!appendNode(node.get(), policy)) return nullptr;
 
-    auto makeError = [n = node.get(), this](){
+    return node.release();
+}
+
+bool
+Graph::appendConnection(ConnectionId conId)
+{
+    return appendConnection(std::make_unique<Connection>(conId));
+}
+
+bool
+Graph::appendNode(Node* node, NodeIdPolicy policy)
+{
+    if (!node) return false;
+
+    auto makeError = [n = node, this](){
         return  tr("Failed to append node '%1' to intelli graph '%2'!")
             .arg(n->objectName(), objectName());
     };
@@ -470,23 +516,23 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     {
         gtWarning() << makeError()
                     << tr("(node already exists)");
-        return {};
+        return false;
     }
 
     // check if node can be appended
     if (!Impl::canAppendNode(*this, *node, makeError)) return {};
 
     // append node to hierarchy
-    if (!appendChild(node.get()))
+    if (!appendChild(node))
     {
         gtWarning() << makeError();
-        return {};
+        return false;
     }
 
     node->updateObjectName();
 
     // append nodes of subgraph
-    if (auto* graph = qobject_cast<Graph*>(node.get()))
+    if (auto* graph = qobject_cast<Graph*>(node))
     {
         graph->updateGlobalConnectionModel(m_global);
 
@@ -495,45 +541,53 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
     }
 
     // register node in local model
-    m_local.insert(node->id(), node.get());
+    m_local.insert(node->id(), node);
 
     // register node in global model if not present already (avoid overwrite)
     NodeUuid const& nodeUuid = node->uuid();
-    if (!m_global->containts(nodeUuid)) m_global->insert(nodeUuid, node.get());
+    if (!m_global->containts(nodeUuid)) m_global->insert(nodeUuid, node);
 
     // setup connections
-    connect(node.get(), &Node::portChanged,
-            this, Impl::PortChanged(this, node.get()),
+    connect(node, &Node::portChanged,
+            this, Impl::PortChanged(this, node),
             Qt::DirectConnection);
 
-    connect(node.get(), &Node::portInserted,
+    connect(node, &Node::portInserted,
             this, [this, nodeId = node->id()](PortType type, PortIndex idx){
         emit nodePortInserted(nodeId, type, idx);
     }, Qt::DirectConnection);
 
-    connect(node.get(), &Node::portAboutToBeDeleted,
-            this, Impl::PortDeleted(this, node.get()),
+    connect(node, &Node::portAboutToBeDeleted,
+            this, Impl::PortDeleted(this, node),
             Qt::DirectConnection);
 
-    connect(node.get(), &Node::portDeleted,
+    connect(node, &Node::portDeleted,
             this, [this, nodeId = node->id()](PortType type, PortIndex idx){
         emit nodePortDeleted(nodeId, type, idx);
     }, Qt::DirectConnection);
 
-    connect(node.get(), &Node::nodeAboutToBeDeleted,
+    connect(node, &Node::nodeAboutToBeDeleted,
             this, Impl::NodeDeleted(this),
             Qt::DirectConnection);
 
     // notify
-    emit nodeAppended(node.get());
+    emit nodeAppended(node);
 
-    return node.release();
+    return true;
 }
 
 Connection*
 Graph::appendConnection(std::unique_ptr<Connection> connection)
 {
-    if (!connection) return {};
+    if (!appendConnection(connection.get())) return nullptr;
+
+    return connection.release();
+}
+
+bool
+Graph::appendConnection(Connection* connection)
+{
+    if (!connection) return false;
 
     auto conId = connection->connectionId();
 
@@ -546,10 +600,10 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     if (!Impl::canAppendConnection(*this, conId, makeError, false)) return {};
 
     // append connection to hierarchy
-    if (!connectionGroup().appendChild(connection.get()))
+    if (!connectionGroup().appendChild(connection))
     {
         gtWarning() << makeError();
-        return {};
+        return false;
     }
 
     connection->updateObjectName();
@@ -567,22 +621,22 @@ Graph::appendConnection(std::unique_ptr<Connection> connection)
     sourceNode->successors.append(outConnection);
 
     // setup connections
-    connect(connection.get(), &QObject::destroyed,
+    connect(connection, &QObject::destroyed,
             this, Impl::ConnectionDeleted(this, conId),
             Qt::DirectConnection);
 
     // append to global connection model
-    appendGlobalConnection(connection.get(), conId, *targetNode->node);
+    appendGlobalConnection(connection, conId, *targetNode->node);
 
     // notify
-    emit connectionAppended(connection.get());
+    emit connectionAppended(connection);
 
     assert(targetNode->iterateConnections(conId.inPort).size() == 1);
 
     emit targetNode->node->portConnected(conId.inPort);
     emit sourceNode->node->portConnected(conId.outPort);
 
-    return connection.release();
+    return true;
 }
 
 void
@@ -725,6 +779,39 @@ Graph::deleteConnection(ConnectionId connectionId)
         return true;
     }
     return false;
+}
+
+bool
+Graph::moveNode(NodeId nodeId, Graph& targetGraph, NodeIdPolicy policy)
+{
+    Node* node = findNode(nodeId);
+    return node && moveNode(*node, targetGraph, policy);
+}
+
+bool
+Graph::moveNode(Node& node, Graph& targetGraph, NodeIdPolicy policy)
+{
+    Modification cmd = modify();
+    Q_UNUSED(cmd);
+
+    assert(node.parent() == this);
+
+    // restore ownership on failure
+    auto restoreOnFailure = gt::finally([&node, this](){
+        ((QObject*)&node)->setParent(this);
+    });
+
+    // update connection model
+    Impl::NodeDeleted(this)(node.id());
+
+    node.disconnect(this);
+    node.disconnectFromParent();
+    ((QObject*)&node)->setParent(nullptr);
+
+    if (!targetGraph.appendNode(&node, policy)) return {};
+
+    restoreOnFailure.clear();
+    return true;
 }
 
 bool
