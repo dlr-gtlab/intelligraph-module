@@ -35,6 +35,8 @@ enum NodeFlag : size_t
     Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
     ResizableHOnly = 1 << 6,
+    /// Indicates node is deprecated and should no longer be used
+    Deprecated = 1 << 7,
     /// default node flags
     DefaultNodeFlags = NoFlag,
 
