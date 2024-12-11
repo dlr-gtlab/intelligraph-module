@@ -431,11 +431,11 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
 ConnectionId
 Graph::connectionId(ConnectionUuid const& conUuid) const
 {
-    static auto const makeError = [&conUuid](){
+    auto const makeError = [&conUuid](){
         return  tr("Failed to convert connection uuid (%1)!")
             .arg(toString(conUuid));
     };
-    static auto const nodeNotFound = [](NodeUuid uuid){
+    auto const nodeNotFound = [](NodeUuid uuid){
         return tr("(node '%1' not found)").arg(uuid);
     };
 

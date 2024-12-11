@@ -1095,42 +1095,28 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         {
             if (!containsNodeId(conId.inNodeId, selectedNodes))
             {
-                connectionsIn.push_back(m_graph->connectionUuid(conId));
+                connectionsOut.push_back(m_graph->connectionUuid(conId));
             }
             if (!containsNodeId(conId.outNodeId, selectedNodes))
             {
-                connectionsOut.push_back(m_graph->connectionUuid(conId));
+                connectionsIn.push_back(m_graph->connectionUuid(conId));
             }
         }
     }
 
     // sort in and out going connections to avoid crossing connections
-    auto const sortByPortIndex = [this](ConnectionUuid const& a,
-                                        ConnectionUuid const& b,
-                                        PortType type){
-        Node* nA = m_graph->findNodeByUuid(a.node(type));
-        Node* nB = m_graph->findNodeByUuid(b.node(type));
-        assert(nA);
-        assert(nB);
-        PortIndex iA = nA->portIndex(type, a.port(type));
-        PortIndex iB = nB->portIndex(type, b.port(type));
-        assert(iA.isValid());
-        assert(iB.isValid());
-        return iA < iB;
+    auto const sortByEndPoint = [this](ConnectionUuid const& a,
+                                       ConnectionUuid const& b){
+        auto oA = connectionObject(m_graph->connectionId(a));
+        auto oB = connectionObject(m_graph->connectionId(b));
+        assert(oA);
+        assert(oB);
+        return oA->endPoint(PortType::In).y() <
+               oB->endPoint(PortType::In).y();
     };
 
-    std::sort(connectionsIn.begin(),
-              connectionsIn.end(),
-              std::bind(sortByPortIndex,
-                        std::placeholders::_1,
-                        std::placeholders::_2,
-                        PortType::In));
-    std::sort(connectionsOut.begin(),
-              connectionsOut.end(),
-              std::bind(sortByPortIndex,
-                        std::placeholders::_1,
-                        std::placeholders::_2,
-                        PortType::Out));
+    std::sort(connectionsIn.begin(),  connectionsIn.end(),  sortByEndPoint);
+    std::sort(connectionsOut.begin(), connectionsOut.end(), sortByEndPoint);
 
     // create undo command
     auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'").arg(groupNodeName));
@@ -1171,8 +1157,13 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     auto offset = QPointF{boundingRect.width() * 0.5, boundingRect.height() * 0.5};
 
     targetGraph->setPos(center);
-    inputProvider->setPos(inputProvider->pos() - offset);
-    outputProvider->setPos(outputProvider->pos() + offset);
+    inputProvider->setPos(inputProvider->pos() + center - 2 * offset);
+    outputProvider->setPos(outputProvider->pos() + center);
+
+    for (Node* node : selectedNodes)
+    {
+        node->setPos(node->pos() - offset);
+    }
 
     // find connections that share the same outgoing node and port
     auto const extractSharedConnections = [](auto& connections){
@@ -1235,64 +1226,67 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     for (QString const& typeId : dtypeIn ) inputProvider->addPort(typeId);
     for (QString const& typeId : dtypeOut) outputProvider->addPort(typeId);
 
-    // move nodes and internal connections
-    if (!m_graph->moveNodesAndConnections(selectedNodes, *targetGraph))
-    {
-        gtError() << tr("Failed to group nodes! (Moving nodes failed)");
-        return;
-    }
-    return;
-
+    // append node first
     if (!m_graph->appendNode(std::move(targetGraphPtr)))
     {
         gtError() << tr("Failed to group nodes! (Appending group node failed)");
         return;
     }
 
+    // move nodes and internal connections
+    if (!m_graph->moveNodesAndConnections(selectedNodes, *targetGraph))
+    {
+        gtError() << tr("Failed to group nodes! (Moving nodes failed)");
+        return;
+    }
+
     // helper function to create ingoing and outgoing connections
-    auto const makeConnections = [this, targetGraph](ConnectionUuid conId,
+    auto const makeConnections = [this, targetGraph](ConnectionUuid conUuid,
                                                      auto* provider,
                                                      PortIndex index,
                                                      PortType type,
                                                      bool addToMainGraph = true) {
-        if (type == PortType::Out) conId.reverse();
-
-        // create connection in parent graph
-        ConnectionUuid newCon = conId;
-        newCon.inNodeId = targetGraph->uuid();
-        newCon.inPort   = targetGraph->portId(type, index);
-
-        // create connection in subgraph
-        conId.outNodeId = provider->uuid();
-        conId.outPort   = provider->portId(invert(type), index);
-
-        assert(newCon.isValid());
-        assert(conId .isValid());
-
-        if (type == PortType::Out)
-        {
-            conId.reverse();
-            newCon.reverse();
-        }
+        if (type == PortType::Out) conUuid.reverse();
 
         if (addToMainGraph)
         {
+            // create connection in parent graph
+            ConnectionUuid newCon = conUuid;
+            newCon.inNodeId = targetGraph->uuid();
+            newCon.inPort   = targetGraph->portId(type, index);
+
+            assert(newCon.isValid());
+
+            if (type == PortType::Out) newCon.reverse();
+
             m_graph->appendConnection(m_graph->connectionId(newCon));
         }
-        targetGraph->appendConnection(targetGraph->connectionId(conId));
+
+        // create connection in subgraph
+        conUuid.outNodeId = provider->uuid();
+        conUuid.outPort   = provider->portId(invert(type), index);
+
+        assert(conUuid .isValid());
+
+        if (type == PortType::Out) conUuid.reverse();
+
+
+        targetGraph->appendConnection(targetGraph->connectionId(conUuid));
     };
 
     // create connections that share the same node and port
     auto const makeSharedConnetions = [makeConnections](auto& shared,
-                                                        ConnectionUuid conId,
+                                                        ConnectionUuid conUuid,
                                                         auto* provider,
                                                         PortIndex index,
                                                         PortType type){
         bool success = true;
         while (success)
         {
-            auto iter = std::find_if(shared.begin(), shared.end(), [conId](ConnectionUuid const& other){
-                return conId.outNodeId == other.outNodeId && conId.outPort == other.outPort;
+            auto iter = std::find_if(shared.begin(), shared.end(),
+                                     [conUuid](ConnectionUuid const& other){
+                return conUuid.outNodeId == other.outNodeId &&
+                       conUuid.outPort == other.outPort;
             });
             if ((success = (iter != shared.end())))
             {
@@ -1321,7 +1315,7 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     {
         makeConnections(conId, outputProvider, index, type);
 
-        makeSharedConnetions(connectionsOutShared, conId, inputProvider, index, type);
+        makeSharedConnetions(connectionsOutShared, conId, outputProvider, index, type);
 
         index++;
     }
