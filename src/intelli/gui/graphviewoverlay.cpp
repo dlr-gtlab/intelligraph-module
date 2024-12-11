@@ -141,7 +141,7 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
     m_stopAutoEvalBtn->setVisible(false);
 
     connect(m_startAutoEvalBtn, &QPushButton::clicked,
-        this, std::bind(updateAutoEvaluation, true));
+            this, std::bind(updateAutoEvaluation, true));
     connect(m_stopAutoEvalBtn, &QPushButton::clicked,
             this, std::bind(updateAutoEvaluation, false));
 
@@ -193,6 +193,8 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
         onSceneChanged(scene);
     }
 }
+
+GraphViewOverlay::~GraphViewOverlay() = default;
 
 GraphViewOverlay*
 GraphViewOverlay::make(GraphView& view)

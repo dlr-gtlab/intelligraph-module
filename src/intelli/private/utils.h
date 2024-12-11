@@ -25,6 +25,7 @@
 #include <gt_logstream.h>
 
 #include <QRegExpValidator>
+#include <QTimer>
 
 #include <algorithm>
 
@@ -173,11 +174,13 @@ struct SetupStateHelper
 
     /**
      * @brief Finalizes the state creation by triggering the `onStateChanged`
-     * slot.
+     * slot in the next event cycle.
      */
     GtState* finalize()
     {
-        emit state->valueChanged(state->getValue());
+        QTimer::singleShot(0, [state = this->state](){
+            emit state->valueChanged(state->getValue());
+        });
         return state;
     }
 };
