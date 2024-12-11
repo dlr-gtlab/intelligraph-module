@@ -20,6 +20,8 @@ using namespace intelli;
 
 NodeFactory::NodeFactory() = default;
 
+const char* S_DEPRECATED = "[DEPRECATED]";
+
 NodeFactory&
 NodeFactory::instance()
 {
@@ -34,8 +36,13 @@ NodeFactory::registeredCategories() const
 
     for (NodeMetaData const& data : m_data)
     {
+        if (data.category == S_DEPRECATED) continue;
         if (!categories.contains(data.category)) categories << data.category;
     }
+
+    categories.sort();
+    // deprecated category should be placed last
+    categories << S_DEPRECATED;
 
     return categories;
 }
@@ -53,8 +60,7 @@ NodeFactory::nodeModelName(const QString& className) const noexcept
 }
 
 bool
-NodeFactory::registerNode(QMetaObject const& meta,
-                          QString const& category) noexcept
+NodeFactory::registerNode(QMetaObject const& meta, QString category) noexcept
 {
     QString className = meta.className();
 
@@ -83,7 +89,12 @@ NodeFactory::registerNode(QMetaObject const& meta,
         return false;
     }
 
-    m_data.insert(className, {category, tmp->modelName()});
+    if (tmp->nodeFlags() & NodeFlag::Deprecated)
+    {
+        category = S_DEPRECATED;
+    }
+
+    m_data.insert(className, { std::move(category), tmp->modelName() });
     return true;
 }
 
@@ -95,7 +106,6 @@ NodeFactory::makeNode(QString const& className) const noexcept(false)
     };
     
     auto node = gt::unique_qobject_cast<Node>(std::move(obj));
-
     if (!node)
     {
         std::logic_error e{

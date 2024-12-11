@@ -155,7 +155,14 @@ NodeUI::geometry(Node const& node) const
 QIcon
 NodeUI::icon(GtObject* obj) const
 {
-    if (toGraph(obj))
+    Node* node = toNode(obj);
+    if (!node) return gt::gui::icon::objectEmpty();
+
+    if (node->nodeFlags() & NodeFlag::Deprecated)
+    {
+        return gt::gui::icon::warningColorized();
+    }
+    if (toGraph(node))
     {
         return gt::gui::icon::intelli::intelliGraph();
     }

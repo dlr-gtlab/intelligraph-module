@@ -538,6 +538,16 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
 
     node->updateObjectName();
 
+    // deprecation notice
+    if (node->nodeFlags() & NodeFlag::Deprecated &&
+        gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Medium)
+    {
+        gtLogOnce(Warning)
+        << tr("Node '%1' (%2) is deprecated and may be removed in "
+              "a future release of the associated module!")
+                .arg(relativeNodePath(*node), node->metaObject()->className());
+    }
+
     // append nodes of subgraph
     if (auto* graph = qobject_cast<Graph*>(node))
     {

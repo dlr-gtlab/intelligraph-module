@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Subgraphes can now also be expand, effectively ungrouping the subgraph. - #64
+- Allowed nodes to be marked as deprecated. Deprecated nodes should be replaced as soon as possible as a future release may remove the node entirely. - #225
 
 ### Changed
 - Major refactoring of the graph execution model. Now only one exec model is used to manage and evaluate a graph hierarchy, improving the handling of nested graphs and fixing unhandled edge cases. Additionally the future-object returned by the exec model is now far more flexible and user friendly, allowing above else the registration of callback functions. - #112

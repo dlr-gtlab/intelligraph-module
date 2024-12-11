@@ -21,6 +21,7 @@ LogicNode::LogicNode() :
     m_operation("operation", tr("Logic Operation"), tr("Logic Operation"), LogicOperation::AND)
 {
     registerProperty(m_operation);
+    setNodeFlag(Deprecated);
 
     // in ports
     m_inA = addInPort(typeId<BoolData>());

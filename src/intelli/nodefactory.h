@@ -51,7 +51,7 @@ public:
      * the node in the viewer.
      * @return Success
      */
-    bool registerNode(QMetaObject const& meta, QString const& category) noexcept;
+    bool registerNode(QMetaObject const& meta, QString category) noexcept;
 
     template <typename T>
     static bool registerNode(QString const& category)
