@@ -211,7 +211,7 @@ NodeGeometry::captionRect() const
 
     // make the caption as centered as possible
     auto& style = style::currentStyle().node;
-    xoffset += (style.evalStateSize - style.iconSize / margin);
+    xoffset += (style.evalStateSize - style.iconSize) / margin;
 
     return caption.translated(xoffset, vspacing());
 }
@@ -221,7 +221,7 @@ NodeGeometry::iconRect() const
 {
     auto& style = style::currentStyle().node;
     return QRect{
-        innerRect().topLeft().toPoint() - QPoint{style.iconSize, 0},
+        innerRect().topRight().toPoint() - QPoint{style.iconSize, 0},
         QSize{style.iconSize, style.iconSize}
     };
 }

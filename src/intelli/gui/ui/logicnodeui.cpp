@@ -39,7 +39,9 @@ QRect
 LogicNodeGeometry::iconRect() const
 {
     QRect rect = NodeGeometry::iconRect();
-    rect.moveTopLeft(captionRect().topRight().toPoint() - QPoint{0, 4});
+    QRectF captionRect = NodeGeometry::captionRect();
+    rect.moveTopLeft((captionRect.topRight() - QPointF{0, (rect.height() - captionRect.height()) * 0.5})
+                         .toPoint());
     return rect;
 }
 
