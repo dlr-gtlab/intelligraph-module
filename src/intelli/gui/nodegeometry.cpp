@@ -153,7 +153,10 @@ NodeGeometry::computeInnerRect() const
     }
 
     auto& style = style::currentStyle().node;
-    width = std::max(width, (int)(style.evalStateSize + hspacing() + captionRect().width()));
+    width = std::max(width, (int)(style.evalStateSize +
+                                  hspacing() +
+                                  captionRect().width() +
+                                  style.iconSize));
 
     return QRectF(QPoint{0, 0}, QSize{width, height});
 }
@@ -204,14 +207,23 @@ NodeGeometry::captionRect() const
     QRectF caption{innerRect.topLeft(), QSize{width, metrics.height()}};
 
     double margin = innerRect.width() - caption.width();
-
-    double xoffset = 0.5 * (innerRect.width() - caption.width());
+    double xoffset = 0.5 * margin;
 
     // make the caption as centered as possible
     auto& style = style::currentStyle().node;
-    xoffset += (style.evalStateSize / margin) * 0.5 * style.evalStateSize;
+    xoffset += (style.evalStateSize - style.iconSize) / margin;
 
     return caption.translated(xoffset, vspacing());
+}
+
+QRect
+NodeGeometry::iconRect() const
+{
+    auto& style = style::currentStyle().node;
+    return QRect{
+        innerRect().topRight().toPoint() - QPoint{style.iconSize, 0},
+        QSize{style.iconSize, style.iconSize}
+    };
 }
 
 QRectF

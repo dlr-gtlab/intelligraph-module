@@ -112,7 +112,8 @@ struct StyleData
         double portRadius = 5.0;
         /// size of the eval state
         double evalStateSize = 20.0;
-
+        /// size of node icon
+        int iconSize = 20;
         /// modifier to apply to all r-g-b components when highlighting
         /// compatible nodes (while creatimg a draft connection)
         int compatiblityTintModifier = 20;

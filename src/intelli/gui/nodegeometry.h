@@ -121,6 +121,8 @@ public:
      */
     virtual QRectF captionRect() const;
 
+    virtual QRect iconRect() const;
+
     /**
      * @brief Denotes where the eval state should be placed. When overriding it
      * is advised to call the base implementation and to simply

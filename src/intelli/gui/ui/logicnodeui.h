@@ -31,6 +31,8 @@ public:
 
     QRectF captionRect() const override;
 
+    QRect iconRect() const override;
+
     QRectF evalStateRect() const override;
 
     QRectF portRect(PortType type, PortIndex idx) const override;

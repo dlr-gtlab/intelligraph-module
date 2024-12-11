@@ -11,6 +11,7 @@
 #include "intelli/graph.h"
 #include "intelli/gui/nodepainter.h"
 #include "intelli/gui/nodegeometry.h"
+#include "intelli/gui/icons.h"
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
 
@@ -91,6 +92,16 @@ NodePainter::backgroundColor() const
     return bg;
 }
 
+QIcon
+NodePainter::nodeIcon() const
+{
+    if (qobject_cast<Graph const*>(&node()))
+    {
+        return gt::gui::icon::intelli::intelliGraph();
+    }
+    return QIcon{};
+}
+
 
 QColor
 NodePainter::customBackgroundColor() const
@@ -99,15 +110,11 @@ NodePainter::customBackgroundColor() const
 
     QColor bg = style::currentStyle().node.background;
 
-    if (node.nodeFlags() & NodeFlag::Unique)
+    if (node.nodeFlags() & NodeFlag::Unique ||
+        qobject_cast<Graph const*>(&node))
     {
         return gt::gui::color::lighten(bg, -20);
     }
-    if (qobject_cast<Graph const*>(&node))
-    {
-        return gt::gui::color::lighten(bg, -12);
-    }
-
     return bg;
 }
 
@@ -262,6 +269,15 @@ NodePainter::drawResizeHandle(QPainter& painter) const
 }
 
 void
+NodePainter::drawIcon(QPainter& painter) const
+{
+    QRect rect = geometry().iconRect();
+
+    QIcon icon = nodeIcon();
+    if (!icon.isNull()) icon.paint(&painter, rect);
+}
+
+void
 NodePainter::drawCaption(QPainter& painter) const
 {
     auto& node = this->node();
@@ -297,6 +313,7 @@ NodePainter::paint(QPainter& painter) const
     drawResizeHandle(painter);
     drawOutline(painter);
     drawCaption(painter);
+    drawIcon(painter);
     drawPorts(painter);
 
 #ifdef GT_INTELLI_DEBUG_NODE_GRAPHICS
