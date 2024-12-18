@@ -20,6 +20,8 @@ LogicDisplayNode::LogicDisplayNode() :
     Node(QStringLiteral("Logic Display"))
 {
     setNodeEvalMode(NodeEvalMode::Blocking);
+    setNodeFlag(Deprecated);
+    setToolTip(QObject::tr("This node is deprecated and will be removed in a future relase."));
 
     m_in = addInPort(typeId<BoolData>());
 

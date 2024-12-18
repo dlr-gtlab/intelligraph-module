@@ -23,6 +23,8 @@ LogicSourceNode::LogicSourceNode() :
     registerProperty(m_value);
 
     setNodeEvalMode(NodeEvalMode::Blocking);
+    setNodeFlag(Deprecated);
+    setToolTip(QObject::tr("This node is deprecated and will be removed in a future relase."));
 
     m_out = addOutPort(typeId<BoolData>());
 

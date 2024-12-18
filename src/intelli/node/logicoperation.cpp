@@ -21,6 +21,8 @@ LogicNode::LogicNode() :
     m_operation("operation", tr("Logic Operation"), tr("Logic Operation"), LogicOperation::AND)
 {
     registerProperty(m_operation);
+    setNodeFlag(Deprecated);
+    setToolTip(QObject::tr("This node is deprecated and will be removed in a future relase."));
 
     // in ports
     m_inA = addInPort(typeId<BoolData>());
