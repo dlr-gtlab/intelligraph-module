@@ -325,7 +325,7 @@ GraphView::centerScene()
     auto* scene = this->scene();
     if (!scene) return;
 
-    QRectF sceneRect = scene->sceneRect();
+    QRectF sceneRect = scene->itemsBoundingRect();
 
     if (sceneRect.width()  > rect().width() ||
         sceneRect.height() > rect().height())
