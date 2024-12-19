@@ -413,8 +413,8 @@ struct ConnectionData
             if (i.iter == i.end && i.type == PortType::In)
             {
                 auto& p = i.ptr->ports(PortType::Out);
-                i.iter = detail::begin_iterator<i.IsReversed, container_type>{}(p);
-                i.end  = detail::end_iterator<i.IsReversed, container_type>{}(p);
+                i.iter = detail::begin_iterator<Base::IsReversed, container_type>{}(p);
+                i.end  = detail::end_iterator<Base::IsReversed, container_type>{}(p);
                 i.type = PortType::Out;
             }
         }
@@ -483,8 +483,8 @@ struct ConnectionData
 
                     // switch to output side
                     auto& p = i.ptr->ports(PortType::Out);
-                    i.iter = detail::begin_iterator<i.IsReversed, container_type>{}(p);
-                    i.end  = detail::end_iterator<i.IsReversed, container_type>{}(p);
+                    i.iter = detail::begin_iterator<Base::IsReversed, container_type>{}(p);
+                    i.end  = detail::end_iterator<Base::IsReversed, container_type>{}(p);
                     i.type = PortType::Out;
                 }
                 else
