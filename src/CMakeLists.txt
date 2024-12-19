@@ -21,7 +21,11 @@ option(
 )
 option(
     INTELLIGRAPH_DEBUG_NODE_PROPERTIES
-    "SHows node properties in property dock widget" OFF
+    "Shows node properties in property dock widget" OFF
+)
+option(
+    INTELLIGRAPH_ENABLE_EXPERIMENTAL_NODES
+    "Enables nodes that are considered experimental and should not be used in production" OFF
 )
 
 set(PUBLIC_HEADERS
@@ -216,6 +220,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/color.cpp
     intelli/property/stringselection.cpp
     intelli/property/uint.cpp
+
+    intelli/node/binarydisplay.h intelli/node/binarydisplay.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph
@@ -250,6 +256,11 @@ endif()
 if (INTELLIGRAPH_DEBUG_NODE_PROPERTIES)
     target_compile_definitions(GTlabIntelliGraph PRIVATE
         GT_INTELLI_DEBUG_NODE_PROPERTIES
+    )
+endif()
+if (INTELLIGRAPH_ENABLE_EXPERIMENTAL_NODES)
+    target_compile_definitions(GTlabIntelliGraph PRIVATE
+        GT_INTELLI_EXPERIMENTAL_NODES
     )
 endif()
 
