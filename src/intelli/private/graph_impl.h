@@ -225,11 +225,12 @@ struct Graph::Impl
     static inline void
     repopulateGlobalConnectionModel(Graph& graph)
     {
+        // disconnect, incase connection was moved
         for (Connection* connection : graph.connections())
         {
             connection->disconnect(&graph);
         }
-        // append nodes
+        // append nodes first
         for (auto& entry : graph.m_local)
         {
             graph.m_global->insert(entry.node->uuid(), entry.node);
@@ -237,6 +238,7 @@ struct Graph::Impl
         // recurisvely append nodes and connections
         for (Graph* subgraph : graph.graphNodes())
         {
+            assert(graph.m_global.get() == subgraph->m_global.get());
             repopulateGlobalConnectionModel(*subgraph);
         }
         // append connections of this graph
@@ -248,6 +250,12 @@ struct Graph::Impl
                 assert(connection);
                 Node* targetNode = graph.findNode(conId.inNodeId);
                 assert(targetNode);
+
+                // reconnect
+                connect(connection, &QObject::destroyed,
+                        &graph, Impl::ConnectionDeleted(&graph, conId),
+                        Qt::DirectConnection);
+
                 graph.appendGlobalConnection(connection, conId, *targetNode);
             }
         }
@@ -309,7 +317,8 @@ struct Graph::Impl
             PortInfo* port = node->port(portId);
             if (!port)
             {
-                gtWarning() << tr("Failed to update connections of changed "
+                gtWarning() << utils::logId(*graph)
+                            << tr("Failed to update connections of changed "
                                   "portId %1 node %2!")
                                    .arg(portId).arg(nodeId);
                 return;
@@ -374,7 +383,8 @@ struct Graph::Impl
             auto localIter = graph->m_local.find(nodeId);
             if (localIter == graph->m_local.end())
             {
-                gtWarning() << tr("Failed to delete node") << nodeId
+                gtWarning() << utils::logId(*graph)
+                            << tr("Failed to delete node") << nodeId
                             << tr("(node was not found!)");
                 return;
             }
@@ -385,7 +395,8 @@ struct Graph::Impl
             auto globalIter = graph->m_global->find(nodeUuid);
             if (globalIter == graph->m_global->end())
             {
-                gtWarning() << tr("Failed to delete node") << nodeId
+                gtWarning() << utils::logId(*graph)
+                            << tr("Failed to delete node") << nodeId
                             << tr("(node was not found in global model!)");
                 return;
             }
@@ -445,7 +456,9 @@ struct Graph::Impl
 
             if (targetNode == model->end() || sourceNode == model->end())
             {
-                gtWarning() << tr("Failed to delete connection %1").arg(toString(conId))
+                gtWarning() << utils::logId(*graph)
+                            << tr("Failed to delete connection %1")
+                                   .arg(toString(conId))
                             << tr("(in-node entry %1, out-node entry %2!)")
                                    .arg(targetNode != model->end() ? "found" : "not found")
                                    .arg(sourceNode != model->end() ? "found" : "not found");
@@ -462,7 +475,9 @@ struct Graph::Impl
 
             if (inIdx < 0 || outIdx < 0)
             {
-                gtWarning() << tr("Failed to delete connection %1").arg(toString(conId))
+                gtWarning() << utils::logId(*graph)
+                            << tr("Failed to delete connection %1")
+                                   .arg(toString(conId))
                             << tr("(in-connection %1, out-connection %2!)")
                                    .arg(inIdx  >= 0 ? "found" : "not found")
                                    .arg(outIdx >= 0 ? "found" : "not found");

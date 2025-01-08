@@ -253,9 +253,17 @@ struct ConnectionData
      */
     bool operator==(ConnectionData const& other) const
     {
+        auto compare = [](container_type const& list,
+                          container_type const& other) {
+            if (list.size() != other.size()) return false;
+
+            return std::all_of(list.begin(), list.end(), [&other](auto& entry){
+                return std::count(other.begin(), other.end(), entry) == 1;
+            });
+        };
         return node == other.node &&
-               predecessors == other.predecessors &&
-               successors == other.successors;
+               compare(predecessors, other.predecessors) &&
+               compare(successors, other.successors);
     }
     bool operator!=(ConnectionData const& other) const { return !(*this == other); }
 
@@ -813,6 +821,20 @@ struct ConnectionData
             { this, p.begin(), p.end(), PortType::In, { portId } }
         };
     }
+
+    bool hasConnections(PortType type = PortType::NoType) const
+    {
+        return type == PortType::NoType ?
+                   !iterate().empty() :
+                   !iterate(type).empty();
+    }
+
+    bool hasConnections(PortId portId, PortType type = PortType::NoType) const
+    {
+        return type == PortType::NoType ?
+                   !iterate(portId).empty() :
+                   !iterate(portId, type).empty();
+    }
 };
 
 /// directed acyclic graph representing connections and nodes
@@ -907,9 +929,10 @@ public:
     /**
      * @brief Proxy object that yields `Node*`.
      */
+    template <typename T>
     struct NodeProxy
     {
-        using value_type = Node const*;
+        using value_type = T*;
         using reference  = value_type;
         using pointer    = value_type;
 
@@ -928,7 +951,11 @@ public:
      */
     auto iterateNodes() const
     {
-        return iterator_instantiator<const_iterator, NodeProxy>{begin(), end()};
+        return iterator_instantiator<const_iterator, NodeProxy<Node const>>{begin(), end()};
+    }
+    auto iterateNodes()
+    {
+        return iterator_instantiator<const_iterator, NodeProxy<Node>>{begin(), end()};
     }
 
     /**
@@ -1038,7 +1065,22 @@ public:
     const_key_value_iterator keyValueBegin() const { return m_data.keyValueBegin(); }
     const_key_value_iterator keyValueEnd() const { return m_data.keyValueEnd(); }
 
-    bool operator==(ConnectionModel_t const& other) const { return m_data == other.m_data; }
+    bool operator==(ConnectionModel_t const& other) const
+    {
+        if (size() != other.size()) return false;
+
+        auto iter = keyValueBegin();
+        auto end  = keyValueEnd();
+        for (; iter != end; ++iter)
+        {
+            auto oIter = other.find(std::get<0>(*iter));
+            if (oIter == other.end()) return false;
+            if (*oIter != std::get<1>(*iter)) return false;
+        }
+
+        return m_data == other.m_data;
+
+    }
     bool operator!=(ConnectionModel_t const& other) const { return !(*this == other); }
 
 private:

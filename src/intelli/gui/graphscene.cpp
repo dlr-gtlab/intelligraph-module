@@ -289,7 +289,10 @@ makeDraftConnection(GraphScene& scene,
     QPointF oldEndPoint = getEndPoint(conId, type);
 
     // delete old connection
-    bool success = gtDataModel->deleteFromModel(scene.graph().findConnection(conId));
+    auto oldConnection = scene.graph().findConnection(conId);
+    assert(oldConnection);
+
+    bool success = gtDataModel->deleteFromModel(oldConnection);
     assert(success);
 
     auto outNode = scene.nodeObject(conId.outNodeId);
@@ -1599,7 +1602,14 @@ GraphScene::onConnectionDeleted(ConnectionId conId)
         return e.conId == conId;
     });
 
-    if (iter != m_connections.end()) m_connections.erase(iter);
+    if (iter == m_connections.end())
+    {
+        gtError() << utils::logId(this)
+                  << tr("Failed to remove connection:") << conId;
+        return;
+    }
+
+    m_connections.erase(iter);
 
     // update in and out node
     auto* inNode  = nodeObject(conId.inNodeId);
