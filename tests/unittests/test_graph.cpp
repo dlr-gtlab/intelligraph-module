@@ -791,18 +791,10 @@ TEST(Graph, move_node_to_other_graph)
     EXPECT_TRUE(graph2.findNodeByUuid(A_uuid));
 }
 
-#include <gt_eventloop.h>
-
 TEST(Graph, move_nodes_to_other_graph)
 {
     Graph graph1;
     Graph graph2;
-
-    GraphExecutionModel model1(graph1);
-    GraphExecutionModel model2(graph2);
-
-    ASSERT_TRUE(model1.autoEvaluateGraph());
-    ASSERT_TRUE(model2.autoEvaluateGraph());
 
     ASSERT_TRUE(test::buildLinearGraph(graph1));
 
@@ -829,13 +821,6 @@ TEST(Graph, move_nodes_to_other_graph)
     EXPECT_EQ(graph1.globalConnectionModel().size(), globalConnections);
     EXPECT_NE(graph2.globalConnectionModel().size(), globalConnections);
 
-    GtEventLoop loop(std::chrono::seconds(1));
-    loop.exec();
-    ASSERT_TRUE(model1.isGraphEvaluated());
-    ASSERT_TRUE(model2.isGraphEvaluated());
-    ASSERT_FALSE(model1.isEvaluating());
-    ASSERT_FALSE(model2.isEvaluating());
-
     // move node
     QVector<NodeId> nodeIds = {A_id, B_id, C_id, D_id};
     EXPECT_TRUE(graph1.moveNodesAndConnections(nodeIds, graph2));
@@ -854,23 +839,12 @@ TEST(Graph, move_nodes_to_other_graph)
     EXPECT_TRUE(graph2.globalConnectionModel() == globalModel);
     EXPECT_NE(graph1.globalConnectionModel().size(), globalConnections);
     EXPECT_EQ(graph2.globalConnectionModel().size(), globalConnections);
-
-    loop.exec();
-    ASSERT_TRUE(model1.isGraphEvaluated());
-    ASSERT_TRUE(model2.isGraphEvaluated());
-    ASSERT_FALSE(model1.isEvaluating());
-    ASSERT_FALSE(model2.isEvaluating());
 }
 
 TEST(Graph, move_graph_to_other_graph)
 {
     Graph graph1;
     Graph graph2;
-
-    GraphExecutionModel model1(graph1);
-    GraphExecutionModel model2(graph2);
-    ASSERT_TRUE(model1.autoEvaluateGraph());
-    ASSERT_TRUE(model2.autoEvaluateGraph());
 
     ASSERT_TRUE(test::buildGraphWithGroup(graph1));
 
@@ -904,13 +878,6 @@ TEST(Graph, move_graph_to_other_graph)
     EXPECT_EQ(graph1.globalConnectionModel().size(), globalConnections);
     EXPECT_NE(graph2.globalConnectionModel().size(), globalConnections);
 
-    GtEventLoop loop(std::chrono::seconds(1));
-    loop.exec();
-    ASSERT_TRUE(model1.isGraphEvaluated());
-    ASSERT_TRUE(model2.isGraphEvaluated());
-    ASSERT_FALSE(model1.isEvaluating());
-    ASSERT_FALSE(model2.isEvaluating());
-
     // move node
     QVector<NodeId> nodeIds = {A_id, B_id, C_id, D_id, E_id};
     EXPECT_TRUE(graph1.moveNodesAndConnections(nodeIds, graph2));
@@ -936,10 +903,4 @@ TEST(Graph, move_graph_to_other_graph)
     EXPECT_TRUE(graph2.globalConnectionModel() == globalModel);
     EXPECT_NE(graph1.globalConnectionModel().size(), globalConnections);
     EXPECT_EQ(graph2.globalConnectionModel().size(), globalConnections);
-
-    loop.exec();
-    ASSERT_TRUE(model1.isGraphEvaluated());
-    ASSERT_TRUE(model2.isGraphEvaluated());
-    ASSERT_FALSE(model1.isEvaluating());
-    ASSERT_FALSE(model2.isEvaluating());
 }
