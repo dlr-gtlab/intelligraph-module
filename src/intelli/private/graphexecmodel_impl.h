@@ -50,9 +50,10 @@ inline QString makeIndentation(int indent)
 
 // helper macros for more legible output
 #define INTELLI_LOG_IMPL(MODEL, INDENT) \
-    (MODEL).graph().objectName() + QChar{':'} + makeIndentation(INDENT)
+    utils::logId((MODEL).graph()) + QChar{' '} + \
+    utils::logId(MODEL) + makeIndentation(INDENT)
 #define INTELLI_LOG_SCOPE(MODEL) \
-           auto undo_indentation__ = gt::finally([&](){ getIndentation((MODEL))--; }); \
+    auto undo_indentation__ = gt::finally([&](){ getIndentation((MODEL))--; }); \
     gtTrace().verbose() << INTELLI_LOG_IMPL(MODEL, getIndentation((MODEL))++)
 #define INTELLI_LOG(MODEL) \
     gtTrace().verbose() << INTELLI_LOG_IMPL(MODEL, getIndentation((MODEL)))
@@ -75,25 +76,25 @@ using MakeErrorFunction = QString(*)(Graph const&);
 
 inline QString setNodeDataError(Graph const& graph)
 {
-    return graph.objectName() + QStringLiteral(": ") +
+    return utils::logId(graph) + utils::logId<GraphExecutionModel>();
            QObject::tr("failed to set node data") + ',';
 }
 
 inline QString getNodeDataError(Graph const& graph)
 {
-    return graph.objectName() + QStringLiteral(": ") +
+    return utils::logId(graph) + utils::logId<GraphExecutionModel>();
            QObject::tr("failed to access node data") + ',';
 }
 
 inline QString evaluteNodeError(Graph const& graph)
 {
-    return graph.objectName() + QStringLiteral(": ") +
+    return utils::logId(graph) +utils::logId<GraphExecutionModel>();
            QObject::tr("failed to evaluate node") + ',';
 }
 
 inline QString autoEvaluteNodeError(Graph const& graph)
 {
-    return graph.objectName() + QStringLiteral(": ") +
+    return utils::logId(graph) + utils::logId<GraphExecutionModel>();
            QObject::tr("failed to auto evaluate node") + ',';
 }
 
@@ -447,8 +448,7 @@ struct GraphExecutionModel::Impl
             bool valid =
                 std::all_of(entry->portsIn.begin(), entry->portsIn.end(),
                             [conData, this](PortDataItem const& entry){
-                // TODO: check only predecessors
-                bool isConnected = !conData->iterate(entry.portId).empty();
+                bool isConnected = conData->hasConnections(entry.portId, PortType::In);
                 bool isPortDataValid = entry.data.state == PortDataState::Valid;
 
                 auto* port = node->port(entry.portId);

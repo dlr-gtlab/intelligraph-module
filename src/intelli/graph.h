@@ -77,6 +77,8 @@ enum class NodeIdPolicy
 
 /// prints the graph as a mermaid flow chart useful for debugging
 GT_INTELLI_EXPORT void debug(Graph const& graph);
+GT_INTELLI_EXPORT void debug(ConnectionModel const& model);
+GT_INTELLI_EXPORT void debug(GlobalConnectionModel const& model);
 
 template <typename NodeId_t, typename NodeList>
 static bool containsNodeId(NodeId_t const& nodeId, NodeList const& nodes)
@@ -489,11 +491,16 @@ public:
         if (!moveNodes(nodes, targetGraph, policy)) return false;
 
         // reinstantiate internal connections
-        return std::all_of(connectionsToMove.begin(),
+        bool success = std::all_of(connectionsToMove.begin(),
                            connectionsToMove.end(),
                            [&targetGraph](auto const& conUuid){
             return targetGraph.appendConnection(targetGraph.connectionId(conUuid));
         });
+
+//        resetGlobalConnectionModel();
+//        targetGraph.resetGlobalConnectionModel();
+
+        return success;
     }
 
     /**
@@ -514,6 +521,9 @@ public:
         Q_UNUSED(changeCmd);
         Q_UNUSED(changeTargetCmd);
 
+        // NOTE: nodes's iterators may get invalidated if a node is removed
+        // and if nodes's iterators point to the underlying connection models
+        // causing UDB?
         return std::all_of(nodes.begin(), nodes.end(),
                            [this, &targetGraph, policy](auto node){
             return moveNode(get_node_id<NodeId>{}(node), targetGraph, policy);

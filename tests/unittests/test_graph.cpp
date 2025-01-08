@@ -766,6 +766,9 @@ TEST(Graph, move_node_to_other_graph)
 
     ASSERT_TRUE(test::buildLinearGraph(graph1));
 
+    graph1.setCaption("Graph1");
+    graph2.setCaption("Graph2");
+
     Node* nodeA = graph1.findNode(A_id);
     ASSERT_TRUE(nodeA);
 
@@ -788,15 +791,28 @@ TEST(Graph, move_node_to_other_graph)
     EXPECT_TRUE(graph2.findNodeByUuid(A_uuid));
 }
 
+#include <gt_eventloop.h>
+
 TEST(Graph, move_nodes_to_other_graph)
 {
     Graph graph1;
     Graph graph2;
 
+    GraphExecutionModel model1(graph1);
+    GraphExecutionModel model2(graph2);
+
+    ASSERT_TRUE(model1.autoEvaluateGraph());
+    ASSERT_TRUE(model2.autoEvaluateGraph());
+
     ASSERT_TRUE(test::buildLinearGraph(graph1));
+
+    graph1.setCaption("Graph1");
+    graph2.setCaption("Graph2");
 
     auto model = graph1.connectionModel();
     int connections = model.size();
+    auto globalModel = graph1.globalConnectionModel();
+    int globalConnections = globalModel.size();
 
     // before move
     EXPECT_FALSE(graph1.connectionModel().empty());
@@ -805,6 +821,20 @@ TEST(Graph, move_nodes_to_other_graph)
     EXPECT_FALSE(graph2.connectionModel() == model);
     EXPECT_EQ(graph1.connectionModel().size(), connections);
     EXPECT_NE(graph2.connectionModel().size(), connections);
+
+    EXPECT_FALSE(graph1.globalConnectionModel().empty());
+    EXPECT_TRUE(graph2.globalConnectionModel().empty());
+    EXPECT_TRUE(graph1.globalConnectionModel() == globalModel);
+    EXPECT_FALSE(graph2.globalConnectionModel() == globalModel);
+    EXPECT_EQ(graph1.globalConnectionModel().size(), globalConnections);
+    EXPECT_NE(graph2.globalConnectionModel().size(), globalConnections);
+
+    GtEventLoop loop(std::chrono::seconds(1));
+    loop.exec();
+    ASSERT_TRUE(model1.isGraphEvaluated());
+    ASSERT_TRUE(model2.isGraphEvaluated());
+    ASSERT_FALSE(model1.isEvaluating());
+    ASSERT_FALSE(model2.isEvaluating());
 
     // move node
     QVector<NodeId> nodeIds = {A_id, B_id, C_id, D_id};
@@ -817,4 +847,99 @@ TEST(Graph, move_nodes_to_other_graph)
     EXPECT_TRUE(graph2.connectionModel() == model);
     EXPECT_NE(graph1.connectionModel().size(), connections);
     EXPECT_EQ(graph2.connectionModel().size(), connections);
+
+    EXPECT_TRUE(graph1.globalConnectionModel().empty());
+    EXPECT_FALSE(graph2.globalConnectionModel().empty());
+    EXPECT_FALSE(graph1.globalConnectionModel() == globalModel);
+    EXPECT_TRUE(graph2.globalConnectionModel() == globalModel);
+    EXPECT_NE(graph1.globalConnectionModel().size(), globalConnections);
+    EXPECT_EQ(graph2.globalConnectionModel().size(), globalConnections);
+
+    loop.exec();
+    ASSERT_TRUE(model1.isGraphEvaluated());
+    ASSERT_TRUE(model2.isGraphEvaluated());
+    ASSERT_FALSE(model1.isEvaluating());
+    ASSERT_FALSE(model2.isEvaluating());
+}
+
+TEST(Graph, move_graph_to_other_graph)
+{
+    Graph graph1;
+    Graph graph2;
+
+    GraphExecutionModel model1(graph1);
+    GraphExecutionModel model2(graph2);
+    ASSERT_TRUE(model1.autoEvaluateGraph());
+    ASSERT_TRUE(model2.autoEvaluateGraph());
+
+    ASSERT_TRUE(test::buildGraphWithGroup(graph1));
+
+    graph1.setCaption("Graph1");
+    graph2.setCaption("Graph2");
+
+    gtDebug() << "Debugging graph1";
+    debug(graph1.globalConnectionModel());
+    debug(graph1.connectionModel());
+    gtDebug() << "Debugging graph2";
+    debug(graph2.globalConnectionModel());
+    debug(graph2.connectionModel());
+
+    auto model = graph1.connectionModel();
+    int connections = model.size();
+    auto globalModel = graph1.globalConnectionModel();
+    int globalConnections = globalModel.size();
+
+    // before move
+    EXPECT_FALSE(graph1.connectionModel().empty());
+    EXPECT_TRUE(graph2.connectionModel().empty());
+    EXPECT_TRUE(graph1.connectionModel() == model);
+    EXPECT_FALSE(graph2.connectionModel() == model);
+    EXPECT_EQ(graph1.connectionModel().size(), connections);
+    EXPECT_NE(graph2.connectionModel().size(), connections);
+
+    EXPECT_FALSE(graph1.globalConnectionModel().empty());
+    EXPECT_TRUE(graph2.globalConnectionModel().empty());
+    EXPECT_TRUE(graph1.globalConnectionModel() == globalModel);
+    EXPECT_FALSE(graph2.globalConnectionModel() == globalModel);
+    EXPECT_EQ(graph1.globalConnectionModel().size(), globalConnections);
+    EXPECT_NE(graph2.globalConnectionModel().size(), globalConnections);
+
+    GtEventLoop loop(std::chrono::seconds(1));
+    loop.exec();
+    ASSERT_TRUE(model1.isGraphEvaluated());
+    ASSERT_TRUE(model2.isGraphEvaluated());
+    ASSERT_FALSE(model1.isEvaluating());
+    ASSERT_FALSE(model2.isEvaluating());
+
+    // move node
+    QVector<NodeId> nodeIds = {A_id, B_id, C_id, D_id, E_id};
+    EXPECT_TRUE(graph1.moveNodesAndConnections(nodeIds, graph2));
+
+    gtDebug() << "Debugging graph1";
+    debug(graph1.globalConnectionModel());
+    debug(graph1.connectionModel());
+    gtDebug() << "Debugging graph2";
+    debug(graph2.globalConnectionModel());
+    debug(graph2.connectionModel());
+
+    // after move
+    EXPECT_TRUE(graph1.connectionModel().empty());
+    EXPECT_FALSE(graph2.connectionModel().empty());
+    EXPECT_FALSE(graph1.connectionModel() == model);
+    EXPECT_TRUE(graph2.connectionModel() == model);
+    EXPECT_NE(graph1.connectionModel().size(), connections);
+    EXPECT_EQ(graph2.connectionModel().size(), connections);
+
+    EXPECT_TRUE(graph1.globalConnectionModel().empty());
+    EXPECT_FALSE(graph2.globalConnectionModel().empty());
+    EXPECT_FALSE(graph1.globalConnectionModel() == globalModel);
+    EXPECT_TRUE(graph2.globalConnectionModel() == globalModel);
+    EXPECT_NE(graph1.globalConnectionModel().size(), globalConnections);
+    EXPECT_EQ(graph2.globalConnectionModel().size(), globalConnections);
+
+    loop.exec();
+    ASSERT_TRUE(model1.isGraphEvaluated());
+    ASSERT_TRUE(model2.isGraphEvaluated());
+    ASSERT_FALSE(model1.isEvaluating());
+    ASSERT_FALSE(model2.isEvaluating());
 }

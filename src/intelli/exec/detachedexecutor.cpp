@@ -48,7 +48,7 @@ int signal_offset(){
 
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
-            << "[DetachedExecutor]"
+            << utils::logId<DetachedExecutor>()
             << QObject::tr("signal offset for derived nodes of '%1' is %2")
                    .arg(sourceMetaObject->className()).arg(offset);
 #endif
@@ -127,7 +127,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
         if (signalIndex == -1)
         {
             gtWarning()
-                << "[DetachedExecutor]"
+                << utils::logId<DetachedExecutor>()
                 << QObject::tr("failed to forward signal from clone to source node!")
                 << gt::brackets(signal);
             return {};
@@ -136,7 +136,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
 
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
-            << "[DetachedExecutor]"
+            << utils::logId<DetachedExecutor>()
             << QObject::tr("connecting custom signal '%1' of node '%2'")
                    .arg(signal, sourceMetaObject->className());
 #endif
@@ -146,7 +146,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
                               Qt::QueuedConnection))
         {
             gtWarning()
-                << "[DetachedExecutor]"
+                << utils::logId<DetachedExecutor>()
                 << QObject::tr("failed to connect signal of clone with source node!")
                 << gt::brackets(signal);
             return {};
@@ -188,7 +188,7 @@ DetachedExecutor::onFinished()
 {
     if (!m_node)
     {
-        gtError() << "[DetachedExecutor]"
+        gtError() << utils::logId(this)
                   << tr("Cannot finish transfer of node data! (Invalid node)");
 
         m_destroyed = true;
@@ -204,7 +204,7 @@ DetachedExecutor::onFinished()
 void
 DetachedExecutor::onCanceled()
 {
-    gtError() << "[DetachedExecutor]"
+    gtError() << utils::logId(this)
               << tr("Execution of node '%1' failed!")
                      .arg(m_node ? m_node->objectName() :
                                    QStringLiteral("<null>"));
@@ -215,7 +215,7 @@ DetachedExecutor::onResultReady(int result)
 {
     if (!m_node)
     {
-        gtError() << "[DetachedExecutor]"
+        gtError() << utils::logId(this)
                   << tr("cannot transfer node data! (Invalid node)");
         return;
     }
@@ -227,7 +227,7 @@ DetachedExecutor::onResultReady(int result)
 
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
     gtTrace().verbose()
-        << "[DetachedExecutor]"
+        << utils::logId(this)
         << tr("collecting data from node '%1' (%2)...")
                .arg(relativeNodePath(*m_node))
                .arg(m_node->id());
@@ -241,7 +241,7 @@ DetachedExecutor::onResultReady(int result)
     auto* model = exec::nodeDataInterface(*m_node);
     if (!model)
     {
-        gtError() << "[DetachedExecutor]"
+        gtError() << utils::logId(this)
                   << tr("failed to transfer node data! (Execution model not found)");
         return;
     }
@@ -252,7 +252,7 @@ DetachedExecutor::onResultReady(int result)
 
     if (!model->setNodeData(nodeUuid, PortType::Out, outData))
     {
-        gtError() << "[DetachedExecutor]"
+        gtError() << utils::logId(this)
                   << tr("failed to transfer node data!");
     }
 
@@ -266,7 +266,7 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
 {
     if (!canEvaluateNode())
     {
-        gtWarning() << "[DetachedExecutor]"
+        gtWarning() << utils::logId(this)
                     << tr("cannot evaluate node '%1'! (Node is already running)")
                            .arg(node.objectName());
         return false;
@@ -276,9 +276,8 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
     if (!m_watcher.isFinished())
     {
         gtTrace().verbose()
-            << "[DetachedExecutor]"
-            << tr("reusing executor")
-            << (void*)this;
+            << utils::logId(this)
+            << tr("reusing executor:") << (void*)this;
     }
 #endif
 
@@ -304,15 +303,14 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
     {
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
-            << "[DetachedExecutor]"
+            << utils::logId<DetachedExecutor>()
             << tr("beginning evaluation of node '%1' (%2)...")
                    .arg(memento.ident())
                    .arg(nodeUuid);
 #endif
 
         auto const makeError = [nodeUuid](){
-            return QStringLiteral("[DetachedExecutor] ") +
-                   tr("evaluating node %1 failed!").arg(nodeUuid);
+            return tr("evaluating node %1 failed!").arg(nodeUuid);
         };
 
         try{
@@ -323,7 +321,7 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
             auto* node = clone.get();
             if (!node)
             {
-                gtError() << makeError()
+                gtError() << utils::logId<DetachedExecutor>() << makeError()
                           << tr("(cloning node failed)").arg(memento.ident());
                 return {};
             }
@@ -351,7 +349,7 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
 
             if (!success)
             {
-                gtError() << makeError()
+                gtError() << utils::logId<DetachedExecutor>() << makeError()
                           << tr("(failed to copy source data)");
                 return {};
             }
@@ -363,13 +361,13 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
         }
         catch (const std::exception& ex)
         {
-            gtError() << makeError()
+            gtError() << utils::logId<DetachedExecutor>() << makeError()
                       << tr("(caught exception: %1)").arg(ex.what());
             return {};
         }
         catch(...)
         {
-            gtError() << makeError()
+            gtError() << utils::logId<DetachedExecutor>() << makeError()
                       << tr("(caught unkown exception)");
             return {};
         }

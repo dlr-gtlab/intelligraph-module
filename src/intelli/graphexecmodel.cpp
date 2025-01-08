@@ -25,14 +25,19 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 {
     if (graph.parentGraph())
     {
-        gtError() << tr("A graph execution model should only be added to the root Graph!");
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("graph %1 is not a root graph!")
+                         .arg(graph.objectName());
         m_modificationCount++; // deactivate this exec model
     }
 
     if (auto* exec = graph.findDirectChild<GraphExecutionModel*>())
     if (exec != this)
     {
-        gtError() << tr("The graph %1 already has a graph execution model associated!")
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("graph %1 already has a graph execution model associated!")
                         .arg(graph.objectName());
     }
 
@@ -57,8 +62,9 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
         Node const* node = this->graph().globalConnectionModel().node(nodeUuid);
         if (node)
         {
-            gtInfo()
-                << gt::quoted(this->graph().caption(), "", ":")
+            gtInfo().medium()
+                << utils::logId(this->graph())
+                << utils::logId(*this)
                 << tr("node '%1' (%2) evaluated!")
                        .arg(relativeNodePath(*node))
                        .arg(node->id());
@@ -71,7 +77,8 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
         if (node)
         {
             gtWarning()
-                << gt::quoted(this->graph().caption(), "", ":")
+                << utils::logId(this->graph())
+                << utils::logId(*this)
                 << tr("node '%1' (%2) failed to evaluate!")
                        .arg(relativeNodePath(*node))
                        .arg(node->id());
@@ -81,16 +88,18 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 
     connect(this, &GraphExecutionModel::internalError,
             this, [this](){
-            gtWarning()
-                << gt::quoted(this->graph().caption(), "", ":")
+        gtWarning()
+                << utils::logId(this->graph())
+                << utils::logId(*this)
                 << tr("intenral error occured!");
     }, Qt::DirectConnection);
 
     connect(this, &GraphExecutionModel::graphStalled,
             this, [this](){
         gtWarning()
-            << gt::quoted(this->graph().caption(), "", ":")
-            << tr("graph stalled!");
+                << utils::logId(this->graph())
+                << utils::logId(*this)
+                << tr("graph stalled!");
     }, Qt::DirectConnection);
 
     reset();
@@ -545,7 +554,8 @@ GraphExecutionModel::nodeEvaluationStarted(NodeUuid const& nodeUuid)
     if (!item)
     {
         gtError()
-            << graph().objectName() + QStringLiteral(":")
+            << utils::logId(this->graph())
+            << utils::logId(*this)
             << tr("Failed to mark node '%1' as evaluating! (node not found)")
                    .arg(nodeUuid);
         return;
@@ -579,7 +589,8 @@ GraphExecutionModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
     if (!item)
     {
         gtError()
-            << graph().objectName() + QStringLiteral(":")
+            << utils::logId(this->graph())
+            << utils::logId(this)
             << tr("Failed to mark node '%1' as failed! (node not found)")
                    .arg(nodeUuid);
         return;
@@ -594,10 +605,12 @@ GraphExecutionModel::onNodeEvaluated(NodeUuid const& nodeUuid)
     auto item = Impl::findData(*this, nodeUuid);
     if (!item)
     {
-        gtError() << graph().objectName() + QStringLiteral(": ")
-                  << tr("Node %1 has been evaluated, "
-                        "but was not found in the model!")
-                         .arg(nodeUuid);
+        gtError()
+            << utils::logId(this->graph())
+            << utils::logId(*this)
+            << tr("Node %1 has been evaluated, "
+                  "but was not found in the model!")
+                   .arg(nodeUuid);
         return emit internalError(QPrivateSignal());
     }
 
@@ -768,7 +781,8 @@ GraphExecutionModel::onNodeDeleted(Graph* graph, NodeId nodeId)
     assert(graph);
 
     auto const makeError = [](Graph const& graph){
-        return graph.objectName() + QStringLiteral(": ") +
+        return utils::logId(graph) + QChar{' '} +
+               utils::logId<GraphExecutionModel>() + QChar{' '} +
                tr("Node deleted - cannot update execution model") + ',';
     };
 
@@ -801,7 +815,8 @@ GraphExecutionModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex 
     assert(idx  != invalid<PortIndex>());
 
     auto const makeError = [](Graph const& graph){
-        return graph.objectName() + QStringLiteral(": ") +
+        return utils::logId(graph) + QChar{' '} +
+               utils::logId<GraphExecutionModel>() + QChar{' '} +
                tr("Port inserted: cannot update execution model") + ',';
     };
 
@@ -827,7 +842,8 @@ GraphExecutionModel::onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, Po
     assert(idx  != invalid<PortIndex>());
 
     auto const makeError = [](Graph const& graph){
-        return graph.objectName() + QStringLiteral(": ") +
+        return utils::logId(graph) + QChar{' '} +
+               utils::logId<GraphExecutionModel>() + QChar{' '} +
                tr("Port deleted: cannot update execution model") + ',';
     };
 
@@ -849,7 +865,8 @@ GraphExecutionModel::onConnectionAppended(ConnectionUuid conUuid)
     assert(conUuid.isValid());
 
     auto const makeError = [](Graph const& graph){
-        return graph.objectName() + QStringLiteral(": ") +
+        return utils::logId(graph) + QChar{' '} +
+               utils::logId<GraphExecutionModel>() + QChar{' '} +
                tr("Connection appended: cannot update execution model") + ',';
     };
 
@@ -881,7 +898,8 @@ GraphExecutionModel::onConnectionDeleted(ConnectionUuid conUuid)
     assert(conUuid.isValid());
 
     auto const makeError = [](Graph const& graph){
-        return graph.objectName() + QStringLiteral(": ") +
+        return utils::logId(graph) + QChar{' '} +
+               utils::logId<GraphExecutionModel>() + QChar{' '} +
                tr("Connection deleted: cannot update execution model") + ',';
     };
 
@@ -909,7 +927,8 @@ GraphExecutionModel::onGraphDeleted()
     if (!graph)
     {
         gtError()
-            << this->graph().objectName() + QStringLiteral(":")
+            << utils::logId(this->graph())
+            << utils::logId(*this)
             << tr("A graph node has been delted, "
                   "but its object was not found!");
         return;

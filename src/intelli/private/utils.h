@@ -18,6 +18,7 @@
 #include <gt_statehandler.h>
 #include <gt_inputdialog.h>
 #include <gt_icons.h>
+#include <gt_utilities.h>
 #include <gt_qtutilities.h>
 #include <gt_datamodel.h>
 #include <gt_regexp.h>
@@ -133,6 +134,30 @@ erase(List& list, T const& t)
     }
     return false;
 }
+
+/// Helper function that returns the path of the node as a formated string for
+/// logging
+inline QString
+logId(Node const& node)
+{
+    return gt::quoted(relativeNodePath(node), "[", "]");
+}
+
+/// Helper function that returns the class name of the template parameter as a
+/// formated string for logging
+template<typename T>
+inline QString logId()
+{
+    static QString str = QString{T::staticMetaObject.className()}.remove("intelli::");
+    return gt::quoted(str, "[", "]");
+}
+
+/// Helper function to deduce class name from argument and return a formated
+/// string for logging
+template<typename T,
+         typename U = std::remove_cv_t<std::remove_reference_t<std::remove_pointer_t<T>>>,
+         std::enable_if_t<!std::is_base_of<Node, U>::value, bool> = true>
+inline QString logId(T const&) { return logId<U>(); }
 
 /// helper struct to make state creation more explicit and ledgible
 template <typename GetValue>
@@ -289,7 +314,6 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
     defaultRegExp = QRegExp(pattern);
 }
-
 
 } // namespace utils
 
