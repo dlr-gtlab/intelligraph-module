@@ -497,9 +497,6 @@ public:
             return targetGraph.appendConnection(targetGraph.connectionId(conUuid));
         });
 
-//        resetGlobalConnectionModel();
-//        targetGraph.resetGlobalConnectionModel();
-
         return success;
     }
 
@@ -694,6 +691,9 @@ private:
     std::shared_ptr<GlobalConnectionModel> m_global = nullptr;
     /// indicator if the connection model is currently beeing modified
     int m_modificationCount = 0;
+    /// flag indicating that the connection model should be reset once
+    /// the graph is no longer being modified
+    bool m_resetAfterModification = false;
 
     /**
      * @brief Whether this model is currently undergoing modification.

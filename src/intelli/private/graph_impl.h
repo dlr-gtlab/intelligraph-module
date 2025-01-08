@@ -220,44 +220,17 @@ struct Graph::Impl
         return true;
     }
 
-    static inline bool
-    moveGlobalConnections(Graph& targetGraph,
-                                  std::shared_ptr<GlobalConnectionModel>& targetModel,
-                                  std::shared_ptr<GlobalConnectionModel>& sourceModel)
-    {
-        for (Node* node : targetGraph.m_local.iterateNodes())
-        {
-            if (auto* subgraph = qobject_cast<Graph*>(node))
-            {
-                subgraph->m_global = targetModel;
-                if (!moveGlobalConnections(*subgraph, targetModel, sourceModel))
-                {
-                    return false;
-                }
-            }
-
-            auto iter = sourceModel->find(node->uuid());
-            if (iter == sourceModel->end()) return false;
-
-            auto i = targetModel->insert(node->uuid(), node);
-            i->predecessors = std::move(iter->predecessors);
-            i->successors = std::move(iter->successors);
-            sourceModel->erase(iter);
-        }
-
-        return true;
-    }
-
     /// recursively updates the global connection model of `graph` by inserting
     /// nodes and setting connections
     static inline void
     repopulateGlobalConnectionModel(Graph& graph)
     {
+        // disconnect, incase connection was moved
         for (Connection* connection : graph.connections())
         {
             connection->disconnect(&graph);
         }
-        // append nodes
+        // append nodes first
         for (auto& entry : graph.m_local)
         {
             graph.m_global->insert(entry.node->uuid(), entry.node);
@@ -278,6 +251,7 @@ struct Graph::Impl
                 Node* targetNode = graph.findNode(conId.inNodeId);
                 assert(targetNode);
 
+                // reconnect
                 connect(connection, &QObject::destroyed,
                         &graph, Impl::ConnectionDeleted(&graph, conId),
                         Qt::DirectConnection);

@@ -816,15 +816,11 @@ Graph::moveNode(Node& node, Graph& targetGraph, NodeIdPolicy policy)
     // update connection model
     Impl::NodeDeleted(this)(node.id());
 
-    Graph* subgraph = qobject_cast<Graph*>(&node);
-
-    if (subgraph)
+    // models need to be reset once moving finished to avoid inconsistent states
+    if (qobject_cast<Graph*>(&node))
     {
-        subgraph->m_global = std::make_shared<GlobalConnectionModel>();
-        bool success = Impl::moveGlobalConnections(*subgraph,
-                                                   subgraph->m_global,
-                                                   this->m_global);
-        assert(success);
+        this->m_resetAfterModification = true;
+        targetGraph.m_resetAfterModification = true;
     }
 
     node.disconnect(this);
@@ -832,24 +828,6 @@ Graph::moveNode(Node& node, Graph& targetGraph, NodeIdPolicy policy)
     ((QObject*)&node)->setParent(nullptr);
 
     if (!targetGraph.appendNode(&node, policy)) return {};
-
-    // restore connections inbetween output provider and subgraph node
-    if (subgraph)
-    {
-        auto* outputProvider = subgraph->outputProvider();
-        assert(outputProvider);
-
-        auto& conModel = subgraph->m_global;
-        for (auto conUuid : conModel->iterateConnections(outputProvider->uuid(), PortType::In))
-        {
-            conUuid.inNodeId = subgraph->uuid();
-            conUuid.outNodeId = outputProvider->uuid();
-            conUuid.outPort = GroupOutputProvider::virtualPortId(conUuid.inPort);
-            conUuid.inPort  = conUuid.outPort;
-
-            subgraph->appendGlobalConnection(nullptr, std::move(conUuid));
-        }
-    }
 
     restoreOnFailure.clear();
     return true;
@@ -1004,11 +982,21 @@ void
 Graph::emitEndModification()
 {
     m_modificationCount--;
-
     assert(m_modificationCount >= 0);
 
     if (m_modificationCount == 0)
     {
+        if (m_resetAfterModification)
+        {
+            // do not trigger this function twice
+            m_modificationCount++;
+            auto cleanup = gt::finally([this](){ m_modificationCount--; });
+            Q_UNUSED(cleanup);
+
+            m_resetAfterModification = false;
+            resetGlobalConnectionModel();
+        }
+
         emit endModification(QPrivateSignal());
     }
 }
