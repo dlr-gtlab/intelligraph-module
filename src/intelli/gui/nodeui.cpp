@@ -129,7 +129,7 @@ NodeUI::NodeUI(Option option)
         gtInfo() << tr("Node '%1' (id: %2), Port id: %3")
                         .arg(obj->caption())
                         .arg(obj->id())
-                        .arg(toString(obj->port(obj->portId(type, idx))));
+                        .arg(toString(obj->portId(type, idx)));
     }).setIcon(gt::gui::icon::bug());
 }
 
