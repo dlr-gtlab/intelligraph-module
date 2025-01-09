@@ -59,7 +59,6 @@ set(PUBLIC_HEADERS
     intelli/gui/style.h
     intelli/gui/graphics/nodeobject.h
     intelli/property/color.h
-    intelli/property/objectlink.h
     intelli/property/stringselection.h
     intelli/property/uint.h
 
@@ -103,7 +102,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/numbermath.h
     intelli/node/numbersource.h
     intelli/node/objectmemento.h
-    intelli/node/objectsource.h
     intelli/node/projectinfo.h
     intelli/node/sleepy.h
     intelli/node/stringbuilder.h
@@ -126,7 +124,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/editableintegerlabel.h
     intelli/gui/property_item/integerinputwidget.h
     intelli/gui/property_item/logicdisplay.h
-    intelli/gui/property_item/objectlink.h
     intelli/gui/property_item/stringselection.h
     intelli/gui/property_item/finddirectchildnodewidget.h
     intelli/gui/ui/logicnodeui.h
@@ -176,7 +173,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/numbermath.cpp
     intelli/node/numbersource.cpp
     intelli/node/objectmemento.cpp
-    intelli/node/objectsource.cpp
     intelli/node/projectinfo.cpp
     intelli/node/sleepy.cpp
     intelli/node/stringbuilder.cpp
@@ -210,7 +206,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/editableintegerlabel.cpp
     intelli/gui/property_item/integerinputwidget.cpp
     intelli/gui/property_item/logicdisplay.cpp
-    intelli/gui/property_item/objectlink.cpp
     intelli/gui/property_item/stringselection.cpp
     intelli/gui/property_item/finddirectchildnodewidget.cpp
     intelli/gui/ui/logicnodeui.cpp

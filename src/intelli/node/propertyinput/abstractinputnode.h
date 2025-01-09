@@ -18,31 +18,30 @@
 
 namespace intelli
 {
-class GT_INTELLI_EXPORT AbstractInputNode : public intelli::Node
+
+class GT_INTELLI_EXPORT AbstractInputNode : public Node
 {
 public:
+
     GtAbstractProperty& getProperty()
     {
         return *m_value;
     }
 
 protected:
-    explicit AbstractInputNode(
-            QString const& nodeId,
-            std::unique_ptr<GtAbstractProperty>&& pointer) :
-        intelli::Node(nodeId),
-        m_value(std::move(pointer)),
-        m_isArg(QStringLiteral("isArg"), tr("isArg"), tr("isArg"))
+
+    explicit AbstractInputNode(QString const& modelName,
+                               std::unique_ptr<GtAbstractProperty> pointer) :
+        Node(modelName),
+        m_value(std::move(pointer))
     {
         registerProperty(*m_value);
-        registerProperty(m_isArg);
     };
 
     /// unique pointer
     std::unique_ptr<GtAbstractProperty> m_value;
-
-    GtBoolProperty m_isArg;
 };
 
-}
+} // namespace intelli
+
 #endif // GT_INTELLI_ABSTRACTINPUTNODE_H
