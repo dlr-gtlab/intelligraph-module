@@ -12,6 +12,7 @@
 #include "intelli/graph.h"
 #include "intelli/graphcategory.h"
 #include "intelli/private/utils.h"
+#include "intelli/private/gui_utils.h"
 #include "gt_logging.h"
 
 #include "gt_icons.h"
@@ -47,7 +48,7 @@ GraphCategoryUI::icon(GtObject* obj) const
 void
 GraphCategoryUI::addNodeGraph(GtObject* obj)
 {
-    utils::addNamedChild<Graph>(*obj);
+    gui_utils::addNamedChild<Graph>(*obj);
 }
 
 #if GT_VERSION >= 0x020100

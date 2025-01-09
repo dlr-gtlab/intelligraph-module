@@ -18,6 +18,8 @@
 
 #include <QRegExpValidator>
 
+#include "intelli/private/utils.h"
+
 namespace intelli
 {
 namespace gui_utils
@@ -40,7 +42,7 @@ inline void addNamedChild(GtObject& obj)
     if (text.isEmpty()) return;
 
     auto child = std::make_unique<T>();
-    setObjectName(*child, gt::makeUniqueName(text, obj));
+    utils::setObjectName(*child, gt::makeUniqueName(text, obj));
 
     if (gtDataModel->appendChild(child.get(), &obj).isValid())
     {
