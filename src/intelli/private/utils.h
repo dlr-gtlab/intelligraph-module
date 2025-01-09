@@ -18,7 +18,6 @@
 #include <gt_statehandler.h>
 #include <gt_utilities.h>
 #include <gt_qtutilities.h>
-#include <gt_datamodel.h>
 #include <gt_regexp.h>
 
 #include <gt_logstream.h>

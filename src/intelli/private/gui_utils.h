@@ -6,8 +6,8 @@
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
-#ifndef GUI_UTILS_H
-#define GUI_UTILS_H
+#ifndef GT_INTELLI_GUI_UTILS_H
+#define GT_INTELLI_GUI_UTILS_H
 
 #include <gt_object.h>
 #include <gt_inputdialog.h>
@@ -50,4 +50,4 @@ inline void addNamedChild(GtObject& obj)
 } // namespace utils
 
 } // namespace intelli
-#endif // GUI_UTILS_H
+#endif // GT_INTELLI_GUI_UTILS_H
