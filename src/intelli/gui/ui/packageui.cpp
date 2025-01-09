@@ -11,7 +11,7 @@
 
 #include "intelli/graphcategory.h"
 #include "intelli/package.h"
-#include "intelli/private/utils.h"
+#include "intelli/private/gui_utils.h"
 
 #include "gt_icons.h"
 
@@ -42,7 +42,7 @@ PackageUI::icon(GtObject* obj) const
 void
 PackageUI::addNodeCategory(GtObject* obj)
 {   
-    utils::addNamedChild<GraphCategory>(*obj);
+    gui_utils::addNamedChild<GraphCategory>(*obj);
 }
 
 bool
