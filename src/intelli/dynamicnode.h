@@ -159,6 +159,13 @@ protected:
      */
     virtual PortId insertPort(PortOption option, PortType type, PortInfo port, int idx = -1);
 
+    /**
+     * @brief Can be used to override the portId used for inserting a new port
+     * @param portId PortId to verify
+     * @return New Port id
+     */
+    virtual PortId verifyPortId(PortId portId);
+
 private slots:
 
     /**

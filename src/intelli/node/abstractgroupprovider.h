@@ -105,6 +105,15 @@ protected:
         return portId;
     }
 
+    PortId verifyPortId(PortId portId)
+    {
+        if (portId.isValid() || !isMainPort(portId))
+        {
+            portId = m_nextPortId;
+        }
+        return portId;
+    }
+
 private slots:
 
     /**
