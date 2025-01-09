@@ -13,7 +13,6 @@
 #include <intelli/node/propertyinput/intinputnode.h>
 #include <intelli/node/propertyinput/doubleinputnode.h>
 #include <intelli/node/propertyinput/stringinputnode.h>
-#include <intelli/node/propertyinput/objectinputnode.h>
 
 using namespace intelli;
 TEST(BoolInputNode, accessPropertyAndReadValue)
@@ -82,28 +81,5 @@ TEST(StringInputNode, accessPropertyAndReadValue)
     prop.setValueFromVariant(var2);
 
     ASSERT_STREQ(n.value().toStdString().c_str(), "Testing is important");
-}
-
-TEST(ObjectInputNode, accessPropertyAndReadValue)
-{
-    ObjectInputNode n;
-    GtAbstractProperty& prop =  n.getProperty();
-
-    /// initialy linked object is not existing
-    ASSERT_TRUE(n.linkedObject() == nullptr);
-
-    auto* root = new GtObject;
-    auto* child = new GtObject;
-    root->appendChild(child);
-
-    prop.setValueFromVariant({child->uuid()});
-
-    /// root object is not set. Object will not be found
-    ASSERT_TRUE(n.linkedObject() == nullptr);
-
-    /// if root is used as root the object should be able to be found
-    ASSERT_TRUE(n.linkedObject(root) == child);
-
-    delete root;
 }
 

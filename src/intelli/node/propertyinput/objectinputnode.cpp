@@ -15,8 +15,8 @@
 
 #include "gt_propertyobjectlinkeditor.h"
 
-namespace intelli
-{
+using namespace intelli;
+
 // helper method to fetch the correct root object for retrieve object link
 auto getObject = []() -> GtObject* {
     if (!gtApp) return nullptr;
@@ -25,25 +25,24 @@ auto getObject = []() -> GtObject* {
     return project;
 };
 
+constexpr bool s_useSuperClass = true;
+
 ObjectInputNode::ObjectInputNode() :
-    AbstractInputNode("Object Input",
-                      std::make_unique<GtObjectLinkProperty>(
-                          QString("value"),
-                          tr("Value"),
-                          tr("Current Value"),
-                          QString(""),
-                          getObject(),
-                          QStringList{GT_CLASSNAME(GtObject)},
-                          true)
-                      )
+    Node("Object Input"),
+    m_object("target", tr("Target"), tr("Target Object"),
+             getObject(), QStringList{GT_CLASSNAME(GtObject)}, s_useSuperClass)
 {
+    registerProperty(m_object);
+
+    setNodeFlag(ResizableHOnly);
+
     // cppcheck-suppress useInitializationList
-    m_out = addOutPort(intelli::typeId<intelli::ObjectData>());
-    port(m_out)->captionVisible = false;
+    m_out = addOutPort(makePort(typeId<ObjectData>())
+                           .setCaptionVisible(false));
 
     registerWidgetFactory([this]() {
         auto w = std::make_unique<GtPropertyObjectLinkEditor>();
-        w->setObjectLinkProperty(objLinkProp());
+        w->setObjectLinkProperty(&m_object);
         w->setScope(gtApp->currentProject());
 
         auto update = [w_ = w.get()](){
@@ -57,7 +56,7 @@ ObjectInputNode::ObjectInputNode() :
         return w;
     });
 
-    connect(m_value.get(), &GtAbstractProperty::changed,
+    connect(&m_object, &GtAbstractProperty::changed,
             this, &ObjectInputNode::triggerNodeEvaluation);
 
     // connect changed signals of linked object
@@ -74,11 +73,29 @@ ObjectInputNode::ObjectInputNode() :
         {
             connect(object, qOverload<GtObject*>(&GtObject::dataChanged),
                     this, &Node::triggerNodeEvaluation, Qt::UniqueConnection);
-            connect(object, qOverload<GtObject*,
-                    GtAbstractProperty*>(&GtObject::dataChanged),
+            connect(object, qOverload<GtObject*, GtAbstractProperty*>(&GtObject::dataChanged),
                     this, &Node::triggerNodeEvaluation, Qt::UniqueConnection);
         }
     });
+}
+
+GtObject*
+ObjectInputNode::linkedObject(GtObject* root)
+{
+    return m_object.linkedObject(root);
+}
+
+GtObject const*
+ObjectInputNode::linkedObject(GtObject const* root) const
+{
+    return const_cast<ObjectInputNode*>(this)
+        ->linkedObject(const_cast<GtObject*>(root));
+}
+
+void
+ObjectInputNode::setValue(QString const& uuid)
+{
+    m_object.setVal(uuid);
 }
 
 void
@@ -86,7 +103,7 @@ ObjectInputNode::eval()
 {
     auto* linkedObj = linkedObject();
 
-    revertProperty();
+    m_object.revert();
 
     if (!linkedObj)
     {
@@ -98,48 +115,3 @@ ObjectInputNode::eval()
 
     setNodeData(m_out, std::make_shared<intelli::ObjectData>(linkedObj));
 }
-
-GtObject*
-ObjectInputNode::linkedObject(GtObject* root)
-{
-    if (auto prop = objLinkProp()) return prop->linkedObject(root);
-    return nullptr;
-}
-
-const GtObject*
-ObjectInputNode::linkedObject(GtObject* root) const
-{
-    if (auto prop = objLinkProp()) return prop->linkedObject(root);
-    return nullptr;
-}
-
-void
-ObjectInputNode::setValue(const QString& uuid)
-{
-    if (auto prop = objLinkProp()) return prop->setVal(uuid);
-}
-
-GtObjectLinkProperty*
-ObjectInputNode::objLinkProp()
-{
-    if (m_value.get()) return static_cast<GtObjectLinkProperty*>(m_value.get());
-
-    return nullptr;
-}
-
-const
-GtObjectLinkProperty *
-ObjectInputNode::objLinkProp() const
-{
-    if (m_value.get()) return static_cast<const GtObjectLinkProperty*>(
-                m_value.get());
-
-    return nullptr;
-}
-
-void
-ObjectInputNode::revertProperty()
-{
-    if (auto prop = objLinkProp()) return prop->revert();
-}
-} // namespace intelli

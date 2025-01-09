@@ -10,15 +10,18 @@
 #ifndef GT_INTELLI_OBJECTINPUTNODE_H
 #define GT_INTELLI_OBJECTINPUTNODE_H
 
+#include <intelli/node.h>
+
 #include <gt_objectlinkproperty.h>
-#include "abstractinputnode.h"
 
 namespace intelli
 {
-class GT_INTELLI_EXPORT ObjectInputNode : public AbstractInputNode
+class GT_INTELLI_EXPORT ObjectInputNode : public Node
 {
     Q_OBJECT
+
 public:
+
     Q_INVOKABLE ObjectInputNode();
 
     /**
@@ -26,23 +29,22 @@ public:
      * @return
      */
     GtObject* linkedObject(GtObject* root = nullptr);
-    GtObject const* linkedObject(GtObject* root = nullptr) const;
+    GtObject const* linkedObject(GtObject const* root = nullptr) const;
 
     void setValue(QString const& uuid);
+
+protected:
 
     void eval() override;
 
 private:
-    PortId m_out;
 
-    GtObjectLinkProperty* objLinkProp();
-
-    const GtObjectLinkProperty* objLinkProp() const;
+    GtObjectLinkProperty m_object;
 
     /// member to keep track of last object pointer to disconnect changed signals
     QPointer<GtObject> m_lastObject;
 
-    void revertProperty();
+    PortId m_out;
 };
 
 } // namespace intelli
