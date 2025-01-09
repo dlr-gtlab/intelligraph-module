@@ -35,6 +35,16 @@ LogicNodeGeometry::captionRect() const
     return rect;
 }
 
+QRect
+LogicNodeGeometry::iconRect() const
+{
+    QRect rect = NodeGeometry::iconRect();
+    QRectF captionRect = NodeGeometry::captionRect();
+    rect.moveTopLeft((captionRect.topRight() - QPointF{0, (rect.height() - captionRect.height()) * 0.5})
+                         .toPoint());
+    return rect;
+}
+
 QRectF
 LogicNodeGeometry::evalStateRect() const
 {
@@ -157,7 +167,7 @@ LogicNodeGeometry::computeShape() const
     QPainterPath path = beginCurve();
     applyLeftCurve(path);
     applyRightCurve(path);
-    path.addRect(captionRect().united(evalStateRect()));
+    path.addRect(captionRect().united(evalStateRect()).united(iconRect()));
     for (PortType type : {PortType::In, PortType::Out})
     {
         size_t size = node().ports(type).size();

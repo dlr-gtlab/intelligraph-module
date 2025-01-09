@@ -86,6 +86,8 @@ public:
      */
     QColor backgroundColor() const;
 
+    virtual QIcon nodeIcon() const;
+
     /**
      * @brief Draws the background of the node.
      * @param painter Painter to draw with
@@ -139,6 +141,8 @@ public:
      * @param painter Painter to draw with
      */
     void drawResizeHandle(QPainter& painter) const;
+
+    void drawIcon(QPainter& painter) const;
 
     /**
      * @brief Draws the caption of the node
