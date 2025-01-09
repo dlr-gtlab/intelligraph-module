@@ -27,7 +27,6 @@
 #include "intelli/node/sleepy.h"
 
 #include "intelli/node/objectmemento.h"
-#include "intelli/node/objectsource.h"
 #include "intelli/node/finddirectchild.h"
 #include "intelli/node/existingdirectorysource.h"
 
@@ -127,7 +126,6 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(TextDisplayNode, catDisplay);
 
         GT_INTELLI_REGISTER_NODE(ObjectMementoNode, catObject);
-        GT_INTELLI_REGISTER_NODE(ObjectSourceNode, catInput);
         GT_INTELLI_REGISTER_NODE(FindDirectChildNode, catObject);
 
         GT_INTELLI_REGISTER_NODE(FileInputNode, catInput);
