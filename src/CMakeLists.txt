@@ -134,6 +134,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/private/graphexecmodel_impl.h
     intelli/private/node_impl.h
     intelli/private/utils.h
+    intelli/private/gui_utils.h
 
     intelli/connection.cpp
     intelli/connectiongroup.cpp

@@ -16,8 +16,6 @@
 
 #include <gt_state.h>
 #include <gt_statehandler.h>
-#include <gt_inputdialog.h>
-#include <gt_icons.h>
 #include <gt_utilities.h>
 #include <gt_qtutilities.h>
 #include <gt_datamodel.h>
@@ -25,7 +23,6 @@
 
 #include <gt_logstream.h>
 
-#include <QRegExpValidator>
 #include <QTimer>
 
 #include <algorithm>
@@ -257,31 +254,7 @@ inline void setObjectName(Node& obj, QString const& name)
     obj.setCaption(name);
 }
 
-template <typename T>
-inline void addNamedChild(GtObject& obj)
-{
-    GtInputDialog dialog{GtInputDialog::TextInput};
-    dialog.setWindowTitle(QObject::tr("Name new Object"));
-    dialog.setWindowIcon(gt::gui::icon::rename());
-    dialog.setLabelText(QObject::tr("Enter a name for the new object."));
 
-    dialog.setTextValidator(new QRegExpValidator{
-        gt::re::onlyLettersAndNumbersAndSpace()
-    });
-
-    if (!dialog.exec()) return;
-
-    QString text = dialog.textValue();
-    if (text.isEmpty()) return;
-
-    auto child = std::make_unique<T>();
-    setObjectName(*child, gt::makeUniqueName(text, obj));
-
-    if (gtDataModel->appendChild(child.get(), &obj).isValid())
-    {
-        child.release();
-    }
-}
 
 template <typename T>
 inline void restrictRegExpWithSiblingsNames(GtObject& obj,
