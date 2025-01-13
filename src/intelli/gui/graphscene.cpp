@@ -647,7 +647,6 @@ GraphScene::createSceneMenu(QPointF scenePos)
     auto const& factory = NodeFactory::instance();
 
     auto cats = factory.registeredCategories();
-    cats.sort();
 
     for (QString const& cat : qAsConst(cats))
     {
@@ -659,7 +658,6 @@ GraphScene::createSceneMenu(QPointF scenePos)
     }
 
     auto nodes = factory.registeredNodes();
-    nodes.sort();
 
     for (QString const& node : qAsConst(nodes))
     {
