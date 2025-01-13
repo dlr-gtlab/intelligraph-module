@@ -22,6 +22,7 @@
 
 #include <QMenu>
 #include <QMenuBar>
+#include <QLabel>
 #include <QPushButton>
 #include <QSpacerItem>
 
@@ -169,6 +170,15 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
     connect(m_sceneSelector, &GraphSceneSelector::graphClicked,
             this, &GraphViewOverlay::sceneChangeRequested);
 
+    /* SCALE FACTOR */
+    auto scaleFactorLabel = new QLabel;
+    auto updateScaleFactor = [this, scaleFactorLabel](){
+        QString scaleFactorText = QString::number(m_view->transform().m11() * 100);
+        scaleFactorLabel->setText(scaleFactorText + QChar{'%'});
+    };
+
+    connect(m_view, &GraphView::scaleChanged, scaleFactorLabel, updateScaleFactor);
+
     /* OVERLAY */
     setContentsMargins(5, 5, 5, 0);
     setAlignment(Qt::AlignLeft | Qt::AlignTop);
@@ -179,7 +189,8 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
     insertWidget(idx++, m_snapToGridBtn);
     insertSpacing(idx , m_snapToGridBtn->width());
     insertWidget(idx++, m_sceneSelector);
-    addStretch();
+    addStretch(1);
+    addWidget(scaleFactorLabel);
 
     auto size = m_menuBar->sizeHint();
     size.setWidth(size.width() + 10);

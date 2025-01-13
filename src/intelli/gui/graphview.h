@@ -23,7 +23,7 @@ class Graph;
 class GraphScene;
 class GraphSceneSelector;
 
-class GraphView : public GtGraphicsView
+class GraphView : public QGraphicsView
 {
     Q_OBJECT
 
@@ -103,10 +103,16 @@ protected:
 
     void mouseMoveEvent(QMouseEvent* event) override;
 
+    bool event(QEvent* event) override;
+
+    bool gestureEvent(QGestureEvent* event);
+
+    void panView(QPointF delta);
+
 private:
 
-    /// hide grid API as is provides a poor interface
-    using GtGraphicsView::grid;
+    /// hide grid API as it provides a poor interface
+    // using QGraphicsView::grid;
 
     struct Impl;
 
@@ -116,6 +122,7 @@ private:
     QPointF m_panPosition;
     /// accessing grid visibility through grid API is not possible
     bool m_gridVisible = true;
+    bool m_handleMouseMovement = true;
 };
 
 } // namespace intelli
