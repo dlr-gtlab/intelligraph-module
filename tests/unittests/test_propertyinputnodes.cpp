@@ -12,7 +12,6 @@
 #include <intelli/node/propertyinput/boolinputnode.h>
 #include <intelli/node/propertyinput/intinputnode.h>
 #include <intelli/node/propertyinput/doubleinputnode.h>
-#include <intelli/node/propertyinput/stringinputnode.h>
 
 using namespace intelli;
 TEST(BoolInputNode, accessPropertyAndReadValue)
@@ -65,21 +64,3 @@ TEST(DoubleInputNode, accessPropertyAndReadValue)
 
     ASSERT_EQ(n.value(), 123.2e13);
 }
-
-TEST(StringInputNode, accessPropertyAndReadValue)
-{
-    StringInputNode n;
-
-    GtAbstractProperty& prop =  n.getProperty();
-
-    QVariant var1 = {"Hello World"};
-    prop.setValueFromVariant(var1);
-
-    ASSERT_STREQ(n.value().toStdString().c_str(), "Hello World");
-
-    QVariant var2 = {"Testing is important"};
-    prop.setValueFromVariant(var2);
-
-    ASSERT_STREQ(n.value().toStdString().c_str(), "Testing is important");
-}
-

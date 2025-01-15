@@ -10,23 +10,33 @@
 #ifndef GT_INTELLI_STRINGINPUTNODE_H
 #define GT_INTELLI_STRINGINPUTNODE_H
 
+#include <intelli/node.h>
+
 #include <gt_stringproperty.h>
-#include "abstractinputnode.h"
 
 namespace intelli
 {
-class GT_INTELLI_EXPORT StringInputNode : public AbstractInputNode
+
+class GT_INTELLI_EXPORT StringInputNode : public Node
 {
     Q_OBJECT
+
 public:
+
     Q_INVOKABLE StringInputNode();
 
-    QString value() const;
+    QString const& value() const;
 
-    void setValue(QString const& value);
+    void setValue(QString value);
+
+protected:
 
     void eval() override;
+
 private:
+
+    GtStringProperty m_value;
+
     PortId m_out;
 };
 

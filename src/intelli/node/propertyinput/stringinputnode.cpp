@@ -13,21 +13,21 @@
 
 #include <gt_lineedit.h>
 
-namespace intelli
-{
+using namespace intelli;
+
 StringInputNode::StringInputNode() :
-    AbstractInputNode("String Input",
-                      std::make_unique<GtStringProperty>("value", tr("Value"),
-                                                         tr("Current value")))
+    Node("String Input"),
+    m_value("value", tr("Value"), tr("Current value"))
 {
+    registerProperty(m_value);
+
     setNodeFlag(ResizableHOnly, true);
+    setNodeEvalMode(NodeEvalMode::Blocking);
 
-    m_value->hide();
+    m_out = addOutPort(makePort(typeId<StringData>())
+                           .setCaptionVisible(false));
 
-    m_out = addOutPort(intelli::typeId<intelli::StringData>());
-    port(m_out)->captionVisible = false;
-
-    connect(m_value.get(), &GtAbstractProperty::changed,
+    connect(&m_value, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
 
     registerWidgetFactory([this]() {
@@ -44,8 +44,7 @@ StringInputNode::StringInputNode() :
 
         connect(w.get(), &GtLineEdit::focusOut, this, updateProp);
         connect(w.get(), &GtLineEdit::clearFocusOut, this, updateProp);
-        connect(m_value.get(), &GtAbstractProperty::changed,
-                w.get(), updateText);
+        connect(&m_value, &GtAbstractProperty::changed, w.get(), updateText);
 
         updateText();
 
@@ -53,18 +52,16 @@ StringInputNode::StringInputNode() :
     });
 }
 
-QString
+QString const&
 StringInputNode::value() const
 {
-    auto prop = static_cast<GtStringProperty*>(m_value.get());
-    return prop->getVal();
+    return m_value.get();
 }
 
 void
-StringInputNode::setValue(const QString &value)
+StringInputNode::setValue(QString value)
 {
-    auto prop = static_cast<GtStringProperty*>(m_value.get());
-    prop->setVal(value);
+    m_value = std::move(value);
 }
 
 void
@@ -72,4 +69,3 @@ StringInputNode::eval()
 {
     setNodeData(m_out, std::make_shared<intelli::StringData>(value()));
 }
-} // namespace intelli
