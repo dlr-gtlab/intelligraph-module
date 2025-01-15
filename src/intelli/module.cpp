@@ -296,7 +296,6 @@ GtIntelliGraphModule::propertyItems()
 {
     QMap<const char*, QMetaObject> map;
 
-    // not exported by default...
     map.insert(GT_CLASSNAME(StringSelectionProperty),
                GT_METADATA(StringSelectionPropertyItem));
 

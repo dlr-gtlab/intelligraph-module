@@ -41,6 +41,7 @@
 #include "intelli/node/propertyinput/intinputnode.h"
 #include "intelli/node/propertyinput/objectinputnode.h"
 #include "intelli/node/propertyinput/stringinputnode.h"
+#include "intelli/node/booldisplay.h"
 #include "intelli/node/textdisplay.h"
 
 #include "intelli/node/genericcalculatorexec.h"
@@ -118,6 +119,7 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(NumberMathNode, catNumber);
         GT_INTELLI_REGISTER_NODE(NumberSourceNode, catInput);
         GT_INTELLI_REGISTER_NODE(SleepyNode, (gtApp && gtApp->devMode()) ? catOther : hidden);
+        GT_INTELLI_REGISTER_NODE(BoolDisplayNode, catDisplay);
 
         GT_INTELLI_REGISTER_NODE(LogicDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(LogicNode, catLogic);

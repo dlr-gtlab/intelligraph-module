@@ -10,63 +10,77 @@
 #include "boolinputnode.h"
 
 #include <intelli/data/bool.h>
+#include <intelli/gui/property_item/booldisplay.h>
 
-#include <QCheckBox>
+#include <QLayout>
+#include <QTimer>
 
-#include <memory>
+using namespace intelli;
+using DisplayMode = BoolDisplayWidget::DisplayMode;
 
-namespace intelli
-{
 BoolInputNode::BoolInputNode() :
-    AbstractInputNode("Bool Input",
-                      std::make_unique<GtBoolProperty>("value", tr("Value"),
-                                                       tr("Current Value")))
+    Node("Bool Input"),
+    m_value("value", tr("Value"), tr("Current Value")),
+    m_displayMode("displayMode",
+                  tr("Display Mode"),
+                  tr("Display Mode"))
 {
-    m_value->hide();
+    registerProperty(m_value);
+    registerProperty(m_displayMode);
 
-    m_out = addOutPort(intelli::typeId<intelli::BoolData>());
-    port(m_out)->captionVisible = false;
+    setNodeEvalMode(NodeEvalMode::Blocking);
 
-    connect(m_value.get(), &GtAbstractProperty::changed,
+    m_out = addOutPort(makePort(typeId<BoolData>())
+                           .setCaptionVisible(false));
+
+    connect(&m_value, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
 
     registerWidgetFactory([this]() {
-        auto w = std::make_unique<QCheckBox>();
+        bool success = m_displayMode.registerEnum<DisplayMode>();
+        assert(success);
 
-        auto const updateProp = [this, w_ = w.get()](){
-            if(value() != w_->isChecked()) setValue(w_->isChecked());
+        auto mode = m_displayMode.getEnum<DisplayMode>();
+
+        auto wPtr = std::make_unique<BoolDisplayWidget>(0, mode);
+        auto* w = wPtr.get();
+
+        auto const updateProp = [this, w]() {
+            if (w->value() != value()) setValue(w->value());
         };
-        auto const updateText = [this, w_ = w.get()](){
-            if (w_->isChecked() != value()) w_->setChecked(value());
+        auto const updateWidget = [this, w]() {
+            w->setValue(value());
+        };
+        auto const updateMode= [this, w]() {
+            w->setDisplayMode(m_displayMode.getEnum<DisplayMode>());
+            emit nodeChanged();
         };
 
-        connect(w.get(), &QCheckBox::stateChanged, this, updateProp);
-        connect(m_value.get(), &GtAbstractProperty::changed,
-                w.get(), updateText);
+        connect(w, &BoolDisplayWidget::valueChanged, this, updateProp);
+        connect(&m_value, &GtAbstractProperty::changed, w, updateWidget);
+        connect(&m_displayMode, &GtAbstractProperty::changed, w, updateMode);
 
-        updateText();
+        updateWidget();
+        updateMode();
 
-        return w;
+        return wPtr;
     });
 }
 
 bool
 BoolInputNode::value() const
 {
-    auto prop = static_cast<GtBoolProperty*>(m_value.get());
-    return prop->getVal();
+    return m_value.get();
 }
 
 void
 BoolInputNode::setValue(bool value)
 {
-    auto prop = static_cast<GtBoolProperty*>(m_value.get());
-    prop->setVal(value);
+    m_value = value;
 }
 
 void
 BoolInputNode::eval()
 {
-    setNodeData(m_out, std::make_shared<intelli::BoolData>(value()));
+    setNodeData(m_out, std::make_shared<BoolData>(value()));
 }
-} // namespace intelli

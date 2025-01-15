@@ -9,27 +9,10 @@
 
 #include "test_helper.h"
 
-#include <intelli/node/propertyinput/boolinputnode.h>
 #include <intelli/node/propertyinput/intinputnode.h>
 #include <intelli/node/propertyinput/doubleinputnode.h>
 
 using namespace intelli;
-TEST(BoolInputNode, accessPropertyAndReadValue)
-{
-    BoolInputNode n;
-
-    GtAbstractProperty& prop =  n.getProperty();
-
-    QVariant trueVariant = {true};
-    prop.setValueFromVariant(trueVariant);
-
-    ASSERT_TRUE(n.value());
-
-    QVariant falseVariant = {false};
-    prop.setValueFromVariant(falseVariant);
-
-    ASSERT_FALSE(n.value());
-}
 
 TEST(IntInputNode, accessPropertyAndReadValue)
 {

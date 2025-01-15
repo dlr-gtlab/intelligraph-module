@@ -19,6 +19,7 @@
 #include <gt_colors.h>
 
 #include <QPainter>
+#include <QGraphicsWidget>
 
 using namespace intelli;
 
@@ -309,6 +310,14 @@ NodePainter::paint(QPainter& painter) const
 
     painter.setPen(Qt::magenta);
     painter.drawPath(object().shape());
+
+    if (auto w = object().centralWidget())
+    {
+        painter.setPen(Qt::cyan);
+        QRectF rect = w->boundingRect();
+        rect.moveTo(geometry().widgetPosition());
+        painter.drawRect(rect);
+    }
 #endif
 }
 

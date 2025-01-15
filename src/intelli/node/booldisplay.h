@@ -7,42 +7,31 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#ifndef GT_INTELLI_BOOLINPUTNODE_H
-#define GT_INTELLI_BOOLINPUTNODE_H
+#ifndef GT_INTELLI_BOOLDISPLAYNODE_H
+#define GT_INTELLI_BOOLDISPLAYNODE_H
 
 #include <intelli/node.h>
 
-#include <gt_boolproperty.h>
 #include <intelli/property/metaenum.h>
 
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT BoolInputNode : public Node
+class BoolDisplayNode : Node
 {
     Q_OBJECT
 
 public:
 
-    Q_INVOKABLE BoolInputNode();
-
-    bool value() const;
-
-    void setValue(bool value);
-
-protected:
-
-    void eval() override;
+    Q_INVOKABLE BoolDisplayNode();
 
 private:
 
-    GtBoolProperty m_value;
-
     MetaEnumProperty m_displayMode;
 
-    PortId m_out;
+    PortId m_in;
 };
 
 } // namespace intelli
 
-#endif // GT_INTELLI_BOOLINPUTNODE_H
+#endif // BOOLDISPLAYNODE_H

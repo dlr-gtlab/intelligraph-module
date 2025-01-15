@@ -59,6 +59,7 @@ set(PUBLIC_HEADERS
     intelli/gui/style.h
     intelli/gui/graphics/nodeobject.h
     intelli/property/color.h
+    intelli/property/metaenum.h
     intelli/property/stringselection.h
     intelli/property/uint.h
 
@@ -87,6 +88,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/abstractgroupprovider.h
     intelli/exec/detachedexecutor.h
     intelli/exec/dummynodedatamodel.h
+    intelli/node/booldisplay.h
     intelli/node/existingdirectorysource.h
     intelli/node/fileinput.h
     intelli/node/filereader.h
@@ -119,6 +121,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/property_item/abstractnumberinputwidget.h
+    intelli/gui/property_item/booldisplay.h
     intelli/gui/property_item/doubleinputwidget.h
     intelli/gui/property_item/editabledoublelabel.h
     intelli/gui/property_item/editableintegerlabel.h
@@ -158,6 +161,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/file.cpp
     intelli/data/object.cpp
     intelli/data/string.cpp
+    intelli/node/booldisplay.cpp
     intelli/node/existingdirectorysource.cpp
     intelli/node/fileinput.cpp
     intelli/node/filereader.cpp
@@ -201,6 +205,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphics/nodeobject.cpp
     intelli/gui/graphics/nodeevalstateobject.cpp
     intelli/gui/property_item/abstractnumberinputwidget.cpp
+    intelli/gui/property_item/booldisplay.cpp
     intelli/gui/property_item/doubleinputwidget.cpp
     intelli/gui/property_item/editabledoublelabel.cpp
     intelli/gui/property_item/editableintegerlabel.cpp
@@ -210,6 +215,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/property_item/finddirectchildnodewidget.cpp
     intelli/gui/ui/logicnodeui.cpp
     intelli/property/color.cpp
+    intelli/property/metaenum.cpp
     intelli/property/stringselection.cpp
     intelli/property/uint.cpp
 )
