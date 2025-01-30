@@ -7,299 +7,122 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include "integerinputwidget.h"
+#include <intelli/gui/property_item/integerinputwidget.h>
+#include <intelli/gui/property_item/editableintegerlabel.h>
+#include <intelli/globals.h>
 
-#include <QDial>
-#include <QSlider>
-#include <QFont>
-#include <QGridLayout>
-#include <QLabel>
-#include <QMouseEvent>
+#include <gt_utilities.h>
+#include <gt_lineedit.h>
+#include <gt_logging.h>
+
 #include <QRegExp>
 #include <QRegExpValidator>
+#include <QDial>
+#include <QSlider>
 
-#include <gt_logging.h>
-#include <gt_lineedit.h>
+using namespace intelli;
 
-#include "editableintegerlabel.h"
-
-namespace intelli
+IntegerInputWidget::IntegerInputWidget(InputMode mode,
+                                       QWidget* parent) :
+    AbstractNumberInputWidget(mode,
+                              new EditableIntegerLabel("", nullptr),
+                              new EditableIntegerLabel("", nullptr),
+                              parent)
 {
-
-IntegerInputWidget::IntegerInputWidget(int initVal, int initMin,
-                                       int initMax,
-                                       QWidget* parent,
-                                       AbstractNumberInputWidget::InputType t) :
-    AbstractNumberInputWidget(parent),
-    m_maxTicks(1000),
-    m_min(initMin),
-    m_max(initMax),
-    m_val(initVal)
-{
-    /// init text elements
-    m_text = new GtLineEdit(this);
-    m_text->setText(QString::number(m_val));
-    m_text->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+")));
-    m_text->setMinimumWidth(30);
-
-    m_low = new EditableIntegerLabel(QString::number(m_min), this);
-    m_high = new EditableIntegerLabel(QString::number(m_max), this);
-
-    if (t == Dial)
-    {
-        toDialLayout();
-    }
-    else if (t == SliderH)
-    {
-        toSliderHLayout();
-    }
-    else if (t == SliderV)
-    {
-        toSliderVLayout();
-    }
-    else if (t == LineEdit)
-    {
-        toTextBasedLayout();
-    }
-
-    auto adaptHelpingLabel = [this](EditableIntegerLabel* l)
-    {
-        QFont f = l->labelFont();
-        f.setPointSize(8);
-        f.setItalic(true);
-        l->setLabelFont(f);
-        l->installEventFilter(this);
-    };
-
-    m_text->installEventFilter(this);
-
-    adaptHelpingLabel(m_low);
-    adaptHelpingLabel(m_high);
-
-    connect(m_low, SIGNAL(valueChanged(int)),
-            this, SLOT(minLabelChangedReaction(int)));
-    connect(m_high, SIGNAL(valueChanged(int)),
-            this, SLOT(maxLabelChangedReaction(int)));
-
-    connect(m_text, SIGNAL(editingFinished()),
-            this, SLOT(valueLabelChangedReaction()));
+    valueEdit()->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+")));
 }
 
+int
+IntegerInputWidget::min() const { return m_min; }
+
+int
+IntegerInputWidget::max() const { return m_max; }
+
 void
-IntegerInputWidget::onMinMaxPropertiesChanged(int val, int min, int max)
+IntegerInputWidget::applyRange(QVariant const& valueV,
+                               QVariant const& minV,
+                               QVariant const& maxV)
 {
-    bool minChange = min != m_min;
-    bool maxChange = max != m_max;
+    int value = valueV.toInt();
+    int min = minV.toInt();
+    int max = maxV.toInt();
 
-    if (!minChange && !maxChange) return;
-
-    if (min == max)
+    if (min > max)
     {
-        gtDebug() << "Min and max are of the same value" << min;
-        return;
-    }
-    if (min >= max)
-    {
-        gtError() << tr("Min has to be smaller than max value");
-        return;
-    }
-
-    if (m_dial == nullptr)
-    {
-        gtFatal() << "Why the hell is the dial a nullptr";
-        return;
+        gtError().medium() << tr("Min has to be smaller than max value (%1 vs %2")
+                                  .arg(min).arg(max);
+        min = max;
     }
 
     m_min = min;
     m_max = max;
 
-    m_dial->setMinimum(min);
-    m_dial->setMaximum(max);
+    if (useBounds()) value = gt::clamp(value, min, max);
 
-    m_dial->setValue(val);
+    dial()->setMinimum(min);
+    dial()->setMaximum(max);
+    dial()->setValue(value);
 
-    if (m_low) m_low->setValue(min, false);
-    if (m_high) m_high->setValue(max, false);
+    slider()->setMinimum(min);
+    slider()->setMaximum(max);
+    slider()->setValue(value);
+
+    low()->setValue(min, false);
+    high()->setValue(max, false);
+    valueEdit()->setText(QString::number(value));
 }
 
 void
-IntegerInputWidget::onSliderTypeChanged(QString const& t)
+IntegerInputWidget::commitSliderValueChange(int value)
 {
-    AbstractNumberInputWidget::InputType t2 = typeFromString(t);
-
-    if (t2 == Dial)
-    {
-        toDialLayout();
-    }
-    else if (t2 == SliderH)
-    {
-        toSliderHLayout();
-    }
-    else if (t2 == SliderV)
-    {
-        toSliderVLayout();
-    }
-    else if (t2 == LineEdit)
-    {
-        toTextBasedLayout();
-    }
+    valueEdit()->setText(QString::number(value));
 }
 
 void
-IntegerInputWidget::initDial()
+IntegerInputWidget::commitMinValueChange()
 {
-    if (!m_dial) return;
-
-    m_dial->setMinimum(m_min);
-    m_dial->setMaximum(m_max);
-    m_dial->setTracking(true);
-    m_dial->setContentsMargins(0, 0, 0, 0);
-    m_dial->setSingleStep(1);
-
-    auto* d = qobject_cast<QDial*>(m_dial);
-    if (d) d->setNotchesVisible(true);
-
-    m_dial->setValue(m_val);
-}
-
-void
-IntegerInputWidget::toDialLayout()
-{
-    if (m_dial)
+    int value = low()->value<int>();
+    if (value > m_max)
     {
-        disconnectDial();
-        delete m_dial;
+        value = m_max;
+        low()->setValue(value, false);
     }
 
-    if (layout()) delete layout();
+    m_min = value;
 
-    m_dial = new QDial(this);
-    initDial();
+    dial()->setMinimum(value);
+    dial()->setValue(dial()->value());
 
-    m_low->setTextAlignment(Qt::AlignHCenter);
-    m_high->setTextAlignment(Qt::AlignHCenter);
-
-    auto* layout = newDialLayout(m_dial, m_low, m_text, m_high);
-    setLayout(layout);
-
-    connectDial();
+    slider()->setMinimum(value);
+    slider()->setValue(slider()->value());
 }
 
 void
-IntegerInputWidget::toSliderHLayout()
+IntegerInputWidget::commitMaxValueChange()
 {
-    if (m_dial)
+    int value = high()->value<int>();
+    if (value < m_min)
     {
-        disconnectDial();
-        delete m_dial;
+        value = m_min;
+        low()->setValue(value, false);
     }
 
-    if (layout()) delete layout();
+    m_max = value;
 
-    m_dial = new QSlider(Qt::Horizontal, this);
-    initDial();
+    dial()->setMaximum(value);
+    dial()->setValue(dial()->value());
 
-    m_low->setTextAlignment(Qt::AlignLeft);
-    m_high->setTextAlignment(Qt::AlignRight);
-
-    auto* layout = newSliderHLayout(m_dial, m_low, m_text, m_high);
-    setLayout(layout);
-
-    connectDial();
+    slider()->setMaximum(value);
+    slider()->setValue(slider()->value());
 }
 
 void
-IntegerInputWidget::toTextBasedLayout()
+IntegerInputWidget::commitValueChange()
 {
-    toDialLayout();
-    m_low->setHidden(true);
-    m_high->setHidden(true);
-    m_dial->setHidden(true);
+    int value = valueEdit()->text().toInt();
+    if (useBounds()) value = gt::clamp(value, m_min, m_max);
+
+    dial()->setValue(value);
+    slider()->setValue(value);
+    valueEdit()->setText(QString::number(value));
 }
-
-void
-IntegerInputWidget::toSliderVLayout()
-{
-    if (m_dial)
-    {
-        disconnectDial();
-        delete m_dial;
-    }
-
-    if (layout()) delete layout();
-
-    m_dial = new QSlider(Qt::Vertical, this);
-    initDial();
-    m_low->setTextAlignment(Qt::AlignLeft);
-    m_high->setTextAlignment(Qt::AlignLeft);
-
-    auto* layout = newSliderVLayout(m_dial, m_low, m_text, m_high);
-    setLayout(layout);
-
-    connectDial();
-}
-
-void
-IntegerInputWidget::disconnectDial()
-{
-    disconnect(m_dial, SIGNAL(sliderReleased()),
-               this, SLOT(onDialChanged()));
-}
-
-void
-IntegerInputWidget::connectDial()
-{
-    connect(m_dial, SIGNAL(sliderReleased()),
-            this, SLOT(onDialChanged()));
-}
-
-void
-IntegerInputWidget::onDialChanged()
-{
-    if (m_dial == nullptr) return;
-
-    int newDialVal = m_dial->value();
-    m_text->setText(QString::number(newDialVal));
-
-    emit valueChanged(newDialVal);
-}
-
-void
-IntegerInputWidget::minLabelChangedReaction(int newVal)
-{
-    if (m_dial == nullptr) return;
-
-    m_min = newVal;
-    m_dial->setMinimum(newVal);
-    m_dial->setValue(m_val);
-
-    emit onMinLabelChanged(newVal);
-}
-
-void
-IntegerInputWidget::maxLabelChangedReaction(int newVal)
-{
-    if (m_dial == nullptr) return;
-
-    m_max = newVal;
-    m_dial->setMaximum(newVal);
-    m_dial->setValue(m_val);
-
-    emit onMaxLabelChanged(newVal);
-}
-
-void
-IntegerInputWidget::valueLabelChangedReaction()
-{
-    if (m_dial == nullptr) return;
-
-    QString newValString = m_text->text();
-    int newVal = newValString.toInt();
-
-    m_val = newVal;
-    m_dial->setValue(newVal);
-
-    emit onValueLabelChanged(newVal);
-}
-
-} // namespace intelli

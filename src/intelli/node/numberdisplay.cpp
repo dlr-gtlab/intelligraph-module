@@ -21,12 +21,15 @@ NumberDisplayNode::NumberDisplayNode() :
 {
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    PortId in = addInPort(typeId<DoubleData>());
+    PortId in = addInPort(makePort(typeId<DoubleData>()).setCaptionVisible(false));
+
+    setNodeFlag(ResizableHOnly);
 
     registerWidgetFactory([=](){
         auto w = std::make_unique<QLineEdit>();
         w->setReadOnly(true);
-        w->setFixedWidth(50);
+        w->setMinimumWidth(75);
+        w->resize(w->minimumSizeHint());
 
         auto const updateText = [=, w_ = w.get()](){
             auto const& data = nodeData<DoubleData>(in);

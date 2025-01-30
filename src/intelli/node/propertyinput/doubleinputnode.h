@@ -10,54 +10,60 @@
 #ifndef GT_INTELLI_DOUBLEINPUTNODE_H
 #define GT_INTELLI_DOUBLEINPUTNODE_H
 
-#include <gt_modeproperty.h>
-#include <gt_modetypeproperty.h>
-#include <gt_doubleproperty.h>
+#include <intelli/node.h>
+#include <intelli/property/metaenum.h>
 
-#include "abstractinputnode.h"
+#include <gt_doubleproperty.h>
+#include <gt_boolproperty.h>
 
 namespace intelli
 {
-class GT_INTELLI_EXPORT DoubleInputNode : public AbstractInputNode
+
+class GT_INTELLI_EXPORT DoubleInputNode : public Node
 {
     Q_OBJECT
+
 public:
+
     Q_INVOKABLE DoubleInputNode();
 
+    /// Getter for the current value, may not be within lower and upper bounds
+    /// if not using bounds.
     double value() const;
-
+    /// Setter for current value, will be bound to min/max when using bounds.
     void setValue(double value);
+
+    double lowerBound() const;
+    void setLowerBound(double value);
+
+    double upperBound() const;
+    void setUpperBound(double value);
+
+    bool useBounds() const;
+    void setUseBounds(bool value);
+
+protected:
 
     void eval() override;
 
-private slots:
-    void onWidgetValueChanges(double newVal);
-
-signals:
-    void triggerWidgetUpdate(double val, double min, double max);
-
-    void displayModeChanged(QString const& type);
-
 private:
+
+    /// Current value
+    GtDoubleProperty m_value;
+
+    /// Upper bound
     GtDoubleProperty m_min;
 
+    /// Lower bound
     GtDoubleProperty m_max;
 
-    GtModeProperty m_displayType;
+    /// Whether bounds (min, max) should be enforced. Dependent on input type.
+    GtBoolProperty m_useBounds;
 
-    GtModeTypeProperty m_textDisplay;
-
-    GtModeTypeProperty m_dial;
-
-    GtModeTypeProperty m_sliderH;
-
-    GtModeTypeProperty m_sliderV;
+    /// Holds input mode, used to remember state of GUI.
+    MetaEnumProperty m_inputMode;
 
     PortId m_out;
-
-    QMetaObject::Connection m_minPropConnection;
-
-    QMetaObject::Connection m_maxPropConnection;
 };
 
 } // namespace intelli

@@ -11,52 +11,141 @@
 #define GT_INTELLI_ABSTRACTNUMBERINPUTWIDGET_H
 
 #include <QWidget>
-#include <QLayout>
+#include <QVariant>
+
+class QDial;
+class QSlider;
+class QLabel;
+class GtLineEdit;
 
 namespace intelli
 {
+
+class EditableBaseLabel;
+
 class AbstractNumberInputWidget : public QWidget
 {
     Q_OBJECT
 
 public:
 
-    enum InputType
+    /// Input Type
+    enum InputMode
     {
-        Dial = 0,
-        SliderV = 1,
-        SliderH = 2,
-        LineEdit = 4
+        LineEditUnbound = 0, // LineEdit that does not enforce bounds
+        LineEditBound = 1, // LineEdit that enforces bounds
+        SliderV = 2, // Vertical slider, enforces bounds
+        SliderH = 3, // Horizontal slider, enforces bounds
+        Dial = 4,    // dial/knob, enforces bounds
     };
+    Q_ENUM(InputMode)
 
     /**
-     * @brief eventFilter
-     * Defines an eventfilter to enable interaction witht he mouse in the
-     * plot. Else the mouse action would be applied to the node
-     * @param obj
-     * @param e
-     * @return
+     * @brief Updates the current display mode including input mask configuration
+     * @param mode Display mode
      */
+    void setInputMode(InputMode mode);
+    InputMode inputMode() const;
+
+    /// Whether bounds should be enforced.
+    bool useBounds() const;
+
+    /// Accesses the current value as a type `T`
+    template <typename T>
+    T value() const { return QVariant(value()).value<T>(); }
+
+    /// Accesses the current value in underlying string format
+    QString value() const;
+
+    void setRange(QVariant const& valueV,
+                  QVariant const& minV,
+                  QVariant const& maxV);
+
+    template <typename T>
+    void setRange(T value, T min, T max)
+    {
+        return setRange(QVariant::fromValue(value),
+                        QVariant::fromValue(min),
+                        QVariant::fromValue(max));
+    }
+
     bool eventFilter(QObject* obj, QEvent* e) override;
+
 signals:
-    void sizeChanged();
+
+    /// emitted if value changes, this value may not be the final value
+    /// (e.g. emitted while value is edited)
+    void valueChanged();
+
+    /// emitted once value has been edited (=final)
+    void valueComitted();
+
+    /// whether min bounds changed
+    void minChanged();
+
+    /// whether max bounds changed
+    void maxChanged();
 
 protected:
-    AbstractNumberInputWidget(QWidget* parent = nullptr);
 
-    AbstractNumberInputWidget::InputType typeFromString(
-            const QString& typeString);
+    AbstractNumberInputWidget(InputMode mode,
+                              EditableBaseLabel* low,
+                              EditableBaseLabel* high,
+                              QWidget* parent = nullptr);
 
-    QLayout* newDialLayout(QWidget* slider, QWidget* minText,
-                           QWidget* valueText, QWidget* maxText);
+    GtLineEdit* valueEdit();
+    GtLineEdit const* valueEdit() const;
 
-    QLayout* newSliderHLayout(QWidget* slider, QWidget* minText,
-                              QWidget* valueText, QWidget* maxText);
+    EditableBaseLabel* low();
+    EditableBaseLabel const* low() const;
 
-    QLayout* newSliderVLayout(QWidget* slider, QWidget* minText,
-                              QWidget* valueText, QWidget* maxText);
+    EditableBaseLabel* high();
+    EditableBaseLabel const* high() const;
 
-    void resizeEvent(QResizeEvent* event) override;
+    QDial* dial();
+    QDial const* dial() const;
+
+    QSlider* slider();
+    QSlider const* slider() const;
+
+protected slots:
+
+    virtual void applyRange(QVariant const& valueV,
+                            QVariant const& minV,
+                            QVariant const& maxV) = 0;
+
+    virtual void commitSliderValueChange(int value) = 0;
+
+    virtual void commitMinValueChange() = 0;
+
+    virtual void commitMaxValueChange() = 0;
+
+    virtual void commitValueChange() = 0;
+
+private:
+
+    InputMode m_mode = LineEditUnbound;
+
+    QDial* m_dial{nullptr};
+    QSlider* m_slider{nullptr};
+
+    GtLineEdit* m_text{nullptr};
+
+    EditableBaseLabel* m_low{nullptr};
+
+    EditableBaseLabel* m_high{nullptr};
+
+    bool m_useBounds{false};
+
+    void applyInputMode(InputMode mode);
+
+private slots:
+
+    void onValueEdited();
+
+    void onMinEdited();
+
+    void onMaxEdited();
 };
 
 } // namespace intelli

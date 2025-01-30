@@ -12,77 +12,48 @@
 
 #include "abstractnumberinputwidget.h"
 
-class QAbstractSlider;
-class QLabel;
-class GtLineEdit;
-
 namespace intelli
 {
-class EditableDoubleLabel;
 
 class DoubleInputWidget : public AbstractNumberInputWidget
 {
     Q_OBJECT
 public:
 
-    Q_INVOKABLE DoubleInputWidget(double initVal, double initMin,
-                                  double initMax,
-                                  QWidget* parent = nullptr,
-                                  AbstractNumberInputWidget::InputType t = Dial);
+    Q_INVOKABLE DoubleInputWidget(InputMode mode,
+                                  QWidget* parent = nullptr);
 
-signals:
-    void valueChanged(double newVal);
+    using AbstractNumberInputWidget::value;
 
-    void onMinLabelChanged(double newVal);
+    /// getter
+    double value() const { return AbstractNumberInputWidget::value<double>(); }
 
-    void onMaxLabelChanged(double newVal);
+    /// current min bound (may not be enforced, when not using bounds)
+    double min() const;
+    /// current max bound (may not be enforced, when not using bounds)
+    double max() const;
+    /// resultion of slider
+    int ticks() const;
 
-    void onValueLabelChanged(double newVal);
+protected slots:
 
-public slots:
-    void onMinMaxPropertiesChanged(double val, double min, double max);
+    void applyRange(QVariant const& valueV,
+                    QVariant const& minV,
+                    QVariant const& maxV) override;
 
-    void onSliderTypeChanged(QString const& t);
+    void commitSliderValueChange(int value) override;
+
+    void commitMinValueChange() override;
+
+    void commitMaxValueChange() override;
+
+    void commitValueChange() override;
 
 private:
-    int m_maxTicks;
 
-    QAbstractSlider* m_dial{nullptr};
-
-    GtLineEdit* m_text{nullptr};
-
-    EditableDoubleLabel* m_low{nullptr};
-
-    EditableDoubleLabel* m_high{nullptr};
-
-    double m_min;
-
-    double m_max;
-
-    double m_val;
-
-    void initDial();
-
-    void toDialLayout();
-
-    void toSliderVLayout();
-
-    void toSliderHLayout();
-
-    void toTextBasedLayout();
-
-    void disconnectDial();
-
-    void connectDial();
-
-private slots:
-    void onDialChanged();
-
-    void minLabelChangedReaction(double newVal);
-
-    void maxLabelChangedReaction(double newVal);
-
-    void valueLabelChangedReaction();
+    double m_min = 0;
+    double m_max = 0;
+    const int m_ticks  = 1000;
 };
 
 } /// namespace intelli

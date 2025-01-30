@@ -9,130 +9,134 @@
 
 #include "editableintegerlabel.h"
 
-#include <QMouseEvent>
-#include <QKeyEvent>
-#include <QRegExpValidator>
-#include <QLabel>
-#include <QLineEdit>
-
 #include <gt_regexp.h>
 #include <gt_logging.h>
 
-namespace intelli
-{
+#include <QLabel>
+#include <QLineEdit>
+#include <QMouseEvent>
+#include <QKeyEvent>
+#include <QRegExpValidator>
 
-EditableIntegerLabel::EditableIntegerLabel(QString const& text,
-                                           QWidget* parent) :
+using namespace intelli;
+
+EditableBaseLabel::EditableBaseLabel(QString const& text,
+                                     QWidget* parent) :
     QStackedWidget(parent),
-    m_l(new QLabel(text)),
-    m_e(new QLineEdit(text))
+    m_label(new QLabel(text)),
+    m_edit(new QLineEdit(text))
 {
-    addWidget(m_l);
-    addWidget(m_e);
+    addWidget(m_label);
+    addWidget(m_edit);
 
-    m_l->installEventFilter(this);
-    m_e->installEventFilter(this);
-    m_e->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+")));
+    m_label->installEventFilter(this);
+    m_edit->installEventFilter(this);
 
     setMinimumWidth(30);
 
-    connect(m_e, &QLineEdit::editingFinished,
-            this, &EditableIntegerLabel::onTextChanged);
+    connect(m_edit, &QLineEdit::editingFinished,
+            this, &EditableBaseLabel::onTextEdited);
 }
 
-int
-EditableIntegerLabel::value() const
+QLabel*
+EditableBaseLabel::label() { return m_label; }
+QLabel const*
+EditableBaseLabel::label() const { return m_label; }
+
+QLineEdit*
+EditableBaseLabel::edit() { return m_edit; }
+QLineEdit const*
+EditableBaseLabel::edit() const{ return m_edit; }
+
+QString
+EditableBaseLabel::text() const
 {
-    return m_l->text().toInt();
+    return m_edit->text();
 }
 
 void
-EditableIntegerLabel::setValue(const int& value, bool emmit)
+EditableBaseLabel::setText(QString const& text, bool emitSignal)
 {
-    if (m_l->text().toInt() == value) return;
+    m_edit->setText(text);
+    m_label->setText(text + ' '); // padding
 
-
-    m_l->setText(QString::number((value)));
-
-    if (emmit) m_e->setText(QString::number((value)));
-    else
+    if (emitSignal)
     {
-        /// text text of text edit without emit
-        m_e->blockSignals(true);
-        m_e->setText(QString::number((value)));
-        m_e->blockSignals(false);
+        emit textChanged();
     }
+}
 
+void
+EditableBaseLabel::setReadOnly(bool value)
+{
+    m_readOnly = true;
 }
 
 bool
-EditableIntegerLabel::eventFilter(QObject* watched, QEvent* event)
+EditableBaseLabel::readOnly() const
 {
-    if (watched == m_e)
+    return m_readOnly;
+}
+
+bool
+EditableBaseLabel::eventFilter(QObject* watched, QEvent* event)
+{
+    if (m_readOnly)
+    {
+        this->setCurrentIndex(0);
+        return QWidget::eventFilter(watched, event);
+    }
+
+    if (watched == m_edit)
     {
         if(event->type() == QEvent::KeyPress)
         {
             QKeyEvent* keyEvent = static_cast<QKeyEvent *>(event);
-            if(keyEvent->key() == Qt::Key_Return ||
-                    keyEvent->key() == Qt::Key_Escape ||
-                    keyEvent->key() == Qt::Key_Enter)
+            if(keyEvent->key() == (Qt::Key_Return | Qt::Key_Escape | Qt::Key_Enter))
             {
-                m_l->setText(m_e->text());
                 this->setCurrentIndex(0);
             }
         }
         else if (event->type() == QEvent::FocusOut)
         {
-            m_l->setText(m_e->text());
             this->setCurrentIndex(0);
         }
     }
-    else if (watched == m_l)
+    else if (watched == m_label)
     {
-        if(event->type() == QEvent::MouseButtonDblClick){
+        if(event->type() == QEvent::MouseButtonDblClick)
+        {
             this->setCurrentIndex(1);
-            m_e->setText(m_l->text());
-            m_e->setFocus();
+            m_edit->setText(m_label->text().trimmed());
+            m_edit->setFocus();
         }
     }
     return QWidget::eventFilter(watched, event);
 }
 
-QFont
-EditableIntegerLabel::labelFont()
+void
+EditableBaseLabel::setTextAlignment(Qt::Alignment textAlignment)
 {
-    if (m_l) return m_l->font();
-    else return {};
+    edit()->setAlignment(textAlignment);
+    label()->setAlignment(textAlignment);
 }
 
 void
-EditableIntegerLabel::setLabelFont(const QFont& f)
+EditableBaseLabel::onTextEdited()
 {
-    if (m_l) return m_l->setFont(f);
+    QString text = edit()->text();
+
+    setText(std::move(text));
 }
 
-void
-EditableIntegerLabel::setTextAlignment(Qt::Alignment textAlignment)
+EditableIntegerLabel::EditableIntegerLabel(QString const& text, QWidget* parent) :
+    EditableLabel<int>(text, parent)
 {
-    if (m_l) m_l->setAlignment(textAlignment);
-    if (m_e) m_e->setAlignment(textAlignment);
+    edit()->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+")));
 }
 
-void
-EditableIntegerLabel::onTextChanged()
+EditableDoubleLabel::EditableDoubleLabel(QString const& text, QWidget* parent) :
+    EditableLabel<double>(text, parent)
 {
-    QString t = m_e->text();
-    bool ok = true;
-    int value = t.toInt(&ok);
-
-    if (!ok)
-    {
-        gtError() << tr("Problem to make %1 to a double value").arg(t);
-        return;
-    }
-
-    setValue(value);
-
-    emit valueChanged(value);
+    edit()->setValidator(new QRegExpValidator(gt::re::forDoubles()));
 }
-} // namespace intelli

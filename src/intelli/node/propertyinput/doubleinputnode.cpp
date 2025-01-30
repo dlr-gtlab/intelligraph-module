@@ -17,159 +17,158 @@
 using namespace intelli;
 
 DoubleInputNode::DoubleInputNode() :
-    AbstractInputNode(tr("Double Input"),
-                      std::make_unique<GtDoubleProperty>("value", tr("Value"),
-                                                         tr("Current value"))),
-    m_min("min", tr("Min."), tr("minimum value"), GtUnit::None, -10),
-    m_max("max", tr("Max."), tr("maxiumum value"), GtUnit::None, 10),
-    m_displayType("type", "type", "type"),
-    m_textDisplay("Text", "Text"),
-    m_dial("dial", "dial"),
-    m_sliderH("sliderH", "Slider H"),
-    m_sliderV("sliderV", "Slider V")
+    Node(tr("Double Input")),
+    m_value("value", tr("Value"), tr("Current value"), GtUnit::None, 0),
+    m_min("min", tr("Min."), tr("Minimum value"), GtUnit::None, 0),
+    m_max("max", tr("Max."), tr("Maxiumum value"), GtUnit::None, 100),
+    m_useBounds("useBounds", tr("Use Min/Max"), tr("Use Min/Max bounds"), false),
+    m_inputMode("mode", tr("Input Mode"), tr("Input Mode"))
 {
+    registerProperty(m_value);
     registerProperty(m_min);
     registerProperty(m_max);
+    registerProperty(m_useBounds);
+    registerProperty(m_inputMode);
 
-    m_displayType.registerSubProperty(m_textDisplay);
-    m_displayType.registerSubProperty(m_dial);
-    m_displayType.registerSubProperty(m_sliderH);
-    m_displayType.registerSubProperty(m_sliderV);
+    m_useBounds.setReadOnly(true);
+    m_value.hide();
 
-    registerProperty(m_displayType);
-
-    m_value->hide();
-
-    m_out = addOutPort(typeId<DoubleData>());
-    port(m_out)->captionVisible = false;
+    m_out = addOutPort(makePort(typeId<DoubleData>()).setCaptionVisible(false));
 
     setNodeFlag(Resizable);
+    setNodeEvalMode(NodeEvalMode::Blocking);
 
     registerWidgetFactory([this]() {
-        DoubleInputWidget::InputType t = DoubleInputWidget::Dial;
-        if (m_displayType.getVal() == m_dial.objectName())
-        {
-            t = DoubleInputWidget::Dial;
-        }
-        else if (m_displayType.getVal() == m_sliderH.objectName())
-        {
-            t = DoubleInputWidget::SliderH;
-        }
-        else if (m_displayType.getVal() == m_sliderV.objectName())
-        {
-            t = DoubleInputWidget::SliderV;
-        }
-        else if (m_displayType.getVal() == m_textDisplay.objectName())
-        {
-            t = DoubleInputWidget::LineEdit;
-        }
+        using InputMode = DoubleInputWidget::InputMode;
 
-        auto base = makeBaseWidget();
+        bool success = m_inputMode.registerEnum<InputMode>();
+        assert(success);
 
-        auto overallW = new DoubleInputWidget(value(),
-                                              m_min.getVal(),
-                                              m_max.getVal(),
-                                              base.get(),
-                                              t);
+        auto mode = m_inputMode.getEnum<InputMode>();
 
-        base->layout()->addWidget(overallW);
+        auto w = new DoubleInputWidget(mode);
 
-        auto onMinMaxChanged = [this]()
-        {
-            emit triggerWidgetUpdate(value(),
-                                   m_min.getVal(),
-                                   m_max.getVal());
-
+        auto onRangeChanged = [this, w](){
+            w->setRange(value(), lowerBound(), upperBound());
+            emit nodeChanged();
             emit triggerNodeEvaluation();
         };
 
-        auto onMinLabelChanged = [=](double newVal)
-        {
-            QObject::disconnect(m_minPropConnection);
-            if (m_min.getVal() != newVal) m_min.setVal(newVal);
-            m_minPropConnection = connect(&m_min, &GtDoubleProperty::changed,
-                                          this, onMinMaxChanged);
+        auto onMinChanged = [=](){
+            double newVal = w->min();
+            if (lowerBound() != newVal) setLowerBound(newVal);
         };
 
-        auto onMaxLabelChanged = [=](double newVal)
-        {
-            QObject::disconnect(m_maxPropConnection);
-            if (m_max.getVal() != newVal) m_max.setVal(newVal);
-            m_maxPropConnection = connect(&m_max, &GtDoubleProperty::changed,
-                                          this, onMinMaxChanged);
+        auto onMaxChanged = [=](){
+            double newVal = w->max();
+            if (upperBound() != newVal) setUpperBound(newVal);
         };
 
-        auto onValueLabelChanged = [=](double newVal)
-        {
+        auto onValueChanged = [=](){
+            double newVal = w->value();
             if (value() != newVal)
             {
                 setValue(newVal);
-                triggerNodeEvaluation();
+                emit triggerNodeEvaluation();
             }
         };
 
-        auto onDisplyModeChanged = [=]()
-        {
-            emit displayModeChanged(m_displayType.getVal());
+        auto const updateMode= [this, w]() {
+            w->setInputMode(m_inputMode.getEnum<InputMode>());
+
+            setUseBounds(w->useBounds());
+
+            switch (w->inputMode())
+            {
+            case InputMode::SliderH:
+            case InputMode::LineEditBound:
+            case InputMode::LineEditUnbound:
+                setNodeFlag(ResizableHOnly, true);
+                break;
+            default:
+                setNodeFlag(ResizableHOnly, false);
+                break;
+            }
+
+            emit nodeChanged();
         };
 
-        connect(overallW, SIGNAL(valueChanged(double)),
-                this, SLOT(onWidgetValueChanges(double)));
+        connect(w, &DoubleInputWidget::valueComitted,
+                this, onValueChanged);
+        connect(w, &DoubleInputWidget::minChanged,
+                this, onMinChanged);
+        connect(w, &DoubleInputWidget::maxChanged,
+                this, onMaxChanged);
 
-        connect(overallW, &DoubleInputWidget::onMinLabelChanged,
-                this, onMinLabelChanged);
-        connect(overallW, &DoubleInputWidget::onMaxLabelChanged,
-                this, onMaxLabelChanged);
-        connect(overallW, &DoubleInputWidget::onValueLabelChanged,
-                this, onValueLabelChanged);
+        connect(&m_min, &GtDoubleProperty::changed,
+                w, onRangeChanged);
+        connect(&m_max, &GtDoubleProperty::changed,
+                w, onRangeChanged);
+        connect(&m_inputMode, &GtAbstractProperty::changed,
+                w, updateMode);
 
-        connect(this, &DoubleInputNode::triggerWidgetUpdate,
-                overallW, &DoubleInputWidget::onMinMaxPropertiesChanged);
+        onRangeChanged();
+        updateMode();
 
-        m_minPropConnection = connect(&m_min, &GtDoubleProperty::changed,
-                                      this, onMinMaxChanged);
-        m_maxPropConnection = connect(&m_max, &GtDoubleProperty::changed,
-                                      this, onMinMaxChanged);
-
-        connect(&m_displayType, &GtModeProperty::changed,
-                                              this, onDisplyModeChanged);
-
-        connect(this, SIGNAL(displayModeChanged(QString)),
-                overallW, SLOT(onSliderTypeChanged(QString)));
-
-        connect(overallW, SIGNAL(sizeChanged()), this, SIGNAL(nodeChanged()));
-
-        return base;
+        return std::unique_ptr<QWidget>(w);
     });
 }
 
 double
-DoubleInputNode::value() const
-{
-    auto prop = static_cast<GtDoubleProperty*>(m_value.get());
-    return prop->getVal();
-}
+DoubleInputNode::value() const { return m_value.getVal(); }
 
 void
 DoubleInputNode::setValue(double value)
 {
-    auto prop = static_cast<GtDoubleProperty*>(m_value.get());
-    if (prop->getVal() != value)
+    value = m_useBounds ? gt::clamp(value, m_min.getVal(), m_max.getVal()) : value;
+
+    if (m_value.getVal() != value)
     {
-        prop->setVal(value);
+        m_value = value;
         emit triggerNodeEvaluation();
     }
 }
 
+double
+DoubleInputNode::lowerBound() const { return m_min; }
+
 void
-DoubleInputNode::eval()
-{   
-    setNodeData(m_out, std::make_shared<DoubleData>(value()));
+DoubleInputNode::setLowerBound(double value)
+{
+    if (value > m_max) value = m_max;
+    if (m_min != value)
+    {
+        m_min = value;
+        setValue(this->value());
+    }
+}
+
+double
+DoubleInputNode::upperBound() const { return m_max; }
+
+void
+DoubleInputNode::setUpperBound(double value)
+{
+    if (value < m_min) value = m_min;
+    if (m_max != value)
+    {
+        m_max = value;
+        setValue(this->value());
+    }
+}
+
+bool
+DoubleInputNode::useBounds() const { return m_useBounds; }
+
+void
+DoubleInputNode::setUseBounds(bool value)
+{
+    if (m_useBounds != value) m_useBounds = value;
 }
 
 void
-DoubleInputNode::onWidgetValueChanges(double newVal)
+DoubleInputNode::eval()
 {
-    if (newVal != value()) setValue(newVal);
+    setNodeData(m_out, std::make_shared<DoubleData>(value()));
 }
 

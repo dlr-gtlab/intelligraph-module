@@ -61,7 +61,6 @@ BoolInputNode::BoolInputNode() :
         connect(&m_displayMode, &GtAbstractProperty::changed, w, updateMode);
 
         updateWidget();
-        updateMode();
 
         return wPtr;
     });
