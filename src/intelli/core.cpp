@@ -21,7 +21,6 @@
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 
-#include "intelli/node/numbersource.h"
 #include "intelli/node/numberdisplay.h"
 #include "intelli/node/numbermath.h"
 #include "intelli/node/sleepy.h"
@@ -30,9 +29,7 @@
 #include "intelli/node/finddirectchild.h"
 #include "intelli/node/existingdirectorysource.h"
 
-#include "intelli/node/logicdisplay.h"
 #include "intelli/node/logicoperation.h"
-#include "intelli/node/logicsource.h"
 
 #include "intelli/node/stringbuilder.h"
 
@@ -118,13 +115,10 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(NumberDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(NumberMathNode, catNumber);
-        GT_INTELLI_REGISTER_NODE(NumberSourceNode, catInput);
         GT_INTELLI_REGISTER_NODE(SleepyNode, (gtApp && gtApp->devMode()) ? catOther : hidden);
         GT_INTELLI_REGISTER_NODE(BoolDisplayNode, catDisplay);
 
-        GT_INTELLI_REGISTER_NODE(LogicDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(LogicNode, catLogic);
-        GT_INTELLI_REGISTER_NODE(LogicSourceNode, catInput);
 
         GT_INTELLI_REGISTER_NODE(TextDisplayNode, catDisplay);
 

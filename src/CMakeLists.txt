@@ -94,12 +94,9 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/genericcalculatorexec.h
     intelli/node/groupinputprovider.h
     intelli/node/groupoutputprovider.h
-    intelli/node/logicdisplay.h
     intelli/node/logicoperation.h
-    intelli/node/logicsource.h
     intelli/node/numberdisplay.h
     intelli/node/numbermath.h
-    intelli/node/numbersource.h
     intelli/node/objectmemento.h
     intelli/node/projectinfo.h
     intelli/node/sleepy.h
@@ -125,7 +122,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/widgets/editablelabel.h
     intelli/gui/widgets/finddirectchildwidget.h
     intelli/gui/widgets/intinputwidget.h
-    intelli/gui/widgets/logicdisplay.h
     intelli/gui/property_item/stringselection.h
     intelli/private/graph_impl.h
     intelli/private/graphexecmodel_impl.h
@@ -166,12 +162,9 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/genericcalculatorexec.cpp
     intelli/node/groupinputprovider.cpp
     intelli/node/groupoutputprovider.cpp
-    intelli/node/logicdisplay.cpp
     intelli/node/logicoperation.cpp
-    intelli/node/logicsource.cpp
     intelli/node/numberdisplay.cpp
     intelli/node/numbermath.cpp
-    intelli/node/numbersource.cpp
     intelli/node/objectmemento.cpp
     intelli/node/projectinfo.cpp
     intelli/node/sleepy.cpp
@@ -208,7 +201,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/widgets/editablelabel.cpp
     intelli/gui/widgets/finddirectchildwidget.cpp
     intelli/gui/widgets/intinputwidget.cpp
-    intelli/gui/widgets/logicdisplay.cpp
     intelli/gui/property_item/stringselection.cpp
     intelli/property/color.cpp
     intelli/property/metaenum.cpp

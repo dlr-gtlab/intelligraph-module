@@ -163,6 +163,7 @@ AbstractNumberInputWidget::applyInputMode(InputMode mode)
 
     switch (mode)
     {
+    default:
     case LineEditUnbound:
         m_useBounds = false;
 

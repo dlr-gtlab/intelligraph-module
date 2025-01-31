@@ -50,7 +50,7 @@ inline QPoint quantize(QPointF point, int stepSize)
 using Position = QPointF;
 
 /**
- * @brief Maps a value of an input range into an value of an output range
+ * @brief Maps a value of an input range onto an output range
  * @param value Value to map between input and output range
  * @param inputRange Input range Input range
  * @param outputRange Output range
