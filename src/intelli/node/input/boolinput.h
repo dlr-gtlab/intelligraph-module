@@ -11,9 +11,9 @@
 #define GT_INTELLI_BOOLINPUTNODE_H
 
 #include <intelli/node.h>
+#include <intelli/property/metaenum.h>
 
 #include <gt_boolproperty.h>
-#include <intelli/property/metaenum.h>
 
 namespace intelli
 {

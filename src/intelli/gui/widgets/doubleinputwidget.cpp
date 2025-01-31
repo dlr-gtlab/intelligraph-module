@@ -7,8 +7,8 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include <intelli/gui/property_item/doubleinputwidget.h>
-#include <intelli/gui/property_item/editabledoublelabel.h>
+#include <intelli/gui/widgets/doubleinputwidget.h>
+#include <intelli/gui/widgets/editablelabel.h>
 #include <intelli/globals.h>
 
 #include <gt_utilities.h>

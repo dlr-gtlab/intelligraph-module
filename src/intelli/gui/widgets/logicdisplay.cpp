@@ -7,7 +7,7 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include "intelli/gui/property_item/logicdisplay.h"
+#include <intelli/gui/widgets/logicdisplay.h>
 
 #include <gt_colors.h>
 #include <gt_application.h>

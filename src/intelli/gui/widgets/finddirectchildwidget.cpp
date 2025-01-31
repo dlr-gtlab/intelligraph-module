@@ -7,7 +7,7 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include "intelli/gui/property_item/finddirectchildnodewidget.h"
+#include <intelli/gui/widgets/finddirectchildwidget.h>
 
 #include <QVBoxLayout>
 #include <QCompleter>
@@ -19,14 +19,14 @@
 
 using namespace intelli;
 
-FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
+FindDirectChildWidget::FindDirectChildWidget(QWidget* parent) :
     QWidget(parent)
 {
     auto* lay = new QVBoxLayout;
     setLayout(lay);
 
     auto* classNameCompleter =
-            new QCompleter(gtObjectFactory->knownClasses());
+        new QCompleter(gtObjectFactory->knownClasses());
     classNameCompleter->setCompletionMode(QCompleter::InlineCompletion);
 
     m_classNameEdit = new GtLineEdit;
@@ -63,19 +63,19 @@ FindDirectChildNodeWidget::FindDirectChildNodeWidget(QWidget* parent) :
 }
 
 void
-FindDirectChildNodeWidget::setClassNameWidget(QString const& className)
+FindDirectChildWidget::setClassNameWidget(QString const& className)
 {
     if (m_classNameEdit) m_classNameEdit->setText(className);
 }
 
 void
-FindDirectChildNodeWidget::setObjectNameWidget(QString const& objectName)
+FindDirectChildWidget::setObjectNameWidget(QString const& objectName)
 {
     if (m_objectNameEdit) m_objectNameEdit->setText(objectName);
 }
 
 void
-FindDirectChildNodeWidget::updateNameCompleter(ObjectData const* data)
+FindDirectChildWidget::updateNameCompleter(ObjectData const* data)
 {
     QStringList allChildrenNames;
 
@@ -99,14 +99,14 @@ FindDirectChildNodeWidget::updateNameCompleter(ObjectData const* data)
 }
 
 void
-FindDirectChildNodeWidget::reactOnClassNameWidgetChange()
+FindDirectChildWidget::reactOnClassNameWidgetChange()
 {
     if (!m_classNameEdit) return;
     emit updateClass(m_classNameEdit->text());
 }
 
 void
-FindDirectChildNodeWidget::reactOnObjectNameWidgetChange()
+FindDirectChildWidget::reactOnObjectNameWidgetChange()
 {
     if (!m_objectNameEdit) return;
     emit updateObjectName(m_objectNameEdit->text());
@@ -114,7 +114,7 @@ FindDirectChildNodeWidget::reactOnObjectNameWidgetChange()
 
 
 void
-FindDirectChildNodeWidget::updateClassText()
+FindDirectChildWidget::updateClassText()
 {
     if (!m_classNameEdit) return;
 
@@ -126,7 +126,7 @@ FindDirectChildNodeWidget::updateClassText()
 }
 
 void
-FindDirectChildNodeWidget::updateNameText()
+FindDirectChildWidget::updateNameText()
 {
     if (!m_objectNameEdit) return;
 

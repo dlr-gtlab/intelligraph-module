@@ -1,13 +1,10 @@
 
-#include "booldisplay.h"
-#include <intelli/gui/property_item/booldisplay.h>
-
+#include <intelli/node/booldisplay.h>
 #include <intelli/data/bool.h>
 
-#include <QLayout>
+#include <intelli/gui/widgets/booldisplaywidget.h>
 
 using namespace intelli;
-using DisplayMode = BoolDisplayWidget::DisplayMode;
 
 BoolDisplayNode::BoolDisplayNode() :
     Node(QStringLiteral("Bool Display")),
@@ -23,6 +20,8 @@ BoolDisplayNode::BoolDisplayNode() :
                          .setCaptionVisible(false));
 
     registerWidgetFactory([this](){
+        using DisplayMode = BoolDisplayWidget::DisplayMode;
+
         bool success = m_displayMode.registerEnum<DisplayMode>();
         assert(success);
 

@@ -36,16 +36,17 @@
 
 #include "intelli/node/stringbuilder.h"
 
-#include "intelli/node/propertyinput/boolinputnode.h"
-#include "intelli/node/propertyinput/doubleinputnode.h"
-#include "intelli/node/propertyinput/intinputnode.h"
-#include "intelli/node/propertyinput/objectinputnode.h"
-#include "intelli/node/propertyinput/stringinputnode.h"
+#include "intelli/node/input/boolinput.h"
+#include "intelli/node/input/doubleinput.h"
+#include "intelli/node/input/fileinput.h"
+#include "intelli/node/input/intinput.h"
+#include "intelli/node/input/objectinput.h"
+#include "intelli/node/input/stringinput.h"
+
 #include "intelli/node/booldisplay.h"
 #include "intelli/node/textdisplay.h"
 
 #include "intelli/node/genericcalculatorexec.h"
-#include "intelli/node/fileinput.h"
 #include "intelli/node/filereader.h"
 #include "intelli/node/filewriter.h"
 

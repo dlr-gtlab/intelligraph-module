@@ -7,8 +7,8 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include <intelli/gui/property_item/integerinputwidget.h>
-#include <intelli/gui/property_item/editableintegerlabel.h>
+#include <intelli/gui/widgets/intinputwidget.h>
+#include <intelli/gui/widgets/editablelabel.h>
 #include <intelli/globals.h>
 
 #include <gt_utilities.h>
@@ -22,8 +22,8 @@
 
 using namespace intelli;
 
-IntegerInputWidget::IntegerInputWidget(InputMode mode,
-                                       QWidget* parent) :
+IntInputWidget::IntInputWidget(InputMode mode,
+                               QWidget* parent) :
     AbstractNumberInputWidget(mode,
                               new EditableIntegerLabel("", nullptr),
                               new EditableIntegerLabel("", nullptr),
@@ -33,15 +33,15 @@ IntegerInputWidget::IntegerInputWidget(InputMode mode,
 }
 
 int
-IntegerInputWidget::min() const { return m_min; }
+IntInputWidget::min() const { return m_min; }
 
 int
-IntegerInputWidget::max() const { return m_max; }
+IntInputWidget::max() const { return m_max; }
 
 void
-IntegerInputWidget::applyRange(QVariant const& valueV,
-                               QVariant const& minV,
-                               QVariant const& maxV)
+IntInputWidget::applyRange(QVariant const& valueV,
+                           QVariant const& minV,
+                           QVariant const& maxV)
 {
     int value = valueV.toInt();
     int min = minV.toInt();
@@ -73,13 +73,13 @@ IntegerInputWidget::applyRange(QVariant const& valueV,
 }
 
 void
-IntegerInputWidget::commitSliderValueChange(int value)
+IntInputWidget::commitSliderValueChange(int value)
 {
     valueEdit()->setText(QString::number(value));
 }
 
 void
-IntegerInputWidget::commitMinValueChange()
+IntInputWidget::commitMinValueChange()
 {
     int value = low()->value<int>();
     if (value > m_max)
@@ -98,7 +98,7 @@ IntegerInputWidget::commitMinValueChange()
 }
 
 void
-IntegerInputWidget::commitMaxValueChange()
+IntInputWidget::commitMaxValueChange()
 {
     int value = high()->value<int>();
     if (value < m_min)
@@ -117,7 +117,7 @@ IntegerInputWidget::commitMaxValueChange()
 }
 
 void
-IntegerInputWidget::commitValueChange()
+IntInputWidget::commitValueChange()
 {
     int value = valueEdit()->text().toInt();
     if (useBounds()) value = gt::clamp(value, m_min, m_max);

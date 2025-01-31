@@ -7,8 +7,8 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include <intelli/gui/property_item/abstractnumberinputwidget.h>
-#include <intelli/gui/property_item/editableintegerlabel.h>
+#include <intelli/gui/widgets/abstractnumberinputwidget.h>
+#include <intelli/gui/widgets/editablelabel.h>
 
 #include <gt_lineedit.h>
 #include <gt_finally.h>
@@ -25,8 +25,8 @@
 using namespace intelli;
 
 AbstractNumberInputWidget::AbstractNumberInputWidget(InputMode mode,
-                                                     EditableBaseLabel* low,
-                                                     EditableBaseLabel* high,
+                                                     EditableLabel* low,
+                                                     EditableLabel* high,
                                                      QWidget* parent) :
     QWidget(parent),
     m_mode(mode),
@@ -68,7 +68,7 @@ AbstractNumberInputWidget::AbstractNumberInputWidget(InputMode mode,
     m_slider->setContentsMargins(0, 0, 0, 0);
     m_slider->setSingleStep(1);
 
-    auto setupEditableLabel = [this](EditableBaseLabel* w){
+    auto setupEditableLabel = [this](EditableLabel* w){
         QFont f = w->label()->font();
         f.setItalic(true);
         w->label()->setFont(f);
@@ -78,9 +78,9 @@ AbstractNumberInputWidget::AbstractNumberInputWidget(InputMode mode,
     setupEditableLabel(m_low);
     setupEditableLabel(m_high);
 
-    connect(m_low, &EditableBaseLabel::textChanged,
+    connect(m_low, &EditableLabel::textChanged,
             this, &AbstractNumberInputWidget::onMinEdited);
-    connect(m_high, &EditableBaseLabel::textChanged,
+    connect(m_high, &EditableLabel::textChanged,
             this, &AbstractNumberInputWidget::onMaxEdited);
     connect(m_text, &GtLineEdit::editingFinished,
             this, &AbstractNumberInputWidget::onValueEdited);
@@ -99,14 +99,14 @@ AbstractNumberInputWidget::valueEdit() { return m_text; }
 GtLineEdit const*
 AbstractNumberInputWidget::valueEdit() const { return m_text; }
 
-EditableBaseLabel*
+EditableLabel*
 AbstractNumberInputWidget::low() { return m_low; }
-EditableBaseLabel const*
+EditableLabel const*
 AbstractNumberInputWidget::low() const { return m_low; }
 
-EditableBaseLabel*
+EditableLabel*
 AbstractNumberInputWidget::high() { return m_high; }
-EditableBaseLabel const*
+EditableLabel const*
 AbstractNumberInputWidget::high() const { return m_high; }
 
 QDial*
@@ -319,7 +319,7 @@ AbstractNumberInputWidget::onMaxEdited()
 bool
 AbstractNumberInputWidget::eventFilter(QObject* obj, QEvent* e)
 {
-    if (qobject_cast<EditableBaseLabel*>(obj))
+    if (qobject_cast<EditableLabel*>(obj))
     {
         switch (e->type())
         {

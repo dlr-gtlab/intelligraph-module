@@ -6,8 +6,8 @@
  *
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
-#ifndef GT_INTELLI_FINDDIRECTCHILDNODEWIDGET_H
-#define GT_INTELLI_FINDDIRECTCHILDNODEWIDGET_H
+#ifndef GT_INTELLI_FINDDIRECTCHILDWIDGET_H
+#define GT_INTELLI_FINDDIRECTCHILDWIDGET_H
 
 #include <QWidget>
 
@@ -22,7 +22,7 @@ namespace intelli
  * @brief The FindDirectChildNodeWidget class
  * The widget for the find-direct child node
  */
-class FindDirectChildNodeWidget : public QWidget
+class FindDirectChildWidget : public QWidget
 {
     Q_OBJECT
 
@@ -37,7 +37,7 @@ public:
      *
      * @param parent - optional parent widget of the widget
      */
-    Q_INVOKABLE FindDirectChildNodeWidget(QWidget* parent = nullptr);
+    Q_INVOKABLE FindDirectChildWidget(QWidget* parent = nullptr);
 
     /**
      * @brief setClassNameWidget sets the class name widget to the given string
@@ -84,4 +84,4 @@ signals:
 
 } /// namespace intelli
 
-#endif // GT_INTELLI_FINDDIRECTCHILDNODEWIDGET_H
+#endif // GT_INTELLI_FINDDIRECTCHILDWIDGET_H

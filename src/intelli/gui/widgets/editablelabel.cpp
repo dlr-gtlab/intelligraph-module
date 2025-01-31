@@ -7,7 +7,7 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include "editableintegerlabel.h"
+#include <intelli/gui/widgets/editablelabel.h>
 
 #include <gt_regexp.h>
 #include <gt_logging.h>
@@ -20,8 +20,8 @@
 
 using namespace intelli;
 
-EditableBaseLabel::EditableBaseLabel(QString const& text,
-                                     QWidget* parent) :
+EditableLabel::EditableLabel(QString const& text,
+                             QWidget* parent) :
     QStackedWidget(parent),
     m_label(new QLabel(text)),
     m_edit(new QLineEdit(text))
@@ -35,27 +35,27 @@ EditableBaseLabel::EditableBaseLabel(QString const& text,
     setMinimumWidth(30);
 
     connect(m_edit, &QLineEdit::editingFinished,
-            this, &EditableBaseLabel::onTextEdited);
+            this, &EditableLabel::onTextEdited);
 }
 
 QLabel*
-EditableBaseLabel::label() { return m_label; }
+EditableLabel::label() { return m_label; }
 QLabel const*
-EditableBaseLabel::label() const { return m_label; }
+EditableLabel::label() const { return m_label; }
 
 QLineEdit*
-EditableBaseLabel::edit() { return m_edit; }
+EditableLabel::edit() { return m_edit; }
 QLineEdit const*
-EditableBaseLabel::edit() const{ return m_edit; }
+EditableLabel::edit() const{ return m_edit; }
 
 QString
-EditableBaseLabel::text() const
+EditableLabel::text() const
 {
     return m_edit->text();
 }
 
 void
-EditableBaseLabel::setText(QString const& text, bool emitSignal)
+EditableLabel::setText(QString const& text, bool emitSignal)
 {
     m_edit->setText(text);
     m_label->setText(text + ' '); // padding
@@ -67,19 +67,19 @@ EditableBaseLabel::setText(QString const& text, bool emitSignal)
 }
 
 void
-EditableBaseLabel::setReadOnly(bool value)
+EditableLabel::setReadOnly(bool value)
 {
     m_readOnly = true;
 }
 
 bool
-EditableBaseLabel::readOnly() const
+EditableLabel::readOnly() const
 {
     return m_readOnly;
 }
 
 bool
-EditableBaseLabel::eventFilter(QObject* watched, QEvent* event)
+EditableLabel::eventFilter(QObject* watched, QEvent* event)
 {
     if (m_readOnly)
     {
@@ -115,14 +115,14 @@ EditableBaseLabel::eventFilter(QObject* watched, QEvent* event)
 }
 
 void
-EditableBaseLabel::setTextAlignment(Qt::Alignment textAlignment)
+EditableLabel::setTextAlignment(Qt::Alignment textAlignment)
 {
     edit()->setAlignment(textAlignment);
     label()->setAlignment(textAlignment);
 }
 
 void
-EditableBaseLabel::onTextEdited()
+EditableLabel::onTextEdited()
 {
     QString text = edit()->text();
 
@@ -130,13 +130,13 @@ EditableBaseLabel::onTextEdited()
 }
 
 EditableIntegerLabel::EditableIntegerLabel(QString const& text, QWidget* parent) :
-    EditableLabel<int>(text, parent)
+    EditableNumberLabel<int>(text, parent)
 {
     edit()->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+")));
 }
 
 EditableDoubleLabel::EditableDoubleLabel(QString const& text, QWidget* parent) :
-    EditableLabel<double>(text, parent)
+    EditableNumberLabel<double>(text, parent)
 {
     edit()->setValidator(new QRegExpValidator(gt::re::forDoubles()));
 }

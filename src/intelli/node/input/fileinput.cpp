@@ -7,7 +7,7 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include <intelli/node/fileinput.h>
+#include <intelli/node/input/fileinput.h>
 
 #include <intelli/data/string.h>
 #include <intelli/data/file.h>
@@ -62,7 +62,7 @@ FileInputNode::FileInputNode() :
             updateWidget(portId, true);
         };
 
-        updateWidget(m_inName, isPortConnected(m_inName));
+        updateWidget(m_inName, port(m_inName)->isConnected());
 
         connect(this, &Node::portConnected, w, hideWidget);
         connect(this, &Node::portDisconnected, w, showWidget);

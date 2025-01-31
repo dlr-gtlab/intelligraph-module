@@ -7,21 +7,21 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#ifndef GT_INTELLI_INTEGERINPUTWIDGET_H
-#define GT_INTELLI_INTEGERINPUTWIDGET_H
+#ifndef GT_INTELLI_INTINPUTWIDGET_H
+#define GT_INTELLI_INTINPUTWIDGET_H
 
 #include "abstractnumberinputwidget.h"
 
 namespace intelli
 {
 
-class IntegerInputWidget : public AbstractNumberInputWidget
+class IntInputWidget : public AbstractNumberInputWidget
 {
     Q_OBJECT
 
 public:
-
-    Q_INVOKABLE IntegerInputWidget(InputMode mode, QWidget* parent = nullptr);
+    
+    Q_INVOKABLE IntInputWidget(InputMode mode, QWidget* parent = nullptr);
 
     using AbstractNumberInputWidget::value;
 
@@ -52,4 +52,4 @@ private:
 
 } // namespace intelli
 
-#endif // GT_INTELLI_INTEGERINPUTWIDGET_H
+#endif // GT_INTELLI_INTINPUTWIDGET_H

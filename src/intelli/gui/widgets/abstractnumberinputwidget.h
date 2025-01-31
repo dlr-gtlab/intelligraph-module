@@ -21,7 +21,7 @@ class GtLineEdit;
 namespace intelli
 {
 
-class EditableBaseLabel;
+class EditableLabel;
 
 class AbstractNumberInputWidget : public QWidget
 {
@@ -89,18 +89,18 @@ signals:
 protected:
 
     AbstractNumberInputWidget(InputMode mode,
-                              EditableBaseLabel* low,
-                              EditableBaseLabel* high,
+                              EditableLabel* low,
+                              EditableLabel* high,
                               QWidget* parent = nullptr);
 
     GtLineEdit* valueEdit();
     GtLineEdit const* valueEdit() const;
 
-    EditableBaseLabel* low();
-    EditableBaseLabel const* low() const;
+    EditableLabel* low();
+    EditableLabel const* low() const;
 
-    EditableBaseLabel* high();
-    EditableBaseLabel const* high() const;
+    EditableLabel* high();
+    EditableLabel const* high() const;
 
     QDial* dial();
     QDial const* dial() const;
@@ -131,9 +131,9 @@ private:
 
     GtLineEdit* m_text{nullptr};
 
-    EditableBaseLabel* m_low{nullptr};
+    EditableLabel* m_low{nullptr};
 
-    EditableBaseLabel* m_high{nullptr};
+    EditableLabel* m_high{nullptr};
 
     bool m_useBounds{false};
 

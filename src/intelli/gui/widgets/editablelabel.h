@@ -19,14 +19,14 @@ class QLineEdit;
 namespace intelli
 {
 
-class EditableBaseLabel : public QStackedWidget
+class EditableLabel : public QStackedWidget
 {
     Q_OBJECT
 
 public:
 
-    Q_INVOKABLE explicit EditableBaseLabel(QString const& text = {},
-                                           QWidget* parent = nullptr);
+    Q_INVOKABLE explicit EditableLabel(QString const& text = {},
+                                       QWidget* parent = nullptr);
 
     QString text() const;
 
@@ -75,30 +75,31 @@ private:
 };
 
 template <typename T>
-class EditableLabel : public EditableBaseLabel
+class EditableNumberLabel : public EditableLabel
 {
 public:
 
-    explicit EditableLabel(QString const& text = {}, QWidget* parent = nullptr) :
-        EditableBaseLabel(text, parent)
+    explicit EditableNumberLabel(QString const& text = {},
+                                 QWidget* parent = nullptr) :
+        EditableLabel(text, parent)
     { }
 
-    inline T value() const { return EditableBaseLabel::value<T>(); }
+    inline T value() const { return EditableLabel::value<T>(); }
 
     inline void setValue(T const& value, bool emitSignal = true)
     {
-        return EditableBaseLabel::setValue<T>(value, emitSignal);
+        return EditableLabel::setValue<T>(value, emitSignal);
     }
 };
 
-class EditableIntegerLabel : public EditableLabel<int>
+class EditableIntegerLabel : public EditableNumberLabel<int>
 {
     Q_OBJECT
 public:
     explicit EditableIntegerLabel(QString const& text = {}, QWidget* parent = nullptr);
 };
 
-class EditableDoubleLabel : public EditableLabel<double>
+class EditableDoubleLabel : public EditableNumberLabel<double>
 {
     Q_OBJECT
 public:

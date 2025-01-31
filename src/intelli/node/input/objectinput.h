@@ -16,6 +16,7 @@
 
 namespace intelli
 {
+
 class GT_INTELLI_EXPORT ObjectInputNode : public Node
 {
     Q_OBJECT

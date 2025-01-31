@@ -7,20 +7,18 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include "doubleinputnode.h"
+#include <intelli/node/input/intinput.h>
+#include <intelli/data/int.h>
 
-#include "intelli/data/double.h"
-
-#include "intelli/gui/property_item/doubleinputwidget.h"
-#include <QLayout>
+#include <intelli/gui/widgets/intinputwidget.h>
 
 using namespace intelli;
 
-DoubleInputNode::DoubleInputNode() :
-    Node(tr("Double Input")),
-    m_value("value", tr("Value"), tr("Current value"), GtUnit::None, 0),
-    m_min("min", tr("Min."), tr("Minimum value"), GtUnit::None, 0),
-    m_max("max", tr("Max."), tr("Maxiumum value"), GtUnit::None, 100),
+IntInputNode::IntInputNode() :
+    Node(tr("Int Input")),
+    m_value("value", tr("Value"), tr("Current value"), 0),
+    m_min("min", tr("Min."), tr("Minimum value"), 0),
+    m_max("max", tr("Max."), tr("Maxiumum value"), 100),
     m_useBounds("useBounds", tr("Use Min/Max"), tr("Use Min/Max bounds"), false),
     m_inputMode("mode", tr("Input Mode"), tr("Input Mode"))
 {
@@ -32,22 +30,22 @@ DoubleInputNode::DoubleInputNode() :
 
     m_useBounds.setReadOnly(true);
     m_value.hide();
-
-    m_out = addOutPort(makePort(typeId<DoubleData>()).setCaptionVisible(false));
+    
+    m_out = addOutPort(makePort(typeId<IntData>())
+                           .setCaptionVisible(false));
 
     setNodeFlag(Resizable);
     setNodeEvalMode(NodeEvalMode::Blocking);
 
     registerWidgetFactory([this]() {
-        using InputMode = DoubleInputWidget::InputMode;
+        using InputMode = IntInputWidget::InputMode;
 
         bool success = m_inputMode.registerEnum<InputMode>();
         assert(success);
 
         auto mode = m_inputMode.getEnum<InputMode>();
-
-        auto w = new DoubleInputWidget(mode);
-
+        
+        auto* w = new IntInputWidget(mode);
         auto onRangeChanged = [this, w](){
             w->setRange(value(), lowerBound(), upperBound());
             emit nodeChanged();
@@ -55,17 +53,17 @@ DoubleInputNode::DoubleInputNode() :
         };
 
         auto onMinChanged = [=](){
-            double newVal = w->min();
+            int newVal = w->min();
             if (lowerBound() != newVal) setLowerBound(newVal);
         };
 
         auto onMaxChanged = [=](){
-            double newVal = w->max();
+            int newVal = w->max();
             if (upperBound() != newVal) setUpperBound(newVal);
         };
 
         auto onValueChanged = [=](){
-            double newVal = w->value();
+            int newVal = w->value();
             if (value() != newVal)
             {
                 setValue(newVal);
@@ -84,6 +82,7 @@ DoubleInputNode::DoubleInputNode() :
             case InputMode::LineEditBound:
             case InputMode::LineEditUnbound:
                 setNodeFlag(ResizableHOnly, true);
+                w->resize(w->sizeHint().width(), w->minimumSize().height());
                 break;
             default:
                 setNodeFlag(ResizableHOnly, false);
@@ -92,17 +91,17 @@ DoubleInputNode::DoubleInputNode() :
 
             emit nodeChanged();
         };
-
-        connect(w, &DoubleInputWidget::valueComitted,
+        
+        connect(w, &IntInputWidget::valueComitted,
                 this, onValueChanged);
-        connect(w, &DoubleInputWidget::minChanged,
+        connect(w, &IntInputWidget::minChanged,
                 this, onMinChanged);
-        connect(w, &DoubleInputWidget::maxChanged,
+        connect(w, &IntInputWidget::maxChanged,
                 this, onMaxChanged);
 
-        connect(&m_min, &GtDoubleProperty::changed,
+        connect(&m_min, &GtIntProperty::changed,
                 w, onRangeChanged);
-        connect(&m_max, &GtDoubleProperty::changed,
+        connect(&m_max, &GtIntProperty::changed,
                 w, onRangeChanged);
         connect(&m_inputMode, &GtAbstractProperty::changed,
                 w, updateMode);
@@ -114,11 +113,11 @@ DoubleInputNode::DoubleInputNode() :
     });
 }
 
-double
-DoubleInputNode::value() const { return m_value.getVal(); }
+int
+IntInputNode::value() const { return m_value.getVal(); }
 
 void
-DoubleInputNode::setValue(double value)
+IntInputNode::setValue(int value)
 {
     value = m_useBounds ? gt::clamp(value, m_min.getVal(), m_max.getVal()) : value;
 
@@ -129,11 +128,11 @@ DoubleInputNode::setValue(double value)
     }
 }
 
-double
-DoubleInputNode::lowerBound() const { return m_min; }
+int
+IntInputNode::lowerBound() const { return m_min; }
 
 void
-DoubleInputNode::setLowerBound(double value)
+IntInputNode::setLowerBound(int value)
 {
     if (value > m_max) value = m_max;
     if (m_min != value)
@@ -143,11 +142,11 @@ DoubleInputNode::setLowerBound(double value)
     }
 }
 
-double
-DoubleInputNode::upperBound() const { return m_max; }
+int
+IntInputNode::upperBound() const { return m_max; }
 
 void
-DoubleInputNode::setUpperBound(double value)
+IntInputNode::setUpperBound(int value)
 {
     if (value < m_min) value = m_min;
     if (m_max != value)
@@ -158,17 +157,16 @@ DoubleInputNode::setUpperBound(double value)
 }
 
 bool
-DoubleInputNode::useBounds() const { return m_useBounds; }
+IntInputNode::useBounds() const { return m_useBounds; }
 
 void
-DoubleInputNode::setUseBounds(bool value)
+IntInputNode::setUseBounds(bool value)
 {
     if (m_useBounds != value) m_useBounds = value;
 }
 
 void
-DoubleInputNode::eval()
+IntInputNode::eval()
 {
-    setNodeData(m_out, std::make_shared<DoubleData>(value()));
+    setNodeData(m_out, std::make_shared<IntData>(value()));
 }
-

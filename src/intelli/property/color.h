@@ -19,7 +19,7 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT ColorPorperty : public GtProperty<QColor>
+class GT_INTELLI_EXPORT ColorPorperty: public GtProperty<QColor>
 {
     Q_OBJECT
 
@@ -27,10 +27,11 @@ public:
 
     using GtProperty<QColor>::operator();
 
+    [[deprecated("Color property will be removed in a future release")]]
     ColorPorperty(QString const& ident,
-                      QString const& name,
-                      QString const& brief,
-                      QColor const& color = {});
+                  QString const& name,
+                  QString const& brief,
+                  QColor const& color = {});
 
 
     /**

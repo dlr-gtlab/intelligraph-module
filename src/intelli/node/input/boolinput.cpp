@@ -7,16 +7,12 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include "boolinputnode.h"
-
+#include <intelli/node/input/boolinput.h>
 #include <intelli/data/bool.h>
-#include <intelli/gui/property_item/booldisplay.h>
 
-#include <QLayout>
-#include <QTimer>
+#include <intelli/gui/widgets/booldisplaywidget.h>
 
 using namespace intelli;
-using DisplayMode = BoolDisplayWidget::DisplayMode;
 
 BoolInputNode::BoolInputNode() :
     Node("Bool Input"),
@@ -37,6 +33,8 @@ BoolInputNode::BoolInputNode() :
             this, &Node::triggerNodeEvaluation);
 
     registerWidgetFactory([this]() {
+        using DisplayMode = BoolDisplayWidget::DisplayMode;
+
         bool success = m_displayMode.registerEnum<DisplayMode>();
         assert(success);
 

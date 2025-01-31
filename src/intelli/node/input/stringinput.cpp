@@ -7,8 +7,7 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include "stringinputnode.h"
-
+#include <intelli/node/input/stringinput.h>
 #include <intelli/data/string.h>
 
 #include <gt_lineedit.h>

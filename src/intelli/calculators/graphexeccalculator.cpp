@@ -12,10 +12,10 @@
 #include <intelli/graph.h>
 #include <intelli/graphexecmodel.h>
 
-#include <intelli/node/propertyinput/boolinputnode.h>
-#include <intelli/node/propertyinput/intinputnode.h>
-#include <intelli/node/propertyinput/doubleinputnode.h>
-#include <intelli/node/propertyinput/stringinputnode.h>
+#include <intelli/node/input/boolinput.h>
+#include <intelli/node/input/intinput.h>
+#include <intelli/node/input/doubleinput.h>
+#include <intelli/node/input/stringinput.h>
 
 #include "gt_regexp.h"
 #include "gt_structproperty.h"

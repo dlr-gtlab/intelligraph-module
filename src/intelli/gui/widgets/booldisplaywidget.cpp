@@ -7,9 +7,10 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include "booldisplay.h"
+#include <intelli/gui/widgets/booldisplaywidget.h>
 #include <intelli/gui/style.h>
 
+#include <gt_finally.h>
 #include <gt_colors.h>
 #include <gt_palette.h>
 
@@ -179,7 +180,7 @@ BoolDisplayWidget::paintEvent(QPaintEvent* event)
     {
         constexpr int penSize = 1;
 
-        int circleRadius = qFloor(size * 0.5) - penSize;
+        int circleRadius = std::floor(size * 0.5) - penSize;
         int x = (width()  - circleRadius) - penSize;
         int y = (height() - circleRadius) - penSize;
 

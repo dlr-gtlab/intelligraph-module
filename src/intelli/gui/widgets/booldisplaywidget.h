@@ -12,8 +12,6 @@
 
 #include <QWidget>
 
-#include <intelli/node/propertyinput/boolinputnode.h>
-
 namespace intelli
 {
 

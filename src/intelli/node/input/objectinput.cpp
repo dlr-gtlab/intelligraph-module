@@ -7,13 +7,13 @@
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
 
-#include "objectinputnode.h"
+#include <intelli/node/input/objectinput.h>
 #include <intelli/data/object.h>
 
-#include "gt_application.h"
-#include "gt_project.h"
+#include <gt_application.h>
+#include <gt_project.h>
 
-#include "gt_propertyobjectlinkeditor.h"
+#include <gt_propertyobjectlinkeditor.h>
 
 using namespace intelli;
 
