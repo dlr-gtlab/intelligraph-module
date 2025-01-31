@@ -46,6 +46,7 @@ IntInputNode::IntInputNode() :
         auto mode = m_inputMode.getEnum<InputMode>();
         
         auto* w = new IntInputWidget(mode);
+
         auto onRangeChanged = [this, w](){
             w->setRange(value(), lowerBound(), upperBound());
             emit nodeChanged();
@@ -82,7 +83,6 @@ IntInputNode::IntInputNode() :
             case InputMode::LineEditBound:
             case InputMode::LineEditUnbound:
                 setNodeFlag(ResizableHOnly, true);
-                w->resize(w->sizeHint().width(), w->minimumSize().height());
                 break;
             default:
                 setNodeFlag(ResizableHOnly, false);

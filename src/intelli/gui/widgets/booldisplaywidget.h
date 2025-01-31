@@ -61,7 +61,9 @@ protected:
 
 private:
 
-    DisplayMode m_mode;
+    DisplayMode m_mode{Checkbox};
+
+    void applyDisplayMode(DisplayMode mode);
 
     bool m_value = false, m_readOnly = false, m_pressed = false;
 };

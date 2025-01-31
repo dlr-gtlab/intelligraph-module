@@ -39,8 +39,10 @@ FileInputNode::FileInputNode() :
         auto b = makeBaseWidget();
         auto* lay = b->layout();
 
-        auto w = new GtPropertyFileChooserEditor;
+        auto w = new GtPropertyFileChooserEditor();
         lay->addWidget(w);
+
+        w->setMinimumWidth(150);
         w->setFileChooserProperty(&m_fileChooser);
 
         // show/hide widget if "name" port is connected
@@ -49,7 +51,9 @@ FileInputNode::FileInputNode() :
             {
                 w->setVisible(!connected);
                 setNodeFlag(ResizableHOnly, !connected);
-                b_->resize(connected ? b_->minimumSize() : size());
+
+                b_->setMinimumWidth(connected ? 10 : w->minimumWidth());
+                b_->resize(b_->minimumSize());
 
                 emit nodeChanged();
             }

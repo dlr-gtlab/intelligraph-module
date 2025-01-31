@@ -270,6 +270,7 @@ NodeGraphicsObject::embedCentralWidget()
             {
                 m_node->setSize(m_proxyWidget->widget()->size());
             }
+            Impl::prepareGeometryChange(this).finalize();
         });
     }
 }

@@ -21,6 +21,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QMouseEvent>
+#include <QTimer>
 
 using namespace intelli;
 
@@ -233,7 +234,8 @@ AbstractNumberInputWidget::applyInputMode(InputMode mode)
         break;
     }
 
-    resize(minimumSizeHint());
+    // resize next frame (allows size hint to be calculated correctly)
+    QTimer::singleShot(0, this, [this](){ resize(minimumSizeHint()); });
 }
 
 void

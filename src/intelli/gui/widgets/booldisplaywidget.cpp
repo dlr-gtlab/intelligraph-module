@@ -16,6 +16,9 @@
 
 #include <QMouseEvent>
 #include <QPainter>
+#include <QTimer>
+
+#include <cmath>
 
 using namespace intelli;
 
@@ -23,7 +26,7 @@ BoolDisplayWidget::BoolDisplayWidget(bool value, DisplayMode mode, QWidget* pare
     QWidget(parent),
     m_value(value)
 {
-    setDisplayMode(mode);
+    applyDisplayMode(mode);
 }
 
 void
@@ -31,23 +34,34 @@ BoolDisplayWidget::setDisplayMode(DisplayMode mode)
 {
     if (m_mode == mode) return;
 
+    applyDisplayMode(mode);
+}
+
+void
+BoolDisplayWidget::applyDisplayMode(DisplayMode mode)
+{
     m_mode = mode;
+
+    QSize size{16, 16};
+
     switch (mode)
     {
-    case Checkbox:
-        // setFixedSize did not work properly
-        setMinimumSize(16, 16);
-        setMaximumSize(16, 16);
-        break;
     case Button:
-        // setFixedSize did not work properly
-        setMinimumSize(24, 24);
-        setMaximumSize(24, 24);
+        size = QSize{24, 24};
+        break;
+    case Checkbox:
+    default:
         break;
     }
 
-    resize(size());
+    // setFixedSize does not work propertly
+    setMinimumSize(size);
+    setMaximumSize(size);
+
+    // resize next frame (allows size hint to be calculated correctly)
+    QTimer::singleShot(0, this, [this](){ resize(minimumSizeHint()); });
 }
+
 
 BoolDisplayWidget::DisplayMode
 BoolDisplayWidget::displayMode() const

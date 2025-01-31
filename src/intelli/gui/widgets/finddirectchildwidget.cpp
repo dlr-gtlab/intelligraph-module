@@ -24,6 +24,8 @@ FindDirectChildWidget::FindDirectChildWidget(QWidget* parent) :
 {
     auto* lay = new QVBoxLayout;
     setLayout(lay);
+    lay->setContentsMargins(0, 0, 0, 0);
+    lay->setSpacing(2);
 
     auto* classNameCompleter =
         new QCompleter(gtObjectFactory->knownClasses());
@@ -40,8 +42,9 @@ FindDirectChildWidget::FindDirectChildWidget(QWidget* parent) :
     lay->addWidget(m_classNameEdit);
     lay->setContentsMargins(0, 0, 0, 0);
 
-    m_objectNameEdit->setFixedHeight(16);
-    m_classNameEdit->setFixedHeight(16);
+    auto policy = m_objectNameEdit->sizePolicy();
+    m_objectNameEdit->setSizePolicy(policy.horizontalPolicy(), QSizePolicy::Fixed);
+    m_classNameEdit->setSizePolicy(policy.horizontalPolicy(), QSizePolicy::Fixed);
 
     setMinimumWidth(120);
     if (!gtApp->devMode())

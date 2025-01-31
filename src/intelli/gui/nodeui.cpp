@@ -131,6 +131,12 @@ NodeUI::NodeUI(Option option)
                         .arg(obj->id())
                         .arg(toString(obj->portId(type, idx)));
     }).setIcon(gt::gui::icon::bug());
+
+    addSingleAction(tr("Refresh Node"), [](GtObject* obj){
+        if (auto* node = toNode(obj)) emit node->nodeChanged();
+    })
+        .setIcon(gt::gui::icon::reload())
+        .setVisibilityMethod(toNode);
 }
 
 std::unique_ptr<NodePainter>
