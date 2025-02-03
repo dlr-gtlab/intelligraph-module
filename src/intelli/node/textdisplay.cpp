@@ -30,11 +30,11 @@ TextDisplayNode::TextDisplayNode() :
 {
     registerProperty(m_textType);
 
-    // no eval method
     setNodeEvalMode(NodeEvalMode::Blocking);
     setNodeFlag(Resizable, true);
 
-    PortId in = addInPort(makePort(typeId<StringData>()).setCaptionVisible(false));
+    PortId in = addInPort(makePort(typeId<StringData>())
+                              .setCaptionVisible(false));
 
     registerWidgetFactory([this, in](){
         auto base = makeBaseWidget();

@@ -146,8 +146,8 @@ private:
 };
 
 /**
- * @brief Helper method that instantiates a iterable object and installs a proxy
- * object on the begin and end iterators.
+ * @brief Helper method that instantiates an iterable object and installs a
+ * proxy object on the begin and end iterators.
  */
 template <typename Proxy, typename Iterator>
 inline auto makeProxy(Iterator begin, Iterator end, Proxy p = {})
@@ -158,13 +158,48 @@ inline auto makeProxy(Iterator begin, Iterator end, Proxy p = {})
 }
 
 /**
- * @brief Helper method that instantiates a iterable object and installs a proxy
- * object on the begin and end iterators.
+ * @brief Helper method that instantiates an iterable object based on `t`'s
+ * begin and end operator and installs a proxy object on these iterators.
  */
 template <typename Proxy, typename T>
 inline auto makeProxy(T const& t, Proxy p = {})
 {
     return makeProxy(t.begin(), t.end(), std::move(p));
+}
+
+/**
+ * @brief Helper struct that allows the use of for-range based loops and similar
+ * constructs
+ */
+template <typename T>
+struct iterable
+{
+    T b, e;
+
+    T begin() const { return b; }
+    T end() const { return b; }
+
+    bool empty() const { return begin() == end(); }
+    size_t size() const { return std::distance(begin(), end()); }
+};
+
+/**
+ * @brief Helper method that instantiates an iterable object
+ */
+template <typename Iterator>
+inline iterable<Iterator> makeIterable(Iterator begin, Iterator end)
+{
+    return {std::move(begin), std::move(end)};
+}
+
+/**
+ * @brief Helper method that instantiates an iterable object based on `t`'s
+ * begin and end operator.
+ */
+template <typename T>
+inline iterable<T> makeIterable(T const& t)
+{
+    return makeIterable(t.begin(), t.end());
 }
 
 template <typename NodeId_t>

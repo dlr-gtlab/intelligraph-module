@@ -21,31 +21,29 @@
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 
-#include "intelli/node/numbersource.h"
 #include "intelli/node/numberdisplay.h"
 #include "intelli/node/numbermath.h"
 #include "intelli/node/sleepy.h"
 
 #include "intelli/node/objectmemento.h"
-#include "intelli/node/objectsource.h"
 #include "intelli/node/finddirectchild.h"
 #include "intelli/node/existingdirectorysource.h"
 
-#include "intelli/node/logicdisplay.h"
 #include "intelli/node/logicoperation.h"
-#include "intelli/node/logicsource.h"
 
 #include "intelli/node/stringbuilder.h"
 
-#include "intelli/node/propertyinput/boolinputnode.h"
-#include "intelli/node/propertyinput/doubleinputnode.h"
-#include "intelli/node/propertyinput/intinputnode.h"
-#include "intelli/node/propertyinput/objectinputnode.h"
-#include "intelli/node/propertyinput/stringinputnode.h"
+#include "intelli/node/input/boolinput.h"
+#include "intelli/node/input/doubleinput.h"
+#include "intelli/node/input/fileinput.h"
+#include "intelli/node/input/intinput.h"
+#include "intelli/node/input/objectinput.h"
+#include "intelli/node/input/stringinput.h"
+
+#include "intelli/node/booldisplay.h"
 #include "intelli/node/textdisplay.h"
 
 #include "intelli/node/genericcalculatorexec.h"
-#include "intelli/node/fileinput.h"
 #include "intelli/node/filereader.h"
 #include "intelli/node/filewriter.h"
 
@@ -117,17 +115,14 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(NumberDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(NumberMathNode, catNumber);
-        GT_INTELLI_REGISTER_NODE(NumberSourceNode, catInput);
         GT_INTELLI_REGISTER_NODE(SleepyNode, (gtApp && gtApp->devMode()) ? catOther : hidden);
+        GT_INTELLI_REGISTER_NODE(BoolDisplayNode, catDisplay);
 
-        GT_INTELLI_REGISTER_NODE(LogicDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(LogicNode, catLogic);
-        GT_INTELLI_REGISTER_NODE(LogicSourceNode, catInput);
 
         GT_INTELLI_REGISTER_NODE(TextDisplayNode, catDisplay);
 
         GT_INTELLI_REGISTER_NODE(ObjectMementoNode, catObject);
-        GT_INTELLI_REGISTER_NODE(ObjectSourceNode, catInput);
         GT_INTELLI_REGISTER_NODE(FindDirectChildNode, catObject);
 
         GT_INTELLI_REGISTER_NODE(FileInputNode, catInput);

@@ -27,9 +27,9 @@ StringBuilderNode::StringBuilderNode() :
 
     registerProperty(m_pattern);
 
-    m_inA = addInPort({typeId<StringData>(), tr("string_1")});
-    m_inB = addInPort({typeId<StringData>(), tr("string_2")});
-    m_out = addOutPort({typeId<StringData>(), tr("new_string")});
+    m_inA = addInPort({typeId<StringData>(), tr("%1")});
+    m_inB = addInPort({typeId<StringData>(), tr("%2")});
+    m_out = addOutPort({typeId<StringData>(), tr("new_str")});
 
     registerWidgetFactory([this]() {
         auto b = makeBaseWidget();

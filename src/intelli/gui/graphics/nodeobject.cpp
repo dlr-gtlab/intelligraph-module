@@ -226,10 +226,17 @@ NodeGraphicsObject::embedCentralWidget()
         if (!factory) return nullptr;
 
         auto widget = factory(*m_node);
-        if (widget && (m_node->nodeFlags() & IsResizableMask))
+        if (!widget) return nullptr;
+
+        auto size = m_node->size();
+        if (m_node->nodeFlags() & IsResizableMask && size.isValid())
         {
-            auto size = m_node->size();
-            if (size.isValid()) widget->resize(size);
+            // resize only the adequate directions
+            if (m_node->nodeFlags() & NodeFlag::ResizableHOnly)
+            {
+                size.setHeight(widget->minimumSizeHint().height());
+            }
+            widget->resize(size);
         }
         return widget;
     };
@@ -249,11 +256,22 @@ NodeGraphicsObject::embedCentralWidget()
         m_geometry->setWidget(w.get());
 
         m_proxyWidget = new NodeProxyWidget(this);
-
         m_proxyWidget->setWidget(w.release());
         m_proxyWidget->setZValue(style::zValue(style::ZValue::NodeWidget));
 
         Impl::updateWidgetPalette(this);
+
+        // update node's size if widget changes size
+        connect(m_proxyWidget, &QGraphicsWidget::geometryChanged, this, [this](){
+            if (m_state == Resizing) return;
+
+            if (m_proxyWidget->widget() &&
+                m_node->nodeFlags() & IsResizableMask)
+            {
+                m_node->setSize(m_proxyWidget->widget()->size());
+            }
+            Impl::prepareGeometryChange(this).finalize();
+        });
     }
 }
 

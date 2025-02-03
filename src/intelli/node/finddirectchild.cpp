@@ -11,7 +11,7 @@
 
 #include "intelli/data/object.h"
 
-#include "intelli/gui/property_item/finddirectchildnodewidget.h"
+#include "intelli/gui/widgets/finddirectchildwidget.h"
 
 #include <gt_lineedit.h>
 
@@ -38,18 +38,18 @@ FindDirectChildNode::FindDirectChildNode() :
     m_out = addOutPort(makePort(typeId<ObjectData>()).setCaption(tr("child")));
 
     registerWidgetFactory([this]() {
-        auto w = std::make_unique<FindDirectChildNodeWidget>();
+        auto w = std::make_unique<FindDirectChildWidget>();
 
         w->updateNameCompleter(nodeData<ObjectData>(m_in).get());
-
-        connect(w.get(), &FindDirectChildNodeWidget::updateClass,
+        
+        connect(w.get(), &FindDirectChildWidget::updateClass,
                 this, [this](QString const& newClass) {
             m_targetClassName.setVal(newClass);
         });
         connect(&m_targetClassName, SIGNAL(changed()),
                 w.get(), SLOT(updateClassText()));
-
-        connect(w.get(), &FindDirectChildNodeWidget::updateObjectName,
+        
+        connect(w.get(), &FindDirectChildWidget::updateObjectName,
                 this, [this](QString const& newObjName) {
             m_targetObjectName.setVal(newObjName);
         });

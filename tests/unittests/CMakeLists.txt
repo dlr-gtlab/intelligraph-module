@@ -27,7 +27,6 @@ add_executable(IntelliGraphUnitTests
     test_nodedata.cpp
     test_portinfo.cpp
     test_strongtypes.cpp
-    test_propertyinputnodes.cpp
 
     data/test_nodedata.h data/test_nodedata.cpp
 

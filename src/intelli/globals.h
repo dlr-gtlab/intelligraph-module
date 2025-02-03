@@ -50,6 +50,25 @@ inline QPoint quantize(QPointF point, int stepSize)
 using Position = QPointF;
 
 /**
+ * @brief Maps a value of an input range onto an output range
+ * @param value Value to map between input and output range
+ * @param inputRange Input range Input range
+ * @param outputRange Output range
+ * @return value mapped to output range
+ */
+template <typename U, typename T = U>
+constexpr inline U map(T value, std::pair<T, T> inputRange, std::pair<U, U> outputRange)
+{
+    constexpr size_t start = 0, end = 1;
+
+    double slope = double(std::get<end>(outputRange) - std::get<start>(outputRange)) /
+                   double(std::get<end>(inputRange)  - std::get<start>(inputRange));
+
+    return static_cast<U>(std::get<start>(outputRange) +
+                          slope * (value - std::get<start>(inputRange)));
+}
+
+/**
  * @brief Denotes the possible port types
  */
 enum class PortType
