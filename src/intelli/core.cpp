@@ -52,6 +52,8 @@
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodefactory.h"
 
+#include "intelli/node/binarydisplay.h"
+
 using namespace intelli;
 
 
@@ -141,6 +143,8 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(StringBuilderNode, catString);
 
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
+
+        GT_INTELLI_REGISTER_NODE(BinaryDisplayNode, catDisplay);
         return true;
     }();
 

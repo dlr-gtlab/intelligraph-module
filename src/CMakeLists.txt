@@ -206,6 +206,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/metaenum.cpp
     intelli/property/stringselection.cpp
     intelli/property/uint.cpp
+
+    intelli/node/binarydisplay.h intelli/node/binarydisplay.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph
