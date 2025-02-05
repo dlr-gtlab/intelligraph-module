@@ -181,6 +181,18 @@ Node::isValid() const
 void
 Node::setNodeFlag(NodeFlag flag, bool enable)
 {
+    switch (flag)
+    {
+    case Deprecated:
+        if (tooltip().isEmpty())
+        {
+            setToolTip(tr("This node is deprecated and will be removed in a future relase."));
+        }
+        break;
+    default:
+        break;
+    }
+
     enable ? pimpl->flags |= flag :
              pimpl->flags &= ~flag;
 }
