@@ -39,6 +39,7 @@ main(int argc, char** argv)
         TestDynamicWhiteListNode::registerOnce();
         TestNode::registerOnce();
         TestSleepyNode::registerOnce();
+        TestNumberInputNode::registerOnce();
         TestNodeData::registerOnce();
         gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
     }();

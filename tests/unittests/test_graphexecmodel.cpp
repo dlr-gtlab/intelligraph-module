@@ -456,8 +456,8 @@ TEST(GraphExecutionModel, evaluate_graph_with_separate_flows)
 
     GraphBuilder builder(graph);
     // source nodes
-    Node& A1 = builder.addNode("intelli::NumberSourceNode", "A1_uuid").setCaption("A1");
-    Node& A2 = builder.addNode("intelli::NumberSourceNode", "A2_uuid").setCaption("A2");
+    Node& A1 = builder.addNode("TestNumberInputNode", "A1_uuid").setCaption("A1");
+    Node& A2 = builder.addNode("TestNumberInputNode", "A2_uuid").setCaption("A2");
 
     Node& B1 = builder.addNode("intelli::NumberMathNode", "B1_uuid").setCaption("B1");
     Node& B2 = builder.addNode("intelli::NumberMathNode", "B2_uuid").setCaption("B2");
@@ -1506,7 +1506,7 @@ TEST(GraphExecutionModel, evaluation_of_exclusive_nodes)
 
     GraphBuilder builder(graph);
 
-    Node& S = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), "S_UUID")
+    Node& S = builder.addNode(QStringLiteral("TestNumberInputNode"), "S_UUID")
                   .setCaption("S");
     TestSleepyNode& A = builder.addNode<TestSleepyNode>(A_uuid);
     A.setCaption("A");
@@ -1618,7 +1618,7 @@ TEST(GraphExecutionModel, evaluation_of_exclusive_nodes_across_multiple_graphs)
     auto setupGraph = [&](Graph& g){
         GraphBuilder builder(g);
 
-        Node& S = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), g.caption() +  "S_UUID")
+        Node& S = builder.addNode(QStringLiteral("TestNumberInputNode"), g.caption() +  "S_UUID")
                       .setCaption("S");
         TestSleepyNode& A = builder.addNode<TestSleepyNode>(g.caption() + A_uuid);
         A.setCaption("A");
@@ -1730,8 +1730,8 @@ TEST(GraphExecutionModel, evaluation_of_cyclic_graph)
 
     try
     {
-        auto& value1   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid).setCaption(QStringLiteral("A"));
-        auto& value2   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), B_uuid).setCaption(QStringLiteral("B"));
+        auto& value1   = builder.addNode(QStringLiteral("TestNumberInputNode"), A_uuid).setCaption(QStringLiteral("A"));
+        auto& value2   = builder.addNode(QStringLiteral("TestNumberInputNode"), B_uuid).setCaption(QStringLiteral("B"));
 
         auto& add1 = builder.addNode(QStringLiteral("intelli::NumberMathNode"), C_uuid).setCaption(QStringLiteral("C"));
         auto& add2 = builder.addNode(QStringLiteral("intelli::NumberMathNode"), D_uuid).setCaption(QStringLiteral("D"));

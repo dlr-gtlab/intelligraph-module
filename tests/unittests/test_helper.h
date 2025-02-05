@@ -80,9 +80,9 @@ inline bool buildBasicGraph(Graph& graph)
 
     try
     {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid)
+        auto& A = builder.addNode(QStringLiteral("TestNumberInputNode"), A_uuid)
                       .setCaption(QStringLiteral("A"));
-        auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), B_uuid)
+        auto& B = builder.addNode(QStringLiteral("TestNumberInputNode"), B_uuid)
                       .setCaption(QStringLiteral("B"));
         auto& C = builder.addNode(QStringLiteral("intelli::NumberMathNode"), C_uuid)
                       .setCaption(QStringLiteral("C"));
@@ -149,7 +149,7 @@ inline bool buildLinearGraph(Graph& graph)
 
     try
     {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid)
+        auto& A = builder.addNode(QStringLiteral("TestNumberInputNode"), A_uuid)
                       .setCaption(QStringLiteral("A"));
         auto& B = builder.addNode(QStringLiteral("intelli::NumberMathNode"), B_uuid)
                       .setCaption(QStringLiteral("B"));
@@ -225,9 +225,9 @@ inline bool buildGraphWithGroup(Graph& graph)
 
     try
     {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid)
+        auto& A = builder.addNode(QStringLiteral("TestNumberInputNode"), A_uuid)
                       .setCaption(QStringLiteral("A"));
-        auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), B_uuid)
+        auto& B = builder.addNode(QStringLiteral("TestNumberInputNode"), B_uuid)
                       .setCaption(QStringLiteral("B"));
 
         auto group = builder.addGraph(
@@ -251,7 +251,7 @@ inline bool buildGraphWithGroup(Graph& graph)
 
         GraphBuilder groupBuilder(group.graph);
 
-        auto& group_A = groupBuilder.addNode(QStringLiteral("intelli::NumberSourceNode"), group_A_uuid)
+        auto& group_A = groupBuilder.addNode(QStringLiteral("TestNumberInputNode"), group_A_uuid)
                             .setCaption(QStringLiteral("Group_A"));
         auto& group_B = groupBuilder.addNode(QStringLiteral("intelli::NumberMathNode"), group_B_uuid)
                             .setCaption(QStringLiteral("Group_B"));
@@ -354,9 +354,9 @@ inline bool buildGraphWithForwardingGroup(Graph& graph)
 
     try
     {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), A_uuid)
+        auto& A = builder.addNode(QStringLiteral("TestNumberInputNode"), A_uuid)
                       .setCaption(QStringLiteral("A"));
-        auto& B = builder.addNode(QStringLiteral("intelli::NumberSourceNode"), B_uuid)
+        auto& B = builder.addNode(QStringLiteral("TestNumberInputNode"), B_uuid)
                       .setCaption(QStringLiteral("B"));
 
         auto group = builder.addGraph(
