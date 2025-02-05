@@ -449,7 +449,7 @@ TEST(Graph, remove_connections_on_port_deletion)
 
     try
     {
-        auto& A = builder.addNode(QStringLiteral("intelli::NumberSourceNode")).setCaption(QStringLiteral("A"));
+        auto& A = builder.addNode(QStringLiteral("TestNumberInputNode")).setCaption(QStringLiteral("A"));
         auto& B = builder.addNode<TestDynamicNode>();
         B.setCaption(QStringLiteral("B"));
         dynamicNode = &B;

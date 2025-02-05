@@ -25,8 +25,8 @@ TEST(GraphBuilder, basic_graph)
     try
     {
 
-        auto& value1   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"));
-        auto& value2   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"));
+        auto& value1   = builder.addNode(QStringLiteral("TestNumberInputNode"));
+        auto& value2   = builder.addNode(QStringLiteral("TestNumberInputNode"));
 
         auto& square   = builder.addNode(QStringLiteral("intelli::NumberMathNode"));
         auto& multiply = builder.addNode(QStringLiteral("intelli::NumberMathNode"));
@@ -77,8 +77,8 @@ TEST(GraphBuilder, graph_with_groups)
     try
     {
 
-        auto& value1   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"));
-        auto& value2   = builder.addNode(QStringLiteral("intelli::NumberSourceNode"));
+        auto& value1   = builder.addNode(QStringLiteral("TestNumberInputNode"));
+        auto& value2   = builder.addNode(QStringLiteral("TestNumberInputNode"));
 
         auto& result = builder.addNode(QStringLiteral("intelli::NumberDisplayNode"));
 

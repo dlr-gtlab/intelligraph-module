@@ -45,3 +45,18 @@ TestSleepyNode::registerOnce()
     }();
     Q_UNUSED(_);
 }
+
+void
+TestNumberInputNode::registerOnce()
+{
+    static auto _ = []{
+        return GT_INTELLI_REGISTER_NODE(TestNumberInputNode, "Test");
+    }();
+    Q_UNUSED(_);
+}
+
+TestNumberInputNode::TestNumberInputNode() :
+    intelli::DoubleInputNode()
+{
+    setNodeEvalMode(NodeEvalMode::Detached); // for unittesting
+}
