@@ -62,12 +62,12 @@ public:
 
     /**
      * @brief Returns a geomtry object, used to tell graphics object where
-     * ports, the caption etc . are placed. Can be used to override the default
+     * ports, the caption etc. are placed. Can be used to override the default
      * implementation.
      * @param node Node to operate on
      * @return Node geometry object
      */
-    virtual std::unique_ptr<NodeGeometry> geometry(Node const& node) const;
+    virtual std::unique_ptr<NodeGeometry> geometry(NodeGraphicsObject const& object) const;
 
     /**
      * @brief Icon for the object

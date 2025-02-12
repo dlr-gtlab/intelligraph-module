@@ -61,7 +61,7 @@ public:
     NodePainter(NodePainter&&) = delete;
     NodePainter& operator=(NodePainter const&) = delete;
     NodePainter& operator=(NodePainter&&) = delete;
-    virtual ~NodePainter() = default;
+    virtual ~NodePainter();
 
     /**
      * @brief Applies pen and brush to the painter to render the background
@@ -190,6 +190,8 @@ private:
     NodeGraphicsObject const* m_object;
     /// Geometry
     NodeGeometry const* m_geometry;
+    /// padding
+    uint8_t __padding[16];
 };
 
 } // namespace intelli

@@ -104,7 +104,7 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
     QGraphicsObject(nullptr),
     m_sceneData(&data),
     m_node(&node),
-    m_geometry(ui.geometry(node)),
+    m_geometry(ui.geometry(*this)),
     m_painter(ui.painter(*this, *m_geometry)),
     m_evalStateObject(new NodeEvalStateGraphicsObject(*this, *m_painter, node)),
     m_highlights(*this)

@@ -18,10 +18,10 @@
 
 using namespace intelli;
 
-LogicNodeGeometry::LogicNodeGeometry(Node const& node) :
-    NodeGeometry(node)
+LogicNodeGeometry::LogicNodeGeometry(NodeGraphicsObject const& object) :
+    NodeGeometry(object)
 {
-    assert(qobject_cast<Node const*>(&node));
+    assert(qobject_cast<Node const*>(&node()));
 }
 
 QRectF
@@ -29,7 +29,7 @@ LogicNodeGeometry::captionRect() const
 {
     auto& style = style::currentStyle().node;
 
-    QRectF inner = innerRect();
+    QRectF inner = nodeBodyRect();
     QRectF rect = NodeGeometry::captionRect();
     rect.moveTo({inner.topLeft().x() + style.evalStateSize, -20});
     return rect;
@@ -53,7 +53,7 @@ LogicNodeGeometry::evalStateRect() const
     QRectF rect = NodeGeometry::evalStateRect();
     QRectF caption = captionRect();
     double offset  = (rect.height() - caption.height()) * 0.5;
-    rect.moveTo(caption.topLeft() - QPointF{style.evalStateSize, offset});
+    rect.moveTo(caption.topLeft() - QPointF{(double)style.evalStateSize, offset});
     return rect;
 }
 
@@ -103,14 +103,14 @@ LogicNodeGeometry::portRect(PortType type, PortIndex idx) const
 QPainterPath
 LogicNodeGeometry::beginCurve() const
 {
-    QPainterPath path(innerRect().topLeft());
+    QPainterPath path(nodeBodyRect().topLeft());
     return path;
 }
 
 void
 LogicNodeGeometry::applyLeftCurve(QPainterPath& path) const
 {
-    QRectF rect = innerRect();
+    QRectF rect = nodeBodyRect();
     QPointF end = rect.bottomLeft();
     if (path.currentPosition() == rect.bottomLeft()) end = rect.topLeft();
 
@@ -130,7 +130,7 @@ LogicNodeGeometry::applyLeftCurve(QPainterPath& path) const
 void
 LogicNodeGeometry::applyRightCurve(QPainterPath& path) const
 {
-    QRectF rect = innerRect();
+    QRectF rect = nodeBodyRect();
     QPointF end = rect.topLeft();
     QPointF rightPos = rect.center();
     QPointF offset{0, 0.5 * rect.height()};
@@ -180,7 +180,7 @@ LogicNodeGeometry::computeShape() const
 }
 
 QRectF
-LogicNodeGeometry::computeInnerRect() const
+LogicNodeGeometry::computeNodeBodyRect() const
 {
     int n = node().ports(PortType::In).size() + 1;
     int height = n * (NodeGeometry::portRect(PortType::In, PortIndex{1}).topLeft().y() -
@@ -218,7 +218,7 @@ LogicNodePainter::drawBackground(QPainter& painter) const
 
     applyBackgroundConfig(painter);
 
-    QPainterPath path(geo->innerRect().topLeft());
+    QPainterPath path(geo->nodeBodyRect().topLeft());
     geo->applyLeftCurve(path);
     geo->applyRightCurve(path);
     painter.drawPath(path);
@@ -231,7 +231,7 @@ LogicNodePainter::drawOutline(QPainter& painter) const
 
     applyOutlineConfig(painter);
 
-    QPainterPath path(geo->innerRect().topLeft());
+    QPainterPath path(geo->nodeBodyRect().topLeft());
     geo->applyLeftCurve(path);
 
     if (static_cast<LogicNode const&>(object().node()).operation() == LogicNode::XOR)
@@ -276,12 +276,12 @@ intelli::LogicNodeUI::painter(NodeGraphicsObject const& object,
 }
 
 std::unique_ptr<NodeGeometry>
-LogicNodeUI::geometry(Node const& node) const
+LogicNodeUI::geometry(NodeGraphicsObject const& object) const
 {
-    if (!qobject_cast<LogicNode const*>(&node))
+    if (!qobject_cast<LogicNode const*>(&object.node()))
     {
-        return NodeUI::geometry(node);
+        return NodeUI::geometry(object);
     }
 
-    return std::make_unique<LogicNodeGeometry>(node);
+    return std::make_unique<LogicNodeGeometry>(object);
 }

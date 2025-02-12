@@ -27,7 +27,7 @@ class LogicNodeGeometry : public NodeGeometry
 {
 public:
 
-    LogicNodeGeometry(Node const& node);
+    LogicNodeGeometry(NodeGraphicsObject const& object);
 
     QRectF captionRect() const override;
 
@@ -49,7 +49,7 @@ protected:
 
     QPainterPath computeShape() const override;
 
-    QRectF computeInnerRect() const override;
+    QRectF computeNodeBodyRect() const override;
 
     QRectF computeBoundingRect() const override;
 };
@@ -92,7 +92,7 @@ public:
     virtual std::unique_ptr<NodePainter> painter(NodeGraphicsObject const& object,
                                                  NodeGeometry const& geometry) const;
 
-    virtual std::unique_ptr<NodeGeometry> geometry(Node const& node) const;
+    virtual std::unique_ptr<NodeGeometry> geometry(NodeGraphicsObject const& object) const;
 };
 
 } // namespace intelli

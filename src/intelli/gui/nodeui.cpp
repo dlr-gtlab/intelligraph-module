@@ -147,9 +147,9 @@ NodeUI::painter(NodeGraphicsObject const& object,
 }
 
 std::unique_ptr<NodeGeometry>
-NodeUI::geometry(Node const& node) const
+NodeUI::geometry(NodeGraphicsObject const& object) const
 {
-    return std::make_unique<NodeGeometry>(node);
+    return std::make_unique<NodeGeometry>(object);
 }
 
 QIcon

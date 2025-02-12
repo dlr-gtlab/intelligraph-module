@@ -31,6 +31,8 @@ NodePainter::NodePainter(NodeGraphicsObject const& object,
 
 }
 
+NodePainter::~NodePainter() = default;
+
 void
 NodePainter::applyBackgroundConfig(QPainter& painter) const
 {
@@ -123,7 +125,8 @@ NodePainter::drawBackground(QPainter& painter) const
 {
     applyBackgroundConfig(painter);
 
-    auto rect = geometry().innerRect();
+    auto& g = geometry();
+    auto rect = g.nodeBodyRect().united(g.nodeHeaderRect());
 
     auto& style = style::currentStyle().node;
     painter.drawRoundedRect(rect, style.roundingRadius, style.roundingRadius);
@@ -134,7 +137,8 @@ NodePainter::drawOutline(QPainter& painter) const
 {
     applyOutlineConfig(painter);
 
-    auto rect = geometry().innerRect();
+    auto& g = geometry();
+    auto rect = g.nodeBodyRect().united(g.nodeHeaderRect());
 
     auto& style = style::currentStyle().node;
     painter.drawRoundedRect(rect, style.roundingRadius, style.roundingRadius);

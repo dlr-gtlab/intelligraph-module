@@ -111,7 +111,7 @@ struct StyleData
         /// radius of a port
         double portRadius = 5.0;
         /// size of the eval state
-        double evalStateSize = 20.0;
+        int evalStateSize = 20;
         /// size of node icon
         int iconSize = 20;
         /// modifier to apply to all r-g-b components when highlighting
