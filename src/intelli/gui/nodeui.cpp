@@ -12,6 +12,8 @@
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
 #include "intelli/graph.h"
+#include "intelli/node/groupinputprovider.h"
+#include "intelli/node/groupoutputprovider.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
 #include "intelli/gui/grapheditor.h"
@@ -183,6 +185,14 @@ NodeUI::displayIcon(Node const& node) const
     if (toConstGraph(&node))
     {
         return gt::gui::icon::intelli::intelliGraph();
+    }
+    if (qobject_cast<GroupInputProvider const*>(&node))
+    {
+        return gt::gui::icon::import();
+    }
+    if (qobject_cast<GroupOutputProvider const*>(&node))
+    {
+        return gt::gui::icon::export_();
     }
     return QIcon{};
 }
