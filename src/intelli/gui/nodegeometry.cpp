@@ -208,7 +208,6 @@ NodeGeometry::captionRect() const
     double xoffset = 0.5 * margin;
 
     // make the caption as centered as possible
-    auto& style = style::currentStyle().node;
     xoffset += (evalStateSize().width() - iconSize().width()) / margin;
 
     return caption.translated(xoffset, vspacing());

@@ -97,6 +97,10 @@ NodePainter::backgroundColor() const
 QIcon
 NodePainter::nodeIcon() const
 {
+    if (node().nodeFlags() & NodeFlag::Deprecated)
+    {
+        return gt::gui::icon::warningColorized();
+    }
     if (qobject_cast<Graph const*>(&node()))
     {
         return gt::gui::icon::intelli::intelliGraph();
