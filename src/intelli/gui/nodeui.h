@@ -22,6 +22,7 @@ namespace intelli
 {
 
 class Node;
+class NodeUIData;
 class NodeGeometry;
 class NodePainter;
 class NodeGraphicsObject;
@@ -69,12 +70,21 @@ public:
      */
     virtual std::unique_ptr<NodeGeometry> geometry(NodeGraphicsObject const& object) const;
 
+    std::unique_ptr<NodeUIData> uiData(Node const& node) const;
+
     /**
-     * @brief Icon for the object
+     * @brief Icon for the object (in the explorer)
      * @param obj Object
      * @return icon
      */
     QIcon icon(GtObject* obj) const override;
+
+    /**
+     * @brief Icon to display in the header of the node (in the graph view)
+     * @param node Node
+     * @return icon
+     */
+    virtual QIcon displayIcon(Node const& node) const;
 
     /**
      * @brief Returns the list of mdi items to open the object with
@@ -89,6 +99,7 @@ public:
      * @return node object (may be null)
      */
     static Node* toNode(GtObject* obj);
+    static Node const* toConstNode(GtObject const* obj);
 
     /**
      * @brief Casts the object to an intelligraph object. Can be used for
@@ -97,6 +108,7 @@ public:
      * @return intelligraph object (may be null)
      */
     static Graph* toGraph(GtObject* obj);
+    static Graph const* toConstGraph(GtObject const* obj);
 
     /**
      * @brief Casts the object to a dynamic node object. Can be used for
@@ -105,6 +117,7 @@ public:
      * @return node object (may be null)
      */
     static DynamicNode* toDynamicNode(GtObject* obj);
+    static DynamicNode const* toConstDynamicNode(GtObject const* obj);
 
     /**
      * @brief Prompts the user to rename the node

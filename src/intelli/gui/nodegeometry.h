@@ -22,6 +22,7 @@ namespace intelli
 {
 
 class Node;
+class NodeUIData;
 class NodeGraphicsObject;
 
 /**
@@ -151,7 +152,7 @@ public:
      * convenience and simply forwards the size set in the current style.
      * @return Size of icon
      */
-    static QSize iconSize();
+    QSize iconSize() const;
 
     /**
      * @brief Denotes where the eval state should be placed. When overriding it
@@ -167,7 +168,7 @@ public:
      * style.
      * @return Size of eval state object
      */
-    static QSize evalStateSize();
+    QSize evalStateSize() const;
 
     /**
      * @brief Defines where the widget is positioned. If there is no widget this
@@ -227,6 +228,12 @@ public:
     void recomputeGeomtry();
 
 protected:
+
+    /**
+     * @brief Returns the associated graphic object.
+     * @return Graphic object
+     */
+    NodeUIData const& uiData() const;
 
     /**
      * @brief Returns the associated graphic object.

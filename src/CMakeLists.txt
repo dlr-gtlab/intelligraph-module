@@ -59,6 +59,7 @@ set(PUBLIC_HEADERS
     intelli/gui/nodegeometry.h
     intelli/gui/nodepainter.h
     intelli/gui/nodeui.h
+    intelli/gui/nodeuidata.h
     intelli/gui/portuiaction.h
     intelli/gui/style.h
     intelli/gui/graphics/nodeobject.h
@@ -212,6 +213,11 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/uint.cpp
 
     intelli/node/binarydisplay.h intelli/node/binarydisplay.cpp
+)
+
+target_sources(GTlabIntelliGraph
+  PRIVATE
+    intelli/gui/nodeuidata.h intelli/gui/nodeuidata.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

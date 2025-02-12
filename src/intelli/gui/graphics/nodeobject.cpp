@@ -13,6 +13,7 @@
 
 #include <intelli/node.h>
 #include <intelli/gui/nodeui.h>
+#include <intelli/gui/nodeuidata.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/nodepainter.h>
 #include <intelli/gui/graphscenedata.h>
@@ -104,6 +105,7 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
     QGraphicsObject(nullptr),
     m_sceneData(&data),
     m_node(&node),
+    m_uiData(ui.uiData(node)),
     m_geometry(ui.geometry(*this)),
     m_painter(ui.painter(*this, *m_geometry)),
     m_evalStateObject(new NodeEvalStateGraphicsObject(*this, *m_painter, node)),
@@ -159,6 +161,12 @@ GraphSceneData const&
 NodeGraphicsObject::sceneData() const
 {
     return *m_sceneData;
+}
+
+NodeUIData const&
+NodeGraphicsObject::uiData() const
+{
+    return *m_uiData;
 }
 
 bool

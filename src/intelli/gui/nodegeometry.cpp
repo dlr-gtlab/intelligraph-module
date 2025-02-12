@@ -12,6 +12,7 @@
 
 #include "intelli/nodedatafactory.h"
 #include "intelli/node.h"
+#include "intelli/gui/nodeuidata.h"
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
 
@@ -208,7 +209,8 @@ NodeGeometry::captionRect() const
     double xoffset = 0.5 * margin;
 
     // make the caption as centered as possible
-    xoffset += (evalStateSize().width() - iconSize().width()) / margin;
+    assert(margin);
+    xoffset += (evalStateSize().width() - iconSize().width()) * 0.5;
 
     return caption.translated(xoffset, vspacing());
 }
@@ -240,8 +242,10 @@ NodeGeometry::iconRect() const
 }
 
 QSize
-NodeGeometry::iconSize()
+NodeGeometry::iconSize() const
 {
+    if (!uiData().hasDisplayIcon()) return QSize{0, 0};
+
     auto& style = style::currentStyle().node;
     return QSize{style.iconSize, style.iconSize};
 }
@@ -256,7 +260,7 @@ NodeGeometry::evalStateRect() const
 }
 
 QSize
-NodeGeometry::evalStateSize()
+NodeGeometry::evalStateSize() const
 {
     auto& style = style::currentStyle().node;
     return QSize{style.evalStateSize, style.evalStateSize};
@@ -426,6 +430,12 @@ NodeGeometry::recomputeGeomtry()
     m_boundingRect.reset();
     m_bodyRect.reset();
     m_headerRect.reset();
+}
+
+NodeUIData const&
+NodeGeometry::uiData() const
+{
+    return object().uiData();
 }
 
 NodeGraphicsObject const&

@@ -12,6 +12,7 @@
 #include "intelli/gui/nodepainter.h"
 #include "intelli/gui/nodegeometry.h"
 #include "intelli/gui/icons.h"
+#include "intelli/gui/nodeuidata.h"
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
 
@@ -93,21 +94,6 @@ NodePainter::backgroundColor() const
     auto bg = customBackgroundColor();
     return bg;
 }
-
-QIcon
-NodePainter::nodeIcon() const
-{
-    if (node().nodeFlags() & NodeFlag::Deprecated)
-    {
-        return gt::gui::icon::warningColorized();
-    }
-    if (qobject_cast<Graph const*>(&node()))
-    {
-        return gt::gui::icon::intelli::intelliGraph();
-    }
-    return QIcon{};
-}
-
 
 QColor
 NodePainter::customBackgroundColor() const
@@ -279,10 +265,12 @@ NodePainter::drawResizeHandle(QPainter& painter) const
 void
 NodePainter::drawIcon(QPainter& painter) const
 {
+    if (!uiData().hasDisplayIcon()) return;
+
     QRect rect = geometry().iconRect();
 
-    QIcon icon = nodeIcon();
-    if (!icon.isNull()) icon.paint(&painter, rect);
+    QIcon icon = uiData().displayIcon();
+    icon.paint(&painter, rect);
 }
 
 void
@@ -344,6 +332,12 @@ NodePainter::paint(QPainter& painter) const
         painter.drawRect(rect);
     }
 #endif
+}
+
+NodeUIData const&
+NodePainter::uiData() const
+{
+    return object().uiData();
 }
 
 NodeGraphicsObject const&

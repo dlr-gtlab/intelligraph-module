@@ -23,6 +23,7 @@ namespace intelli
 
 class Node;
 class NodeUI;
+class NodeUIData;
 class NodePainter;
 class NodeGeometry;
 class NodeEvalStateGraphicsObject;
@@ -77,6 +78,12 @@ public:
      * @return Scene data.
      */
     GraphSceneData const& sceneData() const;
+
+    /**
+     * @brief Returns the node's ui data object. Used for painting the node.
+     * @return Ui Data
+     */
+    NodeUIData const& uiData() const;
 
     /**
      * @brief Returns whether this node is currently hovered (via the cursor).
@@ -265,6 +272,8 @@ private:
     GraphSceneData* m_sceneData;
     /// Associated node
     QPointer<Node> m_node;
+    /// ui data
+    std::unique_ptr<NodeUIData> m_uiData;
     /// Geometry
     std::unique_ptr<NodeGeometry> m_geometry;
     /// Painter

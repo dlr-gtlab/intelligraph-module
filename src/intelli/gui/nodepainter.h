@@ -19,6 +19,7 @@ class QGraphicsItem;
 namespace intelli
 {
 
+class NodeUIData;
 class NodeGeometry;
 class NodeGraphicsObject;
 
@@ -85,8 +86,6 @@ public:
      * @return Background color
      */
     QColor backgroundColor() const;
-
-    virtual QIcon nodeIcon() const;
 
     /**
      * @brief Draws the background of the node.
@@ -158,6 +157,12 @@ public:
     void paint(QPainter& painter) const;
 
 protected:
+
+    /**
+     * @brief Returns the associated graphic object.
+     * @return Graphic object
+     */
+    NodeUIData const& uiData() const;
 
     /**
      * @brief Returns the associated graphic object.
