@@ -538,6 +538,9 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
 
     node->updateObjectName();
 
+    gtDebug() << relativeNodePath(*this)
+              << "APPENDED" << node->caption() << node->id() << node->uuid();
+
     // deprecation notice
     if (node->nodeFlags() & NodeFlag::Deprecated &&
         gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Medium)
@@ -562,7 +565,12 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
 
     // register node in global model if not present already (avoid overwrite)
     NodeUuid const& nodeUuid = node->uuid();
-    if (!m_global->containts(nodeUuid)) m_global->insert(nodeUuid, node);
+    if (m_global->contains(nodeUuid))
+    {
+        gtDebug() << relativeNodePath(*this)
+                  << "NODE ALREADY PRESENT";
+    }
+    if (!m_global->contains(nodeUuid)) m_global->insert(nodeUuid, node);
 
     // setup connections
     connect(node, &Node::portChanged,
@@ -623,6 +631,9 @@ Graph::appendConnection(Connection* connection)
         gtWarning() << makeError();
         return false;
     }
+
+    gtDebug() << relativeNodePath(*this)
+              << "APPENDED CONNECTION" << conId;
 
     connection->updateObjectName();
 
@@ -686,7 +697,7 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
         NodeUuid const& graphUuid = uuid();
 
         // graph is being restored (memento diff)
-        if (!m_global->containts(graphUuid))
+        if (!m_global->contains(graphUuid))
         {
             assert(isBeingModified());
             m_global->insert(graphUuid, this);
@@ -1004,7 +1015,7 @@ Graph::emitEndModification()
             Q_UNUSED(cleanup);
 
             m_resetAfterModification = false;
-            resetGlobalConnectionModel();
+            rootGraph()->resetGlobalConnectionModel();
         }
 
         emit endModification(QPrivateSignal());
@@ -1197,7 +1208,7 @@ intelli::debug(GlobalConnectionModel const& model)
     QString text = QStringLiteral("flowchart LR\n");
     text += debugGraphHelper(model);
 
-    gtInfo().nospace() << text << "\"";
+    gtInfo().nospace() << text;
 }
 
 void
@@ -1206,7 +1217,7 @@ intelli::debug(ConnectionModel const& model)
     QString text = QStringLiteral("flowchart LR\n");
     text += debugGraphHelper(model);
 
-    gtInfo().nospace() << text << "\"";
+    gtInfo().nospace() << text;
 }
 
 void

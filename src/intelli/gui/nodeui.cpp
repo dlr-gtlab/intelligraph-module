@@ -137,6 +137,24 @@ NodeUI::NodeUI(Option option)
     })
         .setIcon(gt::gui::icon::reload())
         .setVisibilityMethod(toNode);
+
+    addSingleAction(tr("Debug Connection Model"), [](GtObject* obj){
+        if (auto* graph = toGraph(obj)) debug(graph->connectionModel());
+    })
+        .setIcon(gt::gui::icon::bug())
+        .setVisibilityMethod(toGraph);
+
+    addSingleAction(tr("Debug Global Connection Model"), [](GtObject* obj){
+        if (auto* graph = toGraph(obj)) debug(graph->globalConnectionModel());
+    })
+        .setIcon(gt::gui::icon::bug())
+        .setVisibilityMethod(toGraph);
+
+    addSingleAction(tr("Reset Model"), [](GtObject* obj){
+        if (auto* graph = toGraph(obj)) graph->resetGlobalConnectionModel();
+    })
+        .setIcon(gt::gui::icon::bug())
+        .setVisibilityMethod(toGraph);
 }
 
 std::unique_ptr<NodePainter>

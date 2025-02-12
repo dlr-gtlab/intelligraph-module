@@ -392,6 +392,9 @@ struct Graph::Impl
             assert(node);
             auto const& nodeUuid = node->uuid();
 
+            gtDebug() << relativeNodePath(*graph)
+                      << "DELETING NODE" << node << nodeId << nodeUuid;
+
             auto globalIter = graph->m_global->find(nodeUuid);
             if (globalIter == graph->m_global->end())
             {
@@ -464,6 +467,10 @@ struct Graph::Impl
                                    .arg(sourceNode != model->end() ? "found" : "not found");
                 return false;
             }
+
+            gtDebug() << "###" << graph->caption() << conId << "\n      "
+                      << (void*)targetNode->node << targetNode->node << (targetNode->node ? get_node_id<NodeId_t>{}(targetNode->node) : NodeId_t()) << "VS" << conId.inNodeId << "\n      "
+                      << (void*)sourceNode->node << sourceNode->node << (sourceNode->node ? get_node_id<NodeId_t>{}(sourceNode->node) : NodeId_t()) << "VS" << conId.outNodeId;
 
             assert(targetNode->node &&
                    get_node_id<NodeId_t>{}(targetNode->node) == conId.inNodeId);

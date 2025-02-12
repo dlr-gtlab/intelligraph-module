@@ -1080,7 +1080,7 @@ public:
     iterator find(key_type const& key) { return m_data.find(key); }
     const_iterator find(key_type const& key) const { return m_data.find(key); }
 
-    bool containts(key_type const& key) const { return m_data.contains(key); }
+    bool contains(key_type const& key) const { return m_data.contains(key); }
 
     bool empty() const { return m_data.empty(); }
     bool isEmpty() const { return m_data.empty(); }
