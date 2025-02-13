@@ -51,7 +51,7 @@ NodeEvalStateGraphicsObject::boundingRect() const
 {
     auto& style = style::currentStyle();
     return QRectF{QPoint{0, 0},
-                  QSizeF{style.node.evalStateSize, style.node.evalStateSize}};
+                  QSize{style.node.evalStateSize, style.node.evalStateSize}};
 }
 
 void

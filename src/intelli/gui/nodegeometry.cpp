@@ -12,14 +12,16 @@
 
 #include "intelli/nodedatafactory.h"
 #include "intelli/node.h"
+#include "intelli/gui/nodeuidata.h"
 #include "intelli/gui/style.h"
+#include "intelli/gui/graphics/nodeobject.h"
 
 #include <QWidget>
 
 using namespace intelli;
 
-NodeGeometry::NodeGeometry(Node const& node) :
-    m_node(&node)
+NodeGeometry::NodeGeometry(NodeGraphicsObject const& object) :
+    m_object(&object)
 {
 
 }
@@ -33,7 +35,7 @@ NodeGeometry::setWidget(QPointer<QWidget const> widget)
 }
 
 bool
-NodeGeometry::positionWidgetAtBottom() const
+NodeGeometry::positionWidgetBelowPorts() const
 {
     return node().nodeFlags() & NodeFlag::MaximizeWidget;
 }
@@ -51,13 +53,6 @@ NodeGeometry::vspacing() const
 }
 
 int
-NodeGeometry::captionHeightExtend() const
-{
-    QRectF caption = captionRect();
-    return caption.height() + 2 * caption.topLeft().y();
-}
-
-int
 NodeGeometry::portHorizontalExtent(PortType type) const
 {
     int advance = 0;
@@ -67,14 +62,13 @@ NodeGeometry::portHorizontalExtent(PortType type) const
     {
         advance = std::max(advance, (int)portCaptionRect(type, idx).width());
     }
-    return advance;
+    return advance + hspacing();
 }
 
 int
-NodeGeometry::portHeightExtent() const
+NodeGeometry::portVerticalExtent() const
 {
-    QRectF caption = captionRect();
-    int height = caption.height() + caption.topLeft().y();
+    int height = vspacing();
 
     for (PortType type : {PortType::In, PortType::Out})
     {
@@ -83,11 +77,11 @@ NodeGeometry::portHeightExtent() const
 
         for (PortIndex idx{0}; idx < n; ++idx)
         {
-            height = std::max(height, (int)(portCaptionRect(type, idx).bottomLeft().y() + vspacing()));
+            height = std::max(height, (int)(portCaptionRect(type, idx).bottomLeft().y()));
         }
     }
 
-    return height;
+    return height + vspacing();
 }
 
 QPainterPath const&
@@ -110,52 +104,69 @@ NodeGeometry::computeShape() const
 }
 
 QRectF
-NodeGeometry::innerRect() const
+NodeGeometry::nodeHeaderRect() const
 {
-    if (m_innerRect.has_value()) return *m_innerRect;
+    if (m_headerRect.has_value()) return *m_headerRect;
 
     // set empty value to avoid cyclic calls
-    m_innerRect = QRectF{};
-    m_innerRect = computeInnerRect();
-    return *m_innerRect;
+    m_headerRect = QRectF{};
+    m_headerRect = computeNodeHeaderRect();
+    return *m_headerRect;
 }
 
 QRectF
-NodeGeometry::computeInnerRect() const
+NodeGeometry::computeNodeHeaderRect() const
 {
-    QSize wSize{0, 0};
-    if (auto w = centralWidget())
-    {
-        wSize = w->size();
-    }
-    bool positionAtBottom = positionWidgetAtBottom();
+    int height = 2 * vspacing() + captionSize().height();
+    height = std::max(height, std::max(evalStateSize().height(),
+                                       iconSize().height()));
 
-    // height
-    int height = vspacing() + portHeightExtent();
+    int bodyWidth =
+        portHorizontalExtent(PortType::In) +
+        portHorizontalExtent(PortType::Out) +
+        hspacing(); // spacing between port captions and widget
 
-    // width
-    int width = 0;
-    for (PortType type : {PortType::In, PortType::Out})
-    {
-        width += portHorizontalExtent(type) + hspacing();
-    }
+    bodyWidth = positionWidgetBelowPorts() ?
+                std::max(bodyWidth, widgetSize().width() + hspacing()) :
+                bodyWidth + widgetSize().width();
 
-    if (positionAtBottom)
-    {
-        height += wSize.height();
-        width  += hspacing();
-        width   = std::max(width, (int)wSize.width() + hspacing());
-    }
-    else
-    {
-        height = std::max(height, captionHeightExtend() + wSize.height() + vspacing());
-        width += hspacing() + wSize.width();
-    }
+    int headerWidth =
+        hspacing() + // spacing between eval state and icon
+        captionSize().width() +
+        evalStateRect().width() +
+        iconRect().width();
 
-    auto& style = style::currentStyle().node;
-    width = std::max(width, (int)(style.evalStateSize + hspacing() + captionRect().width()));
+    int width = std::max(bodyWidth, headerWidth);
 
-    return QRectF(QPoint{0, 0}, QSize{width, height});
+    m_bodyRect.reset();
+
+    return QRectF{QPoint{0, 0}, QSize{width, height}};
+}
+
+QRectF
+NodeGeometry::nodeBodyRect() const
+{
+    if (m_bodyRect.has_value()) return *m_bodyRect;
+
+    // set empty value to avoid cyclic calls
+    m_bodyRect = QRectF{};
+    m_bodyRect = computeNodeBodyRect();
+    return *m_bodyRect;
+}
+
+QRectF
+NodeGeometry::computeNodeBodyRect() const
+{
+    QRectF header = nodeHeaderRect();
+
+    int width  = header.width();
+    int height = portVerticalExtent();
+
+    height = positionWidgetBelowPorts() ?
+                 height + widgetSize().height() + vspacing() :
+                 std::max(height, 2 * vspacing() + widgetSize().height());
+
+    return QRectF{header.bottomLeft(), QSize{width, height}};
 }
 
 QRectF
@@ -180,7 +191,7 @@ NodeGeometry::computeBoundingRect() const
     double xoffset = 1.0 * style.portRadius + 1;
     double yoffset = 0.5 * vspacing() + 1;
 
-    auto rect = innerRect();
+    auto rect = nodeBodyRect().united(nodeHeaderRect());
 
     return QRectF(rect.topLeft() - QPointF{xoffset, yoffset},
                   QSizeF{rect.width()  + 2 * xoffset,
@@ -190,93 +201,141 @@ NodeGeometry::computeBoundingRect() const
 QRectF
 NodeGeometry::captionRect() const
 {
+    QRectF headerRect = this->nodeHeaderRect();
+    QRectF caption{headerRect.topLeft(), captionSize()};
+
+    // center caption
+    double margin = headerRect.width() - caption.width();
+    double xoffset = 0.5 * margin;
+
+    // make the caption as centered as possible
+    assert(margin);
+    xoffset += (evalStateSize().width() - iconSize().width()) * 0.5;
+
+    return caption.translated(xoffset, vspacing());
+}
+
+QSize
+NodeGeometry::captionSize() const
+{
     QFont f;
     f.setBold(true);
     QFontMetrics metrics{f};
 
-    constexpr int errorMargin = 2;
+    constexpr int errorMargin = 2; // margin to avoid truncation of caption
 
-    // center caption
     int width = metrics.horizontalAdvance(node().caption());
     width += (width & 1) + errorMargin;
 
-    QRectF innerRect = this->innerRect();
-    QRectF caption{innerRect.topLeft(), QSize{width, metrics.height()}};
+    return QSize{width, metrics.height()};
+}
 
-    double margin = innerRect.width() - caption.width();
+QRect
+NodeGeometry::iconRect() const
+{
+    constexpr QPoint padding = {-2, 2};
 
-    double xoffset = 0.5 * (innerRect.width() - caption.width());
+    return QRect{
+        nodeHeaderRect().topRight().toPoint() - QPoint{iconSize().width(), 0} + padding,
+        iconSize()
+    };
+}
 
-    // make the caption as centered as possible
+QSize
+NodeGeometry::iconSize() const
+{
+    if (!uiData().hasDisplayIcon()) return QSize{0, 0};
+
     auto& style = style::currentStyle().node;
-    xoffset += (style.evalStateSize / margin) * 0.5 * style.evalStateSize;
-
-    return caption.translated(xoffset, vspacing());
+    return QSize{style.iconSize, style.iconSize};
 }
 
 QRectF
 NodeGeometry::evalStateRect() const
 {
-    auto& style = style::currentStyle().node;
     return QRectF{
-        innerRect().topLeft(),
-        QSizeF{style.evalStateSize, style.evalStateSize}
+        nodeHeaderRect().topLeft(),
+        evalStateSize()
     };
+}
+
+QSize
+NodeGeometry::evalStateSize() const
+{
+    auto& style = style::currentStyle().node;
+    return QSize{style.evalStateSize, style.evalStateSize};
 }
 
 QPointF
 NodeGeometry::widgetPosition() const
 {
-    auto* w = centralWidget();
-    if (!w) return {};
+    if (!centralWidget()) return {};
 
-    if (positionWidgetAtBottom())
+    auto body = nodeBodyRect();
+
+    if (positionWidgetBelowPorts())
     {
-        double xOffset = 0.5 * (innerRect().width() - w->width());
-        double yOffset = portHeightExtent();
+        double xOffset = 0.5 * (body.width() - widgetSize().width());
+        double yOffset = portVerticalExtent();
 
         return QPointF{xOffset, yOffset};
     }
 
-
+    // node inbetween port captions
     int portsDiff = portHorizontalExtent(PortType::Out) -
                     portHorizontalExtent(PortType::In);
 
-    double xOffset = (innerRect().width() * 0.5) -
+    double xOffset = (body.width() * 0.5) -
                      (portsDiff * 0.5) -
-                     (w->width() * 0.5);
+                     (widgetSize().width() * 0.5);
 
-    double yOffset = captionHeightExtend();
+    double yOffset = vspacing();
 
-    return QPointF{xOffset, yOffset};
+    return body.topLeft() + QPointF{xOffset, yOffset};
 }
 
-// TODO: what if port index is out of bounds?
+QSize
+NodeGeometry::widgetSize() const
+{
+    if (auto* w = centralWidget()) return w->size();
+    return {};
+}
+
 QRectF
 NodeGeometry::portRect(PortType type, PortIndex idx) const
 {
-    assert(type != PortType::NoType && idx != invalid<PortIndex>());
+    // bounds check
+    assert(type != PortType::NoType);
+    if (node().ports(type).size() < idx) return {};
 
-    auto& node  = this->node();
+    auto& node = this->node();
+    auto& style = style::currentStyle().node;
 
-    QFontMetrics metrics{QFont()};
+    QFontMetrics metrcis(QFont{});
 
-    double height = captionHeightExtend() + vspacing();
+    // height
+    auto body = nodeBodyRect();
+    int offset = metrcis.height() * 0.6;
+    int height = body.topLeft().y() + vspacing() + style.portRadius;
 
+    // height of all ports before
     for (PortIndex i{0}; i < idx; ++i)
     {
         auto* port = node.port(node.portId(type, i));
-        bool visible = !port || port->visible;
+        assert(port);
 
-        height += visible * 1.5 * metrics.height();
+        bool visible = port->visible;
+        if (!visible) continue;
+
+        height += 2 * offset + vspacing();
     }
 
-    auto& style = style::currentStyle().node;
 
-    double width = type == PortType::Out ? innerRect().width() : 0.0;
+    // width
+    double width = type == PortType::Out ? body.width() : 0.0;
     width -= style.portRadius;
 
-    return {
+    return QRectF{
         QPointF(width, height),
         QSizeF{style.portRadius * 2, style.portRadius * 2}
     };
@@ -285,7 +344,9 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
 QRectF
 NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
 {
-    assert(type != PortType::NoType && idx != invalid<PortIndex>());
+    // bounds check
+    assert(type != PortType::NoType);
+    if (node().ports(type).size() < idx) return {};
 
     auto& node = this->node();
     auto* port = node.port(node.portId(type, idx));
@@ -293,11 +354,12 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
 
     if (!port->visible) return {};
 
+    // height
     QFontMetrics metrics{QFont()};
-
     int height = metrics.height();
-    int width = 0;
 
+    // width
+    int width = 0;
     if (port->captionVisible)
     {
         auto& factory = NodeDataFactory::instance();
@@ -308,6 +370,7 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
         width += (width & 1);
     }
 
+    // position
     QPointF pos = portRect(type, idx).center();
     pos.setY(pos.y() - height * 0.5);
     pos.setX(type == PortType::In ?
@@ -327,11 +390,11 @@ NodeGeometry::portHit(QPointF coord) const
 NodeGeometry::PortHit
 NodeGeometry::portHit(QRectF rect) const
 {
-    auto inner = innerRect();
+    auto body  = nodeBodyRect();
     auto coord = rect.center();
 
     // estimate whether its a input or output port
-    PortType type = (coord.x() < (inner.x() + 0.5 * inner.width())) ?
+    PortType type = (coord.x() < (body.x() + 0.5 * body.width())) ?
                         PortType::In : PortType::Out;
 
     auto& node = this->node();
@@ -356,23 +419,36 @@ NodeGeometry::resizeHandleRect() const
 {
     constexpr QSize size{8, 8};
 
-    QRectF rect = innerRect();
-    return QRectF(rect.bottomRight() - QPoint{size.width(), size.height()}, size);
+    QRectF body = nodeBodyRect();
+    return QRectF(body.bottomRight() - QPoint{size.width(), size.height()}, size);
 }
 
 void
-NodeGeometry::recomputeGeomtry()
+NodeGeometry::recomputeGeometry()
 {
-    m_innerRect.reset();
     m_shape.reset();
     m_boundingRect.reset();
+    m_bodyRect.reset();
+    m_headerRect.reset();
+}
+
+NodeUIData const&
+NodeGeometry::uiData() const
+{
+    return object().uiData();
+}
+
+NodeGraphicsObject const&
+NodeGeometry::object() const
+{
+    assert(m_object);
+    return *m_object;
 }
 
 Node const&
 NodeGeometry::node() const
 {
-    assert(m_node);
-    return *m_node;
+    return object().node();
 }
 
 QWidget const*

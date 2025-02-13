@@ -19,6 +19,7 @@ class QGraphicsItem;
 namespace intelli
 {
 
+class NodeUIData;
 class NodeGeometry;
 class NodeGraphicsObject;
 
@@ -61,7 +62,7 @@ public:
     NodePainter(NodePainter&&) = delete;
     NodePainter& operator=(NodePainter const&) = delete;
     NodePainter& operator=(NodePainter&&) = delete;
-    virtual ~NodePainter() = default;
+    virtual ~NodePainter();
 
     /**
      * @brief Applies pen and brush to the painter to render the background
@@ -140,6 +141,8 @@ public:
      */
     void drawResizeHandle(QPainter& painter) const;
 
+    void drawIcon(QPainter& painter) const;
+
     /**
      * @brief Draws the caption of the node
      * @param painter Painter to draw with
@@ -154,6 +157,12 @@ public:
     void paint(QPainter& painter) const;
 
 protected:
+
+    /**
+     * @brief Returns the associated graphic object.
+     * @return Graphic object
+     */
+    NodeUIData const& uiData() const;
 
     /**
      * @brief Returns the associated graphic object.
@@ -186,6 +195,8 @@ private:
     NodeGraphicsObject const* m_object;
     /// Geometry
     NodeGeometry const* m_geometry;
+    /// padding
+    uint8_t __padding[16];
 };
 
 } // namespace intelli

@@ -12,10 +12,13 @@
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
 #include "intelli/graph.h"
+#include "intelli/node/groupinputprovider.h"
+#include "intelli/node/groupoutputprovider.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/icons.h"
+#include "intelli/gui/nodeuidata.h"
 #include "intelli/gui/nodegeometry.h"
 #include "intelli/gui/nodepainter.h"
 #include "intelli/gui/graphics/nodeobject.h"
@@ -147,9 +150,17 @@ NodeUI::painter(NodeGraphicsObject const& object,
 }
 
 std::unique_ptr<NodeGeometry>
-NodeUI::geometry(Node const& node) const
+NodeUI::geometry(NodeGraphicsObject const& object) const
 {
-    return std::make_unique<NodeGeometry>(node);
+    return std::make_unique<NodeGeometry>(object);
+}
+
+std::unique_ptr<NodeUIData>
+NodeUI::uiData(Node const& node) const
+{
+    auto uiData = std::unique_ptr<NodeUIData>(new NodeUIData{});
+    uiData->setDisplayIcon(displayIcon(node));
+    return uiData;
 }
 
 QIcon
@@ -158,16 +169,32 @@ NodeUI::icon(GtObject* obj) const
     Node* node = toNode(obj);
     if (!node) return gt::gui::icon::objectEmpty();
 
-    if (node->nodeFlags() & NodeFlag::Deprecated)
+    QIcon icon = displayIcon(*node);
+    if (!icon.isNull()) return icon;
+
+    return gt::gui::icon::intelli::node();
+}
+
+QIcon
+NodeUI::displayIcon(Node const& node) const
+{
+    if (node.nodeFlags() & NodeFlag::Deprecated)
     {
         return gt::gui::icon::warningColorized();
     }
-    if (toGraph(node))
+    if (toConstGraph(&node))
     {
         return gt::gui::icon::intelli::intelliGraph();
     }
-
-    return gt::gui::icon::intelli::node();
+    if (qobject_cast<GroupInputProvider const*>(&node))
+    {
+        return gt::gui::icon::import();
+    }
+    if (qobject_cast<GroupOutputProvider const*>(&node))
+    {
+        return gt::gui::icon::export_();
+    }
+    return QIcon{};
 }
 
 QStringList
@@ -191,22 +218,40 @@ NodeUI::addPortAction(const QString& actionText,
     return m_portActions.back();
 }
 
-Graph*
-NodeUI::toGraph(GtObject* obj)
-{
-    return qobject_cast<Graph*>(obj);
-}
-
 Node*
 NodeUI::toNode(GtObject* obj)
 {
     return qobject_cast<Node*>(obj);
 }
 
+Node const*
+NodeUI::toConstNode(GtObject const* obj)
+{
+    return qobject_cast<Node const*>(obj);
+}
+
+Graph*
+NodeUI::toGraph(GtObject* obj)
+{
+    return qobject_cast<Graph*>(obj);
+}
+
+Graph const*
+NodeUI::toConstGraph(GtObject const* obj)
+{
+    return qobject_cast<Graph const*>(obj);
+}
+
 DynamicNode*
 NodeUI::toDynamicNode(GtObject* obj)
 {
     return qobject_cast<DynamicNode*>(obj);;
+}
+
+DynamicNode const*
+NodeUI::toConstDynamicNode(GtObject const* obj)
+{
+    return qobject_cast<DynamicNode const*>(obj);;
 }
 
 bool
