@@ -225,7 +225,7 @@ public:
     /**
      * @brief Tells the geometry to invalidate cached geometry.
      */
-    void recomputeGeomtry();
+    void recomputeGeometry();
 
 protected:
 

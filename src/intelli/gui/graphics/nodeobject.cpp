@@ -76,7 +76,7 @@ prepareGeometryChange(NodeGraphicsObject* o)
     o->prepareGeometryChange();
 
     return gt::finally([o](){
-        o->m_geometry->recomputeGeomtry();
+        o->m_geometry->recomputeGeometry();
         o->update();
         emit o->nodeGeometryChanged(o);
     });
@@ -250,7 +250,7 @@ NodeGraphicsObject::embedCentralWidget()
     };
 
     auto change = Impl::prepareGeometryChange(this);
-    m_geometry->recomputeGeomtry();
+    m_geometry->recomputeGeometry();
 
     // we may have to reembedd the widget
     if (m_proxyWidget)
@@ -563,8 +563,8 @@ NodeGraphicsObject::onNodeChanged()
 {
     auto change = Impl::prepareGeometryChange(this);
     Q_UNUSED(change);
-
-    m_geometry->recomputeGeomtry();
+    
+    m_geometry->recomputeGeometry();
     updateChildItems();
 }
 

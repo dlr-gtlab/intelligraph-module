@@ -424,7 +424,7 @@ NodeGeometry::resizeHandleRect() const
 }
 
 void
-NodeGeometry::recomputeGeomtry()
+NodeGeometry::recomputeGeometry()
 {
     m_shape.reset();
     m_boundingRect.reset();
