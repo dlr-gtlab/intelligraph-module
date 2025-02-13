@@ -111,7 +111,6 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
     m_evalStateObject(new NodeEvalStateGraphicsObject(*this, *m_painter, node)),
     m_highlights(*this)
 {
-    setFlag(QGraphicsItem::ItemContainsChildrenInShape, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);
     setFlag(QGraphicsItem::ItemIsFocusable, true);
 

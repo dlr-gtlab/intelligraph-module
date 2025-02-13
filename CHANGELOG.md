@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed port captions spanning multiple words being truncated. - #212
 - The graph view should now remeber more consistently whether a graph should be auto-evaluated. - #112
 - If a node fails to evaluate all successor nodes are invalidated and marked as failed as well. - #221
+- Fixed menus of embedded widgets not beeing displayed outside of the node's bounding rect.
 
 ## [0.12.0] - 2024-09-24
 ### Added
