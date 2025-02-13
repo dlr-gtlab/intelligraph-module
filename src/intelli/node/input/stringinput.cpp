@@ -34,6 +34,8 @@ StringInputNode::StringInputNode() :
         w->setPlaceholderText(QStringLiteral("String"));
         w->setMinimumWidth(50);
 
+        w->resize(100, w->sizeHint().height());
+
         auto const updateProp = [this, w_ = w.get()](){
             if(value() != w_->text()) setValue(w_->text());
         };

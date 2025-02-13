@@ -235,7 +235,7 @@ AbstractNumberInputWidget::applyInputMode(InputMode mode)
     }
 
     // resize next frame (allows size hint to be calculated correctly)
-    QTimer::singleShot(0, this, [this](){ resize(minimumSizeHint()); });
+    resize(minimumSizeHint());
 }
 
 void
