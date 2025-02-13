@@ -134,27 +134,20 @@ NodeUI::NodeUI(Option option)
 
     addSingleAction(tr("Refresh Node"), [](GtObject* obj){
         if (auto* node = toNode(obj)) emit node->nodeChanged();
-    })
-        .setIcon(gt::gui::icon::reload())
-        .setVisibilityMethod(toNode);
+    }).setIcon(gt::gui::icon::reload())
+      .setVisibilityMethod(toNode);
 
-    addSingleAction(tr("Debug Connection Model"), [](GtObject* obj){
-        if (auto* graph = toGraph(obj)) debug(graph->connectionModel());
-    })
-        .setIcon(gt::gui::icon::bug())
-        .setVisibilityMethod(toGraph);
-
-    addSingleAction(tr("Debug Global Connection Model"), [](GtObject* obj){
-        if (auto* graph = toGraph(obj)) debug(graph->globalConnectionModel());
-    })
-        .setIcon(gt::gui::icon::bug())
-        .setVisibilityMethod(toGraph);
-
-    addSingleAction(tr("Reset Model"), [](GtObject* obj){
-        if (auto* graph = toGraph(obj)) graph->resetGlobalConnectionModel();
-    })
-        .setIcon(gt::gui::icon::bug())
-        .setVisibilityMethod(toGraph);
+    addSingleAction(tr("Print Debug Information"), [](GtObject* obj){
+        if (auto* graph = toGraph(obj))
+        {
+            QString const& path = relativeNodePath(*graph);
+            gtInfo().nospace() << "Local Connection Model: (" << path << ")";
+            debug(graph->connectionModel());
+            gtInfo().nospace() << "Global Connection Model: (" << path << ")";
+            debug(graph->globalConnectionModel());
+        }
+    }).setIcon(gt::gui::icon::bug())
+      .setVisibilityMethod(toGraph);
 }
 
 std::unique_ptr<NodePainter>

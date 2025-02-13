@@ -20,8 +20,8 @@ namespace
 
 inline auto findGraphOp(Graph& graph)
 {
-    return [&graph](auto const& scene){
-        return scene && &scene->graph() == &graph;
+    return [&graph](auto const& entry){
+        return entry.scene && &entry.scene->graph() == &graph;
     };
 }
 
@@ -74,7 +74,14 @@ GraphSceneManager::createScene(Graph& graph)
     auto scenePtr = make_unique_qptr<GraphScene, DeferredDeleter>(graph);
     GraphScene* scene = scenePtr.get();
 
-    m_scenes.push_back(std::move(scenePtr));
+    m_scenes.push_back({ std::move(scenePtr) });
+
+    connect(&graph, &Graph::graphAboutToBeDeleted, this, [this, g = &graph](){
+        auto iter = std::find_if(m_scenes.begin(), m_scenes.end(), findGraphOp(*g));
+        assert(iter != m_scenes.end());
+        iter->markedForDeletion = true;
+        onSceneRemoved();
+    });
 
     connect(scene, &GraphScene::graphNodeDoubleClicked,
             this, &GraphSceneManager::openGraph);
@@ -107,7 +114,8 @@ GraphSceneManager::openGraph(Graph* graph)
     }
     else
     {
-        scene = *iter;
+        assert(!iter->markedForDeletion);
+        scene = iter->scene;
     }
 
     if (!scene)
@@ -145,10 +153,10 @@ GraphSceneManager::openGraphByUuid(QString const& graphUuid)
 }
 
 void
-GraphSceneManager::onSceneRemoved(QObject* scene)
+GraphSceneManager::onSceneRemoved()
 {
     // remove null scenes
-    auto const isNull = [](GraphScene* scene) -> bool { return !scene; };
+    auto const isNull = [](Entry& e) -> bool { return !e.scene || e.markedForDeletion; };
     m_scenes.erase(std::remove_if(m_scenes.begin(), m_scenes.end(), isNull),
                    m_scenes.end());
 
@@ -156,7 +164,7 @@ GraphSceneManager::onSceneRemoved(QObject* scene)
     if (currentScene()) return;
 
     // switch scene
-    m_scenes.empty() ?
+    (m_scenes.empty()) ?
         m_view->clearScene() :
-        m_view->setScene(*m_scenes.back());
+        m_view->setScene(*m_scenes.back().scene);
 }

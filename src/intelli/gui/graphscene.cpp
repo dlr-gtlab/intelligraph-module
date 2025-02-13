@@ -469,8 +469,6 @@ pasteFrom(GraphScene& scene, Graph& dummy)
         }
     }
 
-    debug(scene.graph().globalConnectionModel());
-
     if (!hasConnections) return true;
 
     auto connectionObjects = Impl::findItems<ConnectionGraphicsObject*>(scene);

@@ -538,9 +538,6 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
 
     node->updateObjectName();
 
-    gtDebug() << relativeNodePath(*this)
-              << "APPENDED" << node->caption() << node->id() << node->uuid();
-
     // deprecation notice
     if (node->nodeFlags() & NodeFlag::Deprecated &&
         gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Medium)
@@ -565,11 +562,6 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
 
     // register node in global model if not present already (avoid overwrite)
     NodeUuid const& nodeUuid = node->uuid();
-    if (m_global->contains(nodeUuid))
-    {
-        gtDebug() << relativeNodePath(*this)
-                  << "NODE ALREADY PRESENT";
-    }
     if (!m_global->contains(nodeUuid)) m_global->insert(nodeUuid, node);
 
     // setup connections
@@ -631,9 +623,6 @@ Graph::appendConnection(Connection* connection)
         gtWarning() << makeError();
         return false;
     }
-
-    gtDebug() << relativeNodePath(*this)
-              << "APPENDED CONNECTION" << conId;
 
     connection->updateObjectName();
 

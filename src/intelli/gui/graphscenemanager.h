@@ -80,15 +80,20 @@ private slots:
 
     /**
      * @brief Updates scene mamager if a scene was deleted
-     * @param scene Scene that was deleted
      */
-    void onSceneRemoved(QObject* scene);
+    void onSceneRemoved();
 
 private:
 
     QPointer<GraphView> m_view;
 
-    std::vector<unique_qptr<GraphScene, DeferredDeleter>> m_scenes;
+    struct Entry
+    {
+        unique_qptr<GraphScene, DeferredDeleter> scene;
+        bool markedForDeletion = false; // indicator if graph is about to be deleted
+    };
+
+    std::vector<Entry> m_scenes;
 };
 
 } // namespace intelli
