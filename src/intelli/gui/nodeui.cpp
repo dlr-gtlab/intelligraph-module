@@ -137,9 +137,20 @@ NodeUI::NodeUI(Option option)
 
     addSingleAction(tr("Refresh Node"), [](GtObject* obj){
         if (auto* node = toNode(obj)) emit node->nodeChanged();
-    })
-        .setIcon(gt::gui::icon::reload())
-        .setVisibilityMethod(toNode);
+    }).setIcon(gt::gui::icon::reload())
+      .setVisibilityMethod(toNode);
+
+    addSingleAction(tr("Print Debug Information"), [](GtObject* obj){
+        if (auto* graph = toGraph(obj))
+        {
+            QString const& path = relativeNodePath(*graph);
+            gtInfo().nospace() << "Local Connection Model: (" << path << ")";
+            debug(graph->connectionModel());
+            gtInfo().nospace() << "Global Connection Model: (" << path << ")";
+            debug(graph->globalConnectionModel());
+        }
+    }).setIcon(gt::gui::icon::bug())
+      .setVisibilityMethod(toGraph);
 }
 
 std::unique_ptr<NodePainter>
