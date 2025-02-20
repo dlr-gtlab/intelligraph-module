@@ -61,6 +61,9 @@ static auto& styles()
         style.node.background = QColor{36, 49, 63};
         style.node.defaultOutline = QColor{63, 73, 86};
         style.node.selectedOutline = QColor{255, 165, 0};
+
+        style.node.headerFont.setBold(true);
+
         style.node.hoveredOutline = style.node.defaultOutline;
         style.node.compatiblityTintModifier = 20;
 
