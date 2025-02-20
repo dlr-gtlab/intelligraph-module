@@ -30,13 +30,15 @@ class GT_INTELLI_EXPORT NodeFactory : public GtAbstractObjectFactory
 
 public:
 
+    ~NodeFactory();
+
     /**
      * @brief instance
      * @return
      */
     static NodeFactory& instance();
 
-    QStringList registeredNodes() const { return knownClasses(); };
+    QStringList registeredNodes() const;
 
     QStringList registeredCategories() const;
 
@@ -69,21 +71,12 @@ public:
 
 private:
 
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
+
     // hide some functions
     using GtAbstractObjectFactory::newObject;
     using GtAbstractObjectFactory::registerClass;
-
-    using ClassName = QString;
-    using NodeCategory = QString;
-    using NodeName = QString;
-
-    struct NodeMetaData
-    {
-        NodeCategory category;
-        NodeName modelName;
-    };
-
-    QHash<ClassName, NodeMetaData> m_data;
 
     NodeFactory();
 };

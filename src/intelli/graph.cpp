@@ -24,7 +24,7 @@ using namespace intelli;
 
 Graph::Graph() :
     Node("Graph"),
-    m_global(std::make_shared<GlobalConnectionModel>())
+    pimpl(std::make_unique<Impl>())
 {
     // we create the node connections here in this group object. This way
     // merging mementos has the correct order (first the connections are removed
@@ -119,6 +119,18 @@ Graph::nodeIds() const
     std::transform(nodes.begin(), nodes.end(), ids.begin(),
                    [](Node const* node){ return node->id(); });
     return ids;
+}
+
+ConnectionModel const&
+Graph::connectionModel() const
+{
+    return pimpl->local;
+}
+
+GlobalConnectionModel const&
+Graph::globalConnectionModel() const
+{
+    return *pimpl->global;
 }
 
 QList<Connection*>
@@ -233,8 +245,8 @@ Graph::findDependentNodes(NodeId nodeId) const
 Node*
 Graph::findNode(NodeId nodeId)
 {
-    auto iter = m_local.find(nodeId);
-    if (iter == m_local.end()) return {};
+    auto iter = pimpl->local.find(nodeId);
+    if (iter == pimpl->local.end()) return {};
 
     assert(iter->node &&
            iter->node->id() == nodeId &&
@@ -284,8 +296,8 @@ Graph::findConnection(ConnectionId conId) const
 QVector<ConnectionId>
 Graph::findConnections(NodeId nodeId, PortType type) const
 {
-    auto iter = m_local.find(nodeId);
-    if (iter == m_local.end()) return {};
+    auto iter = pimpl->local.find(nodeId);
+    if (iter == pimpl->local.end()) return {};
 
     QVector<ConnectionId> connections;
     if (type == PortType::NoType)
@@ -307,8 +319,8 @@ Graph::findConnections(NodeId nodeId, PortType type) const
 QVector<ConnectionId>
 Graph::findConnections(NodeId nodeId, PortId portId) const
 {
-    auto iter = m_local.find(nodeId);
-    if (iter == m_local.end()) return {};
+    auto iter = pimpl->local.find(nodeId);
+    if (iter == pimpl->local.end()) return {};
 
     QVector<ConnectionId> connections;
     std::copy(iter->iterateConnections(portId).begin(),
@@ -333,7 +345,7 @@ QVector<NodeId>
 Graph::findConnectedNodes(NodeId nodeId, PortType type) const
 {
     QVector<NodeId> nodes;
-    auto iter = m_local.iterateUniqueNodes(nodeId, type);
+    auto iter = pimpl->local.iterateUniqueNodes(nodeId, type);
     std::copy(iter.begin(), iter.end(), std::back_inserter(nodes));
     return nodes;
 }
@@ -342,7 +354,7 @@ QVector<NodeId>
 Graph::findConnectedNodes(NodeId nodeId, PortId portId) const
 {
     QVector<NodeId> nodes;
-    auto iter = m_local.iterateUniqueNodes(nodeId, portId);
+    auto iter = pimpl->local.iterateUniqueNodes(nodeId, portId);
     std::copy(iter.begin(), iter.end(), std::back_inserter(nodes));
     return nodes;
 }
@@ -551,18 +563,18 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
     // append nodes of subgraph
     if (auto* graph = qobject_cast<Graph*>(node))
     {
-        graph->updateGlobalConnectionModel(m_global);
+        graph->updateGlobalConnectionModel(pimpl->global);
 
         // init input output providers of sub graph
         graph->initInputOutputProviders();
     }
 
     // register node in local model
-    m_local.insert(node->id(), node);
+    pimpl->local.insert(node->id(), node);
 
     // register node in global model if not present already (avoid overwrite)
     NodeUuid const& nodeUuid = node->uuid();
-    if (!m_global->contains(nodeUuid)) m_global->insert(nodeUuid, node);
+    if (!pimpl->global->contains(nodeUuid)) pimpl->global->insert(nodeUuid, node);
 
     // setup connections
     connect(node, &Node::portChanged,
@@ -627,10 +639,10 @@ Graph::appendConnection(Connection* connection)
     connection->updateObjectName();
 
     // append connection to model
-    auto targetNode = m_local.find(conId.inNodeId);
-    auto sourceNode = m_local.find(conId.outNodeId);
-    assert(targetNode != m_local.end());
-    assert(sourceNode != m_local.end());
+    auto targetNode = pimpl->local.find(conId.inNodeId);
+    auto sourceNode = pimpl->local.find(conId.outNodeId);
+    assert(targetNode != pimpl->local.end());
+    assert(sourceNode != pimpl->local.end());
 
     auto inConnection  = ConnectionDetail<NodeId>::fromConnection(conId.reversed());
     auto outConnection = ConnectionDetail<NodeId>::fromConnection(conId);
@@ -686,10 +698,10 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
         NodeUuid const& graphUuid = uuid();
 
         // graph is being restored (memento diff)
-        if (!m_global->contains(graphUuid))
+        if (!pimpl->global->contains(graphUuid))
         {
             assert(isBeingModified());
-            m_global->insert(graphUuid, this);
+            pimpl->global->insert(graphUuid, this);
         }
 
         conUuid.outNodeId = output->uuid();
@@ -706,10 +718,10 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionUuid conUuid)
 {
     assert(conUuid.isValid());
 
-    auto globalTargetNode = m_global->find(conUuid.inNodeId);
-    auto globalSourceNode = m_global->find(conUuid.outNodeId);
-    assert(globalTargetNode != m_global->end());
-    assert(globalSourceNode != m_global->end());
+    auto globalTargetNode = pimpl->global->find(conUuid.inNodeId);
+    auto globalSourceNode = pimpl->global->find(conUuid.outNodeId);
+    assert(globalTargetNode != pimpl->global->end());
+    assert(globalSourceNode != pimpl->global->end());
 
     auto inConnection  = ConnectionDetail<NodeUuid>::fromConnection(conUuid.reversed());
     auto outConnection = ConnectionDetail<NodeUuid>::fromConnection(conUuid);
@@ -829,8 +841,8 @@ Graph::moveNode(Node& node, Graph& targetGraph, NodeIdPolicy policy)
     // models need to be reset once moving finished to avoid inconsistent states
     if (qobject_cast<Graph*>(&node))
     {
-        this->m_resetAfterModification = true;
-        targetGraph.m_resetAfterModification = true;
+        pimpl->resetAfterModification = true;
+        targetGraph.pimpl->resetAfterModification = true;
     }
 
     node.disconnect(this);
@@ -846,7 +858,7 @@ Graph::moveNode(Node& node, Graph& targetGraph, NodeIdPolicy policy)
 bool
 Graph::isBeingModified() const
 {
-    return m_modificationCount > 0;
+    return pimpl->modificationCount > 0;
 }
 
 void
@@ -865,7 +877,7 @@ Graph::restoreNode(Node* node)
 #ifndef NDEBUG
         if (auto* subgraph = qobject_cast<Graph*>(node))
         {
-            assert(subgraph->m_global == m_global);
+            assert(subgraph->pimpl->global == pimpl->global);
         }
 #endif
         return;
@@ -883,15 +895,15 @@ Graph::restoreConnection(Connection* connection)
     assert(connection);
     auto conId = connection->connectionId();
 
-    auto cons = m_local.iterateConnections(conId.inNodeId, PortType::In);
+    auto cons = pimpl->local.iterateConnections(conId.inNodeId, PortType::In);
     if (std::find(cons.begin(), cons.end(), conId) != cons.end())
     {
-        cons = m_local.iterateConnections(conId.outNodeId, PortType::Out);
+        cons = pimpl->local.iterateConnections(conId.outNodeId, PortType::Out);
         assert(std::find(cons.begin(), cons.end(), conId) != cons.end());
         return;
     }
 
-    cons = m_local.iterateConnections(conId.outNodeId, PortType::Out);
+    cons = pimpl->local.iterateConnections(conId.outNodeId, PortType::Out);
     assert(std::find(cons.begin(), cons.end(), conId) == cons.end());
 
     std::unique_ptr<Connection> ptr{connection};
@@ -956,8 +968,8 @@ Graph::resetGlobalConnectionModel()
     Modification cmd = modify();
     Q_UNUSED(cmd);
 
-    m_global->clear();
-    Impl::repopulateGlobalConnectionModel(*this);
+    pimpl->global->clear();
+    pimpl->repopulateGlobalConnectionModel(*this);
 }
 
 void
@@ -982,28 +994,28 @@ Graph::modify()
 void
 Graph::emitBeginModification()
 {
-    assert(m_modificationCount >= 0);
+    assert(pimpl->modificationCount >= 0);
 
-    m_modificationCount++;
-    if (m_modificationCount == 1) emit beginModification(QPrivateSignal());
+    pimpl->modificationCount++;
+    if (pimpl->modificationCount == 1) emit beginModification(QPrivateSignal());
 }
 
 void
 Graph::emitEndModification()
 {
-    m_modificationCount--;
-    assert(m_modificationCount >= 0);
+    pimpl->modificationCount--;
+    assert(pimpl->modificationCount >= 0);
 
-    if (m_modificationCount == 0)
+    if (pimpl->modificationCount == 0)
     {
-        if (m_resetAfterModification)
+        if (pimpl->resetAfterModification)
         {
             // do not trigger this function twice
-            m_modificationCount++;
-            auto cleanup = gt::finally([this](){ m_modificationCount--; });
+            pimpl->modificationCount++;
+            auto cleanup = gt::finally([this](){ pimpl->modificationCount--; });
             Q_UNUSED(cleanup);
 
-            m_resetAfterModification = false;
+            pimpl->resetAfterModification = false;
             rootGraph()->resetGlobalConnectionModel();
         }
 
@@ -1015,12 +1027,12 @@ void
 Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr)
 {
     // merge connection models
-    if (ptr != m_global)
+    if (ptr != pimpl->global)
     {
-        ptr->insert(*m_global);
+        ptr->insert(*pimpl->global);
     }
 
-    m_global = ptr;
+    pimpl->global = ptr;
 
     // apply recursively
     for (Graph* subgraph : graphNodes())

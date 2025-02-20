@@ -22,10 +22,16 @@
 
 using namespace intelli;
 
+struct GraphBuilder::Impl
+{
+    Graph* graph{};
+};
 
 GraphBuilder::GraphBuilder(Graph& graph) :
-    m_graph(&graph)
+    pimpl(std::make_unique<Impl>(Impl{&graph}))
 { }
+
+GraphBuilder::~GraphBuilder() = default;
 
 GraphBuilder::GraphData
 GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
@@ -60,7 +66,7 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
         throw std::logic_error{
             std::string{
                 "GraphBuilder: Failed to intialize group input and output providers! " +
-                gt::brackets(m_graph->caption().toStdString())
+                gt::brackets(pimpl->graph->caption().toStdString())
             }
         };
     }
@@ -80,7 +86,7 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
         throw std::logic_error{
             std::string{
                 "GraphBuilder: Failed to insert input or output ports! " +
-                gt::brackets(m_graph->caption().toStdString())
+                gt::brackets(pimpl->graph->caption().toStdString())
             }
         };
     }
@@ -114,14 +120,14 @@ GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos, NodeUuid c
     if (node && !pos.isNull()) node->setPos(pos);
     if (node && !nodeUuid.isEmpty()) node->setUuid(nodeUuid);
 
-    auto* ptr = m_graph->appendNode(std::move(node));
+    auto* ptr = pimpl->graph->appendNode(std::move(node));
 
     if (!ptr)
     {
         throw std::logic_error{
             std::string{
                 "GraphBuilder: Failed to append node! " +
-                gt::brackets(m_graph->caption().toStdString())
+                gt::brackets(pimpl->graph->caption().toStdString())
             }
         };
     }
@@ -143,17 +149,17 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
         return buildError() +
             ", " + str + "-going port index '" + std::to_string(idx) +
             "' is out of bounds! " +
-               gt::brackets(m_graph->caption().toStdString());
+               gt::brackets(pimpl->graph->caption().toStdString());
     };
 
     // check if nodes exist within the graph
-    if (&from != m_graph->findNode(from.id()) ||
-        &to   != m_graph->findNode(to.id()))
+    if (&from != pimpl->graph->findNode(from.id()) ||
+        &to   != pimpl->graph->findNode(to.id()))
     {
         throw std::logic_error{
             buildError() +
             ", nodes have not been added to the graph before! " +
-            gt::brackets(m_graph->caption().toStdString())
+            gt::brackets(pimpl->graph->caption().toStdString())
         };
     }
 
@@ -177,7 +183,7 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
             ", port type ids mismatch! " +
             gt::squoted(outPort->typeId.toStdString()) + " vs. " +
             gt::squoted(inPort->typeId.toStdString()) + " " +
-            gt::brackets(m_graph->caption().toStdString())
+            gt::brackets(pimpl->graph->caption().toStdString())
         };
     }
 
@@ -189,12 +195,12 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
 
     auto conId = connection->connectionId();
 
-    if (!m_graph->appendConnection(std::move(connection)))
+    if (!pimpl->graph->appendConnection(std::move(connection)))
     {
         throw std::logic_error{
             buildError() +
             ", creating connection failed! " +
-            gt::brackets(m_graph->caption().toStdString())
+            gt::brackets(pimpl->graph->caption().toStdString())
         };
     }
 
@@ -212,8 +218,8 @@ GraphBuilder::connect(NodeId from, PortIndex outIdx, NodeId to, PortIndex inIdx)
         };
     };
 
-    Node* sourceNode = m_graph->findNode(from);
-    Node* targetNode = m_graph->findNode(to);
+    Node* sourceNode = pimpl->graph->findNode(from);
+    Node* targetNode = pimpl->graph->findNode(to);
 
     // check if nodes exist within the graph
     if (!sourceNode || !targetNode)
@@ -221,7 +227,7 @@ GraphBuilder::connect(NodeId from, PortIndex outIdx, NodeId to, PortIndex inIdx)
         throw std::logic_error{
             buildError() +
             ", nodes have not been added to the graph before! " +
-            gt::brackets(m_graph->caption().toStdString())
+            gt::brackets(pimpl->graph->caption().toStdString())
         };
     }
 

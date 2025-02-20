@@ -40,7 +40,7 @@ struct DataItem
     /// internal evalution state
     NodeEvalState state = NodeEvalState::Outdated;
     /// counter of nodes that are running in subgraph nodes
-    size_t m_evaluatingChildNodes = 0;
+    size_t evaluatingChildNodes = 0;
 
     /**
      * @brief Returns the ancestors or descendants depending on the port type

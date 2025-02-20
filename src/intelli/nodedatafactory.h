@@ -56,6 +56,8 @@ class GT_INTELLI_EXPORT NodeDataFactory : public GtAbstractObjectFactory
 
 public:
 
+    ~NodeDataFactory();
+
     /**
      * @brief instance
      * @return
@@ -147,14 +149,12 @@ public:
 
 private:
 
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
+
     // hide some functions
     using GtAbstractObjectFactory::newObject;
     using GtAbstractObjectFactory::registerClass;
-
-    /// registered type names (used as default port captions)
-    QHash<TypeId, TypeName> m_typeNames;
-    /// registered conversion functions
-    QMultiHash<TypeId, Conversion> m_conversions;
 
     /// private constructor
     NodeDataFactory();

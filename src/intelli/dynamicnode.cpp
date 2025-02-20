@@ -29,6 +29,19 @@ QString const S_PORT_CAPTION_VISIBLE = QStringLiteral("CaptionVisible");
 QString const S_PORT_OPTIONAL = QStringLiteral("Optional");
 QString const S_PORT_ID = QStringLiteral("PortId");
 
+struct DynamicNode::Impl
+{
+    Impl(Option opt) : option(opt) {};
+
+    /// property container for the in ports
+    GtPropertyStructContainer inPorts{"dynamicInPorts", "In Ports"};
+    /// property container for the out ports
+    GtPropertyStructContainer outPorts{"dynamicOutPorts", "Out Ports"};
+
+    /// Node option
+    Option option = DynamicInputAndOutput;
+};
+
 DynamicNode::DynamicNode(QString const& modelName,
                          Option option,
                          GtObject* parent) :
@@ -41,11 +54,9 @@ DynamicNode::DynamicNode(QString const& modelName,
                          Option option,
                          GtObject* parent) :
     Node(modelName, parent),
-    m_inPorts("dynamicInPorts", "In Ports"),
-    m_outPorts("dynamicOutPorts", "Out Ports"),
-    m_option(option)
+    pimpl(std::make_unique<Impl>(option))
 {
-    if (m_option != NoDynamicPorts)
+    if (pimpl->option != NoDynamicPorts)
     {
         auto makeReadOnly = [](auto func){
             return [func = std::move(func)](QString const& id){
@@ -78,18 +89,18 @@ DynamicNode::DynamicNode(QString const& modelName,
         portInfoOut.defineMember(S_PORT_OPTIONAL, gt::makeBoolProperty(true));
         portInfoOut.defineMember(S_PORT_ID, makeReadOnly(makeUIntProperty(invalid<PortId>())));
 
-        m_inPorts.registerAllowedType(portInfoIn);
-        m_outPorts.registerAllowedType(portInfoOut);
+        pimpl->inPorts.registerAllowedType(portInfoIn);
+        pimpl->outPorts.registerAllowedType(portInfoOut);
 
-        if (m_option != DynamicOutputOnly) registerPropertyStructContainer(m_inPorts);
-        if (m_option != DynamicInputOnly)  registerPropertyStructContainer(m_outPorts);
+        if (pimpl->option != DynamicOutputOnly) registerPropertyStructContainer(pimpl->inPorts);
+        if (pimpl->option != DynamicInputOnly)  registerPropertyStructContainer(pimpl->outPorts);
     }
 
     connect(this, &Node::portAboutToBeDeleted,
             this, &DynamicNode::onPortDeleted,
             Qt::UniqueConnection);
 
-    for (auto* ports : { &m_inPorts, &m_outPorts })
+    for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
     {
         connect(ports, &GtPropertyStructContainer::entryAdded,
                 this, &DynamicNode::onPortEntryAdded,
@@ -103,10 +114,12 @@ DynamicNode::DynamicNode(QString const& modelName,
     }
 }
 
+DynamicNode::~DynamicNode() = default;
+
 DynamicNode::Option
 DynamicNode::dynamicNodeOption() const
 {
-    return m_option;
+    return pimpl->option;
 }
 
 int DynamicNode::offset(PortType type) const
@@ -420,8 +433,8 @@ DynamicNode::onPortEntryRemoved(int idx)
 PortType
 DynamicNode::toPortType(GtPropertyStructContainer const& container) const
 {
-    if (&container == &m_inPorts) return PortType::In;
-    if (&container == &m_outPorts) return PortType::Out;
+    if (&container == &pimpl->inPorts) return PortType::In;
+    if (&container == &pimpl->outPorts) return PortType::Out;
     return PortType::NoType;
 }
 
@@ -431,9 +444,9 @@ DynamicNode::dynamicPorts(PortType type) noexcept(false)
     switch (type)
     {
     case PortType::In:
-        return m_inPorts;
+        return pimpl->inPorts;
     case PortType::Out:
-        return m_outPorts;
+        return pimpl->outPorts;
     case PortType::NoType:
         break;
     }
@@ -452,8 +465,8 @@ DynamicNode::dynamicPorts(PortType type) const noexcept(false)
 GtPropertyStructContainer*
 DynamicNode::toDynamicPorts(QObject* obj)
 {
-    if (obj == &m_inPorts)  return &m_inPorts;
-    if (obj == &m_outPorts) return &m_outPorts;
+    if (obj == &pimpl->inPorts)  return &pimpl->inPorts;
+    if (obj == &pimpl->outPorts) return &pimpl->outPorts;
     return nullptr;
 }
 

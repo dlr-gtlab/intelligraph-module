@@ -101,6 +101,31 @@ inline QString autoEvaluteNodeError(Graph const& graph)
 /// Helper struct to "hide" implementation details and template functions
 struct GraphExecutionModel::Impl
 {
+    Impl(Graph& g) : graph(&g) {}
+
+    /// assoicated graph
+    QPointer<Graph> graph;
+    /// data model for all nodes and their ports
+    GraphDataModel data;
+    /// nodes that should be evaluated
+    std::vector<NodeUuid> targetNodes;
+    /// nodes that should be queued and executed at some point to evaluate
+    /// all target nodes
+    std::vector<NodeUuid> pendingNodes;
+    /// nodes that should be considered for auto evaluation
+    std::set<NodeUuid> autoEvaluatingNodes;
+    /// nodes that are ready and waiting for evaluation
+    std::vector<NodeUuid> queuedNodes;
+    /// nodes that are currently evaluating
+    std::vector<NodeUuid> evaluatingNodes;
+    /// graphs that should be auto evaluated
+    std::vector<NodeUuid> autoEvaluatingGraphs;
+    /// indicator if the exec model is currently beeing modified and thus
+    /// should halt execution
+    int modificationCount = 0;
+    /// indicator if queue is currently being evaluated
+    bool isEvaluatingQueue = false;
+
     struct Synchronization
     {
         struct SynchronizationEntry
@@ -179,7 +204,7 @@ struct GraphExecutionModel::Impl
 
         void update(GraphExecutionModel& model)
         {
-            if (model.m_evaluatingNodes.size() > 0) return;
+            if (model.pimpl->evaluatingNodes.size() > 0) return;
 
             QMutexLocker locker{&s_sync.mutex};
             auto idx = s_sync.indexOf(model);
@@ -271,8 +296,8 @@ struct GraphExecutionModel::Impl
             return {};
         }
 
-        auto iter = model.m_data.find(node->uuid());
-        if (iter == model.m_data.end())
+        auto iter = model.pimpl->data.find(node->uuid());
+        if (iter == model.pimpl->data.end())
         {
             if (makeError) gtError()
                     << makeError(graph)
@@ -462,7 +487,7 @@ struct GraphExecutionModel::Impl
 
         bool isEvaluating() const
         {
-            return utils::contains(execModel->m_evaluatingNodes, node->uuid());
+            return utils::contains(execModel->pimpl->evaluatingNodes, node->uuid());
         }
 
         bool isExclusive() const
@@ -472,7 +497,7 @@ struct GraphExecutionModel::Impl
 
         bool isQueued() const
         {
-            return utils::contains(execModel->m_queuedNodes, node->uuid());
+            return utils::contains(execModel->pimpl->queuedNodes, node->uuid());
         }
 
         bool isEvaluated() const
@@ -628,7 +653,7 @@ struct GraphExecutionModel::Impl
 
         if (!item.isReadyForEvaluation())
         {
-            utils::erase(model.m_queuedNodes, nodeUuid);
+            utils::erase(model.pimpl->queuedNodes, nodeUuid);
         }
 
         bool success = true;
@@ -703,7 +728,7 @@ struct GraphExecutionModel::Impl
         assert(item);
 
         // update counter
-        auto& refCounter = item->m_evaluatingChildNodes;
+        auto& refCounter = item->evaluatingChildNodes;
         refCounter = Op<size_t>{}(refCounter, 1);
         assert(refCounter < std::numeric_limits<size_t>::max());
         emit item.node->nodeEvalStateChanged();
@@ -773,7 +798,7 @@ struct GraphExecutionModel::Impl
             if ((flags & DontTriggerEvaluation) || model.isBeingModified()) break;
 
             // this node is evaluating
-            if (utils::contains(model.m_evaluatingNodes, nodeUuid)) break;
+            if (utils::contains(model.pimpl->evaluatingNodes, nodeUuid)) break;
 
             // check if predecessor is evaluating
             auto& conModel = model.graph().globalConnectionModel();
@@ -782,7 +807,7 @@ struct GraphExecutionModel::Impl
                 std::any_of(predeccessors.begin(),
                             predeccessors.end(),
                             [&model](NodeUuid const& predecessor){
-                bool x = utils::contains(model.m_evaluatingNodes, predecessor);
+                bool x = utils::contains(model.pimpl->evaluatingNodes, predecessor);
                 return x;
             });
 
@@ -891,24 +916,24 @@ struct GraphExecutionModel::Impl
     static inline bool
     rescheduleTargetNodes(GraphExecutionModel& model)
     {
-        model.m_pendingNodes.clear();
+        model.pimpl->pendingNodes.clear();
 
-        if (model.m_targetNodes.empty()) return false;
+        if (model.pimpl->targetNodes.empty()) return false;
 
         auto& conModel = model.graph().globalConnectionModel();
 
         // reschedule target nodes
-        for (NodeUuid const& nodeUuid : model.m_targetNodes)
+        for (NodeUuid const& nodeUuid : model.pimpl->targetNodes)
         {
-            accumulateDependencies(conModel, model.m_pendingNodes, nodeUuid);
+            accumulateDependencies(conModel, model.pimpl->pendingNodes, nodeUuid);
         }
 
-        sortDependencies(model, model.m_pendingNodes);
+        sortDependencies(model, model.pimpl->pendingNodes);
 
-        removeEvaluatedNodes(model, model.m_pendingNodes);
+        removeEvaluatedNodes(model, model.pimpl->pendingNodes);
 
         INTELLI_LOG(model) << "pending nodes:"
-                           << model.m_pendingNodes;
+                           << model.pimpl->pendingNodes;
 
         return schedulePendingNodes(model);
     }
@@ -922,21 +947,21 @@ struct GraphExecutionModel::Impl
     static inline bool
     rescheduleAutoEvaluatingNodes(GraphExecutionModel& model)
     {
-        model.m_autoEvaluatingNodes.clear();
+        model.pimpl->autoEvaluatingNodes.clear();
 
-        if (model.m_autoEvaluatingGraphs.empty()) return false;
+        if (model.pimpl->autoEvaluatingGraphs.empty()) return false;
 
         QVarLengthArray<NodeUuid, 20> targets;
 
         // find all target nodes
-        for (NodeUuid const& graphUuid : model.m_autoEvaluatingGraphs)
+        for (NodeUuid const& graphUuid : model.pimpl->autoEvaluatingGraphs)
         {
             Graph const* graph = qobject_cast<Graph const*>(model.graph().findNodeByUuid(graphUuid));
             assert(graph);
             findLeafNodes(*graph, targets);
 
             // append the graph node itself
-            bool isRootGraph = model.m_graph == graph;
+            bool isRootGraph = model.pimpl->graph == graph;
             if (!isRootGraph) targets.push_back(graphUuid);
         }
 
@@ -951,7 +976,7 @@ struct GraphExecutionModel::Impl
             accumulateDependencies(conModel, dummy, nodeUuid);
         }
 
-        model.m_autoEvaluatingNodes = {dummy.begin(), dummy.end()};
+        model.pimpl->autoEvaluatingNodes = {dummy.begin(), dummy.end()};
 
         return scheduleAutoEvaluatingNodes(model);
     }
@@ -966,7 +991,8 @@ struct GraphExecutionModel::Impl
     isNodeAutoEvaluating(GraphExecutionModel const& model,
                        NodeUuid const& nodeUuid)
     {
-        return model.m_autoEvaluatingNodes.find(nodeUuid) != model.m_autoEvaluatingNodes.end();
+        return model.pimpl->autoEvaluatingNodes.find(nodeUuid) !=
+               model.pimpl->autoEvaluatingNodes.end();
     }
 
     /**
@@ -982,7 +1008,7 @@ struct GraphExecutionModel::Impl
     {
         if (!model.isAutoEvaluatingGraph(graph))
         {
-            model.m_autoEvaluatingGraphs.push_back(graph.uuid());
+            model.pimpl->autoEvaluatingGraphs.push_back(graph.uuid());
         }
 
         INTELLI_LOG_SCOPE(model)
@@ -1038,7 +1064,7 @@ struct GraphExecutionModel::Impl
         auto item = findData(model, nodeUuid, autoEvaluteNodeError);
         if (!item)
         {
-            model.m_autoEvaluatingNodes.clear();
+            model.pimpl->autoEvaluatingNodes.clear();
             return false;
         }
 
@@ -1081,7 +1107,7 @@ struct GraphExecutionModel::Impl
             return true;
         }
 
-        model.m_queuedNodes.push_back(nodeUuid);
+        model.pimpl->queuedNodes.push_back(nodeUuid);
         return true;
     }
 
@@ -1106,7 +1132,7 @@ struct GraphExecutionModel::Impl
         findLeafNodes(graph, targets);
 
         // append the graph node itself
-        bool isRootGraph = model.m_graph == &graph;
+        bool isRootGraph = model.pimpl->graph == &graph;
         if (!isRootGraph) targets.push_back(graph.uuid());
 
         // evaluate pending nodes
@@ -1118,7 +1144,7 @@ struct GraphExecutionModel::Impl
                 << QObject::tr("scheduling target node '%1'...")
                        .arg(nodeUuid);
 
-            if (!model.m_data.contains(nodeUuid))
+            if (!model.pimpl->data.contains(nodeUuid))
             {
                 INTELLI_LOG_WARN(model)
                     << QObject::tr("node not found!");
@@ -1126,9 +1152,9 @@ struct GraphExecutionModel::Impl
                 return ExecFuture{model};
             }
 
-            if (!utils::contains(model.m_targetNodes, nodeUuid))
+            if (!utils::contains(model.pimpl->targetNodes, nodeUuid))
             {
-                model.m_targetNodes.push_back(nodeUuid);
+                model.pimpl->targetNodes.push_back(nodeUuid);
             }
 
             future.append(nodeUuid);
@@ -1155,7 +1181,7 @@ struct GraphExecutionModel::Impl
             << QObject::tr("scheduling target node '%1'...")
                    .arg(nodeUuid);
 
-        if (!model.m_data.contains(nodeUuid))
+        if (!model.pimpl->data.contains(nodeUuid))
         {
             INTELLI_LOG_WARN(model)
                 << QObject::tr("node not found!");
@@ -1163,9 +1189,9 @@ struct GraphExecutionModel::Impl
         }
 
         // append to target nodes
-        if (!utils::contains(model.m_targetNodes, nodeUuid))
+        if (!utils::contains(model.pimpl->targetNodes, nodeUuid))
         {
-            model.m_targetNodes.push_back(nodeUuid);
+            model.pimpl->targetNodes.push_back(nodeUuid);
         }
 
         // reschedule pending nodes
@@ -1186,27 +1212,27 @@ struct GraphExecutionModel::Impl
     static inline bool
     schedulePendingNodes(GraphExecutionModel& model)
     {
-        if (model.m_pendingNodes.empty()) return false;
+        if (model.pimpl->pendingNodes.empty()) return false;
 
         INTELLI_LOG_SCOPE(model)
             << tr("scheduling pending nodes...");
 
-        size_t before = model.m_pendingNodes.size();
+        size_t before = model.pimpl->pendingNodes.size();
 
-        for (size_t idx = 0; idx < model.m_pendingNodes.size(); ++idx)
+        for (size_t idx = 0; idx < model.pimpl->pendingNodes.size(); ++idx)
         {
-            NodeUuid const& nodeUuid = model.m_pendingNodes.at(idx);
+            NodeUuid const& nodeUuid = model.pimpl->pendingNodes.at(idx);
 
             auto item = findData(model, nodeUuid, evaluteNodeError);
             if (!item)
             {
-                model.m_pendingNodes.clear();
+                model.pimpl->pendingNodes.clear();
                 return false;
             }
 
             auto removeFromPending = gt::finally([&model, &idx](){
-                auto iter = model.m_pendingNodes.begin() + idx--;
-                model.m_pendingNodes.erase(iter);
+                auto iter = model.pimpl->pendingNodes.begin() + idx--;
+                model.pimpl->pendingNodes.erase(iter);
             });
             Q_UNUSED(removeFromPending);
 
@@ -1244,10 +1270,10 @@ struct GraphExecutionModel::Impl
                 continue;
             }
 
-            model.m_queuedNodes.push_back(nodeUuid);
+            model.pimpl->queuedNodes.push_back(nodeUuid);
         }
 
-        size_t after = model.m_pendingNodes.size();
+        size_t after = model.pimpl->pendingNodes.size();
 
         return (after - before) > 0;
     }
@@ -1261,12 +1287,12 @@ struct GraphExecutionModel::Impl
     static inline bool
     scheduleAutoEvaluatingNodes(GraphExecutionModel& model)
     {
-        if (model.m_autoEvaluatingNodes.empty()) return false;
+        if (model.pimpl->autoEvaluatingNodes.empty()) return false;
 
         // dummy vector to avoid iterating through entire set of nodes
         std::vector<NodeUuid> dummy{
-            model.m_autoEvaluatingNodes.begin(),
-            model.m_autoEvaluatingNodes.end()
+            model.pimpl->autoEvaluatingNodes.begin(),
+            model.pimpl->autoEvaluatingNodes.end()
         };
         sortDependencies(model, dummy);
 
@@ -1303,12 +1329,12 @@ struct GraphExecutionModel::Impl
                       bool& nodeRemovedFromQueue)
     {
         assert(item);
-        assert(model.m_queuedNodes.end() != iter);
+        assert(model.pimpl->queuedNodes.end() != iter);
 
         if (!item.isReadyForEvaluation())
         {
             // dequeue
-            model.m_queuedNodes.erase(iter);
+            model.pimpl->queuedNodes.erase(iter);
             nodeRemovedFromQueue = true;
             return NodeEvalState::Outdated;
         }
@@ -1322,8 +1348,8 @@ struct GraphExecutionModel::Impl
 
         // check if this model has
         bool isExclusiveNodeRunning =
-            std::any_of(model.m_evaluatingNodes.cbegin(),
-                        model.m_evaluatingNodes.cend(),
+            std::any_of(model.pimpl->evaluatingNodes.cbegin(),
+                        model.pimpl->evaluatingNodes.cend(),
                         [&model](NodeUuid const& nodeUuid){
             auto item = findData(model, nodeUuid);
             assert(item);
@@ -1339,7 +1365,7 @@ struct GraphExecutionModel::Impl
         }
 
         bool isExclusive = item.isExclusive();
-        if (isExclusive && !model.m_evaluatingNodes.empty())
+        if (isExclusive && !model.pimpl->evaluatingNodes.empty())
         {
             INTELLI_LOG(model)
                 << tr("node is exclusive and must wait for others to finish!");
@@ -1381,7 +1407,7 @@ struct GraphExecutionModel::Impl
         NodeUuid const& nodeUuid = item.node->uuid();
 
         // dequeue and mark as evaluating
-        model.m_queuedNodes.erase(iter);
+        model.pimpl->queuedNodes.erase(iter);
         nodeRemovedFromQueue = true;
 
         // trigger node evaluation
@@ -1421,19 +1447,21 @@ struct GraphExecutionModel::Impl
     static inline bool
     evaluateNextInQueue(GraphExecutionModel& model)
     {
-        if (model.m_queuedNodes.empty()) return false;
+        if (model.pimpl->queuedNodes.empty()) return false;
 
         // queue should be evalauted only once at a time
-        if (model.m_isEvaluatingQueue) return false;
+        if (model.pimpl->isEvaluatingQueue) return false;
 
-        model.m_isEvaluatingQueue = true;
+        model.pimpl->isEvaluatingQueue = true;
         auto finally = gt::finally([&model](){
-            model.m_isEvaluatingQueue = false;
+            model.pimpl->isEvaluatingQueue = false;
         });
 
         INTELLI_LOG_SCOPE(model)
             << "evaluating next in queue:"
-            << std::vector<NodeUuid>{model.m_queuedNodes.begin(), model.m_queuedNodes.end()} << "...";
+            << std::vector<NodeUuid>{model.pimpl->queuedNodes.begin(),
+                                     model.pimpl->queuedNodes.end()}
+            << "...";
 
         // do not evaluate if graph is currently being modified
         if (model.isBeingModified())
@@ -1447,9 +1475,9 @@ struct GraphExecutionModel::Impl
 
         // using index to iterate over queue since size and capacity may change
         // when evaluating a node
-        for (size_t idx = 0; idx < model.m_queuedNodes.size();)
+        for (size_t idx = 0; idx < model.pimpl->queuedNodes.size();)
         {
-            auto iter = model.m_queuedNodes.begin();
+            auto iter = model.pimpl->queuedNodes.begin();
             std::advance(iter, idx);
             auto const& nodeUuid = *iter;
 
@@ -1460,7 +1488,7 @@ struct GraphExecutionModel::Impl
                           << tr("node %1 not found!")
                                  .arg(nodeUuid);
 
-                iter = model.m_queuedNodes.erase(iter);
+                iter = model.pimpl->queuedNodes.erase(iter);
                 continue;
             }
 

@@ -528,24 +528,16 @@ public:
     }
 
     /**
-     * @brief Access the directed acyclic graph model used to manage the nodes
-     * and their connections
-     * @return DAG
-     */
-    [[deprecated("use `localConnectionModel` instead")]]
-    ConnectionModel const& dag() const { return m_local; }
-
-    /**
      * @brief Returns the local connection model.
      * @return Local connection model
      */
-    inline ConnectionModel const& connectionModel() const { return m_local; }
+    ConnectionModel const& connectionModel() const;
 
     /**
      * @brief Returns the global connection model.
      * @return Global connection model
      */
-    inline GlobalConnectionModel const& globalConnectionModel() const { return *m_global; }
+    GlobalConnectionModel const& globalConnectionModel() const;
 
     /**
      * @brief initializes the input and output of this graph
@@ -684,16 +676,7 @@ protected:
 private:
 
     struct Impl;
-
-    /// local connection graph
-    ConnectionModel m_local;
-    /// shred global connection graph
-    std::shared_ptr<GlobalConnectionModel> m_global = nullptr;
-    /// indicator if the connection model is currently beeing modified
-    int m_modificationCount = 0;
-    /// flag indicating that the connection model should be reset once
-    /// the graph is no longer being modified
-    bool m_resetAfterModification = false;
+    std::unique_ptr<Impl> pimpl;
 
     /**
      * @brief Whether this model is currently undergoing modification.

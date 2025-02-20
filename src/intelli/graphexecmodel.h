@@ -274,7 +274,7 @@ public:
      * @return Execution data
      */
     GT_NO_DISCARD
-    inline auto const& data() const { return m_data; }
+    inline GraphDataModel const& data() const;
 
 protected:
 
@@ -340,29 +340,7 @@ private:
 
     // helper struct to "hide" implementation details
     struct Impl;
-
-    /// assoicated graph
-    QPointer<Graph> m_graph;
-    /// data model for all nodes and their ports
-    GraphDataModel m_data;
-    /// nodes that should be evaluated
-    std::vector<NodeUuid> m_targetNodes;
-    /// nodes that should be queued and executed at some point to evaluate
-    /// all target nodes
-    std::vector<NodeUuid> m_pendingNodes;
-    /// nodes that should be considered for auto evaluation
-    std::set<NodeUuid> m_autoEvaluatingNodes;
-    /// nodes that are ready and waiting for evaluation
-    std::vector<NodeUuid> m_queuedNodes;
-    /// nodes that are currently evaluating
-    std::vector<NodeUuid> m_evaluatingNodes;
-    /// graphs that should be auto evaluated
-    std::vector<NodeUuid> m_autoEvaluatingGraphs;
-    /// indicator if the exec model is currently beeing modified and thus
-    /// should halt execution
-    int m_modificationCount = 0;
-    /// indicator if queue is currently being evaluated
-    bool m_isEvaluatingQueue = false;
+    std::unique_ptr<Impl> pimpl;
 
     void beginReset();
 

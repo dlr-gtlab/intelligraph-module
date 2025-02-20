@@ -18,9 +18,30 @@
 
 using namespace intelli;
 
-NodeFactory::NodeFactory() = default;
-
 const char* S_DEPRECATED = "[DEPRECATED]";
+
+struct NodeFactory::Impl
+{
+    using ClassName = QString;
+    using NodeCategory = QString;
+    using NodeName = QString;
+
+    struct NodeMetaData
+    {
+        NodeCategory category;
+        NodeName modelName;
+    };
+
+    QHash<ClassName, NodeMetaData> data;
+};
+
+NodeFactory::NodeFactory() :
+    pimpl(std::make_unique<Impl>())
+{
+
+}
+
+NodeFactory::~NodeFactory() = default;
 
 NodeFactory&
 NodeFactory::instance()
@@ -30,11 +51,17 @@ NodeFactory::instance()
 }
 
 QStringList
+NodeFactory::registeredNodes() const
+{
+    return knownClasses();
+}
+
+QStringList
 NodeFactory::registeredCategories() const
 {
     QStringList categories;
 
-    for (NodeMetaData const& data : m_data)
+    for (Impl::NodeMetaData const& data : pimpl->data)
     {
         if (data.category == S_DEPRECATED) continue;
         if (!categories.contains(data.category)) categories << data.category;
@@ -50,13 +77,13 @@ NodeFactory::registeredCategories() const
 QString
 NodeFactory::nodeCategory(const QString& className) const noexcept
 {
-    return m_data.value(className).category;
+    return pimpl->data.value(className).category;
 }
 
 QString
 NodeFactory::nodeModelName(const QString& className) const noexcept
 {
-    return m_data.value(className).modelName;
+    return pimpl->data.value(className).modelName;
 }
 
 bool
@@ -94,7 +121,7 @@ NodeFactory::registerNode(QMetaObject const& meta, QString category) noexcept
         category = S_DEPRECATED;
     }
 
-    m_data.insert(className, { std::move(category), tmp->modelName() });
+    pimpl->data.insert(className, { std::move(category), tmp->modelName() });
     return true;
 }
 

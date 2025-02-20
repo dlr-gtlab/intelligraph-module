@@ -139,7 +139,7 @@ public:
      * @brief Draws the resize handle
      * @param painter Painter to draw with
      */
-    void drawResizeHandle(QPainter& painter) const;
+    virtual void drawResizeHandle(QPainter& painter) const;
 
     void drawIcon(QPainter& painter) const;
 

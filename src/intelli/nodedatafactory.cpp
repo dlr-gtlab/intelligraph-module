@@ -36,7 +36,21 @@ findConversion(QMultiHash<TypeId, Conversion> const& hash,
 
 } // namespace
 
-NodeDataFactory::NodeDataFactory() = default;
+struct NodeDataFactory::Impl
+{
+    /// registered type names (used as default port captions)
+    QHash<TypeId, TypeName> typeNames;
+    /// registered conversion functions
+    QMultiHash<TypeId, Conversion> conversions;
+};
+
+NodeDataFactory::NodeDataFactory() :
+    pimpl(std::make_unique<Impl>())
+{
+
+}
+
+NodeDataFactory::~NodeDataFactory() = default;
 
 NodeDataFactory&
 NodeDataFactory::instance()
@@ -85,7 +99,7 @@ NodeDataFactory::registerData(const QMetaObject& meta) noexcept
         return false;
     }
 
-    m_typeNames.insert(className, typeName);
+    pimpl->typeNames.insert(className, typeName);
     return true;
 }
 
@@ -99,7 +113,7 @@ NodeDataFactory::registerConversion(TypeId const& from,
     gtTrace().verbose().nospace()
         << "### Registering Conversion from '"<< from << "' to '" << to << "'...";
 
-    m_conversions.insert(from, {to, conversion});
+    pimpl->conversions.insert(from, {to, conversion});
     return true;
 }
 
@@ -108,8 +122,8 @@ NodeDataFactory::typeName(TypeId const& typeId) const noexcept
 {
     static QString dummy{};
 
-    auto iter = m_typeNames.find(typeId);
-    if (iter == m_typeNames.end()) return dummy;
+    auto iter = pimpl->typeNames.find(typeId);
+    if (iter == pimpl->typeNames.end()) return dummy;
     return iter.value();
 }
 
@@ -117,7 +131,7 @@ bool
 NodeDataFactory::canConvert(TypeId const& from, TypeId const& to) const
 {
     return from == to ||
-           findConversion(m_conversions, from, to) != m_conversions.end();
+           findConversion(pimpl->conversions, from, to) != pimpl->conversions.end();
 }
 
 bool
@@ -134,8 +148,8 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
     TypeId const& from = data->typeId();
     if (data->typeId() == to) return data;
 
-    auto iter = findConversion(m_conversions, from, to);
-    if (iter == m_conversions.end()) return nullptr;
+    auto iter = findConversion(pimpl->conversions, from, to);
+    if (iter == pimpl->conversions.end()) return nullptr;
 
     gtTrace().verbose()
         << QObject::tr("converting data from '%1' to '%2'...")

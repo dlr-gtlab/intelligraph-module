@@ -45,7 +45,7 @@ public:
     GraphBuilder(GraphBuilder&&) = default;
     GraphBuilder& operator=(GraphBuilder const&) = delete;
     GraphBuilder& operator=(GraphBuilder&&) = default;
-    ~GraphBuilder() = default;
+    ~GraphBuilder();
 
     /**
      * Helper struct for accessing graph data
@@ -142,7 +142,8 @@ public:
 
 private:
 
-    Graph* m_graph;
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
 
     Node& addNodeHelper(std::unique_ptr<Node> node, Position pos = {}, NodeUuid const& nodeUuid = {});
 };

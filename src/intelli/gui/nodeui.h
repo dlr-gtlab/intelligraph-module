@@ -48,6 +48,11 @@ public:
     using PortActionFunction = typename PortUIAction::ActionMethod;
 
     Q_INVOKABLE NodeUI(Option option = NoOption);
+    NodeUI(NodeUI const&) = delete;
+    NodeUI(NodeUI&&) = delete;
+    NodeUI& operator=(NodeUI const&) = delete;
+    NodeUI& operator=(NodeUI&&) = delete;
+    ~NodeUI() override;
     
     /**
      * @brief Returns a painter object, used to paint the graphics object
@@ -166,7 +171,7 @@ public:
      * @brief Returns the list of all port actions registered
      * @return
      */
-    QList<PortUIAction> const& portActions() const { return m_portActions; }
+    QList<PortUIAction> const& portActions() const;
 
 #if GT_VERSION >= 0x020100
     /**
@@ -199,8 +204,8 @@ protected:
 
 private:
 
-    /// List of custom port actions
-    QList<PortUIAction> m_portActions;
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
 
     /**
      * @brief Clears the intelli graph (i.e. removes all nodes and connections)
