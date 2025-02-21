@@ -4,22 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-*This release is not ABI compatible with `0.12.0`*
+## [0.13.0] - 2025-02-21
+*This release is not ABI compatible with `0.12.0` and may break API*
 
 ### Added
-- Subgraphes can now also be expand, effectively ungrouping the subgraph. - #64
+- Subgraphs can now also be expanded, thus allowing to "ungroug" subgraphs previously created. - #64
 - Allowed nodes to be marked as deprecated. Deprecated nodes should be replaced as soon as possible as a future release may remove the node entirely. - #225
+- Nodes can now have a "display icon" that is drawn in the node header. - #236
 
 ### Changed
-- Major refactoring of the graph execution model. Now only one exec model is used to manage and evaluate a graph hierarchy, improving the handling of nested graphs and fixing unhandled edge cases. Additionally the future-object returned by the exec model is now far more flexible and user friendly, allowing above else the registration of callback functions. - #112
-- IntelliGraph specific compile flags were renamed; node's size and position properties are now always hidden unless the associated compiler flag was set. - #205
+- Major refactoring of the graph execution model. A single execution model is used to manage and evaluate the entire graph hierarchy, improving the handling of nested graphs and fixing previously unhandled edge cases. Additionally a helper object returned by the execution model when executin nodes/graphs is now more capable, allowing the registration of async callback functions. - #112
+- IntelliGraph specific compile flags were renamed; node's size and position properties are now always hidden unless the associated compiler flag is set. - #205
+- Most inputs nodes have been refactored and streamlined. Duplicate nodes have been removed. - #224
 
 ### Fixed
-- Fixed error when creating and loading a project with an empty IntelliGraph package in GTlab 2.1.0 - #193
-- Fixed potential crashes when deletiing instances of `ObjectData` that were created in a separate thread. - #112
+- Fixed an error when creating and loading a project with an empty IntelliGraph package in GTlab 2.1.0 - #193
+- Fixed potential crashes when deleting instances of `ObjectData` that were created in a separate thread. - #112
 - Fixed port captions spanning multiple words being truncated. - #212
-- The graph view should now remeber more consistently whether a graph should be auto-evaluated. - #112
+- The graph view should now remember more consistently whether a graph should be auto-evaluated. - #112
 - If a node fails to evaluate all successor nodes are invalidated and marked as failed as well. - #221
 - Fixed menus of embedded widgets not beeing displayed outside of the node's bounding rect.
 
