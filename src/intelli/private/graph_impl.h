@@ -550,10 +550,8 @@ struct Graph::Impl
 
         void operator()()
         {
-            gtDebug() << "DELETING CONNECTION" << graph->caption() << model << conId;
             if (ConnectionDeletedCommon<NodeId>::operator()())
             {
-                gtDebug() << "DONE!" << model;
                 emit graph->connectionDeleted(conId);
             }
         }
