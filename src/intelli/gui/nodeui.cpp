@@ -53,7 +53,14 @@ inline BoolObjectMethod operator+(BoolObjectMethod fA, Functor fOther)
 
 using namespace intelli;
 
-NodeUI::NodeUI(Option option)
+struct NodeUI::Impl
+{
+    /// List of custom port actions
+    QList<PortUIAction> portActions;
+};
+
+NodeUI::NodeUI(Option option) :
+    pimpl(std::make_unique<Impl>())
 {
     setObjectName(QStringLiteral("IntelliGraphNodeUI"));
 
@@ -153,6 +160,8 @@ NodeUI::NodeUI(Option option)
       .setVisibilityMethod(toGraph);
 }
 
+NodeUI::~NodeUI() = default;
+
 std::unique_ptr<NodePainter>
 NodeUI::painter(NodeGraphicsObject const& object,
                 NodeGeometry const& geometry) const
@@ -225,8 +234,8 @@ PortUIAction&
 NodeUI::addPortAction(const QString& actionText,
                                     PortActionFunction actionMethod)
 {
-    m_portActions.append(PortUIAction(actionText, std::move(actionMethod)));
-    return m_portActions.back();
+    pimpl->portActions.append(PortUIAction(actionText, std::move(actionMethod)));
+    return pimpl->portActions.back();
 }
 
 Node*
@@ -407,3 +416,9 @@ NodeUI::validatorRegExp(GtObject* obj)
     return retVal;
 }
 #endif
+
+QList<PortUIAction> const&
+intelli::NodeUI::portActions() const
+{
+    return pimpl->portActions;
+}

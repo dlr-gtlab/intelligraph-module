@@ -23,6 +23,16 @@ namespace intelli
 /// Helper struct to "hide" implementation details and template functions
 struct Graph::Impl
 {
+    /// local connection graph
+    ConnectionModel local;
+    /// shred global connection graph
+    std::shared_ptr<GlobalConnectionModel> global = std::make_shared<GlobalConnectionModel>();
+    /// indicator if the connection model is currently beeing modified
+    int modificationCount = 0;
+    /// flag indicating that the connection model should be reset once
+    /// the graph is no longer being modified
+    bool resetAfterModification = false;
+
     template <typename MakeError = QString(*)()>
     static inline bool
     canAppendConnection(Graph& graph,
@@ -155,7 +165,7 @@ struct Graph::Impl
         if (!(node.nodeFlags() & NodeFlag::Unique)) return true;
 
         auto const& nodes = graph.nodes();
-        for (auto const& entry : graph.m_local)
+        for (auto const& entry : graph.pimpl->local)
         {
             assert(entry.node);
             if (entry.node->modelName() == node.modelName())
@@ -231,18 +241,18 @@ struct Graph::Impl
             connection->disconnect(&graph);
         }
         // append nodes first
-        for (auto& entry : graph.m_local)
+        for (auto& entry : graph.pimpl->local)
         {
-            graph.m_global->insert(entry.node->uuid(), entry.node);
+            graph.pimpl->global->insert(entry.node->uuid(), entry.node);
         }
         // recurisvely append nodes and connections
         for (Graph* subgraph : graph.graphNodes())
         {
-            assert(graph.m_global.get() == subgraph->m_global.get());
+            assert(graph.pimpl->global.get() == subgraph->pimpl->global.get());
             repopulateGlobalConnectionModel(*subgraph);
         }
         // append connections of this graph
-        for (auto& entry : graph.m_local)
+        for (auto& entry : graph.pimpl->local)
         {
             for (auto& conId : entry.iterateConnections(PortType::Out))
             {
@@ -380,8 +390,8 @@ struct Graph::Impl
 
         void operator()(NodeId nodeId)
         {
-            auto localIter = graph->m_local.find(nodeId);
-            if (localIter == graph->m_local.end())
+            auto localIter = graph->pimpl->local.find(nodeId);
+            if (localIter == graph->pimpl->local.end())
             {
                 gtWarning() << utils::logId(*graph)
                             << tr("Failed to delete node") << nodeId
@@ -392,8 +402,8 @@ struct Graph::Impl
             assert(node);
             auto const& nodeUuid = node->uuid();
 
-            auto globalIter = graph->m_global->find(nodeUuid);
-            if (globalIter == graph->m_global->end())
+            auto globalIter = graph->pimpl->global->find(nodeUuid);
+            if (globalIter == graph->pimpl->global->end())
             {
                 gtWarning() << utils::logId(*graph)
                             << tr("Failed to delete node") << nodeId
@@ -402,7 +412,7 @@ struct Graph::Impl
             }
 
             auto* root = graph->rootGraph();
-            assert(root && root->m_global.get() == graph->m_global.get());
+            assert(root && root->pimpl->global.get() == graph->pimpl->global.get());
 
             auto change = graph->modify();
             Q_UNUSED(change);
@@ -420,8 +430,8 @@ struct Graph::Impl
 
             emit graph->childNodeAboutToBeDeleted(nodeId);
             
-            graph->m_local.erase(localIter);
-            graph->m_global->erase(globalIter);
+            graph->pimpl->local.erase(localIter);
+            graph->pimpl->global->erase(globalIter);
             
             emit graph->childNodeDeleted(nodeId);
         }
@@ -518,12 +528,12 @@ struct Graph::Impl
     struct GlobalConnectionDeleted : public ConnectionDeletedCommon<NodeUuid>
     {
         GlobalConnectionDeleted(Graph* g, ConnectionUuid id) :
-            ConnectionDeletedCommon(g, g->m_global.get(), std::move(id))
+            ConnectionDeletedCommon(g, g->pimpl->global.get(), std::move(id))
         { }
 
         void operator()()
         {
-            model = graph->m_global.get(); // update ptr
+            model = graph->pimpl->global.get(); // update ptr
             if (ConnectionDeletedCommon<NodeUuid>::operator()())
             {
                 emit graph->globalConnectionDeleted(conId);
@@ -535,13 +545,15 @@ struct Graph::Impl
     struct ConnectionDeleted : public ConnectionDeletedCommon<NodeId>
     {
         ConnectionDeleted(Graph* g, ConnectionId id) :
-            ConnectionDeletedCommon(g, &g->m_local, std::move(id))
+            ConnectionDeletedCommon(g, &g->pimpl->local, std::move(id))
         { }
 
         void operator()()
         {
+            gtDebug() << "DELETING CONNECTION" << graph->caption() << model << conId;
             if (ConnectionDeletedCommon<NodeId>::operator()())
             {
+                gtDebug() << "DONE!" << model;
                 emit graph->connectionDeleted(conId);
             }
         }

@@ -14,6 +14,7 @@
 #include <intelli/globals.h>
 
 #include <QColor>
+#include <QFont>
 
 namespace intelli
 {
@@ -93,6 +94,9 @@ struct StyleData
         QColor background;
         /// color of the grid
         QColor gridline;
+
+    private:
+        alignas(8) uint8_t __padding[32];
     } view;
 
     /// style data for nodes
@@ -102,6 +106,8 @@ struct StyleData
         QColor background;
         /// outline colors
         QColor defaultOutline, selectedOutline, hoveredOutline;
+        /// fonts
+        QFont headerFont{}, bodyFont{};
         /// outline width
         double defaultOutlineWidth = 1.0;
         double hoveredOutlineWidth = 1.5;
@@ -117,6 +123,9 @@ struct StyleData
         /// modifier to apply to all r-g-b components when highlighting
         /// compatible nodes (while creatimg a draft connection)
         int compatiblityTintModifier = 20;
+
+    private:
+        alignas(8) uint8_t __padding[16];
     } node;
 
     /// style data for connections
@@ -141,7 +150,13 @@ struct StyleData
          * @return Color of the type id
          */
         GT_INTELLI_EXPORT QColor typeColor(TypeId const& typeId) const;
-    } connection;
+
+    private:
+        alignas(8) uint8_t __padding[16];
+    } connection ;
+
+private:
+    uint8_t __padding[32];
 };
 
 /**

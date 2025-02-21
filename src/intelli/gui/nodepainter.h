@@ -139,7 +139,7 @@ public:
      * @brief Draws the resize handle
      * @param painter Painter to draw with
      */
-    void drawResizeHandle(QPainter& painter) const;
+    virtual void drawResizeHandle(QPainter& painter) const;
 
     void drawIcon(QPainter& painter) const;
 
@@ -196,7 +196,7 @@ private:
     /// Geometry
     NodeGeometry const* m_geometry;
     /// padding
-    uint8_t __padding[16];
+    alignas(8) uint8_t __padding[16];
 };
 
 } // namespace intelli

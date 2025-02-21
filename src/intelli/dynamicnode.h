@@ -30,6 +30,8 @@ class GT_INTELLI_EXPORT DynamicNode : public Node
 
 public:
 
+    ~DynamicNode();
+
     /// Option for the node creation
     enum Option
     {
@@ -204,13 +206,8 @@ private:
     using Node::insertOutPort;
     using Node::insertPort;
 
-    /// property container for the in ports
-    GtPropertyStructContainer m_inPorts;
-    /// property container for the out ports
-    GtPropertyStructContainer m_outPorts;
-
-    /// Node option
-    Option m_option = DynamicInputAndOutput;
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
 
     /**
      * @brief Returns the offset for to the first index of a dynamic port.

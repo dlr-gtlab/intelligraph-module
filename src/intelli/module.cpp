@@ -84,7 +84,7 @@ static const int ns_meta_port_type = [](){
 GtVersionNumber
 GtIntelliGraphModule::version()
 {
-    return GtVersionNumber(0, 13, 0, "dev1");
+    return GtVersionNumber(0, 13, 0);
 }
 
 QString
@@ -156,7 +156,7 @@ GtIntelliGraphModule::upgradeRoutines() const
     routines << to_0_12_0;
 
     gt::VersionUpgradeRoutine to_0_13_0;
-    to_0_13_0.target = GtVersionNumber{0, 13, 0, "dev1"};
+    to_0_13_0.target = GtVersionNumber{0, 13, 0};
     to_0_13_0.f = upgrade_to_0_13_0;
     routines << to_0_13_0;
 

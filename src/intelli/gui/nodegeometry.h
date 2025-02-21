@@ -299,7 +299,7 @@ private:
     /// cache for shape
     mutable tl::optional<QPainterPath> m_shape;
     /// padding
-    uint8_t __padding[216];
+    alignas(8) uint8_t __padding[24];
 
     /**
      * @brief Returns whether to position the node below all ports

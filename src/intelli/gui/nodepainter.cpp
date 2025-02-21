@@ -229,6 +229,8 @@ NodePainter::drawPortCaption(QPainter& painter,
 {
     auto& factory = NodeDataFactory::instance();
 
+    painter.setFont(style::currentStyle().node.bodyFont);
+
     painter.setBrush(Qt::NoBrush);
     painter.setPen((flags & PortConnected) ?
                        gt::gui::color::text() :
@@ -280,19 +282,12 @@ NodePainter::drawCaption(QPainter& painter) const
 
     if (node.nodeFlags() & NodeFlag::HideCaption) return;
 
-    QFont f = painter.font();
-    bool isBold = f.bold();
-    f.setBold(true);
-
     QRectF rect = geometry().captionRect();
 
-    painter.setFont(f);
+    painter.setFont(style::currentStyle().node.headerFont);
     painter.setBrush(Qt::NoBrush);
     painter.setPen(gt::gui::color::text());
     painter.drawText(rect, node.caption(), QTextOption{Qt::AlignHCenter});
-
-    f.setBold(isBold);
-    painter.setFont(f);
 
 #ifdef GT_INTELLI_DEBUG_NODE_GRAPHICS
     painter.setBrush(Qt::NoBrush);

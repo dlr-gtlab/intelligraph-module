@@ -39,6 +39,8 @@ class GT_INTELLI_EXPORT NodeGraphicsObject : public QGraphicsObject
 {
     Q_OBJECT
 
+    class NodeProxyWidget;
+
 public:
 
     class Highlights;
@@ -259,38 +261,7 @@ signals:
 private:
 
     struct Impl;
-    class NodeProxyWidget;
-
-    enum State
-    {
-        Normal = 0,
-        Translating,
-        Resizing
-    };
-
-    /// Pointer to graph scene data
-    GraphSceneData* m_sceneData;
-    /// Associated node
-    QPointer<Node> m_node;
-    /// ui data
-    std::unique_ptr<NodeUIData> m_uiData;
-    /// Geometry
-    std::unique_ptr<NodeGeometry> m_geometry;
-    /// Painter
-    std::unique_ptr<NodePainter> m_painter;
-    /// Central widget
-    QPointer<QGraphicsProxyWidget> m_proxyWidget;
-    /// Node eval state object
-    NodeEvalStateGraphicsObject* m_evalStateObject = nullptr;
-    /// Holds how much the node was shifted since the beginning of a
-    /// translation operation
-    QPointF m_translationDiff;
-    /// Highlight data
-    Highlights m_highlights;
-    /// State flag
-    State m_state = Normal;
-    /// Whether node is hovered
-    bool m_hovered = false;
+    std::unique_ptr<Impl> pimpl;
 
     /**
      * @brief selects the item and the node in the application

@@ -218,9 +218,8 @@ NodeGeometry::captionRect() const
 QSize
 NodeGeometry::captionSize() const
 {
-    QFont f;
-    f.setBold(true);
-    QFontMetrics metrics{f};
+    auto& style = style::currentStyle().node;
+    QFontMetrics metrics{style.headerFont};
 
     constexpr int errorMargin = 2; // margin to avoid truncation of caption
 
@@ -311,7 +310,7 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
     auto& node = this->node();
     auto& style = style::currentStyle().node;
 
-    QFontMetrics metrcis(QFont{});
+    QFontMetrics metrcis(style.bodyFont);
 
     // height
     auto body = nodeBodyRect();
@@ -348,14 +347,15 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
     assert(type != PortType::NoType);
     if (node().ports(type).size() < idx) return {};
 
-    auto& node = this->node();
-    auto* port = node.port(node.portId(type, idx));
+    auto& style = style::currentStyle().node;
+    auto& node  = this->node();
+    auto* port  = node.port(node.portId(type, idx));
     assert(port);
 
     if (!port->visible) return {};
 
     // height
-    QFontMetrics metrics{QFont()};
+    QFontMetrics metrics{style.bodyFont};
     int height = metrics.height();
 
     // width
