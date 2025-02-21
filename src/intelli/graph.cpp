@@ -689,7 +689,7 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
         conUuid.inNodeId = inputProvider->uuid();
         conUuid.inPort   = GroupInputProvider::virtualPortId(conId.inPort);
 
-        appendGlobalConnection(nullptr, conUuid);
+        appendGlobalConnection(guard, conUuid);
     }
 
     // forwards outputs of subgraph to graph node
