@@ -30,7 +30,7 @@ DoubleInputWidget::DoubleInputWidget(InputMode mode,
                               new EditableIntegerLabel("", nullptr),
                               parent)
 {
-    valueEdit()->setValidator(new QRegExpValidator(gt::re::forDoubles()));
+    valueEdit()->setValidator(new QRegExpValidator(gt::re::forDoubles(), this));
 
     // emulate double slider
     slider()->setMinimum(0);

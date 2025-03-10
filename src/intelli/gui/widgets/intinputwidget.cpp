@@ -29,7 +29,7 @@ IntInputWidget::IntInputWidget(InputMode mode,
                               new EditableIntegerLabel("", nullptr),
                               parent)
 {
-    valueEdit()->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+")));
+    valueEdit()->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+"), this));
 }
 
 int
