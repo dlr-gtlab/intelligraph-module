@@ -192,7 +192,7 @@ struct GenericCalculatorExecNode::Impl
     static inline QVariant
     variantFromNodeData(NodeDataPtr data, GtAbstractProperty&, GtCalculator&)
     {
-        if (auto d = qobject_pointer_cast<T const>(data))
+        if (auto d = convert<T const>(data))
         {
             return d->value();
         }
@@ -214,7 +214,7 @@ struct GenericCalculatorExecNode::Impl
                                         [](NodeDataPtr data,
                                            GtAbstractProperty& prop,
                                            GtCalculator& calc) -> QVariant{
-            auto d = qobject_pointer_cast<ObjectData const>(data);
+            auto d = convert<ObjectData const>(data);
             if (!d) return {};
 
             auto* o = d->object();
@@ -277,7 +277,6 @@ struct GenericCalculatorExecNode::Impl
 
     static int inline init()
     {
-        //initKnownClasses();
         initPortFromPropertyMap();
         initVariantToPortDataMap();
         initVariantFromPortDataMap();
@@ -292,14 +291,8 @@ GenericCalculatorExecNode::GenericCalculatorExecNode() :
                 tr("Target class name"),
                 tr("Target class name of calculator"))
 {
-    // this function may be called before all other modules are registered
-    // -> to make sure all modules are loaded "wait" until we have a valid
-    // project
-    if (gtApp && gtApp->currentProject())
-    {
-        static auto init = Impl::init();
-        Q_UNUSED(init);
-    }
+    static auto init = Impl::init();
+    Q_UNUSED(init);
 
     setNodeFlag(Resizable);
     m_outSuccess = addOutPort(PortInfo{typeId<BoolData>(), tr("success")});
@@ -358,7 +351,7 @@ GenericCalculatorExecNode::GenericCalculatorExecNode() :
         /// iterate over ports to remove already connected ones at start
         gt::for_each_key(m_calcInPorts.begin(), m_calcInPorts.end(),
                          [this](PortId portId){
-            if (auto* pd = nodeData<NodeData const*>(portId))
+            if (nodeData<NodeData const>(portId))
             {
                 onPortConnected(portId);
             }
@@ -509,13 +502,19 @@ GenericCalculatorExecNode::initPorts() // generate default parameter set
         char const* className = prop->metaObject()->className();
 
         // add port depending on the property type
-        auto const& entry = Impl::propertyToPortType(className);
+        auto entry = Impl::propertyToPortType(className);
         if (!entry) continue;
 
         PortInfo port = entry.typeId;
         port.caption = Impl::generatePortCaption(*prop);
         port.captionVisible = true;
         port.optional = true;
+
+        if (prop->isMonitoring())
+        {
+            entry.addInPort = false;
+            entry.addOutPort = true;
+        }
 
         if (entry.addInPort)
         {
