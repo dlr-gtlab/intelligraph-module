@@ -1,3 +1,11 @@
+/*
+ * GTlab IntelliGraph
+ *
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
+ */
 
 #ifndef GT_INTELLI_METAENUMPROPERTY_H
 #define GT_INTELLI_METAENUMPROPERTY_H
@@ -5,7 +13,6 @@
 #include <intelli/exports.h>
 
 #include "gt_modeproperty.h"
-#include "gt_modetypeproperty.h"
 
 #include <QMetaEnum>
 

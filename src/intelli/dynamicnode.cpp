@@ -31,7 +31,7 @@ QString const S_PORT_ID = QStringLiteral("PortId");
 
 struct DynamicNode::Impl
 {
-    Impl(Option opt) : option(opt) {};
+    explicit Impl(Option opt) : option(opt) {};
 
     /// property container for the in ports
     GtPropertyStructContainer inPorts{"dynamicInPorts", "In Ports"};

@@ -1039,7 +1039,7 @@ bool upgradeModuleFiles(QDomElement& /*root*/,
         QDirIterator::NoIteratorFlags
     };
 
-    bool success = true;
+    bool retVal = true;
 
     while (iter.hasNext())
     {
@@ -1078,29 +1078,26 @@ bool upgradeModuleFiles(QDomElement& /*root*/,
                     << makeError()
                     << "(XML ERROR: line:" << errorLine
                     << "- column:" << errorColumn << "->" << errorStr;
-                success = false;
+                retVal = false;
                 continue;
             }
 
             QDomElement root = document.documentElement();
 
-            bool doContinue = false;
+            bool const success = std::all_of(funcs.begin(), funcs.end(),
+                                             [&](auto const& f){
+                return f(root, filePath);
+            });
 
-            for (auto f : funcs)
+            if (!success)
             {
-                if (!f(root, filePath))
-                {
-                    success = false;
-                    gtError()
-                        << makeError()
-                        << "(XML ERROR: line:" << errorLine
-                        << "- column:" << errorColumn << "->" << errorStr;
-                    doContinue = true;
-                    break;
-                }
+                retVal = false;
+                gtError()
+                    << makeError()
+                    << "(XML ERROR: line:" << errorLine
+                    << "- column:" << errorColumn << "->" << errorStr;
+                continue;
             }
-
-            if (doContinue) continue;
 
             // save file
             // new ordered attribute stream writer algorithm
@@ -1110,7 +1107,7 @@ bool upgradeModuleFiles(QDomElement& /*root*/,
                     << makeError()
                     << QObject::tr("(Failed to save graph flow '%1'!)")
                            .arg(file.fileName());
-                success = false;
+                retVal = false;
                 continue;
             }
         }
@@ -1118,5 +1115,5 @@ bool upgradeModuleFiles(QDomElement& /*root*/,
         dir.cdUp();
     }
 
-    return success;
+    return retVal;
 }

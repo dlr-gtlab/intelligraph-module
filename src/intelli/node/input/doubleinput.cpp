@@ -162,6 +162,7 @@ DoubleInputNode::useBounds() const { return m_useBounds; }
 void
 DoubleInputNode::setUseBounds(bool value)
 {
+    // cppcheck-suppress duplicateConditionalAssign
     if (m_useBounds != value) m_useBounds = value;
 }
 
