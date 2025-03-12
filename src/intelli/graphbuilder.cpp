@@ -24,6 +24,7 @@ using namespace intelli;
 
 struct GraphBuilder::Impl
 {
+    // cppcheck-suppress unusedStructMember
     Graph* graph{};
 };
 

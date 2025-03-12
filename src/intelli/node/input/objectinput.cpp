@@ -36,7 +36,6 @@ ObjectInputNode::ObjectInputNode() :
 
     setNodeFlag(ResizableHOnly);
 
-    // cppcheck-suppress useInitializationList
     m_out = addOutPort(makePort(typeId<ObjectData>())
                            .setCaptionVisible(false));
 

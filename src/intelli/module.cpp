@@ -1086,6 +1086,7 @@ bool upgradeModuleFiles(QDomElement& /*root*/,
 
             bool doContinue = false;
 
+            // cppcheck-suppress useStlAlgorithm
             for (auto f : funcs)
             {
                 if (!f(root, filePath))

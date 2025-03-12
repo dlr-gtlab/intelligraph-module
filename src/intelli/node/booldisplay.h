@@ -4,7 +4,7 @@
  *  SPDX-License-Identifier: BSD-3-Clause
  *  SPDX-FileCopyrightText: 2024 German Aerospace Center
  *
- *  Author: Jens Schmeink <jens.schmeink@dlr.de>
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #ifndef GT_INTELLI_BOOLDISPLAYNODE_H
