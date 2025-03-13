@@ -46,12 +46,12 @@ Graph::~Graph()
     Modification cmd = modify();
     Q_UNUSED(cmd);
 
-    auto const& nodes = this->nodes();
-    qDeleteAll(nodes);
-
     // remove connections
     auto& conGroup = this->connectionGroup();
     delete& conGroup;
+
+    auto const& nodes = this->nodes();
+    qDeleteAll(nodes);
 }
 
 Graph*
