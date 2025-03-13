@@ -333,6 +333,9 @@ GenericCalculatorExecNode::GenericCalculatorExecNode() :
             if (obj)
             {
                 view->setObject(obj);
+                // collapse first category
+                view->collapse(view->model()->index(0, 0, view->rootIndex()));
+
                 connect(obj, qOverload<GtObject*, GtAbstractProperty*>(&GtObject::dataChanged),
                         this, &GenericCalculatorExecNode::onCurrentObjectDataChanged,
                         Qt::UniqueConnection);
@@ -493,6 +496,8 @@ GenericCalculatorExecNode::initPorts() // generate default parameter set
         if (prop->category() == GtAbstractProperty::Custom &&
             prop->categoryToString() == defaultCategory)
         {
+            // hide some default entries
+            if (prop->ident() == QStringLiteral("skip")) prop->hide(true);
             continue;
         }
 
