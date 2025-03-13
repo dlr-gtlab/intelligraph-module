@@ -324,6 +324,7 @@ GenericCalculatorExecNode::GenericCalculatorExecNode() :
         lay->addWidget(edit);
 
         auto* view = new GtPropertyTreeView(gtApp->currentProject());
+        view->setAnimated(false);
         lay->addWidget(view);
 
         auto updateView = [view, this](){
