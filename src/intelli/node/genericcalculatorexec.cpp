@@ -84,7 +84,7 @@ struct GenericCalculatorExecNode::Impl
         {
             if (auto* prop = obj->findProperty(ports[portId]))
             {
-                prop->hide(true);
+                prop->hide(hide);
                 emit node.currentObjectChanged();
                 return true;
             }
@@ -637,7 +637,7 @@ GenericCalculatorExecNode::onPortDisconnected(PortId portId)
     bool success = Impl::setPortPropertyHidden(*this, m_calcInPorts, portId, false);
     if (!success)
     {
-        Impl::setPortPropertyHidden(*this, m_calcOutPorts, portId, true);
+        Impl::setPortPropertyHidden(*this, m_calcOutPorts, portId, false);
     }
 }
 
