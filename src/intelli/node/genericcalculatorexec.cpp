@@ -29,6 +29,7 @@
 #include "gt_objectlinkproperty.h"
 #include "gt_doublemonitoringproperty.h"
 #include "gt_intmonitoringproperty.h"
+#include "gt_stringmonitoringproperty.h"
 
 #include "gt_stylesheets.h"
 #include "gt_propertytreeview.h"
@@ -71,24 +72,25 @@ QMap<ClassName, ClassIdent> s_knownClasses;
 struct GenericCalculatorExecNode::Impl
 {
     template<typename Ports>
-    static inline void
+    static inline bool
     setPortPropertyHidden(GenericCalculatorExecNode& node,
                           Ports& ports,
                           PortId portId,
                           bool hide)
     {
-        if (ports.contains(portId))
-        {
-            if (auto obj = node.currentObject())
-            {
-                if (auto* prop = obj->findProperty(ports[portId]))
-                {
-                    prop->hide(true);
-                }
+        if (!ports.contains(portId)) return false;
 
+        if (auto obj = node.currentObject())
+        {
+            if (auto* prop = obj->findProperty(ports[portId]))
+            {
+                prop->hide(true);
                 emit node.currentObjectChanged();
+                return true;
             }
         }
+
+        return false;
     }
 
     /// generates a standardized port caption from a property
@@ -162,6 +164,9 @@ struct GenericCalculatorExecNode::Impl
         s_portFromPropertyMap.insert(GT_CLASSNAME(GtIntMonitoringProperty),
                                      { typeId<IntData>() }
                                      )->addOutPort = true;
+        s_portFromPropertyMap.insert(GT_CLASSNAME(GtStringMonitoringProperty),
+                                     { typeId<StringData>() }
+                                     )->addOutPort = true;
         // inputs
         s_portFromPropertyMap.insert(GT_CLASSNAME(GtDoubleProperty),
                                      { typeId<DoubleData>() }
@@ -192,7 +197,7 @@ struct GenericCalculatorExecNode::Impl
     static inline QVariant
     variantFromNodeData(NodeDataPtr data, GtAbstractProperty&, GtCalculator&)
     {
-        if (auto d = qobject_pointer_cast<T const>(data))
+        if (auto d = convert<T const>(data))
         {
             return d->value();
         }
@@ -214,7 +219,7 @@ struct GenericCalculatorExecNode::Impl
                                         [](NodeDataPtr data,
                                            GtAbstractProperty& prop,
                                            GtCalculator& calc) -> QVariant{
-            auto d = qobject_pointer_cast<ObjectData const>(data);
+            auto d = convert<ObjectData const>(data);
             if (!d) return {};
 
             auto* o = d->object();
@@ -277,7 +282,6 @@ struct GenericCalculatorExecNode::Impl
 
     static int inline init()
     {
-        //initKnownClasses();
         initPortFromPropertyMap();
         initVariantToPortDataMap();
         initVariantFromPortDataMap();
@@ -292,14 +296,8 @@ GenericCalculatorExecNode::GenericCalculatorExecNode() :
                 tr("Target class name"),
                 tr("Target class name of calculator"))
 {
-    // this function may be called before all other modules are registered
-    // -> to make sure all modules are loaded "wait" until we have a valid
-    // project
-    if (gtApp && gtApp->currentProject())
-    {
-        static auto init = Impl::init();
-        Q_UNUSED(init);
-    }
+    static auto init = Impl::init();
+    Q_UNUSED(init);
 
     setNodeFlag(Resizable);
     m_outSuccess = addOutPort(PortInfo{typeId<BoolData>(), tr("success")});
@@ -356,13 +354,16 @@ GenericCalculatorExecNode::GenericCalculatorExecNode() :
                 view, updateView);
 
         /// iterate over ports to remove already connected ones at start
-        gt::for_each_key(m_calcInPorts.begin(), m_calcInPorts.end(),
-                         [this](PortId portId){
-            if (auto* pd = nodeData<NodeData const*>(portId))
-            {
-                onPortConnected(portId);
-            }
-        });
+        for (auto* ports : {&m_calcInPorts, &m_calcOutPorts})
+        {
+            gt::for_each_key(ports->begin(), ports->end(),
+                             [this](PortId portId){
+                if (nodeData<NodeData const>(portId))
+                {
+                    onPortConnected(portId);
+                }
+            });
+        }
 
         m_className.get().isEmpty() ? updateClass() : updateClassText();
         updateView();
@@ -509,13 +510,21 @@ GenericCalculatorExecNode::initPorts() // generate default parameter set
         char const* className = prop->metaObject()->className();
 
         // add port depending on the property type
-        auto const& entry = Impl::propertyToPortType(className);
+        auto entry = Impl::propertyToPortType(className);
         if (!entry) continue;
 
         PortInfo port = entry.typeId;
         port.caption = Impl::generatePortCaption(*prop);
         port.captionVisible = true;
         port.optional = true;
+
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
+        if (prop->isMonitoring())
+        {
+            entry.addInPort = false;
+            entry.addOutPort = true;
+        }
+#endif
 
         if (entry.addInPort)
         {
@@ -615,13 +624,21 @@ GenericCalculatorExecNode::onCurrentObjectDataChanged()
 void
 GenericCalculatorExecNode::onPortConnected(PortId portId)
 {
-    Impl::setPortPropertyHidden(*this, m_calcInPorts, portId, true);
+    bool success = Impl::setPortPropertyHidden(*this, m_calcInPorts, portId, true);
+    if (!success)
+    {
+        Impl::setPortPropertyHidden(*this, m_calcOutPorts, portId, true);
+    }
 }
 
 void
 GenericCalculatorExecNode::onPortDisconnected(PortId portId)
 {
-    Impl::setPortPropertyHidden(*this, m_calcInPorts, portId, false);
+    bool success = Impl::setPortPropertyHidden(*this, m_calcInPorts, portId, false);
+    if (!success)
+    {
+        Impl::setPortPropertyHidden(*this, m_calcOutPorts, portId, true);
+    }
 }
 
 bool
