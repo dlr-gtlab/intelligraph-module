@@ -132,11 +132,11 @@ EditableLabel::onTextEdited()
 EditableIntegerLabel::EditableIntegerLabel(QString const& text, QWidget* parent) :
     EditableNumberLabel<int>(text, parent)
 {
-    edit()->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+")));
+    edit()->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+"), this));
 }
 
 EditableDoubleLabel::EditableDoubleLabel(QString const& text, QWidget* parent) :
     EditableNumberLabel<double>(text, parent)
 {
-    edit()->setValidator(new QRegExpValidator(gt::re::forDoubles()));
+    edit()->setValidator(new QRegExpValidator(gt::re::forDoubles(), this));
 }
