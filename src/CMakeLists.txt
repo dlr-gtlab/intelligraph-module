@@ -93,6 +93,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/booldisplay.h
     intelli/exec/detachedexecutor.h
     intelli/exec/dummynodedatamodel.h
+    intelli/node/dummy.h
     intelli/node/existingdirectorysource.h
     intelli/node/filereader.h
     intelli/node/filewriter.h
@@ -163,6 +164,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/string.cpp
     intelli/data/stringlist.cpp
     intelli/node/booldisplay.cpp
+    intelli/node/dummy.cpp
     intelli/node/existingdirectorysource.cpp
     intelli/node/filereader.cpp
     intelli/node/filewriter.cpp

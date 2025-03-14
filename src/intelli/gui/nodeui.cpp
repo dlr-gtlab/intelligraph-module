@@ -12,6 +12,7 @@
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
 #include "intelli/graph.h"
+#include "intelli/node/dummy.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/graphexecmodel.h"
@@ -213,6 +214,10 @@ NodeUI::displayIcon(Node const& node) const
     if (qobject_cast<GroupOutputProvider const*>(&node))
     {
         return gt::gui::icon::export_();
+    }
+    if (qobject_cast<DummyNode const*>(&node))
+    {
+        return gt::gui::icon::objectInvalid();
     }
     return QIcon{};
 }

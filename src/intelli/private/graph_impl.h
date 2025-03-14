@@ -11,9 +11,10 @@
 #define GT_INTELLI_GRAPH_IMPL_H
 
 #include <intelli/graph.h>
-#include <intelli/nodedatafactory.h>
-#include <intelli/private/utils.h>
 #include <intelli/connection.h>
+#include <intelli/nodedatafactory.h>
+#include "intelli/node/dummy.h"
+#include <intelli/private/utils.h>
 
 #include <gt_logging.h>
 
@@ -32,6 +33,9 @@ struct Graph::Impl
     /// flag indicating that the connection model should be reset once
     /// the graph is no longer being modified
     bool resetAfterModification = false;
+    /// flag inidicating that the graph is currently restoring nodes and
+    /// connections
+    bool restoring = false;
 
     template <typename MakeError = QString(*)()>
     static inline bool
@@ -96,8 +100,8 @@ struct Graph::Impl
                sourceNode->node->parent() == &graph);
 
         // check if ports to connect exist
-        auto inPort  = targetNode->node->port(conId.inPort);
-        auto outPort = sourceNode->node->port(conId.outPort);
+        PortInfo* inPort  = targetNode->node->port(conId.inPort);
+        PortInfo* outPort = sourceNode->node->port(conId.outPort);
 
         if (!inPort || !outPort)
         {
@@ -124,7 +128,7 @@ struct Graph::Impl
         }
 
         // target node should be an input port
-        assert (targetNode->node->portType(inPort->id()) == PortType::In);
+        assert(targetNode->node->portType(inPort->id()) == PortType::In);
 
         // check if types are compatible
         auto& factory = NodeDataFactory::instance();
