@@ -17,6 +17,7 @@
 
 #include "gt_algorithms.h"
 #include "gt_coreapplication.h"
+#include "gt_project.h"
 #include "gt_calculator.h"
 #include "gt_calculatorfactory.h"
 
