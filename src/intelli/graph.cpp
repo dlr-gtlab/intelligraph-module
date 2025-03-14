@@ -915,6 +915,7 @@ Graph::restoreConnection(Connection* connection)
 void
 Graph::restoreConnections()
 {
+    pimpl->restoring = true;
     auto cmd = modify();
     Q_UNUSED(cmd);
 
@@ -932,19 +933,46 @@ Graph::restoreConnections()
 void
 Graph::restoreNodesAndConnections()
 {
+    pimpl->restoring = true;
     auto cmd = modify();
     Q_UNUSED(cmd);
 
-    auto const& nodes = this->nodes();
+    auto const& objects = this->findDirectChildren<GtObject*>();
     auto const& connections = this->connections();
 
-    for (auto* node : nodes)
+    for (GtObject* object : objects)
     {
-        restoreNode(node);
+        if (auto* node = qobject_cast<Node*>(object))
+        {
+            restoreNode(node);
+        }
+        else if (object->isDummy())
+        {
+            auto dummy = std::make_unique<DummyNode>();
+            dummy->setDummyObject(*object);
+            appendNode(std::move(dummy));
+        }
     }
 
     for (auto* connection : connections)
     {
+        if (DummyNode* inNode = qobject_cast<DummyNode*>(findNode(connection->inNodeId())))
+        {
+            if (!inNode->port(connection->inPort()))
+            {
+                inNode->addInPort(PortInfo::customId(connection->inPort(), typeId<DummyData>()));
+            }
+        }
+        if (DummyNode* outNode = qobject_cast<DummyNode*>(findNode(connection->outNodeId())))
+        {
+            if (!outNode->port(connection->outPort()))
+            {
+                outNode->addOutPort(PortInfo::customId(connection->outPort(), typeId<DummyData>()));
+            }
+        }
+//        bool isDummyInput  = (!inPort  && qobject_cast<DummyNode*>(targetNode->node));
+//        bool isDummyOutput = (!outPort && qobject_cast<DummyNode*>(sourceNode->node));
+
         restoreConnection(connection);
     }
 }
@@ -1008,6 +1036,7 @@ Graph::emitEndModification()
 
     if (pimpl->modificationCount == 0)
     {
+        pimpl->restoring = false;
         if (pimpl->resetAfterModification)
         {
             // do not trigger this function twice
