@@ -9,6 +9,7 @@
 
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodedata.h"
+#include "intelli/node/dummy.h"
 
 #include "gt_qtutilities.h"
 #include "gt_logging.h"
@@ -47,7 +48,7 @@ struct NodeDataFactory::Impl
 NodeDataFactory::NodeDataFactory() :
     pimpl(std::make_unique<Impl>())
 {
-
+    registerData(GT_METADATA(DummyData));
 }
 
 NodeDataFactory::~NodeDataFactory() = default;
@@ -100,6 +101,13 @@ NodeDataFactory::registerData(const QMetaObject& meta) noexcept
     }
 
     pimpl->typeNames.insert(className, typeName);
+
+    registerConversion(className, typeId<DummyData>(), [](NodeDataPtr const&){
+        return nullptr;
+    });
+    registerConversion(typeId<DummyData>(), className, [](NodeDataPtr const&){
+        return nullptr;
+    });
     return true;
 }
 
