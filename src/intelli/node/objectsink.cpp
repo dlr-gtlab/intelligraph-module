@@ -143,7 +143,9 @@ ObjectSink::doExport()
         GtObject* sourceClone = source->clone();
         GtObject* targetParent = target->parentObject();
         QString oldUUID = target->uuid();
+        QString oldName = target->objectName();
         sourceClone->setUuid(oldUUID);
+        sourceClone->setObjectName(oldName);
         target->deleteLater();
         sourceClone->moveToThread(targetParent->thread());
 
