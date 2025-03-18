@@ -10,7 +10,10 @@
 #ifndef GT_INTELLI_OBJECTSINK_H
 #define GT_INTELLI_OBJECTSINK_H
 
+#include "gt_objectlinkproperty.h"
 #include "intelli/node.h"
+
+class QPushButton;
 
 namespace intelli
 {
@@ -27,6 +30,18 @@ protected:
 
 private:
     PortId m_in;
+
+    GtObjectLinkProperty m_target;
+
+    void setButtonColor(QPushButton* button, const QColor& col);
+
+private slots:
+    void doExport();
+
+signals:
+    void exportActivated(bool);
+
+    void exportFinished(bool);
 };
 
 } // namespace intelli
