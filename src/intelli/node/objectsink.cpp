@@ -102,7 +102,6 @@ ObjectSink::setButtonColor(QPushButton* button, const QColor& col)
     QColor gradientLoColor = col.darker(110);
 
     QString style = QString(styleBase).arg(QVariant(gradientLoColor).toString(),
-
                                            QVariant(highlightColor).toString(),
                                            QVariant(gradientUpColor).toString());
 
@@ -129,8 +128,27 @@ ObjectSink::doExport()
 
     if (!target) return;
 
-    GtObject* sourceClone = source->clone();
-    sourceClone->moveToThread(target->thread());
+    if (target->metaObject()->className() != source->metaObject()->className())
+    {
+        gtInfo() << "For source and target of different types the source is"
+                    "appended to the target.";
+        GtObject* sourceClone = source->clone();
+        sourceClone->moveToThread(target->thread());
 
-    gtDataModel->appendChild(sourceClone, target);
+        gtDataModel->appendChild(sourceClone, target);
+        return;
+    }
+    else
+    {
+        GtObject* sourceClone = source->clone();
+        GtObject* targetParent = target->parentObject();
+        QString oldUUID = target->uuid();
+        sourceClone->setUuid(oldUUID);
+        target->deleteLater();
+        sourceClone->moveToThread(targetParent->thread());
+
+        gtDataModel->deleteFromModel(target);
+        gtDataModel->appendChild(sourceClone, targetParent);
+        return;
+    }
 }
