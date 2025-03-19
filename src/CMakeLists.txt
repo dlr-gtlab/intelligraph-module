@@ -54,6 +54,7 @@ set(PUBLIC_HEADERS
     intelli/data/integer.h
     intelli/data/object.h
     intelli/data/string.h
+    intelli/data/stringlist.h
     intelli/gui/icons.h
     intelli/gui/graphscenedata.h
     intelli/gui/nodegeometry.h
@@ -159,6 +160,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/file.cpp
     intelli/data/object.cpp
     intelli/data/string.cpp
+    intelli/data/stringlist.cpp
     intelli/node/booldisplay.cpp
     intelli/node/existingdirectorysource.cpp
     intelli/node/filereader.cpp
