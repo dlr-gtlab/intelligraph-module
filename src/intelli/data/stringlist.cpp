@@ -18,14 +18,14 @@ StringListData::StringListData(QStringList val) :
 
 }
 
-QString
+QStringList
 intelli::StringListData::value() const
 {
-
+    return m_data;
 }
 
 void
-intelli::StringListData::setValue(const QStringList &val)
+intelli::StringListData::setValue(const QStringList& val)
 {
-
+    m_data = val;
 }

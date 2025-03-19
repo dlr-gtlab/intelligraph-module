@@ -19,7 +19,7 @@ class GT_INTELLI_EXPORT StringListData : public NodeData
 public:
     Q_INVOKABLE StringListData(QStringList val = {});
 
-    Q_INVOKABLE QString value() const;
+    Q_INVOKABLE QStringList value() const;
 
     Q_INVOKABLE void setValue(const QStringList& val);
 
