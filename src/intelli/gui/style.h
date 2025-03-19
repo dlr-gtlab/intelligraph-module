@@ -212,6 +212,16 @@ GT_INTELLI_EXPORT QVector<StyleId> registeredStyles();
 GT_INTELLI_EXPORT QColor tint(QColor const& color, int r, int g, int b);
 
 /**
+ * @brief Applies a tint to `color` using `tint` multiplied with `mult`
+ * (additively, regardless of theme).
+ * @param color Color to tint
+ * @param tint Tint color
+ * @param mult Multiplier (0-1)
+ * @return Tinted color
+ */
+GT_INTELLI_EXPORT QColor tint(QColor const& color, QColor const& tint, double mult);
+
+/**
  * @brief Overload, applies value to red, green, andblue.
  * @param color Color to tint
  * @param val Value to apply to red, green, and blue.

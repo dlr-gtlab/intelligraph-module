@@ -9,17 +9,17 @@
  */
 
 #include "intelli/graph.h"
+#include "intelli/nodedatafactory.h"
+#include "intelli/node/dummy.h"
 #include "intelli/gui/nodepainter.h"
 #include "intelli/gui/nodegeometry.h"
-#include "intelli/gui/icons.h"
 #include "intelli/gui/nodeuidata.h"
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
 
-#include "intelli/nodedatafactory.h"
-
 #include <gt_colors.h>
 
+#include <QIcon>
 #include <QPainter>
 #include <QGraphicsWidget>
 
@@ -101,6 +101,11 @@ NodePainter::customBackgroundColor() const
     auto& node = this->node();
 
     QColor bg = style::currentStyle().node.background;
+
+    if (qobject_cast<DummyNode const*>(&node))
+    {
+        return style::tint(bg, gt::gui::color::warningText(), 0.1);
+    }
 
     if (node.nodeFlags() & NodeFlag::Unique ||
         qobject_cast<Graph const*>(&node))

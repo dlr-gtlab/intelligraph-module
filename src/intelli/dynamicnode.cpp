@@ -8,9 +8,10 @@
  */
 
 #include "intelli/dynamicnode.h"
+#include "intelli/nodedatafactory.h"
+#include "intelli/data/invalid.h"
 #include "intelli/property/stringselection.h"
 #include "intelli/property/uint.h"
-#include "intelli/nodedatafactory.h"
 #include "intelli/private/utils.h"
 
 #include "gt_structproperty.h"
@@ -67,11 +68,12 @@ DynamicNode::DynamicNode(QString const& modelName,
         };
 
         QStringList inputTypes = inputWhiteList.empty() ?
-                                     NodeDataFactory::instance().registeredTypeIds() :
+                                     NodeDataFactory::instance().validTypeIds() :
                                      std::move(inputWhiteList);
         QStringList outputTypes = outputWhiteList.empty() ?
-                                     NodeDataFactory::instance().registeredTypeIds() :
+                                     NodeDataFactory::instance().validTypeIds() :
                                      std::move(outputWhiteList);
+
         inputTypes.sort();
         outputTypes.sort();
       

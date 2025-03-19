@@ -18,6 +18,8 @@
 #include "intelli/data/file.h"
 #include "intelli/data/stringlist.h"
 
+#include "intelli/node/dummy.h"
+
 #include "intelli/graph.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
@@ -115,6 +117,8 @@ intelli::registerDefaultNodes()
         QString catProcess = QObject::tr("Process");
         QString catFile = QObject::tr("File");
         QString catDisplay = QObject::tr("Display");
+
+        GT_INTELLI_REGISTER_NODE(DummyNode, hidden);
 
         GT_INTELLI_REGISTER_NODE(Graph, catOther);
         GT_INTELLI_REGISTER_NODE(GroupInputProvider, hidden);

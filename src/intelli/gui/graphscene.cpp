@@ -14,6 +14,7 @@
 #include "intelli/connection.h"
 #include "intelli/nodefactory.h"
 #include "intelli/nodedatafactory.h"
+#include "intelli/node/dummy.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/gui/nodeui.h"
@@ -1021,6 +1022,12 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
         return o->node().objectFlags() & GtObject::ObjectFlag::UserDeletable;
     });
 
+    bool noDummyNodes = std::none_of(selected.nodes.begin(),
+                                     selected.nodes.end(),
+                                     [](NodeGraphicsObject* o){
+        return qobject_cast<DummyNode const*>(&o->node());
+    });
+
     Node* selectedNode = &selected.nodes.at(0)->node();
     assert(selectedNode);
     Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
@@ -1030,12 +1037,12 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
 
     QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
     ungroupAction->setIcon(gt::gui::icon::stretch());
-    ungroupAction->setEnabled(allDeletable);
+    ungroupAction->setEnabled(noDummyNodes && allDeletable);
     ungroupAction->setVisible(selectedGraphNode);
 
     QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
-    groupAction->setEnabled(allDeletable);
+    groupAction->setEnabled(noDummyNodes && allDeletable);
 
     menu.addSeparator();
 

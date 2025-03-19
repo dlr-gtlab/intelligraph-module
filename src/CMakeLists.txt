@@ -52,6 +52,7 @@ set(PUBLIC_HEADERS
     intelli/data/file.h
     intelli/data/int.h
     intelli/data/integer.h
+    intelli/data/invalid.h
     intelli/data/object.h
     intelli/data/string.h
     intelli/data/stringlist.h
@@ -159,6 +160,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/bytearray.cpp
     intelli/data/double.cpp
     intelli/data/int.cpp
+    intelli/data/invalid.cpp
     intelli/data/file.cpp
     intelli/data/object.cpp
     intelli/data/string.cpp

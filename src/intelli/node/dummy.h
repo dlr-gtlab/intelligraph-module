@@ -10,13 +10,15 @@
 #ifndef GT_INTELLI_DUMMYNODE_H
 #define GT_INTELLI_DUMMYNODE_H
 
-#include <intelli/node.h>
+#include <intelli/dynamicnode.h>
 #include <intelli/nodedata.h>
+
+#include <gt_objectlinkproperty.h>
 
 namespace intelli
 {
 
-class DummyNode : public intelli::Node
+class DummyNode : public intelli::DynamicNode
 {
     Q_OBJECT
 
@@ -24,23 +26,19 @@ public:
 
     Q_INVOKABLE DummyNode();
 
-    using Node::addInPort;
-    using Node::addOutPort;
-
     bool setDummyObject(GtObject& object);
+
+    QString const& linkedUuid() const;
 
 protected:
 
     void eval() override;
-};
 
-class DummyData : public intelli::NodeData
-{
-    Q_OBJECT
+    void onObjectDataMerged() override;
 
-public:
+private:
 
-    Q_INVOKABLE DummyData();
+    GtObjectLinkProperty m_object;
 };
 
 } // namespace intelli

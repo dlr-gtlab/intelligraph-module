@@ -8,15 +8,30 @@
  */
 
 #include <intelli/node/dummy.h>
+#include <intelli/data/invalid.h>
 
 #include <gt_objectmemento.h>
 
 using namespace intelli;
 
 DummyNode::DummyNode() :
-    Node("Dummy Node")
+    DynamicNode("Dummy Node",
+                QStringList{typeId<InvalidData>()},
+                QStringList{typeId<InvalidData>()}),
+    m_object("target", tr("Target"), tr("Target Object"), this, QStringList{})
 {
+    registerProperty(m_object);
+    m_object.setReadOnly(true);
+    m_object.hide(true);
+
+#ifdef INTELLIGRAPH_DEBUG_NODE_PROPERTIES
+    m_object.setReadOnly(false);
+    m_object.setHidden(false);
+#endif
+
     setNodeEvalMode(NodeEvalMode::Blocking);
+
+    setToolTip(tr("Unkown node, changes cannot be applied to linked node!"));
 }
 
 bool
@@ -29,15 +44,21 @@ DummyNode::setDummyObject(GtObject& object)
     for (auto& prop : memento.properties)
     {
         // apply node id
-        if (prop.name == "id") setId(NodeId::fromValue(prop.data().toUInt()));
+        if (prop.name == QStringLiteral("id")) setId(NodeId::fromValue(prop.data().toUInt()));
         // apply position
-        if (prop.name == "posX") setPos(Position{prop.data().toDouble(), pos().y()});
-        if (prop.name == "posY") setPos(Position{pos().x(), prop.data().toDouble()});
+        if (prop.name == QStringLiteral("posX")) setPos(Position{prop.data().toDouble(), pos().y()});
+        if (prop.name == QStringLiteral("posY")) setPos(Position{pos().x(), prop.data().toDouble()});
     }
 
-    setCaption(memento.ident());
+    setCaption(memento.ident() + QStringLiteral("[?]"));
 
     return true;
+}
+
+QString const&
+DummyNode::linkedUuid() const
+{
+    return m_object.get();
 }
 
 void
@@ -46,6 +67,8 @@ DummyNode::eval()
     return evalFailed();
 }
 
-DummyData::DummyData() :
-    NodeData("n/a")
-{ }
+void
+DummyNode::onObjectDataMerged()
+{
+    DynamicNode::onObjectDataMerged();
+}

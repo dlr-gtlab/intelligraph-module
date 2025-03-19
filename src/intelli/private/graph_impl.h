@@ -13,7 +13,6 @@
 #include <intelli/graph.h>
 #include <intelli/connection.h>
 #include <intelli/nodedatafactory.h>
-#include "intelli/node/dummy.h"
 #include <intelli/private/utils.h>
 
 #include <gt_logging.h>
@@ -33,9 +32,6 @@ struct Graph::Impl
     /// flag indicating that the connection model should be reset once
     /// the graph is no longer being modified
     bool resetAfterModification = false;
-    /// flag inidicating that the graph is currently restoring nodes and
-    /// connections
-    bool restoring = false;
 
     template <typename MakeError = QString(*)()>
     static inline bool

@@ -9,7 +9,7 @@
 
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodedata.h"
-#include "intelli/node/dummy.h"
+#include "intelli/data/invalid.h"
 
 #include "gt_qtutilities.h"
 #include "gt_logging.h"
@@ -48,7 +48,7 @@ struct NodeDataFactory::Impl
 NodeDataFactory::NodeDataFactory() :
     pimpl(std::make_unique<Impl>())
 {
-    registerData(GT_METADATA(DummyData));
+    registerData(GT_METADATA(InvalidData));
 }
 
 NodeDataFactory::~NodeDataFactory() = default;
@@ -102,12 +102,14 @@ NodeDataFactory::registerData(const QMetaObject& meta) noexcept
 
     pimpl->typeNames.insert(className, typeName);
 
-    registerConversion(className, typeId<DummyData>(), [](NodeDataPtr const&){
+    // register conversion for invalid data type
+    registerConversion(className, typeId<InvalidData>(), [](NodeDataPtr const&){
         return nullptr;
     });
-    registerConversion(typeId<DummyData>(), className, [](NodeDataPtr const&){
+    registerConversion(typeId<InvalidData>(), className, [](NodeDataPtr const&){
         return nullptr;
     });
+
     return true;
 }
 
@@ -123,6 +125,14 @@ NodeDataFactory::registerConversion(TypeId const& from,
 
     pimpl->conversions.insert(from, {to, conversion});
     return true;
+}
+
+TypeIdList
+NodeDataFactory::validTypeIds() const
+{
+    TypeIdList list = registeredTypeIds();
+    list.removeOne(typeId<InvalidData>());
+    return list;
 }
 
 TypeName const&

@@ -27,6 +27,7 @@
 
 #include <gt_logging.h>
 
+#include <gt_colors.h>
 #include <gt_command.h>
 #include <gt_inputdialog.h>
 #include <gt_application.h>
@@ -34,6 +35,7 @@
 #include <QFileInfo>
 #include <QFile>
 
+using namespace intelli;
 
 using BoolObjectMethod = std::function<bool (GtObject*)>;
 
@@ -52,7 +54,7 @@ inline BoolObjectMethod operator+(BoolObjectMethod fA, Functor fOther)
     };
 }
 
-using namespace intelli;
+DummyNode* toDummy(GtObject* obj) { return qobject_cast<DummyNode*>(obj); }
 
 struct NodeUI::Impl
 {
@@ -76,17 +78,17 @@ NodeUI::NodeUI(Option option) :
     addSingleAction(tr("Execute once"), executeNode)
         .setIcon(gt::gui::icon::processRun())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("runProcess"), categroy))
-        .setVisibilityMethod(toNode);
+        .setVisibilityMethod(toNode + NOT(toDummy));
 
     addSingleAction(tr("Set inactive"), setActive<false>)
         .setIcon(gt::gui::icon::sleep())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("skipProcess"), categroy))
-        .setVisibilityMethod(toNode + isActive);
+        .setVisibilityMethod(toNode + NOT(toDummy) + isActive);
 
     addSingleAction(tr("set active"), setActive<true>)
         .setIcon(gt::gui::icon::sleepOff())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("unskipProcess"), categroy))
-        .setVisibilityMethod(toNode + NOT(isActive));
+        .setVisibilityMethod(toNode + NOT(toDummy) + NOT(isActive));
 
     addSeparator();
 
@@ -120,11 +122,11 @@ NodeUI::NodeUI(Option option) :
 
     addSingleAction(tr("Add In Port"), addInPort)
         .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(toDynamicNode + hasInputPorts);
+        .setVisibilityMethod(toDynamicNode + NOT(toDummy) + hasInputPorts);
 
     addSingleAction(tr("Add Out Port"), addOutPort)
         .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(toDynamicNode + hasOutputPorts);
+        .setVisibilityMethod(toDynamicNode + NOT(toDummy) + hasOutputPorts);
 
     /** PORT ACTIONS **/
 
@@ -188,10 +190,22 @@ QIcon
 NodeUI::icon(GtObject* obj) const
 {
     Node* node = toNode(obj);
-    if (!node) return gt::gui::icon::objectEmpty();
+    if (!node)
+    {
+        return gt::gui::icon::objectEmpty();
+    }
+
+    if (toDummy(obj))
+    {
+        return gt::gui::colorize(gt::gui::icon::objectUnknown(),
+                                 gt::gui::color::warningText());
+    }
 
     QIcon icon = displayIcon(*node);
-    if (!icon.isNull()) return icon;
+    if (!icon.isNull())
+    {
+        return icon;
+    }
 
     return gt::gui::icon::intelli::node();
 }
@@ -217,7 +231,8 @@ NodeUI::displayIcon(Node const& node) const
     }
     if (qobject_cast<DummyNode const*>(&node))
     {
-        return gt::gui::icon::objectInvalid();
+        return gt::gui::colorize(gt::gui::icon::questionmark(),
+                                 gt::gui::color::warningText);
     }
     return QIcon{};
 }
@@ -282,6 +297,7 @@ NodeUI::toConstDynamicNode(GtObject const* obj)
 bool
 NodeUI::isDynamicPort(GtObject* obj, PortType type, PortIndex idx)
 {
+    if (toDummy(obj)) return false;
     if (auto* node = toDynamicNode(obj))
     {
         return node->isDynamicPort(type, idx);
