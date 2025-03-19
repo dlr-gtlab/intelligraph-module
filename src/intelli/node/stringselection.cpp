@@ -15,7 +15,7 @@
 
 using namespace intelli;
 
-StringSelection::StringSelection() :
+StringSelectionNode::StringSelectionNode() :
     Node(tr("String Selection"))
 {
     m_in = addInPort(typeId<StringListData>());
@@ -59,7 +59,7 @@ StringSelection::StringSelection() :
 }
 
 void
-StringSelection::eval()
+StringSelectionNode::eval()
 {
     auto list = nodeData<StringListData>(m_in);
     if (!list)

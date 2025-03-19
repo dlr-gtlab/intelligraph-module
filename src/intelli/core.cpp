@@ -47,6 +47,7 @@
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/filereader.h"
 #include "intelli/node/filewriter.h"
+#include "intelli/node/stringselection.h"
 
 #include "intelli/node/projectinfo.h"
 
@@ -145,6 +146,7 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(IntInputNode, catInput);
 
         GT_INTELLI_REGISTER_NODE(StringBuilderNode, catString);
+        GT_INTELLI_REGISTER_NODE(StringSelectionNode, catString);
 
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
 

@@ -6,18 +6,18 @@
  *
  *  Author: Jens Schmeink <jens.schmeink@dlr.de>
  */
-#ifndef GT_INTELLI_STRINGSELECTION_H
-#define GT_INTELLI_STRINGSELECTION_H
+#ifndef GT_INTELLI_STRINGSELECTIONNODE_H
+#define GT_INTELLI_STRINGSELECTIONNODE_H
 
 #include <intelli/node.h>
 
 namespace intelli
 {
-class GT_INTELLI_EXPORT StringSelection : public Node
+class GT_INTELLI_EXPORT StringSelectionNode : public Node
 {
     Q_OBJECT
 public:
-    Q_INVOKABLE StringSelection();
+    Q_INVOKABLE StringSelectionNode();
 
 protected:
     void eval() override;
@@ -30,4 +30,4 @@ private:
 };
 }
 
-#endif // GT_INTELLI_STRINGSELECTION_H
+#endif // GT_INTELLI_STRINGSELECTIONNODE_H
