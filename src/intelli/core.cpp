@@ -16,6 +16,7 @@
 #include "intelli/data/string.h"
 #include "intelli/data/int.h"
 #include "intelli/data/file.h"
+#include "intelli/data/stringlist.h"
 
 #include "intelli/graph.h"
 #include "intelli/node/groupinputprovider.h"
@@ -75,6 +76,7 @@ intelli::registerDefaultDataTypes()
         // register data type
         GT_INTELLI_REGISTER_DATA(ByteArrayData);
         GT_INTELLI_REGISTER_DATA(StringData);
+        GT_INTELLI_REGISTER_DATA(StringListData);
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(IntData);
         GT_INTELLI_REGISTER_DATA(BoolData);
