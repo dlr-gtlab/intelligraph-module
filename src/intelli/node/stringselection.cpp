@@ -16,42 +16,51 @@
 using namespace intelli;
 
 StringSelectionNode::StringSelectionNode() :
-    Node(tr("String Selection"))
+    Node(tr("String Selection")),
+    m_selection("selectedString", "selection", "selection")
 {
-    m_in = addInPort(typeId<StringListData>());
+    m_in = addInPort({typeId<StringListData>(), tr("List")});
     m_out = addOutPort(makePort(typeId<StringData>()).setCaption(tr("Selection")));
+
+    registerProperty(m_selection);
+    m_selection.hide();
 
     registerWidgetFactory([this]() {
         auto w = std::make_unique<QComboBox>();
 
         QStringList given;
-        auto list = nodeData<StringListData>(m_in);
-        if (list)
+
+        if (auto list = nodeData<StringListData>(m_in))
         {
             given = list->value();
         }
 
         w->addItems(given);
 
-        m_selection = given.first();
+        if (given.isEmpty())
+        {
+            m_selection.setVal("");
+        }
+        else m_selection.setVal(given.first());
 
         connect(w.get(), &QComboBox::currentTextChanged,
                 this, [this](QString const& newObjName) {
-                    m_selection = newObjName;
+                    this->m_selection = newObjName;
+                    emit triggerNodeEvaluation();
                 });
 
         connect(this, &Node::inputDataRecieved,
-                w.get(), [this, wid = w.get(), &w]()
+                w.get(), [this, wid = w.get()]()
                 {
-                    w->clear();
+                    wid->clear();
                     QStringList given;
                     auto list = nodeData<StringListData>(m_in);
                     if (list)
                     {
                         given = list->value();
                     }
-
-                    w->addItems(given);
+                    wid->addItems(given);
+                    emit triggerNodeEvaluation();
                 });
 
         return w;
@@ -76,6 +85,5 @@ StringSelectionNode::eval()
         return;
     }
 
-    gtWarning() << tr("Invalid value selection");
-
+    setNodeData(m_out, std::make_shared<StringData>(listValues.first()));
 }

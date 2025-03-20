@@ -10,6 +10,7 @@
 #define GT_INTELLI_STRINGSELECTIONNODE_H
 
 #include <intelli/node.h>
+#include <gt_stringproperty.h>
 
 namespace intelli
 {
@@ -26,7 +27,7 @@ private:
     /// ports for parent objet input and child object output
     PortId m_in, m_out;
 
-    QString m_selection;
+    GtStringProperty m_selection;
 };
 }
 
