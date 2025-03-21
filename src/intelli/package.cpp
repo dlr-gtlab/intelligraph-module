@@ -94,6 +94,28 @@ struct Package::Impl
     }
 
     /**
+     * @brief Removes all dummy nodes from a memento of a graph instance
+     * @param memento Memento to cleanup
+     */
+    static void removeDummyNodes(GtObjectMemento& memento)
+    {
+        // find dummy nodes and remove them from the memento
+        memento.childObjects.erase(
+            std::remove_if(memento.childObjects.begin(),
+                           memento.childObjects.end(),
+                           [](GtObjectMemento& child){
+                               return child.className() == GT_CLASSNAME(DummyNode);
+                           }),
+            memento.childObjects.end());
+
+        // recursive
+        for (GtObjectMemento& child : memento.childObjects)
+        {
+            removeDummyNodes(child);
+        }
+    }
+
+    /**
      * @brief Creates an index file in `dir` with the contents of `jDoc`. The
      * index file denotes the order of the objects in `dir`.
      * @param jDoc Document to write
@@ -167,24 +189,6 @@ struct Package::Impl
 
             (*iter)->disconnectFromParent();
             if (obj.insertChild(idx++, *iter)) onFailure.clear();
-        }
-    }
-
-    static void removeDummyNodes(GtObjectMemento& memento)
-    {
-        // find dummy nodes and remove them from the memento
-        memento.childObjects.erase(
-            std::remove_if(memento.childObjects.begin(),
-                           memento.childObjects.end(),
-                           [](GtObjectMemento& child){
-                               return child.className() == GT_CLASSNAME(DummyNode);
-                           }),
-            memento.childObjects.end());
-
-        // recursive
-        for (GtObjectMemento& child : memento.childObjects)
-        {
-            removeDummyNodes(child);
         }
     }
 

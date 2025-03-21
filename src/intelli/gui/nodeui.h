@@ -213,6 +213,8 @@ private:
      */
     static void clearNodeGraph(GtObject* obj);
 
+    static void deleteDummyNode(GtObject* obj);
+
     /**
      * @brief Checks if node can be renamed (i.e. node should be valid but not unique)
      * @param obj Object to check

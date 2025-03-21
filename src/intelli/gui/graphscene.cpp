@@ -11,17 +11,18 @@
 #include "intelli/gui/graphscene.h"
 
 #include <intelli/graph.h>
-#include "intelli/connection.h"
-#include "intelli/nodefactory.h"
-#include "intelli/nodedatafactory.h"
-#include "intelli/node/dummy.h"
-#include "intelli/node/groupinputprovider.h"
-#include "intelli/node/groupoutputprovider.h"
-#include "intelli/gui/nodeui.h"
-#include "intelli/gui/nodegeometry.h"
+#include <intelli/connection.h>
+#include <intelli/nodefactory.h>
+#include <intelli/nodedatafactory.h>
+#include <intelli/node/groupinputprovider.h>
+#include <intelli/node/groupoutputprovider.h>
+#include <intelli/gui/nodeui.h>
+#include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/graphscenedata.h>
+#include <intelli/gui/style.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/connectionobject.h>
+#include <intelli/gui/graphics/popupitem.h>
 #include <intelli/private/utils.h>
 
 #include <gt_application.h>
@@ -82,6 +83,32 @@ enum SelectionFilter
     NodesOnly,
     ConnectionsOnly
 };
+
+/**
+ * @brief Helper method that checks if a node is user deletable
+ * @param o Object
+ * @return Whether the object is user deletable
+ */
+static bool
+isNotDeletable(NodeGraphicsObject* o)
+{
+    return !(o->node().objectFlags() & GtObject::ObjectFlag::UserDeletable);
+};
+
+/**
+ * @brief Returns the currently active view
+ * @param scene Graph Scene
+ * @return Active view (may be null)
+ */
+static QGraphicsView const*
+activeView(GraphScene const* scene)
+{
+    for (QGraphicsView const* view : scene->views())
+    {
+        if (view->hasFocus()) return view;
+    }
+    return nullptr;
+}
 
 /**
  * @brief Helper function to find all selected nodes and connections. If a
@@ -370,9 +397,32 @@ copySelectionTo(GraphScene& scene, Graph& dummy)
     auto selected = Impl::findSelectedItems(scene);
     if (selected.nodes.empty()) return false;
 
+    // remove unqiue nodes
+    auto const isUnique = [](NodeGraphicsObject const* o){
+        return o->node().nodeFlags() & NodeFlag::Unique;
+    };
+
+    selected.nodes.erase(
+        std::remove_if(selected.nodes.begin(),
+                       selected.nodes.end(),
+                       isUnique),
+        selected.nodes.end());
+
+    // remove not deletable nodes
+    selected.nodes.erase(
+        std::remove_if(selected.nodes.begin(),
+                       selected.nodes.end(),
+                       isNotDeletable),
+        selected.nodes.end());
+
+    // at least one node should be selected
+    if (selected.nodes.empty()) return false;
+
     // only duplicate internal connections
     auto const containsNode = [&selected](NodeId nodeId){
-        return std::find_if(selected.nodes.begin(), selected.nodes.end(), [nodeId](NodeGraphicsObject* o){
+        return std::find_if(selected.nodes.begin(),
+                            selected.nodes.end(),
+                            [nodeId](NodeGraphicsObject* o){
                    return o->nodeId() == nodeId;
                }) != selected.nodes.end();
     };
@@ -387,20 +437,6 @@ copySelectionTo(GraphScene& scene, Graph& dummy)
                        selected.connections.end(),
                        isExternalConnection),
         selected.connections.end());
-
-    // remove unqiue nodes
-    auto const isUnique = [](NodeGraphicsObject const* o){
-        return o->node().nodeFlags() & NodeFlag::Unique;
-    };
-
-    selected.nodes.erase(
-        std::remove_if(selected.nodes.begin(),
-                       selected.nodes.end(),
-                       isUnique),
-        selected.nodes.end());
-
-    // at least one node should be selected
-    if (selected.nodes.empty()) return false;
 
     // append nodes and connections to dummy graph
     bool success = true;
@@ -740,12 +776,85 @@ GraphScene::alignObjectsToGrid()
 void
 GraphScene::deleteSelectedObjects()
 {
-    auto const& selected = Impl::findSelectedItems(*this);
+    // TODO: function is called instead of keypress event, requires ugly
+    // workarounds
+    auto selected = Impl::findSelectedItems(*this);
     if (selected.empty()) return;
 
+    // remove nodes that are not deletable
+    auto beginErase = std::remove_if(selected.nodes.begin(),
+                                     selected.nodes.end(),
+                                     Impl::isNotDeletable);
+
+    // not all nodes are default deletable
+    int count = std::distance(beginErase, selected.nodes.end());
+    if (count == selected.nodes.size())
+    {
+        if (count == 1)
+        {
+            // attempt to find custom delete action
+            Node& node = selected.nodes.front()->node();
+
+            QKeySequence shortcut = gtApp->getShortCutSequence("delete");
+
+            QList<GtObjectUI*> const& uis = gtApp->objectUI(&node);
+            for (GtObjectUI* ui : uis)
+            {
+                for (GtObjectUIAction const& action : ui->actions())
+                {
+                    if (shortcut == action.shortCut() &&
+                    // action should be visible/enabled
+                        (!action.visibilityMethod() ||
+                         action.visibilityMethod()(nullptr, &node)) &&
+                        (!action.verificationMethod() ||
+                         action.verificationMethod()(nullptr, &node)))
+                    {
+                        // success
+                        action.method()(nullptr, &node);
+                        return;
+                    }
+                }
+            }
+            // node not deletable
+        }
+
+        // create popup to notify that not all nodes are deletable
+        if (QGraphicsView const* view = Impl::activeView(this))
+        {
+            auto* popup = PopupItem::addPopupItem(
+                *this,
+                tr("Selected %1 not deletable!")
+                    .arg(selected.nodes.size() == 1 ? tr("node is") :
+                                                      tr("nodes are")),
+                std::chrono::seconds{1}
+            );
+            // apply cursor position
+            QPointF pos = view->mapToScene(view->mapFromGlobal(QCursor::pos()));
+            pos.rx() -= popup->boundingRect().width() * 0.5;
+            pos.ry() -= popup->boundingRect().height() * 1.5;
+            popup->setPos(pos);
+        }
+    }
+
+    // remove not deletable nodes
+    selected.nodes.erase(beginErase, selected.nodes.end());
+
+    if (selected.empty()) return;
+
+    // default delete selected nodes
     GtObjectList objects;
-    std::transform(selected.connections.begin(), selected.connections.end(), std::back_inserter(objects), [this](ConnectionGraphicsObject* o){ return m_graph->findConnection(o->connectionId()); });
-    std::transform(selected.nodes.begin(), selected.nodes.end(), std::back_inserter(objects), [](NodeGraphicsObject* o){ return &o->node(); });
+    std::transform(selected.connections.begin(),
+                   selected.connections.end(),
+                   std::back_inserter(objects),
+                   [this](ConnectionGraphicsObject* o){
+        return m_graph->findConnection(o->connectionId());
+    });
+    std::transform(selected.nodes.begin(),
+                   selected.nodes.end(),
+                   std::back_inserter(objects),
+                   [](NodeGraphicsObject* o){
+        return &o->node();
+    });
 
     auto modifyCmd = m_graph->modify();
     Q_UNUSED(modifyCmd);
@@ -1016,17 +1125,9 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     // selection should not be empty
     assert(!selected.nodes.empty());
 
-    bool allDeletable = std::all_of(selected.nodes.begin(),
-                                    selected.nodes.end(),
-                                    [](NodeGraphicsObject* o){
-        return o->node().objectFlags() & GtObject::ObjectFlag::UserDeletable;
-    });
-
-    bool noDummyNodes = std::none_of(selected.nodes.begin(),
+    bool allDeletable = std::none_of(selected.nodes.begin(),
                                      selected.nodes.end(),
-                                     [](NodeGraphicsObject* o){
-        return qobject_cast<DummyNode const*>(&o->node());
-    });
+                                     Impl::isNotDeletable);
 
     Node* selectedNode = &selected.nodes.at(0)->node();
     assert(selectedNode);
@@ -1037,12 +1138,12 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
 
     QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
     ungroupAction->setIcon(gt::gui::icon::stretch());
-    ungroupAction->setEnabled(noDummyNodes && allDeletable);
+    ungroupAction->setEnabled(allDeletable);
     ungroupAction->setVisible(selectedGraphNode);
 
     QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
-    groupAction->setEnabled(noDummyNodes && allDeletable);
+    groupAction->setEnabled(allDeletable);
 
     menu.addSeparator();
 

@@ -20,24 +20,29 @@ DummyNode::DummyNode() :
                 QStringList{typeId<InvalidData>()}),
     m_object("target", tr("Target"), tr("Target Object"), this, QStringList{})
 {
+    setFlag(UserRenamable, false);
+    setFlag(UserDeletable, false);
+
+    // node is not restored when opening project
+    setDefault(true);
+
     registerProperty(m_object);
     m_object.setReadOnly(true);
     m_object.hide(true);
 
-#ifdef INTELLIGRAPH_DEBUG_NODE_PROPERTIES
-    m_object.setReadOnly(false);
-    m_object.setHidden(false);
+#ifdef GT_INTELLI_DEBUG_NODE_PROPERTIES
+    m_object.hide(false);
 #endif
 
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    setToolTip(tr("Unkown node, changes cannot be applied to linked node!"));
+    setToolTip(tr("Dummy node: changes cannot be applied!"));
 }
 
 bool
 DummyNode::setDummyObject(GtObject& object)
 {
-    if (!object.isDummy()) return false;
+    if (!m_object.get().isEmpty() || !object.isDummy()) return false;
 
     GtObjectMemento memento = object.toMemento();
 
@@ -51,6 +56,7 @@ DummyNode::setDummyObject(GtObject& object)
     }
 
     setCaption(memento.ident() + QStringLiteral("[?]"));
+    m_object.setVal(object.uuid());
 
     return true;
 }
@@ -59,6 +65,18 @@ QString const&
 DummyNode::linkedUuid() const
 {
     return m_object.get();
+}
+
+GtObject*
+DummyNode::linkedObject()
+{
+    return m_object.linkedObject(parentObject());
+}
+
+GtObject const*
+DummyNode::linkedObject() const
+{
+    return m_object.linkedObject(parentObject());
 }
 
 void

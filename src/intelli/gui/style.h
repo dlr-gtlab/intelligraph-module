@@ -56,6 +56,7 @@ enum class ZValue : int
     NodeHovered       =  1,
     NodeWidget        = 10,
     NodeEvalState     =  5,
+    Popup             = 50,
 };
 
 /**

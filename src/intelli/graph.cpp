@@ -983,6 +983,10 @@ Graph::restoreNodesAndConnections()
             auto dummy = std::make_unique<DummyNode>();
             dummy->setDummyObject(*object);
             appendNode(std::move(dummy));
+
+#ifndef GT_INTELLI_DEBUG_NODE_PROPERTIES
+            object->setUserHidden(true);
+#endif
         }
     }
 

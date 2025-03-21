@@ -104,7 +104,7 @@ NodePainter::customBackgroundColor() const
 
     if (qobject_cast<DummyNode const*>(&node))
     {
-        return style::tint(bg, gt::gui::color::warningText(), 0.1);
+        return style::tint(bg, gt::gui::color::warningText(), 0.15);
     }
 
     if (node.nodeFlags() & NodeFlag::Unique ||

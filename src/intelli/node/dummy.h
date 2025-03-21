@@ -30,6 +30,9 @@ public:
 
     QString const& linkedUuid() const;
 
+    GtObject* linkedObject();
+    GtObject const* linkedObject() const;
+
 protected:
 
     void eval() override;
