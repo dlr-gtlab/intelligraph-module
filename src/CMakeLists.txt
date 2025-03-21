@@ -54,6 +54,7 @@ set(PUBLIC_HEADERS
     intelli/data/integer.h
     intelli/data/object.h
     intelli/data/string.h
+    intelli/data/stringlist.h
     intelli/gui/icons.h
     intelli/gui/graphscenedata.h
     intelli/gui/nodegeometry.h
@@ -108,6 +109,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/stringbuilder.h
     intelli/node/textdisplay.h
     intelli/node/input/fileinput.h
+    intelli/node/stringselection.h
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
     intelli/gui/graphscenemanager.h
@@ -159,6 +161,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/file.cpp
     intelli/data/object.cpp
     intelli/data/string.cpp
+    intelli/data/stringlist.cpp
     intelli/node/booldisplay.cpp
     intelli/node/existingdirectorysource.cpp
     intelli/node/filereader.cpp
@@ -181,6 +184,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/input/intinput.cpp
     intelli/node/input/objectinput.cpp
     intelli/node/input/stringinput.cpp
+    intelli/node/stringselection.h
     intelli/gui/nodegeometry.cpp
     intelli/gui/nodepainter.cpp
     intelli/gui/nodeui.cpp
@@ -218,6 +222,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
 target_sources(GTlabIntelliGraph
   PRIVATE
     intelli/gui/nodeuidata.h intelli/gui/nodeuidata.cpp
+     intelli/node/stringselection.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

@@ -16,6 +16,7 @@
 #include "intelli/data/string.h"
 #include "intelli/data/int.h"
 #include "intelli/data/file.h"
+#include "intelli/data/stringlist.h"
 
 #include "intelli/graph.h"
 #include "intelli/node/groupinputprovider.h"
@@ -46,6 +47,7 @@
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/filereader.h"
 #include "intelli/node/filewriter.h"
+#include "intelli/node/stringselection.h"
 
 #include "intelli/node/projectinfo.h"
 
@@ -75,6 +77,7 @@ intelli::registerDefaultDataTypes()
         // register data type
         GT_INTELLI_REGISTER_DATA(ByteArrayData);
         GT_INTELLI_REGISTER_DATA(StringData);
+        GT_INTELLI_REGISTER_DATA(StringListData);
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(IntData);
         GT_INTELLI_REGISTER_DATA(BoolData);
@@ -143,6 +146,7 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(IntInputNode, catInput);
 
         GT_INTELLI_REGISTER_NODE(StringBuilderNode, catString);
+        GT_INTELLI_REGISTER_NODE(StringSelectionNode, catString);
 
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
 
