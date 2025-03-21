@@ -17,10 +17,10 @@ using namespace intelli;
 
 StringSelectionNode::StringSelectionNode() :
     Node(tr("String Selection")),
-    m_selection("selectedString", "selection", "selection")
+    m_selection("selectedString", tr("selection"), tr("selection"))
 {
-    m_in = addInPort({typeId<StringListData>(), tr("List")});
-    m_out = addOutPort(makePort(typeId<StringData>()).setCaption(tr("Selection")));
+    m_in = addInPort({typeId<StringListData>(), tr("list")});
+    m_out = addOutPort(makePort(typeId<StringData>()).setCaption(tr("selection")));
 
     registerProperty(m_selection);
     m_selection.hide();
@@ -37,11 +37,7 @@ StringSelectionNode::StringSelectionNode() :
 
         w->addItems(given);
 
-        if (given.isEmpty())
-        {
-            m_selection.setVal("");
-        }
-        else m_selection.setVal(given.first());
+        m_selection = given.isEmpty() ? QString{} : given.first();
 
         connect(w.get(), &QComboBox::currentTextChanged,
                 this, [this](QString const& newObjName) {

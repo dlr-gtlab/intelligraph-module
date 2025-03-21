@@ -29,6 +29,7 @@ private:
 
     GtStringProperty m_selection;
 };
-}
+
+} // namespace intelli
 
 #endif // GT_INTELLI_STRINGSELECTIONNODE_H
