@@ -25,6 +25,8 @@ StringSelectionNode::StringSelectionNode() :
     registerProperty(m_selection);
     m_selection.hide();
 
+    setNodeFlag(ResizableHOnly, true);
+    
     registerWidgetFactory([this]() {
         auto w = std::make_unique<QComboBox>();
 
