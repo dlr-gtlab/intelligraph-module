@@ -53,6 +53,8 @@
 
 #include "intelli/node/projectinfo.h"
 
+#include "intelli/node/objectsink.h"
+
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodefactory.h"
 
@@ -135,6 +137,7 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(ObjectMementoNode, catObject);
         GT_INTELLI_REGISTER_NODE(FindDirectChildNode, catObject);
+        GT_INTELLI_REGISTER_NODE(ObjectSink, catObject);
 
         GT_INTELLI_REGISTER_NODE(FileInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(FileReaderNode, catFile);
