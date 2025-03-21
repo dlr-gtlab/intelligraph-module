@@ -976,6 +976,9 @@ Graph::restoreNodesAndConnections()
             };
             if (std::any_of(dummies.begin(), dummies.end(), isRestored))
             {
+#ifndef GT_INTELLI_DEBUG_NODE_PROPERTIES
+                object->setUserHidden(true);
+#endif
                 continue;
             }
 

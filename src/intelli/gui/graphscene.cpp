@@ -19,7 +19,6 @@
 #include <intelli/gui/nodeui.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/graphscenedata.h>
-#include <intelli/gui/style.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/connectionobject.h>
 #include <intelli/gui/graphics/popupitem.h>
@@ -776,8 +775,6 @@ GraphScene::alignObjectsToGrid()
 void
 GraphScene::deleteSelectedObjects()
 {
-    // TODO: function is called instead of keypress event, requires ugly
-    // workarounds
     auto selected = Impl::findSelectedItems(*this);
     if (selected.empty()) return;
 
