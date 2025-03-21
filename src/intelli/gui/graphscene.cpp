@@ -785,7 +785,7 @@ GraphScene::deleteSelectedObjects()
 
     // not all nodes are default deletable
     int count = std::distance(beginErase, selected.nodes.end());
-    if (count == selected.nodes.size())
+    if (count == selected.nodes.size() && !selected.nodes.empty())
     {
         if (count == 1)
         {
