@@ -188,7 +188,8 @@ struct SetupStateHelper
     SetupStateHelper& onValueChange(Sender* sender, Signal signal)
     {
         QObject::connect(sender, signal, state, [s = state, value = getValue](){
-            s->setValue(value());
+            constexpr bool undoCommand = false;
+            s->setValue(value(), undoCommand);
         });
         return *this;
     }
