@@ -56,6 +56,7 @@ enum class ZValue : int
     NodeHovered       =  1,
     NodeWidget        = 10,
     NodeEvalState     =  5,
+    Popup             = 50,
 };
 
 /**
@@ -210,6 +211,16 @@ GT_INTELLI_EXPORT QVector<StyleId> registeredStyles();
  * @return Tinted color
  */
 GT_INTELLI_EXPORT QColor tint(QColor const& color, int r, int g, int b);
+
+/**
+ * @brief Applies a tint to `color` using `tint` multiplied with `mult`
+ * (additively, regardless of theme).
+ * @param color Color to tint
+ * @param tint Tint color
+ * @param mult Multiplier (0-1)
+ * @return Tinted color
+ */
+GT_INTELLI_EXPORT QColor tint(QColor const& color, QColor const& tint, double mult);
 
 /**
  * @brief Overload, applies value to red, green, andblue.

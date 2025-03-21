@@ -100,7 +100,13 @@ public:
      * @brief Returns a list of all registered type ids
      * @return List of registered type ids
      */
-    TypeIdList registeredTypeIds() const { return knownClasses(); };
+    TypeIdList registeredTypeIds() const { return knownClasses(); }
+
+    /**
+     * @brief Returns a list of all registered and valid type ids
+     * @return List of registered and valid type ids
+     */
+    TypeIdList validTypeIds() const;
 
     /**
      * @brief Returns the type name of the type given by type id.

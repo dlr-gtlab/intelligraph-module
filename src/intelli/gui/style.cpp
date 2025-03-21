@@ -219,6 +219,17 @@ intelli::style::tint(QColor const& color, int r, int g, int b)
 }
 
 QColor
+intelli::style::tint(QColor const& color, QColor const& tint, double mult)
+{
+    mult = gt::clamp(mult, 0.0, 1.0);
+    int r = (tint.red() * mult);
+    int g = (tint.green() * mult);
+    int b = (tint.blue() * mult);
+
+    return ::tint(color, r, g, b);
+}
+
+QColor
 intelli::style::invert(QColor const& color)
 {
     constexpr int MAX = std::numeric_limits<uint8_t>::max();

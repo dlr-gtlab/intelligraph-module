@@ -12,6 +12,8 @@
 
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
+#include "intelli/data/invalid.h"
+#include "intelli/node/dummy.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 
@@ -909,7 +911,27 @@ Graph::restoreConnection(Connection* connection)
     std::unique_ptr<Connection> ptr{connection};
     ptr->setParent(nullptr);
 
-    appendConnection(std::move(ptr));
+    if (!appendConnection(connection))
+    {
+        // attempt to restore dummy connection
+        if (DummyNode* inNode = qobject_cast<DummyNode*>(findNode(connection->inNodeId())))
+        {
+            if (!inNode->port(connection->inPort()))
+            {
+                inNode->addInPort(PortInfo::customId(connection->inPort(), typeId<InvalidData>()));
+            }
+        }
+        if (DummyNode* outNode = qobject_cast<DummyNode*>(findNode(connection->outNodeId())))
+        {
+            if (!outNode->port(connection->outPort()))
+            {
+                outNode->addOutPort(PortInfo::customId(connection->outPort(), typeId<InvalidData>()));
+            }
+        }
+
+        appendConnection(std::move(ptr));
+    }
+    ptr.release();
 }
 
 void
@@ -935,12 +957,40 @@ Graph::restoreNodesAndConnections()
     auto cmd = modify();
     Q_UNUSED(cmd);
 
-    auto const& nodes = this->nodes();
+    auto const& objects = this->findDirectChildren<GtObject*>();
     auto const& connections = this->connections();
 
-    for (auto* node : nodes)
+    for (GtObject* object : objects)
     {
-        restoreNode(node);
+        if (auto* node = qobject_cast<Node*>(object))
+        {
+            restoreNode(node);
+        }
+        else if (object->isDummy())
+        {
+            // check if dummy node is already restored
+            auto const& dummies = this->findDirectChildren<DummyNode const*>();
+
+            auto const isRestored = [uuid = object->uuid()](DummyNode const* d){
+                return d->linkedUuid() == uuid;
+            };
+            if (std::any_of(dummies.begin(), dummies.end(), isRestored))
+            {
+#ifndef GT_INTELLI_DEBUG_NODE_PROPERTIES
+                object->setUserHidden(true);
+#endif
+                continue;
+            }
+
+            // add dummy node
+            auto dummy = std::make_unique<DummyNode>();
+            dummy->setDummyObject(*object);
+            appendNode(std::move(dummy));
+
+#ifndef GT_INTELLI_DEBUG_NODE_PROPERTIES
+            object->setUserHidden(true);
+#endif
+        }
     }
 
     for (auto* connection : connections)

@@ -52,6 +52,7 @@ set(PUBLIC_HEADERS
     intelli/data/file.h
     intelli/data/int.h
     intelli/data/integer.h
+    intelli/data/invalid.h
     intelli/data/object.h
     intelli/data/string.h
     intelli/data/stringlist.h
@@ -93,6 +94,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/booldisplay.h
     intelli/exec/detachedexecutor.h
     intelli/exec/dummynodedatamodel.h
+    intelli/node/dummy.h
     intelli/node/existingdirectorysource.h
     intelli/node/filereader.h
     intelli/node/filewriter.h
@@ -123,6 +125,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/packageui.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/nodeevalstateobject.h
+    intelli/gui/graphics/popupitem.h
     intelli/gui/widgets/abstractnumberinputwidget.h
     intelli/gui/widgets/booldisplaywidget.h
     intelli/gui/widgets/doubleinputwidget.h
@@ -158,11 +161,13 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/bytearray.cpp
     intelli/data/double.cpp
     intelli/data/int.cpp
+    intelli/data/invalid.cpp
     intelli/data/file.cpp
     intelli/data/object.cpp
     intelli/data/string.cpp
     intelli/data/stringlist.cpp
     intelli/node/booldisplay.cpp
+    intelli/node/dummy.cpp
     intelli/node/existingdirectorysource.cpp
     intelli/node/filereader.cpp
     intelli/node/filewriter.cpp
@@ -204,6 +209,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphics/connectionobject.cpp
     intelli/gui/graphics/nodeobject.cpp
     intelli/gui/graphics/nodeevalstateobject.cpp
+    intelli/gui/graphics/popupitem.cpp
     intelli/gui/widgets/abstractnumberinputwidget.cpp
     intelli/gui/widgets/booldisplaywidget.cpp
     intelli/gui/widgets/doubleinputwidget.cpp

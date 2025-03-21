@@ -14,6 +14,7 @@
 #include "intelli/package.h"
 #include "intelli/graph.h"
 #include "intelli/graphcategory.h"
+#include "intelli/node/dummy.h"
 
 #include <gt_objectmemento.h>
 #include <gt_objectfactory.h>
@@ -89,6 +90,28 @@ struct Package::Impl
                 gtWarning() << tr("Failed to remove category '%1' "
                                   "(directory is not empty)!").arg(catName);
             }
+        }
+    }
+
+    /**
+     * @brief Removes all dummy nodes from a memento of a graph instance
+     * @param memento Memento to cleanup
+     */
+    static void removeDummyNodes(GtObjectMemento& memento)
+    {
+        // find dummy nodes and remove them from the memento
+        memento.childObjects.erase(
+            std::remove_if(memento.childObjects.begin(),
+                           memento.childObjects.end(),
+                           [](GtObjectMemento& child){
+                               return child.className() == GT_CLASSNAME(DummyNode);
+                           }),
+            memento.childObjects.end());
+
+        // recursive
+        for (GtObjectMemento& child : memento.childObjects)
+        {
+            removeDummyNodes(child);
         }
     }
 
@@ -193,7 +216,11 @@ struct Package::Impl
             return false;
         }
 
-        auto data = graph->toMemento().toByteArray();
+        GtObjectMemento memento = graph->toMemento();
+
+        removeDummyNodes(memento);
+
+        QByteArray const& data = memento.toByteArray();
 
         if (file.write(data) != data.size())
         {

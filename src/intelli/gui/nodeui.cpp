@@ -12,6 +12,7 @@
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
 #include "intelli/graph.h"
+#include "intelli/node/dummy.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/graphexecmodel.h"
@@ -26,13 +27,16 @@
 
 #include <gt_logging.h>
 
+#include <gt_colors.h>
 #include <gt_command.h>
 #include <gt_inputdialog.h>
 #include <gt_application.h>
 
+#include <QMessageBox>
 #include <QFileInfo>
 #include <QFile>
 
+using namespace intelli;
 
 using BoolObjectMethod = std::function<bool (GtObject*)>;
 
@@ -51,7 +55,7 @@ inline BoolObjectMethod operator+(BoolObjectMethod fA, Functor fOther)
     };
 }
 
-using namespace intelli;
+DummyNode* toDummy(GtObject* obj) { return qobject_cast<DummyNode*>(obj); }
 
 struct NodeUI::Impl
 {
@@ -75,17 +79,17 @@ NodeUI::NodeUI(Option option) :
     addSingleAction(tr("Execute once"), executeNode)
         .setIcon(gt::gui::icon::processRun())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("runProcess"), categroy))
-        .setVisibilityMethod(toNode);
+        .setVisibilityMethod(toNode + NOT(toDummy));
 
     addSingleAction(tr("Set inactive"), setActive<false>)
         .setIcon(gt::gui::icon::sleep())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("skipProcess"), categroy))
-        .setVisibilityMethod(toNode + isActive);
+        .setVisibilityMethod(toNode + NOT(toDummy) + isActive);
 
     addSingleAction(tr("set active"), setActive<true>)
         .setIcon(gt::gui::icon::sleepOff())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("unskipProcess"), categroy))
-        .setVisibilityMethod(toNode + NOT(isActive));
+        .setVisibilityMethod(toNode + NOT(toDummy) + NOT(isActive));
 
     addSeparator();
 
@@ -119,11 +123,11 @@ NodeUI::NodeUI(Option option) :
 
     addSingleAction(tr("Add In Port"), addInPort)
         .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(toDynamicNode + hasInputPorts);
+        .setVisibilityMethod(toDynamicNode + NOT(toDummy) + hasInputPorts);
 
     addSingleAction(tr("Add Out Port"), addOutPort)
         .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(toDynamicNode + hasOutputPorts);
+        .setVisibilityMethod(toDynamicNode + NOT(toDummy) + hasOutputPorts);
 
     /** PORT ACTIONS **/
 
@@ -132,32 +136,40 @@ NodeUI::NodeUI(Option option) :
         .setVerificationMethod(isDynamicPort)
         .setVisibilityMethod(isDynamicNode);
 
-    if (!gtApp || !gtApp->devMode()) return;
+    if (gtApp && gtApp->devMode())
+    {
+        addPortAction(tr("Port Info"), [](Node* obj, PortType type, PortIndex idx){
+            if (!obj) return;
+            gtInfo() << tr("Node '%1' (id: %2), Port id: %3")
+                            .arg(obj->caption())
+                            .arg(obj->id())
+                            .arg(toString(obj->portId(type, idx)));
+        }).setIcon(gt::gui::icon::bug());
 
-    addPortAction(tr("Port Info"), [](Node* obj, PortType type, PortIndex idx){
-        if (!obj) return;
-        gtInfo() << tr("Node '%1' (id: %2), Port id: %3")
-                        .arg(obj->caption())
-                        .arg(obj->id())
-                        .arg(toString(obj->portId(type, idx)));
-    }).setIcon(gt::gui::icon::bug());
+        addSingleAction(tr("Refresh Node"), [](GtObject* obj){
+            if (auto* node = toNode(obj)) emit node->nodeChanged();
+        }).setIcon(gt::gui::icon::reload())
+          .setVisibilityMethod(toNode);
 
-    addSingleAction(tr("Refresh Node"), [](GtObject* obj){
-        if (auto* node = toNode(obj)) emit node->nodeChanged();
-    }).setIcon(gt::gui::icon::reload())
-      .setVisibilityMethod(toNode);
+        addSingleAction(tr("Print Debug Information"), [](GtObject* obj){
+            if (auto* graph = toGraph(obj))
+            {
+                QString const& path = relativeNodePath(*graph);
+                gtInfo().nospace() << "Local Connection Model: (" << path << ")";
+                debug(graph->connectionModel());
+                gtInfo().nospace() << "Global Connection Model: (" << path << ")";
+                debug(graph->globalConnectionModel());
+            }
+        }).setIcon(gt::gui::icon::bug())
+          .setVisibilityMethod(toGraph);
+    }
 
-    addSingleAction(tr("Print Debug Information"), [](GtObject* obj){
-        if (auto* graph = toGraph(obj))
-        {
-            QString const& path = relativeNodePath(*graph);
-            gtInfo().nospace() << "Local Connection Model: (" << path << ")";
-            debug(graph->connectionModel());
-            gtInfo().nospace() << "Global Connection Model: (" << path << ")";
-            debug(graph->globalConnectionModel());
-        }
-    }).setIcon(gt::gui::icon::bug())
-      .setVisibilityMethod(toGraph);
+    addSeparator();
+
+    addSingleAction(tr("Delete Dummy Node"), deleteDummyNode)
+        .setIcon(gt::gui::icon::delete_())
+        .setVisibilityMethod(toDummy)
+        .setShortCut(gtApp->getShortCutSequence("delete"));
 }
 
 NodeUI::~NodeUI() = default;
@@ -187,10 +199,22 @@ QIcon
 NodeUI::icon(GtObject* obj) const
 {
     Node* node = toNode(obj);
-    if (!node) return gt::gui::icon::objectEmpty();
+    if (!node)
+    {
+        return gt::gui::icon::objectEmpty();
+    }
+
+    if (toDummy(obj))
+    {
+        return gt::gui::colorize(gt::gui::icon::objectUnknown(),
+                                 gt::gui::color::warningText());
+    }
 
     QIcon icon = displayIcon(*node);
-    if (!icon.isNull()) return icon;
+    if (!icon.isNull())
+    {
+        return icon;
+    }
 
     return gt::gui::icon::intelli::node();
 }
@@ -213,6 +237,11 @@ NodeUI::displayIcon(Node const& node) const
     if (qobject_cast<GroupOutputProvider const*>(&node))
     {
         return gt::gui::icon::export_();
+    }
+    if (qobject_cast<DummyNode const*>(&node))
+    {
+        return gt::gui::colorize(gt::gui::icon::questionmark(),
+                                 gt::gui::color::warningText);
     }
     return QIcon{};
 }
@@ -277,6 +306,7 @@ NodeUI::toConstDynamicNode(GtObject const* obj)
 bool
 NodeUI::isDynamicPort(GtObject* obj, PortType type, PortIndex idx)
 {
+    if (toDummy(obj)) return false;
     if (auto* node = toDynamicNode(obj))
     {
         return node->isDynamicPort(type, idx);
@@ -293,6 +323,10 @@ NodeUI::isDynamicNode(GtObject* obj, PortType, PortIndex)
 bool
 NodeUI::canRenameNodeObject(GtObject* obj)
 {
+    if (!obj || obj->objectFlags() & GtObject::UserRenamable)
+    {
+        return false;
+    }
     if (auto* node = toNode(obj))
     {
         return !(node->nodeFlags() & Unique);
@@ -374,11 +408,43 @@ NodeUI::clearNodeGraph(GtObject* obj)
     auto graph = toGraph(obj);
     if (!graph) return;
 
-    auto cmd = gtApp->startCommand(graph, QStringLiteral("Clear '%1'")
+    auto cmd = gtApp->makeCommand(graph, QStringLiteral("Clear '%1'")
                                               .arg(graph->objectName()));
-    auto finally = gt::finally([&](){ gtApp->endCommand(cmd); });
+    Q_UNUSED(cmd);
     
     graph->clearGraph();
+}
+
+void
+NodeUI::deleteDummyNode(GtObject* obj)
+{
+    DummyNode* dummy = toDummy(obj);
+    if (!dummy) return;
+
+    GtObject* linkedObject = dummy->linkedObject();
+    if (!linkedObject) return;
+
+    assert(linkedObject->isDummy());
+
+    auto result = QMessageBox::warning(
+        nullptr,
+        tr("Delete dummy object '%1'").arg(dummy->caption()),
+        tr("Deleting the dummy node will also delete the\n"
+           "corresponding dummy object in the data model.\n"
+           "Do you want to proceed?"),
+        QMessageBox::Cancel | QMessageBox::Yes,
+        QMessageBox::Yes
+    );
+
+    if (result != QMessageBox::Yes) return;
+
+    auto cmd = gtApp->makeCommand(dummy->parentObject(),
+                                  tr("Delete dummy object '%1'")
+                                      .arg(dummy->caption()));
+    Q_UNUSED(cmd);
+
+    delete dummy;
+    delete linkedObject;
 }
 
 void
