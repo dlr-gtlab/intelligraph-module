@@ -23,6 +23,7 @@
 #include <intelli/gui/graphics/connectionobject.h>
 #include <intelli/gui/graphics/popupitem.h>
 #include <intelli/private/utils.h>
+#include <intelli/private/gui_utils.h>
 
 #include <gt_application.h>
 #include <gt_command.h>
@@ -102,11 +103,11 @@ isNotDeletable(NodeGraphicsObject* o)
 static QGraphicsView const*
 activeView(GraphScene const* scene)
 {
-    for (QGraphicsView const* view : scene->views())
-    {
-        if (view->hasFocus()) return view;
-    }
-    return nullptr;
+    auto const& views = scene->views();
+    auto iter = std::find_if(views.begin(), views.end(), [](QGraphicsView const* view){
+        return view->hasFocus();
+    });
+    return (iter != views.end()) ? *iter : nullptr;
 }
 
 /**
@@ -794,23 +795,10 @@ GraphScene::deleteSelectedObjects()
 
             QKeySequence shortcut = gtApp->getShortCutSequence("delete");
 
-            QList<GtObjectUI*> const& uis = gtApp->objectUI(&node);
-            for (GtObjectUI* ui : uis)
+            GtObjectUIAction action = gui_utils::findUIActionByShortCut(node, shortcut);
+            if (action.method())
             {
-                for (GtObjectUIAction const& action : ui->actions())
-                {
-                    if (shortcut == action.shortCut() &&
-                    // action should be visible/enabled
-                        (!action.visibilityMethod() ||
-                         action.visibilityMethod()(nullptr, &node)) &&
-                        (!action.verificationMethod() ||
-                         action.verificationMethod()(nullptr, &node)))
-                    {
-                        // success
-                        action.method()(nullptr, &node);
-                        return;
-                    }
-                }
+                return action.method()(nullptr, &node);
             }
             // node not deletable
         }

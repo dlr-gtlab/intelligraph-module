@@ -9,7 +9,9 @@
 #ifndef GT_INTELLI_GUI_UTILS_H
 #define GT_INTELLI_GUI_UTILS_H
 
+#include <gt_application.h>
 #include <gt_object.h>
+#include <gt_objectui.h>
 #include <gt_inputdialog.h>
 #include <gt_icons.h>
 #include <gt_qtutilities.h>
@@ -24,6 +26,7 @@ namespace intelli
 {
 namespace gui_utils
 {
+
 template <typename T>
 inline void addNamedChild(GtObject& obj)
 {
@@ -49,6 +52,36 @@ inline void addNamedChild(GtObject& obj)
         child.release();
     }
 }
+
+/**
+ * @brief Attempts to find an Object UI Action by its shortcut
+ * @param object Corresponding object
+ * @param shortcut Shortcut to search for
+ * @return Object UI Action (invalid if no action was found)
+ */
+inline GtObjectUIAction findUIActionByShortCut(GtObject& object,
+                                               QKeySequence const& shortcut)
+{
+    QList<GtObjectUI*> const& uis = gtApp->objectUI(&object);
+    for (GtObjectUI* ui : uis)
+    {
+        auto const& actions = ui->actions();
+        auto iter = std::find_if(actions.begin(),
+                                 actions.end(),
+                                 [&shortcut, &object](GtObjectUIAction const& action){
+            return shortcut == action.shortCut() &&
+                   // action should be visible/enabled
+                   (!action.visibilityMethod() ||
+                    action.visibilityMethod()(nullptr, &object)) &&
+                   (!action.verificationMethod() ||
+                    action.verificationMethod()(nullptr, &object));
+        });
+
+        if (iter != actions.end()) return *iter;
+    }
+    return {};
+}
+
 } // namespace utils
 
 } // namespace intelli
