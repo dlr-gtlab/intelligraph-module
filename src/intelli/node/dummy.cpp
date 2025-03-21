@@ -23,9 +23,6 @@ DummyNode::DummyNode() :
     setFlag(UserRenamable, false);
     setFlag(UserDeletable, false);
 
-    // node is not restored when opening project
-    setDefault(true);
-
     registerProperty(m_object);
     m_object.setReadOnly(true);
     m_object.hide(true);

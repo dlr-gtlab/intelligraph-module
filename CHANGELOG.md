@@ -6,12 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Added dummy nodes that are created for missing node classes (dummy objects). Dummy nodes allow to view graphs with unkown nodes and allow the deletio of these nodes. - #107
+- Added dummy nodes that are created for missing node classes (dummy objects). Dummy nodes allow to view graphs with unknown nodes and allow the deletion of these nodes. - #107
 
 ### Fixed
 - The overlay buttons in a graph scene no longer create undo/redo commands. - #271
-- Nodes that have the `UserDeletable` flag set, can no longer be deleted. A popup is displayed to notify the user in such a case. Custom delete actions are preserved by using the shortcut of a UI action as an indicator. - #270
-- Connections to unknown nodes are now kept and not deleted upon loading a project with missing modules/unkown nodes. - #107
+- Nodes that have the `UserDeletable` flag set, can no longer be deleted. A popup is displayed to notify the user in such a case. Custom delete actions are used, identified via the shortcut of an UI action - #270
+- Connections to unknown nodes are now kept and not deleted upon loading a project with missing modules/unknown nodes. - #107
 
 ## [0.13.0] - 2025-03-19
 *This release is not ABI compatible with `0.12.0` and may break API*
