@@ -87,9 +87,11 @@ AbstractNumberInputWidget::AbstractNumberInputWidget(InputMode mode,
             this, &AbstractNumberInputWidget::onValueEdited);
     connect(m_dial, &QDial::valueChanged,
             this, &AbstractNumberInputWidget::commitSliderValueChange);
+    connect(m_dial, &QDial::sliderReleased,
+            this, &AbstractNumberInputWidget::valueComitted);
     connect(m_slider, &QSlider::valueChanged,
             this, &AbstractNumberInputWidget::commitSliderValueChange);
-    connect(m_dial, &QDial::sliderReleased,
+    connect(m_slider, &QSlider::sliderReleased,
             this, &AbstractNumberInputWidget::valueComitted);
 
     applyInputMode(mode);
