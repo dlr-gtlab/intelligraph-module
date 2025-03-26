@@ -250,6 +250,13 @@ signals:
      */
     void nodeMoved(NodeGraphicsObject* object);
 
+    /**
+     * @brief Emitted once a node's position was updated externally (i.e. NOT
+     * by moving the node's graphics objec)
+     * @param object Object that updated its position
+     */
+    void nodePositionChanged(NodeGraphicsObject* object);
+
     void nodeDoubleClicked(NodeGraphicsObject* object);
 
     void nodeGeometryChanged(NodeGraphicsObject* object);
@@ -274,6 +281,11 @@ private slots:
      * @brief Updates the visuals of the node
      */
     void onNodeChanged();
+
+    /**
+     * @brief Updates the visuals of the node
+     */
+    void onNodePositionChanged();
 
     /**
      * @brief Helper method to update all child items

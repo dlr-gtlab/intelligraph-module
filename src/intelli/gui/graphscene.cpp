@@ -1574,6 +1574,8 @@ GraphScene::onNodeAppended(Node* node)
             this, &GraphScene::onNodeShifted, Qt::DirectConnection);
     connect(entity, &NodeGraphicsObject::nodeMoved,
             this, &GraphScene::onNodeMoved, Qt::DirectConnection);
+    connect(entity, &NodeGraphicsObject::nodePositionChanged,
+            this, &GraphScene::onNodePositionChanged, Qt::DirectConnection);
     connect(entity, &NodeGraphicsObject::nodeDoubleClicked,
             this, &GraphScene::onNodeDoubleClicked, Qt::DirectConnection);
     connect(entity, &NodeGraphicsObject::nodeGeometryChanged,
@@ -1601,7 +1603,18 @@ GraphScene::onNodeDeleted(NodeId nodeId)
 void
 GraphScene::onNodeShifted(NodeGraphicsObject* sender, QPointF diff)
 {
-    for (auto* o : Impl::findSelectedItems(*this, Impl::NodesOnly).nodes)
+    auto const selection = Impl::findSelectedItems(*this, Impl::NodesOnly);
+
+    if (!m_nodeMoveCmd.isValid())
+    {
+        QString const txt = selection.nodes.size() > 1 ?
+                                tr("Nodes moved") :
+                                tr("Node '%1' moved")
+                                    .arg(relativeNodePath(selection.nodes.at(0)->node()));
+        m_nodeMoveCmd = gtApp->startCommand(m_graph, txt);
+    }
+
+    for (auto* o : selection.nodes)
     {
         if (sender != o) o->moveBy(diff.x(), diff.y());
         moveConnections(o);
@@ -1611,10 +1624,25 @@ GraphScene::onNodeShifted(NodeGraphicsObject* sender, QPointF diff)
 void
 GraphScene::onNodeMoved(NodeGraphicsObject* sender)
 {
-    for (auto* o : Impl::findSelectedItems(*this, Impl::NodesOnly).nodes)
+    // nodes have not been moved
+    if (!m_nodeMoveCmd.isValid()) return;
+
+    auto const selection = Impl::findSelectedItems(*this, Impl::NodesOnly);
+    // commit position to data model
+    for (auto* o : selection.nodes)
     {
         o->commitPosition();
     }
+
+    // finish command
+    gtApp->endCommand(m_nodeMoveCmd);
+    m_nodeMoveCmd = {};
+}
+
+void
+GraphScene::onNodePositionChanged(NodeGraphicsObject* sender)
+{
+    moveConnections(sender);
 }
 
 void
