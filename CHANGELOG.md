@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added dummy nodes that are created for missing node classes (dummy objects). Dummy nodes allow to view graphs with unknown nodes and allow the deletion of these nodes. - #107
 
+### Changed
+- Moving a node now creates an undo command. - #41
+
 ### Fixed
 - The overlay buttons in a graph scene no longer create undo/redo commands. - #271
 - Nodes that have the `UserDeletable` flag set, can no longer be deleted. A popup is displayed to notify the user in such a case. Custom delete actions are used, identified via the shortcut of an UI action - #270

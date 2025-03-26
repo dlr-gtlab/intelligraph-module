@@ -502,6 +502,12 @@ signals:
     void nodeChanged();
 
     /**
+     * @brief Emitted when the node has changed its position. Triggered by
+     * `setPos`.
+     */
+    void nodePositionChanged();
+
+    /**
      * @brief Emitted just before the node is deleted similar to
      * QObject::destroyed with the difference that one may still access members
      */

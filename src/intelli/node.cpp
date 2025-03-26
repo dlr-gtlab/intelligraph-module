@@ -90,6 +90,12 @@ Node::Node(QString const& modelName, GtObject* parent) :
         if (pimpl->isActive) emit triggerNodeEvaluation();
     });
 
+    // position is changed in pairs -> sufficient to subscribe to changes
+    // to y-pos (avoids emitting singal twice)
+    connect(&pimpl->posY, &GtAbstractProperty::changed, this, [this](){
+        emit nodePositionChanged();
+    });
+
     connect(this, &Node::portConnected, this, [this](PortId portId){
         auto* port = this->port(portId);
         if (port) port->m_isConnected = true;

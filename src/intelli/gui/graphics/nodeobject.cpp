@@ -168,6 +168,8 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
             this, &NodeGraphicsObject::onNodeChanged, Qt::DirectConnection);
     connect(&node, &Node::portChanged,
             this, &NodeGraphicsObject::onNodeChanged, Qt::DirectConnection);
+    connect(&node, &Node::nodePositionChanged,
+            this, &NodeGraphicsObject::onNodePositionChanged, Qt::DirectConnection);
 
     updateChildItems();
 }
@@ -605,10 +607,20 @@ NodeGraphicsObject::onNodeChanged()
 }
 
 void
+NodeGraphicsObject::onNodePositionChanged()
+{
+    setPos(pimpl->node->pos());
+    emit nodePositionChanged(this);
+}
+
+void
 NodeGraphicsObject::updateChildItems()
 {
     pimpl->evalStateObject->setPos(pimpl->geometry->evalStateRect().topLeft());
-    if (pimpl->proxyWidget) pimpl->proxyWidget->setPos(pimpl->geometry->widgetPosition());
+    if (pimpl->proxyWidget)
+    {
+        pimpl->proxyWidget->setPos(pimpl->geometry->widgetPosition());
+    }
 }
 
 NodeGraphicsObject::Highlights::Highlights(NodeGraphicsObject& object) :

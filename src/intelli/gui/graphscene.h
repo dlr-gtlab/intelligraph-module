@@ -15,6 +15,7 @@
 #include <intelli/gui/style.h>
 
 #include <gt_graphicsscene.h>
+#include <gt_command.h>
 
 #include <QGraphicsObject>
 
@@ -139,6 +140,8 @@ private:
     std::unique_ptr<GraphSceneData> m_sceneData;
     /// Shape style of the connections in this scene
     ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
+    /// Currently active command when moving nodes
+    GtCommand m_nodeMoveCmd = {};
 
     void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
 
@@ -167,9 +170,14 @@ private slots:
 
     void onNodeDeleted(NodeId nodeId);
 
+    /// called while node is being moved by the user
     void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
 
+    /// called if node has been moved by the user (moving finished)
     void onNodeMoved(NodeGraphicsObject* sender);
+
+    /// called if node changed position externally
+    void onNodePositionChanged(NodeGraphicsObject* sender);
 
     void onNodeDoubleClicked(NodeGraphicsObject* sender);
 

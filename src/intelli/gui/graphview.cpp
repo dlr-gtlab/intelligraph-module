@@ -117,11 +117,6 @@ GraphView::GraphView(QWidget* parent) :
                                         &GraphScene::alignObjectsToGrid);
     alignAction->setIcon(gt::gui::icon::gridSnap());
 
-    // separator (for overlay)
-    auto* separator = new QAction;
-    separator->setSeparator(true);
-    addAction(separator);
-
     auto* copyAction = makeSceneAction(tr("Copy Selection"),
                                        &GraphScene::copySelectedObjects);
     copyAction->setIcon(gt::gui::icon::copy());
