@@ -27,86 +27,30 @@ ObjectSink::ObjectSink() :
 
     registerProperty(m_target);
 
+    setNodeEvalMode(NodeEvalMode::Blocking);
+
     // registering the widget factory
     registerWidgetFactory([=](intelli::Node& /*this*/){
         auto w = std::make_unique<QPushButton>("Export");
 
+        w->setEnabled(false);
+
+        connect(this, &Node::inputDataRecieved, this,
+                [=, w_ = w.get()](PortId portId)
+                {
+                    auto data_tmp = nodeData<ObjectData>(portId);
+
+                    w_->setEnabled(data_tmp != nullptr);
+                }
+                );
+
         connect(w.get(), &QPushButton::clicked, this,
-                [=, w_ = w.get()](){
+                [this](){
                     doExport();
-                });
-
-        connect(this, &ObjectSink::exportActivated, w.get(),
-                [=, w_ = w.get()](bool a) {
-                    w_->setEnabled(a);
-
-                    if (a)
-                    {
-                        setButtonColor(w_, QColor(252, 186, 3));
-                    }
-                    else
-                    {
-                        w_->setStyleSheet({});
-                    }
-                });
-
-        connect(this, &ObjectSink::exportFinished, w.get(),
-                [=, w_ = w.get()](bool a) {
-                    if (a)
-                    {
-                        setButtonColor(w_, QColor(0, 100, 10));
-                    }
-                    else
-                    {
-                        setButtonColor(w_, QColor(150, 40, 0));
-                    }
                 });
 
         return w;
     });
-}
-
-void
-intelli::ObjectSink::eval()
-{
-    auto data_tmp = nodeData<ObjectData>(m_in);
-
-    if (data_tmp)
-    {
-        emit exportActivated(true);
-    }
-    else
-    {
-        emit exportActivated(false);
-    }
-}
-
-void
-ObjectSink::setButtonColor(QPushButton* button, const QColor& col)
-{
-    if (!button) return;
-
-    static const QString styleBase = QStringLiteral(R"(
-      QAbstractButton{
-        margin: 2px;
-        max-width: 40px; min-height: 20px;
-        border: 1px solid #777777; border-radius: 2px;
-        background: qlineargradient( x1:0 y1:0, x2:0 y2:1, stop:0 %3, stop:1 '%1');
-      }
-      QAbstractButton:hover{ background-color: %2}
-      QAbstractButton:pressed{ background-color: %2;})");
-
-
-    QColor highlightColor = col.lighter();
-    QColor gradientUpColor = col.lighter(110);
-    QColor gradientLoColor = col.darker(110);
-
-    QString style = QString(styleBase).arg(QVariant(gradientLoColor).toString(),
-                                           QVariant(highlightColor).toString(),
-                                           QVariant(gradientUpColor).toString());
-
-    button->setStyleSheet(style);
-    button->update();
 }
 
 void
@@ -130,8 +74,8 @@ ObjectSink::doExport()
 
     if (target->metaObject()->className() != source->metaObject()->className())
     {
-        gtInfo() << "For source and target of different types the source is"
-                    "appended to the target.";
+        gtInfo() << tr("For source and target of different types the source is"
+                       "appended to the target.");
         GtObject* sourceClone = source->clone();
         sourceClone->moveToThread(target->thread());
 
@@ -144,13 +88,17 @@ ObjectSink::doExport()
         GtObject* targetParent = target->parentObject();
         QString oldUUID = target->uuid();
         QString oldName = target->objectName();
-        sourceClone->setUuid(oldUUID);
-        sourceClone->setObjectName(oldName);
-        target->deleteLater();
         sourceClone->moveToThread(targetParent->thread());
 
-        gtDataModel->deleteFromModel(target);
-        gtDataModel->appendChild(sourceClone, targetParent);
+        GtCommand command = gtApp->startCommand(gtApp->currentProject(),
+                                                tr("Overwrite target"));
+        sourceClone->setUuid(oldUUID);
+        sourceClone->setObjectName(oldName);
+        delete target;
+        targetParent->appendChild(sourceClone);
+
+        gtApp->endCommand(command);
+
         return;
     }
 }

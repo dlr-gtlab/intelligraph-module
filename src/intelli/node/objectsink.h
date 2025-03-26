@@ -25,23 +25,13 @@ class ObjectSink : public Node
 public:
     Q_INVOKABLE ObjectSink();
 
-protected:
-    void eval() override;
-
 private:
     PortId m_in;
 
     GtObjectLinkProperty m_target;
 
-    void setButtonColor(QPushButton* button, const QColor& col);
-
 private slots:
     void doExport();
-
-signals:
-    void exportActivated(bool);
-
-    void exportFinished(bool);
 };
 
 } // namespace intelli

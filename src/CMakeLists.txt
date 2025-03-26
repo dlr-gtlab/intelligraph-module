@@ -195,6 +195,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/nodegeometry.cpp
     intelli/gui/nodepainter.cpp
     intelli/gui/nodeui.cpp
+    intelli/gui/nodeuidata.cpp
     intelli/gui/grapheditor.cpp
     intelli/gui/graphscene.cpp
     intelli/gui/graphscenemanager.cpp
@@ -225,11 +226,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/uint.cpp
 
     intelli/node/binarydisplay.h intelli/node/binarydisplay.cpp
-)
-
-target_sources(GTlabIntelliGraph
-  PRIVATE
-    intelli/gui/nodeuidata.h intelli/gui/nodeuidata.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph
