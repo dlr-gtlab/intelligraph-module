@@ -58,6 +58,8 @@ ObjectSink::doExport()
 {
     auto data = nodeData<ObjectData>(m_in);
 
+    if (!data) return;
+
     const GtObject* source = data->object();
 
     QString targetUUID = m_target.getVal();
