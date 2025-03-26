@@ -21,10 +21,9 @@ using namespace intelli;
 ObjectSink::ObjectSink() :
     Node("Object sink"),
     m_target("target", tr("Target"), tr("Target"), QString(), this,
-               QStringList() << GT_CLASSNAME(GtObject), true)
+               QStringList() << GT_CLASSNAME(GtObject), true),
+    m_in(addInPort({typeId<ObjectData>(), tr("Object")}))
 {
-    m_in  = addInPort({typeId<ObjectData>(), tr("Object")});
-
     registerProperty(m_target);
 
     setNodeEvalMode(NodeEvalMode::Blocking);
