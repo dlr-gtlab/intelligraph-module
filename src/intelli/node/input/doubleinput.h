@@ -63,6 +63,8 @@ private:
     /// Holds input mode, used to remember state of GUI.
     MetaEnumProperty m_inputMode;
 
+    GtBoolProperty m_joystick;
+
     PortId m_out;
 };
 
