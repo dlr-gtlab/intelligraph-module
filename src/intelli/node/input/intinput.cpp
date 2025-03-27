@@ -12,6 +12,8 @@
 
 #include <intelli/gui/widgets/intinputwidget.h>
 
+#include <intelli/private/utils.h>
+
 using namespace intelli;
 
 IntInputNode::IntInputNode() :
@@ -60,12 +62,12 @@ IntInputNode::IntInputNode() :
         };
 
         auto onMinChanged = [=](){
-            int newVal = w->min();
+            int newVal = w->minV();
             if (lowerBound() != newVal) setLowerBound(newVal);
         };
 
         auto onMaxChanged = [=](){
-            int newVal = w->max();
+            int newVal = w->maxV();
             if (upperBound() != newVal) setUpperBound(newVal);
         };
 
