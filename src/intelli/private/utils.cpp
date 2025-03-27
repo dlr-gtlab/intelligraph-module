@@ -32,6 +32,14 @@ intelli::utils::GamepadThread::run()
                 // Warten, um Mehrfach-Events bei langem Drücken zu vermeiden
                 msleep(300);
             }
+            if (state.Gamepad.sThumbLY > 8000) {  // Joystick nach unten bewegt (Wert positiv)
+                emit buttonPressed("Down");
+                msleep(100);
+            }
+            else if (state.Gamepad.sThumbLY < -8000) {  // Joystick nach oben bewegt (Wert negativ)
+                emit buttonPressed("Up");
+                msleep(100);
+            }
         }
         msleep(50); // Kurze Pause zwischen den Abfragen
     }

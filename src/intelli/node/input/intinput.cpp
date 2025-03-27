@@ -125,7 +125,18 @@ IntInputNode::IntInputNode() :
                     [=](QString const& buttonName)
                     {
                         gtFatal() << tr("Button pressed:") << buttonName;
+
+                        if (buttonName == "Down")
+                        {
+                            m_value.setVal(m_value.getVal() - 1);
+                        }
+
+                        else if (buttonName == "Up")
+                        {
+                            m_value.setVal(m_value.getVal() + 1);
+                        }
                     }
+
                     );
 
             // Thread starten
