@@ -109,7 +109,7 @@ DoubleInputNode::DoubleInputNode() :
                 w, onRangeChanged);
         connect(&m_inputMode, &GtAbstractProperty::changed,
                 w, updateMode);
-
+#ifdef GAMEPAD_USAGE
         if (m_joystick)
         {
             // Erstelle den Thread und den Empfänger
@@ -131,7 +131,7 @@ DoubleInputNode::DoubleInputNode() :
             gamepadThread->wait();
             delete gamepadThread;
         }
-
+#endif
         onRangeChanged();
         updateMode();
 
