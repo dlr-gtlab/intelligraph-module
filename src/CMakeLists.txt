@@ -281,6 +281,10 @@ install (TARGETS GTlabIntelliGraph
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+if (USE_GAMEPAD)
+    target_compile_definitions(GTlabIntelliGraph PRIVATE -DGAMEPAD_USAGE)
+endif()
+
 # copy public headers but keep file hierarchy
 foreach ( file ${PUBLIC_HEADERS} )
     get_filename_component( dir ${file} DIRECTORY )

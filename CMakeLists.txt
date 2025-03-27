@@ -11,6 +11,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 set(CMAKE_AUTOMOC ON)
 
 option(BUILD_UNITTESTS "Build Unittests" OFF)
+option(USE_GAMEPAD "Build with gamepad usage" ON)
 
 include(GNUInstallDirs)
 
@@ -21,6 +22,7 @@ gtlab_standard_setup()
 enable_gtlab_devtools()
 
 find_package(Qt5 REQUIRED COMPONENTS Widgets Core Concurrent Gui)
+
 
 if (NOT TARGET GTlab::Logging)
     find_package(GTlabLogging REQUIRED)

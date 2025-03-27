@@ -23,6 +23,12 @@
 #include <gt_logstream.h>
 
 #include <QTimer>
+#include <QThread>
+
+#ifdef GAMEPAD_USAGE
+#include <Windows.h>
+#include <Xinput.h>
+#endif
 
 #include <algorithm>
 
@@ -287,6 +293,44 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
     defaultRegExp = QRegExp(pattern);
 }
+
+#ifdef GAMEPAD_USAGE
+
+// Linken der XInput-Bibliothek
+#pragma comment(lib, "Xinput.lib")
+
+// GamepadThread: Pollt den Controller und emittiert bei Tastendruck ein Signal.
+class GamepadThread : public QThread {
+    Q_OBJECT
+public:
+    explicit GamepadThread(QObject* parent = nullptr)
+        : QThread(parent) {}
+
+signals:
+    // Signal, das emittiert wird, wenn der A-Button gedrückt wurde.
+    void buttonPressed(const QString &buttonName);
+
+protected:
+    void run() override {
+        XINPUT_STATE state;
+        // Endlosschleife zum Abfragen des Controllers
+        while (true) {
+            ZeroMemory(&state, sizeof(XINPUT_STATE));
+            DWORD dwResult = XInputGetState(0, &state); // Controller 0 abfragen
+
+            if (dwResult == ERROR_SUCCESS) {
+                // Prüfe, ob der A-Button gedrückt wurde
+                if (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) {
+                    emit buttonPressed("A");
+                    // Warten, um Mehrfach-Events bei langem Drücken zu vermeiden
+                    msleep(300);
+                }
+            }
+            msleep(50); // Kurze Pause zwischen den Abfragen
+        }
+    }
+};
+#endif
 
 } // namespace utils
 

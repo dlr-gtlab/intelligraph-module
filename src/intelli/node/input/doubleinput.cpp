@@ -12,6 +12,8 @@
 
 #include <intelli/gui/widgets/doubleinputwidget.h>
 
+#include "intelli/private/utils.h"
+
 using namespace intelli;
 
 DoubleInputNode::DoubleInputNode() :
@@ -20,13 +22,15 @@ DoubleInputNode::DoubleInputNode() :
     m_min("min", tr("Min."), tr("Minimum value"), GtUnit::None, 0),
     m_max("max", tr("Max."), tr("Maxiumum value"), GtUnit::None, 100),
     m_useBounds("useBounds", tr("Use Min/Max"), tr("Use Min/Max bounds"), false),
-    m_inputMode("mode", tr("Input Mode"), tr("Input Mode"))
+    m_inputMode("mode", tr("Input Mode"), tr("Input Mode")),
+    m_joystick("useJoyStick", tr("useJoystick"), tr("useJoystick"), false)
 {
     registerProperty(m_value);
     registerProperty(m_min);
     registerProperty(m_max);
     registerProperty(m_useBounds);
     registerProperty(m_inputMode);
+    registerProperty(m_joystick);
 
     m_useBounds.setReadOnly(true);
     m_value.hide();
@@ -54,12 +58,12 @@ DoubleInputNode::DoubleInputNode() :
         };
 
         auto onMinChanged = [=](){
-            double newVal = w->min();
+            double newVal = w->minV();
             if (lowerBound() != newVal) setLowerBound(newVal);
         };
 
         auto onMaxChanged = [=](){
-            double newVal = w->max();
+            double newVal = w->maxV();
             if (upperBound() != newVal) setUpperBound(newVal);
         };
 
@@ -105,6 +109,28 @@ DoubleInputNode::DoubleInputNode() :
                 w, onRangeChanged);
         connect(&m_inputMode, &GtAbstractProperty::changed,
                 w, updateMode);
+
+        if (m_joystick)
+        {
+            // Erstelle den Thread und den Empfänger
+            auto* gamepadThread = new intelli::utils::GamepadThread();
+
+            connect(gamepadThread, &intelli::utils::GamepadThread::buttonPressed,
+                    this,
+                    [=](QString const& buttonName)
+                    {
+                        gtFatal() << tr("Button pressed:") << buttonName;
+                    }
+                    );
+
+            // Thread starten
+            gamepadThread->start();
+
+            // Aufräumen: Thread beenden (hier forceful, in echten Anwendungen lieber sauber beenden)
+            gamepadThread->terminate();
+            gamepadThread->wait();
+            delete gamepadThread;
+        }
 
         onRangeChanged();
         updateMode();
