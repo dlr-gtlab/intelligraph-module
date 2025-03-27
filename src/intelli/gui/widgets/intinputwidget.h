@@ -27,8 +27,8 @@ public:
 
     int value() const { return AbstractNumberInputWidget::value<int>(); }
 
-    int minV() const;
-    int maxV() const;
+    int min() const;
+    int max() const;
 
 protected slots:
 

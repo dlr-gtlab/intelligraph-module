@@ -62,12 +62,12 @@ IntInputNode::IntInputNode() :
         };
 
         auto onMinChanged = [=](){
-            int newVal = w->minV();
+            int newVal = w->min();
             if (lowerBound() != newVal) setLowerBound(newVal);
         };
 
         auto onMaxChanged = [=](){
-            int newVal = w->maxV();
+            int newVal = w->max();
             if (upperBound() != newVal) setUpperBound(newVal);
         };
 

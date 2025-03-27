@@ -29,9 +29,9 @@ public:
     double value() const { return AbstractNumberInputWidget::value<double>(); }
 
     /// current min bound (may not be enforced, when not using bounds)
-    double minV() const;
+    double min() const;
     /// current max bound (may not be enforced, when not using bounds)
-    double maxV() const;
+    double max() const;
     /// resultion of slider
     int ticks() const;
 
