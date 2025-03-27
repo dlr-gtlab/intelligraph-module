@@ -32,6 +32,10 @@ DoubleInputNode::DoubleInputNode() :
     registerProperty(m_inputMode);
     registerProperty(m_joystick);
 
+#ifndef GAMEPAD_USAGE
+    m_joystick.hide();
+#endif
+
     m_useBounds.setReadOnly(true);
     m_value.hide();
 
