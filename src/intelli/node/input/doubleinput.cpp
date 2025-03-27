@@ -58,12 +58,12 @@ DoubleInputNode::DoubleInputNode() :
         };
 
         auto onMinChanged = [=](){
-            double newVal = w->minV();
+            double newVal = w->min();
             if (lowerBound() != newVal) setLowerBound(newVal);
         };
 
         auto onMaxChanged = [=](){
-            double newVal = w->maxV();
+            double newVal = w->max();
             if (upperBound() != newVal) setUpperBound(newVal);
         };
 

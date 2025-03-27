@@ -42,10 +42,10 @@ DoubleInputWidget::DoubleInputWidget(InputMode mode,
 }
 
 double
-DoubleInputWidget::minV() const { return m_min; }
+DoubleInputWidget::min() const { return m_min; }
 
 double
-DoubleInputWidget::maxV() const { return m_max; }
+DoubleInputWidget::max() const { return m_max; }
 
 int
 DoubleInputWidget::ticks() const { return m_ticks; }
@@ -84,7 +84,7 @@ DoubleInputWidget::applyRange(QVariant const& valueV,
 void
 DoubleInputWidget::commitSliderValueChange(int value)
 {
-    double dvalue = map<double>(value, {0, ticks()}, {minV(), maxV()});
+    double dvalue = map<double>(value, {0, ticks()}, {min(), max()});
 
     valueEdit()->setText(QString::number(dvalue));
 }
@@ -121,7 +121,7 @@ DoubleInputWidget::commitValueChange()
     double value = this->value<double>();
     if (useBounds()) value = gt::clamp(value, m_min, m_max);
 
-    int dvalue = map<int>(value, {minV(), maxV()}, {0, ticks()});
+    int dvalue = map<int>(value, {min(), max()}, {0, ticks()});
 
     dial()->setValue(dvalue);
     slider()->setValue(dvalue);

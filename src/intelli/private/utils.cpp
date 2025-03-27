@@ -7,7 +7,7 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-
+#include "utils.h"
 
 #ifdef GAMEPAD_USAGE
 #include <Windows.h>

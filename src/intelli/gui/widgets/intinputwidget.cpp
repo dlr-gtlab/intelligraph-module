@@ -33,10 +33,10 @@ IntInputWidget::IntInputWidget(InputMode mode,
 }
 
 int
-IntInputWidget::minV() const { return m_min; }
+IntInputWidget::min() const { return m_min; }
 
 int
-IntInputWidget::maxV() const { return m_max; }
+IntInputWidget::max() const { return m_max; }
 
 void
 IntInputWidget::applyRange(QVariant const& valueV,
