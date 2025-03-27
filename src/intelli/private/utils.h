@@ -25,11 +25,6 @@
 #include <QTimer>
 #include <QThread>
 
-#ifdef GAMEPAD_USAGE
-#include <Windows.h>
-#include <Xinput.h>
-#endif
-
 #include <algorithm>
 
 #define GT_INTELLI_PROFILE() \
@@ -311,24 +306,7 @@ signals:
     void buttonPressed(const QString &buttonName);
 
 protected:
-    void run() override {
-        XINPUT_STATE state;
-        // Endlosschleife zum Abfragen des Controllers
-        while (true) {
-            ZeroMemory(&state, sizeof(XINPUT_STATE));
-            DWORD dwResult = XInputGetState(0, &state); // Controller 0 abfragen
-
-            if (dwResult == ERROR_SUCCESS) {
-                // Prüfe, ob der A-Button gedrückt wurde
-                if (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) {
-                    emit buttonPressed("A");
-                    // Warten, um Mehrfach-Events bei langem Drücken zu vermeiden
-                    msleep(300);
-                }
-            }
-            msleep(50); // Kurze Pause zwischen den Abfragen
-        }
-    }
+    void run() override;
 };
 #endif
 

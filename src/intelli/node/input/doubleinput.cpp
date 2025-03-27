@@ -109,6 +109,7 @@ DoubleInputNode::DoubleInputNode() :
                 w, onRangeChanged);
         connect(&m_inputMode, &GtAbstractProperty::changed,
                 w, updateMode);
+
 #ifdef GAMEPAD_USAGE
         if (m_joystick)
         {
