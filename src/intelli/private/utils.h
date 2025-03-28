@@ -291,9 +291,6 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
 #ifdef GAMEPAD_USAGE
 
-// Linken der XInput-Bibliothek
-#pragma comment(lib, "Xinput.lib")
-
 // GamepadThread: Pollt den Controller und emittiert bei Tastendruck ein Signal.
 class GamepadThread : public QThread {
     Q_OBJECT
