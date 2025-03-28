@@ -11,7 +11,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 set(CMAKE_AUTOMOC ON)
 
 option(BUILD_UNITTESTS "Build Unittests" OFF)
-option(USE_GAMEPAD "Build with gamepad usage" ON)
+option(USE_GAMEPAD "Build with gamepad usage" OFF)
 
 include(GNUInstallDirs)
 
