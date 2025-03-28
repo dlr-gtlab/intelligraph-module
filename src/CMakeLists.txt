@@ -221,6 +221,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/metaenum.cpp
     intelli/property/stringselection.cpp
     intelli/property/uint.cpp
+    intelli/private/utils.cpp
 
     intelli/node/binarydisplay.h intelli/node/binarydisplay.cpp
 )
@@ -239,6 +240,14 @@ target_link_libraries(GTlabIntelliGraph
   PRIVATE
   Qt5::Concurrent
 )
+
+if (USE_GAMEPAD)
+    target_link_libraries(GTlabIntelliGraph
+      PRIVATE
+      ${XINPUT_LIBRARY}
+    )
+endif()
+
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 
 target_compile_definitions(GTlabIntelliGraph PRIVATE
@@ -283,6 +292,10 @@ install (TARGETS GTlabIntelliGraph
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+
+if (USE_GAMEPAD)
+    target_compile_definitions(GTlabIntelliGraph PRIVATE -DGAMEPAD_USAGE)
+endif()
 
 # copy public headers but keep file hierarchy
 foreach ( file ${PUBLIC_HEADERS} )

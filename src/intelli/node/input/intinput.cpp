@@ -12,6 +12,8 @@
 
 #include <intelli/gui/widgets/intinputwidget.h>
 
+#include <intelli/private/utils.h>
+
 using namespace intelli;
 
 IntInputNode::IntInputNode() :
@@ -20,13 +22,19 @@ IntInputNode::IntInputNode() :
     m_min("min", tr("Min."), tr("Minimum value"), 0),
     m_max("max", tr("Max."), tr("Maxiumum value"), 100),
     m_useBounds("useBounds", tr("Use Min/Max"), tr("Use Min/Max bounds"), false),
-    m_inputMode("mode", tr("Input Mode"), tr("Input Mode"))
+    m_inputMode("mode", tr("Input Mode"), tr("Input Mode")),
+    m_joystick("useJoyStick", tr("useJoystick"), tr("useJoystick"), false)
 {
     registerProperty(m_value);
     registerProperty(m_min);
     registerProperty(m_max);
     registerProperty(m_useBounds);
     registerProperty(m_inputMode);
+    registerProperty(m_joystick);
+
+#ifndef GAMEPAD_USAGE
+    m_joystick.hide();
+#endif
 
     m_useBounds.setReadOnly(true);
     m_value.hide();
@@ -105,6 +113,41 @@ IntInputNode::IntInputNode() :
                 w, onRangeChanged);
         connect(&m_inputMode, &GtAbstractProperty::changed,
                 w, updateMode);
+
+#ifdef GAMEPAD_USAGE
+        if (m_joystick)
+        {
+            // Erstelle den Thread und den Empfänger
+            auto* gamepadThread = new intelli::utils::GamepadThread();
+
+            connect(gamepadThread, &intelli::utils::GamepadThread::buttonPressed,
+                    this,
+                    [=](QString const& buttonName)
+                    {
+                        gtFatal() << tr("Button pressed:") << buttonName;
+
+                        if (buttonName == "Down")
+                        {
+                            setValue(m_value.getVal() - 1);
+                        }
+
+                        else if (buttonName == "Up")
+                        {
+                            setValue(m_value.getVal() + 1);
+                        }
+                    }
+
+                    );
+
+            // Thread starten
+            gamepadThread->start();
+
+            // Aufräumen: Thread beenden (hier forceful, in echten Anwendungen lieber sauber beenden)
+            gamepadThread->terminate();
+            gamepadThread->wait();
+            delete gamepadThread;
+        }
+#endif
 
         onRangeChanged();
         updateMode();
