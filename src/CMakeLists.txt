@@ -237,6 +237,14 @@ target_link_libraries(GTlabIntelliGraph
   PRIVATE
   Qt5::Concurrent
 )
+
+if (USE_GAMEPAD)
+    target_link_libraries(GTlabIntelliGraph
+      PRIVATE
+      ${XINPUT_LIBRARY}
+    )
+endif()
+
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 
 target_compile_definitions(GTlabIntelliGraph PRIVATE
