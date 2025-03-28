@@ -128,12 +128,12 @@ IntInputNode::IntInputNode() :
 
                         if (buttonName == "Down")
                         {
-                            m_value.setVal(m_value.getVal() - 1);
+                            setValue(m_value.getVal() - 1);
                         }
 
                         else if (buttonName == "Up")
                         {
-                            m_value.setVal(m_value.getVal() + 1);
+                            setValue(m_value.getVal() + 1);
                         }
                     }
 
@@ -148,8 +148,6 @@ IntInputNode::IntInputNode() :
             delete gamepadThread;
         }
 #endif
-
-
 
         onRangeChanged();
         updateMode();
