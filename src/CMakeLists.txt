@@ -70,6 +70,7 @@ set(PUBLIC_HEADERS
     intelli/node/input/intinput.h
     intelli/node/input/objectinput.h
     intelli/node/input/stringinput.h
+    intelli/node/objectsink.h
     intelli/property/color.h
     intelli/property/metaenum.h
     intelli/property/stringselection.h
@@ -189,10 +190,12 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/input/intinput.cpp
     intelli/node/input/objectinput.cpp
     intelli/node/input/stringinput.cpp
-    intelli/node/stringselection.h
+    intelli/node/stringselection.cpp
+    intelli/node/objectsink.cpp
     intelli/gui/nodegeometry.cpp
     intelli/gui/nodepainter.cpp
     intelli/gui/nodeui.cpp
+    intelli/gui/nodeuidata.cpp
     intelli/gui/grapheditor.cpp
     intelli/gui/graphscene.cpp
     intelli/gui/graphscenemanager.cpp
@@ -223,12 +226,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/uint.cpp
 
     intelli/node/binarydisplay.h intelli/node/binarydisplay.cpp
-)
-
-target_sources(GTlabIntelliGraph
-  PRIVATE
-    intelli/gui/nodeuidata.h intelli/gui/nodeuidata.cpp
-     intelli/node/stringselection.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph
