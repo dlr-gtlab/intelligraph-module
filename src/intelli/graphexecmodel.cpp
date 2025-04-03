@@ -627,8 +627,6 @@ GraphExecutionModel::onNodeEvaluated(NodeUuid const& nodeUuid)
                .arg(relativeNodePath(*node))
                .arg(node->id());
 
-    emit node->evaluated();
-
     // update counter for running child nodes
     auto* graph = Graph::accessGraph(*node);
     Impl::propagateNodeEvalautionStatus<std::minus>(*this, graph);
@@ -639,8 +637,6 @@ GraphExecutionModel::onNodeEvaluated(NodeUuid const& nodeUuid)
     {
         INTELLI_LOG_SCOPE(*this)
             << tr("node requires reevaluation!");
-
-        emit node->evaluated();
 
         if (!evaluateNode(nodeUuid).detach())
         {
