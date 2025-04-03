@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moving a node now creates an undo command. - #41
 
 ### Fixed
+- Fixed `Node::evaluated` being triggered twice per evaluation. - #278
 - Fixed instantiation of outgoing connections when grouping nodes. - #277
 - Fixed slider input mode for number input nodes not committing value. - #272
 - The overlay buttons in a graph scene no longer create undo/redo commands. - #271

@@ -1,9 +1,9 @@
-/* 
+/*
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
  *  SPDX-FileCopyrightText: 2024 German Aerospace Center
- * 
+ *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
@@ -39,6 +39,22 @@ TEST(GraphExecutionModel, evaluate_node_without_dependencies)
 
     debug(graph);
     debug(model);
+
+    Node* A = graph.findNode(A_id);
+    ASSERT_TRUE(A);
+
+    /// make sure node evaluation is emmitted once (issue 278)
+    size_t triggeredModelEvaluated = 0, triggeredNodeEvaluated = 0;
+    QObject::connect(&model, &GraphExecutionModel::nodeEvaluated, &graph, [&](NodeUuid id){
+        assert(id == A_uuid),
+        triggeredModelEvaluated++;
+    });
+    QObject::connect(A, &Node::evaluated, &graph, [&](){
+        triggeredNodeEvaluated++;
+    });
+
+    EXPECT_EQ(triggeredModelEvaluated, 0);
+    EXPECT_EQ(triggeredNodeEvaluated, 0);
 
     // all nodes should be outdated
     EXPECT_TRUE(test::compareNodeEvalState(
@@ -89,6 +105,9 @@ TEST(GraphExecutionModel, evaluate_node_without_dependencies)
         {C_uuid, PortType::Out, PortIndex(0), PortDataState::Outdated, {}},
         {D_uuid, PortType::In , PortIndex(0), PortDataState::Outdated, {}}
     }));
+
+    EXPECT_EQ(triggeredModelEvaluated, 1);
+    EXPECT_EQ(triggeredNodeEvaluated, 1);
 }
 
 /// Evaluate a single node that has dependencies on the same graph level
@@ -1805,11 +1824,11 @@ TEST(GraphExecutionModel, destroy_while_running)
 TEST(GraphExecutionModel, destroy_when_deleting_root_graph)
 {
     {
-        auto graph = make_volatile<Graph>();
+        auto graph = make_unique_qptr<Graph>();
 
         ASSERT_TRUE(test::buildGraphWithGroup(*graph));
 
-        auto model = make_volatile<GraphExecutionModel>(*graph);
+        auto model = make_unique_qptr<GraphExecutionModel>(*graph);
         ASSERT_EQ(model->parent(), graph.get());
 
         graph->deleteLater();
