@@ -23,6 +23,7 @@
 #include <gt_logstream.h>
 
 #include <QTimer>
+#include <QThread>
 
 #include <algorithm>
 
@@ -287,6 +288,24 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
     defaultRegExp = QRegExp(pattern);
 }
+
+#ifdef GAMEPAD_USAGE
+
+// GamepadThread: Pollt den Controller und emittiert bei Tastendruck ein Signal.
+class GamepadThread : public QThread {
+    Q_OBJECT
+public:
+    explicit GamepadThread(QObject* parent = nullptr)
+        : QThread(parent) {}
+
+signals:
+    // Signal, das emittiert wird, wenn der A-Button gedrückt wurde.
+    void buttonPressed(const QString &buttonName);
+
+protected:
+    void run() override;
+};
+#endif
 
 } // namespace utils
 
