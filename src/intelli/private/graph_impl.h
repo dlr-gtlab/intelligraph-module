@@ -466,12 +466,15 @@ struct Graph::Impl
 
             if (targetNode == model->end() || sourceNode == model->end())
             {
-                gtWarning() << utils::logId(*graph)
-                            << tr("Failed to delete connection %1")
-                                   .arg(toString(conId))
-                            << tr("(in-node entry %1, out-node entry %2!)")
-                                   .arg(targetNode != model->end() ? "found" : "not found")
-                                   .arg(sourceNode != model->end() ? "found" : "not found");
+                // global connection may already be deleted, but this function
+                // may still be triggered causing a false alarm
+                gtWarning().verbose()
+                    << utils::logId(*graph)
+                    << tr("Failed to delete connection %1")
+                           .arg(toString(conId))
+                    << tr("(in-node entry %1, out-node entry %2!)")
+                           .arg(targetNode != model->end() ? "found" : "not found")
+                           .arg(sourceNode != model->end() ? "found" : "not found");
                 return false;
             }
 
