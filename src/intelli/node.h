@@ -749,6 +749,8 @@ struct get_node_id;
 template <>
 struct get_node_id<NodeId>
 {
+    template <typename T>
+    NodeId operator()(T const* o) { assert(o); return o->nodeId(); }
     NodeId operator()(Node const* node) { assert(node); return node->id(); }
     NodeId operator()(NodeId nodeId) { return nodeId; }
 };
@@ -756,6 +758,8 @@ struct get_node_id<NodeId>
 template <>
 struct get_node_id<NodeUuid>
 {
+    template <typename T>
+    NodeId operator()(T const* o) { assert(o); return o->nodeUuid(); }
     NodeUuid operator()(Node const* node) { assert(node); return node->uuid(); }
     NodeUuid operator()(NodeUuid nodeUuid) { return nodeUuid; }
 };

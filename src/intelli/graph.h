@@ -80,10 +80,16 @@ GT_INTELLI_EXPORT void debug(Graph const& graph);
 GT_INTELLI_EXPORT void debug(ConnectionModel const& model);
 GT_INTELLI_EXPORT void debug(GlobalConnectionModel const& model);
 
+/**
+ * @brief Returns whether the list of nodes contains a node with the id `nodeId`.
+ * @tparam NodeId_t could be either NodeId or NodeUuid
+ * @param nodeId Id of the node to search for
+ * @param nodes Iterable list of nodes
+ * @return Whether the list contains a node with the desired id
+ */
 template <typename NodeId_t, typename NodeList>
 static bool containsNodeId(NodeId_t const& nodeId, NodeList const& nodes)
 {
-    // check if connection is internal
     auto iter = std::find_if(nodes.begin(), nodes.end(), [&nodeId](auto node){
         return nodeId == get_node_id<NodeId_t>{}(node);
     });
