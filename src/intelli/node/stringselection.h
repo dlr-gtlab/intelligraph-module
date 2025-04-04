@@ -14,16 +14,20 @@
 
 namespace intelli
 {
-class GT_INTELLI_EXPORT StringSelectionNode : public Node
+
+class StringSelectionNode : public Node
 {
     Q_OBJECT
 public:
+
     Q_INVOKABLE StringSelectionNode();
 
 protected:
+
     void eval() override;
 
 private:
+
     /// ports for parent objet input and child object output
     PortId m_in, m_out;
 
