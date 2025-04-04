@@ -5,7 +5,7 @@
 
 set(CMAKE_DEBUG_POSTFIX -d)
 
-set(INTELLIGRAPH_VERSION 0.13.0)
+set(INTELLIGRAPH_VERSION 0.14.0)
 
 option(
     INTELLIGRAPH_DEBUG_NODE_GRAPHICS
@@ -70,7 +70,6 @@ set(PUBLIC_HEADERS
     intelli/node/input/intinput.h
     intelli/node/input/objectinput.h
     intelli/node/input/stringinput.h
-    intelli/node/objectsink.h
     intelli/property/color.h
     intelli/property/metaenum.h
     intelli/property/stringselection.h
@@ -85,16 +84,16 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     SOURCES
     ${PUBLIC_HEADERS}
     ${RCC_SOURCES}
-    intelli/package.h
     intelli/connection.h
     intelli/connectiongroup.h
     intelli/graphcategory.h
     intelli/module.h
+    intelli/package.h
     intelli/calculators/graphexeccalculator.h
-    intelli/node/abstractgroupprovider.h
-    intelli/node/booldisplay.h
     intelli/exec/detachedexecutor.h
     intelli/exec/dummynodedatamodel.h
+    intelli/node/abstractgroupprovider.h
+    intelli/node/booldisplay.h
     intelli/node/dummy.h
     intelli/node/existingdirectorysource.h
     intelli/node/filereader.h
@@ -107,12 +106,13 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/numberdisplay.h
     intelli/node/numbermath.h
     intelli/node/objectmemento.h
+    intelli/node/objectsink.h
     intelli/node/projectinfo.h
     intelli/node/sleepy.h
     intelli/node/stringbuilder.h
+    intelli/node/stringselection.h
     intelli/node/textdisplay.h
     intelli/node/input/fileinput.h
-    intelli/node/stringselection.h
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
     intelli/gui/graphscenemanager.h
@@ -180,9 +180,11 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/numberdisplay.cpp
     intelli/node/numbermath.cpp
     intelli/node/objectmemento.cpp
+    intelli/node/objectsink.cpp
     intelli/node/projectinfo.cpp
     intelli/node/sleepy.cpp
     intelli/node/stringbuilder.cpp
+    intelli/node/stringselection.cpp
     intelli/node/textdisplay.cpp
     intelli/node/input/boolinput.cpp
     intelli/node/input/doubleinput.cpp
@@ -190,8 +192,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/input/intinput.cpp
     intelli/node/input/objectinput.cpp
     intelli/node/input/stringinput.cpp
-    intelli/node/stringselection.cpp
-    intelli/node/objectsink.cpp
     intelli/gui/nodegeometry.cpp
     intelli/gui/nodepainter.cpp
     intelli/gui/nodeui.cpp

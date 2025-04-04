@@ -38,7 +38,7 @@ public:
 
     GT_INTELLI_EXPORT void setDisplayIcon(QIcon icon);
 
-    bool hasDisplayIcon() const;
+    GT_INTELLI_EXPORT bool hasDisplayIcon() const;
 
 private:
 

@@ -15,10 +15,19 @@
 namespace intelli
 {
 
+/**
+ * @brief Initializes all default data types and nodes
+ */
 GT_INTELLI_EXPORT void initModule();
 
+/**
+ * @brief Initializes the default data types. Prefer to call `initModule`.
+ */
 GT_INTELLI_EXPORT void registerDefaultDataTypes();
 
+/**
+ * @brief Initializes the default nodes. Prefer to call `initModule`.
+ */
 GT_INTELLI_EXPORT void registerDefaultNodes();
 
 } // namespace intelli
