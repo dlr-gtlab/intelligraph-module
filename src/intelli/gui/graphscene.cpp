@@ -1138,7 +1138,7 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
     ungroupAction->setIcon(gt::gui::icon::stretch());
     ungroupAction->setEnabled(allDeletable);
-    ungroupAction->setVisible(selectedGraphNode);
+    ungroupAction->setVisible(selectedGraphNode && selected.nodes.size() == 1);
 
     QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
