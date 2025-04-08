@@ -13,6 +13,7 @@
 #include <intelli/gui/widgets/intinputwidget.h>
 
 #include <intelli/private/utils.h>
+#include <qslider.h>
 
 using namespace intelli;
 
@@ -34,7 +35,13 @@ IntInputNode::IntInputNode() :
 
 #ifndef GAMEPAD_USAGE
     m_joystick.hide();
+#else
+    m_joyStickObj = new intelli::utils::JoystickReader(this);
 #endif
+
+
+
+
 
     m_useBounds.setReadOnly(true);
     m_value.hide();
@@ -117,35 +124,44 @@ IntInputNode::IntInputNode() :
 #ifdef GAMEPAD_USAGE
         if (m_joystick)
         {
-            // Erstelle den Thread und den Empfänger
-            auto* gamepadThread = new intelli::utils::GamepadThread();
-
-            connect(gamepadThread, &intelli::utils::GamepadThread::buttonPressed,
-                    this,
-                    [=](QString const& buttonName)
+            connect(m_joyStickObj, &utils::JoystickReader::buttonPressed, [](int id)
                     {
-                        gtFatal() << tr("Button pressed:") << buttonName;
+                        gtTrace() << "Button pressed: " << id;
+                    });
 
-                        if (buttonName == "Down")
+            connect(m_joyStickObj, &utils::JoystickReader::buttonReleased, [](int id)
+                    {
+                        gtTrace() << "Button released: " << id;
+                    });
+
+            connect(m_joyStickObj, &utils::JoystickReader::xAxisChange, [this, w]
+                    (double percentage)
+                    {
+                        double ref = 0.75;
+                        int refEval = 90;
+
+                        int minimal = m_min;
+                        int maximal = m_max;
+
+                        double newVal = 0.;
+
+                        if (percentage < ref)
                         {
-                            setValue(m_value.getVal() - 1);
+                            newVal = m_min + (percentage / ref) * (refEval);
+                        }
+                        else
+                        {
+                            double relativePercentage = (percentage - ref) / (1. - ref);
+
+                            int newMin = minimal + refEval;
+
+                            newVal = newMin + relativePercentage * (maximal - newMin);
                         }
 
-                        else if (buttonName == "Up")
-                        {
-                            setValue(m_value.getVal() + 1);
-                        }
-                    }
+                    setValue(int(newVal));
 
-                    );
-
-            // Thread starten
-            gamepadThread->start();
-
-            // Aufräumen: Thread beenden (hier forceful, in echten Anwendungen lieber sauber beenden)
-            gamepadThread->terminate();
-            gamepadThread->wait();
-            delete gamepadThread;
+                    w->slider()->setValue(int(newVal));
+                    });
         }
 #endif
 

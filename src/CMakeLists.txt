@@ -241,7 +241,7 @@ target_link_libraries(GTlabIntelliGraph
 if (USE_GAMEPAD)
     target_link_libraries(GTlabIntelliGraph
       PRIVATE
-      ${XINPUT_LIBRARY}
+      winmm
     )
 endif()
 

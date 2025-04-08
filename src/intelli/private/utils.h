@@ -291,20 +291,36 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
 #ifdef GAMEPAD_USAGE
 
-// GamepadThread: Pollt den Controller und emittiert bei Tastendruck ein Signal.
-class GamepadThread : public QThread {
+class JoystickReader : public QObject
+{
     Q_OBJECT
 public:
-    explicit GamepadThread(QObject* parent = nullptr)
-        : QThread(parent) {}
+    explicit JoystickReader(QObject* parent = nullptr);
 
+    ~JoystickReader();
 signals:
-    // Signal, das emittiert wird, wenn der A-Button gedrückt wurde.
-    void buttonPressed(const QString &buttonName);
+    void buttonPressed(int buttonId);
+
+    void buttonReleased(int buttonId);
+
+    void xAxisChange(double newPercentage);
 
 protected:
-    void run() override;
+    void timerEvent(QTimerEvent* event) override;
+
+public slots:
+    void pollJoyStick();
+
+private:
+
+    /// Private implementation
+    class Impl;
+    std::unique_ptr<Impl> m_pimpl;
 };
+
+
+
+
 #endif
 
 } // namespace utils

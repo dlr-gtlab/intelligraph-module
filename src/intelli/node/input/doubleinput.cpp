@@ -117,24 +117,24 @@ DoubleInputNode::DoubleInputNode() :
 #ifdef GAMEPAD_USAGE
         if (m_joystick)
         {
-            // Erstelle den Thread und den Empfänger
-            auto* gamepadThread = new intelli::utils::GamepadThread();
+            // // Erstelle den Thread und den Empfänger
+            // auto* gamepadThread = new intelli::utils::GamepadThread();
 
-            connect(gamepadThread, &intelli::utils::GamepadThread::buttonPressed,
-                    this,
-                    [=](QString const& buttonName)
-                    {
-                        gtFatal() << tr("Button pressed:") << buttonName;
-                    }
-                    );
+            // connect(gamepadThread, &intelli::utils::GamepadThread::buttonPressed,
+            //         this,
+            //         [=](QString const& buttonName)
+            //         {
+            //             gtFatal() << tr("Button pressed:") << buttonName;
+            //         }
+            //         );
 
-            // Thread starten
-            gamepadThread->start();
+            // // Thread starten
+            // gamepadThread->start();
 
-            // Aufräumen: Thread beenden (hier forceful, in echten Anwendungen lieber sauber beenden)
-            gamepadThread->terminate();
-            gamepadThread->wait();
-            delete gamepadThread;
+            // // Aufräumen: Thread beenden (hier forceful, in echten Anwendungen lieber sauber beenden)
+            // gamepadThread->terminate();
+            // gamepadThread->wait();
+            // delete gamepadThread;
         }
 #endif
         onRangeChanged();

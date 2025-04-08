@@ -23,15 +23,15 @@ enable_gtlab_devtools()
 
 find_package(Qt5 REQUIRED COMPONENTS Widgets Core Concurrent Gui)
 
-if (USE_GAMEPAD)
-    find_library(XINPUT_LIBRARY XInput.lib)
+# if (USE_GAMEPAD)
+#     find_library(XINPUT_LIBRARY XInput.lib)
 
-    if (XINPUT_LIBRARY)
-        message(STATUS "XInput found: ${XINPUT_LIBRARY}")
-    else()
-        message(FATAL_ERROR "XInput not found")
-    endif()
-endif()
+#     if (XINPUT_LIBRARY)
+#         message(STATUS "XInput found: ${XINPUT_LIBRARY}")
+#     else()
+#         message(FATAL_ERROR "XInput not found")
+#     endif()
+# endif()
 
 if (NOT TARGET GTlab::Logging)
     find_package(GTlabLogging REQUIRED)

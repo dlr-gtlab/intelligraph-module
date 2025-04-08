@@ -16,6 +16,8 @@
 #include <gt_intproperty.h>
 #include <gt_boolproperty.h>
 
+#include "intelli/private/utils.h"
+
 namespace intelli
 {
 
@@ -66,6 +68,8 @@ private:
     GtBoolProperty m_joystick;
 
     PortId m_out;
+
+    utils::JoystickReader* m_joyStickObj;
 };
 
 } // namespace intelli

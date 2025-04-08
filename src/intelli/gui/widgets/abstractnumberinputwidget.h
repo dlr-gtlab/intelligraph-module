@@ -71,6 +71,9 @@ public:
 
     bool eventFilter(QObject* obj, QEvent* e) override;
 
+    QSlider* slider();
+    QSlider const* slider() const;
+
 signals:
 
     /// emitted if value changes, this value may not be the final value
@@ -105,8 +108,7 @@ protected:
     QDial* dial();
     QDial const* dial() const;
 
-    QSlider* slider();
-    QSlider const* slider() const;
+
 
 protected slots:
 

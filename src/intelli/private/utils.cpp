@@ -11,38 +11,78 @@
 
 #ifdef GAMEPAD_USAGE
 #include <Windows.h>
-#include <Xinput.h>
 #endif
 
+
+
 #ifdef GAMEPAD_USAGE
+class intelli::utils::JoystickReader::Impl
+{
+
+public:
+    DWORD lastButtonState = 0;
+
+    DWORD lastXAxis = 0;
+    DWORD lastYAxis = 0;
+    DWORD lastZAxis = 0;
+};
+
+intelli::utils::JoystickReader::JoystickReader(QObject *parent) :
+    QObject(parent),
+    m_pimpl{std::make_unique<Impl>()}
+{
+    startTimer(200);
+}
 
 void
-intelli::utils::GamepadThread::run()
+intelli::utils::JoystickReader::timerEvent(QTimerEvent* event)
 {
-    XINPUT_STATE state;
-    // Endlosschleife zum Abfragen des Controllers
-    while (true) {
-        ZeroMemory(&state, sizeof(XINPUT_STATE));
-        DWORD dwResult = XInputGetState(0, &state); // Controller 0 abfragen
+    pollJoyStick();
+}
 
-        if (dwResult == ERROR_SUCCESS) {
-            // Prüfe, ob der A-Button gedrückt wurde
-            if (state.Gamepad.wButtons & XINPUT_GAMEPAD_A) {
-                emit buttonPressed("A");
-                // Warten, um Mehrfach-Events bei langem Drücken zu vermeiden
-                msleep(300);
-            }
-            if (state.Gamepad.sThumbLY > 8000) {  // Joystick nach unten bewegt (Wert positiv)
-                emit buttonPressed("Down");
-                msleep(100);
-            }
-            else if (state.Gamepad.sThumbLY < -8000) {  // Joystick nach oben bewegt (Wert negativ)
-                emit buttonPressed("Up");
-                msleep(100);
+intelli::utils::JoystickReader::~JoystickReader() = default;
+
+void
+intelli::utils::JoystickReader::pollJoyStick()
+{
+    JOYINFOEX joyInfo;
+    joyInfo.dwSize = sizeof(JOYINFOEX);
+    joyInfo.dwFlags = JOY_RETURNALL;
+
+    MMRESULT result = joyGetPosEx(JOYSTICKID1, &joyInfo);
+
+    if (result == JOYERR_NOERROR)
+    {
+        DWORD currentButtons = joyInfo.dwButtons;
+
+        DWORD currentX = joyInfo.dwXpos;
+        DWORD currentY = joyInfo.dwYpos;
+        DWORD currentZ = joyInfo.dwZpos;
+
+        if (currentX != m_pimpl->lastXAxis)
+        {
+            int newVal = int(currentX);
+            int oldVal = int(m_pimpl->lastXAxis);
+
+            double percNew =  1.0 - newVal / 65535.;
+            double percOld =  1.0 - oldVal / 65535.;
+
+            if (abs(percNew - percOld) > 0.005)
+            {
+                emit xAxisChange(percNew);
             }
         }
-        msleep(50); // Kurze Pause zwischen den Abfragen
+        m_pimpl->lastButtonState = currentButtons;
+        m_pimpl->lastXAxis = currentX;
+        m_pimpl->lastYAxis = currentY;
+        m_pimpl->lastZAxis = currentZ;
+    }
+    else
+    {
+        gtWarning() << "No joystick connected";
     }
 }
 
+
 #endif
+
