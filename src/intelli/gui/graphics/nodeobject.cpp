@@ -94,6 +94,8 @@ struct NodeGraphicsObject::Impl
     State state = Normal;
     /// Whether node is hovered
     bool hovered = false;
+    /// Whether the node is collapsed
+    bool collapsed = false;
 
     Impl(NodeGraphicsObject* obj, GraphSceneData& data_, Node& node_) :
         sceneData(&data_),
@@ -211,6 +213,21 @@ bool
 NodeGraphicsObject::isHovered() const
 {
     return pimpl->hovered;
+}
+
+bool
+NodeGraphicsObject::isCollpased() const
+{
+    return pimpl->collapsed;
+}
+
+void
+NodeGraphicsObject::collapse(bool doCollapse)
+{
+    if (centralWidget()) centralWidget()->setVisible(!doCollapse);
+
+    pimpl->collapsed = doCollapse;
+    Impl::prepareGeometryChange(this).finalize();
 }
 
 bool

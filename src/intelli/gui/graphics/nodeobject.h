@@ -93,6 +93,12 @@ public:
      */
     bool isHovered() const;
 
+    /// TODO
+    bool isCollpased() const;
+
+    /// TODO
+    void collapse(bool doCollapse);
+
     /**
      * @brief Whether the resize handle should be displayed
      * @return Has resize handle

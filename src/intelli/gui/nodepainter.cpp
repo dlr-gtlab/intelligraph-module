@@ -18,6 +18,7 @@
 #include "intelli/gui/graphics/nodeobject.h"
 
 #include <gt_colors.h>
+#include <gt_icons.h>
 
 #include <QIcon>
 #include <QPainter>
@@ -116,27 +117,32 @@ NodePainter::customBackgroundColor() const
 }
 
 void
-NodePainter::drawBackground(QPainter& painter) const
+NodePainter::drawBackgroundHelper(QPainter& painter) const
 {
-    applyBackgroundConfig(painter);
-
     auto& g = geometry();
     auto rect = g.nodeBodyRect().united(g.nodeHeaderRect());
 
     auto& style = style::currentStyle().node;
-    painter.drawRoundedRect(rect, style.roundingRadius, style.roundingRadius);
+
+    // round node's background when collapsed
+    double roundingRadius = style.roundingRadius;
+    if (object().isCollpased()) roundingRadius = rect.height() * 0.5;
+
+    painter.drawRoundedRect(rect, roundingRadius, roundingRadius);
+}
+
+void
+NodePainter::drawBackground(QPainter& painter) const
+{
+    applyBackgroundConfig(painter);
+    drawBackgroundHelper(painter);
 }
 
 void
 NodePainter::drawOutline(QPainter& painter) const
 {
     applyOutlineConfig(painter);
-
-    auto& g = geometry();
-    auto rect = g.nodeBodyRect().united(g.nodeHeaderRect());
-
-    auto& style = style::currentStyle().node;
-    painter.drawRoundedRect(rect, style.roundingRadius, style.roundingRadius);
+    drawBackgroundHelper(painter);
 }
 
 void
@@ -272,11 +278,14 @@ NodePainter::drawResizeHandle(QPainter& painter) const
 void
 NodePainter::drawIcon(QPainter& painter) const
 {
-    if (!uiData().hasDisplayIcon()) return;
+    if (!geometry().hasDisplayIcon()) return;
 
     QRect rect = geometry().iconRect();
 
-    QIcon icon = uiData().displayIcon();
+    QIcon icon = object().isCollpased() ?
+                     gt::gui::icon::triangleUp() :
+                     uiData().displayIcon();
+
     icon.paint(&painter, rect);
 }
 
@@ -305,12 +314,16 @@ NodePainter::drawCaption(QPainter& painter) const
 void
 NodePainter::paint(QPainter& painter) const
 {
+    bool collapsed = object().isCollpased();
+
     drawBackground(painter);
-    drawResizeHandle(painter);
+    if (!collapsed) drawResizeHandle(painter);
     drawOutline(painter);
+
     drawCaption(painter);
     drawIcon(painter);
-    drawPorts(painter);
+
+    if (!collapsed) drawPorts(painter);
 
 #ifdef GT_INTELLI_DEBUG_NODE_GRAPHICS
     painter.setBrush(Qt::NoBrush);

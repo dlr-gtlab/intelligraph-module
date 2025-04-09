@@ -81,6 +81,8 @@ public:
      */
     int vspacing() const;
 
+    bool hasDisplayIcon() const;
+
     /**
      * @brief Returns the shape, which is used for the collision detection of
      * the actual graphics object. It should be accurate but not too complex.

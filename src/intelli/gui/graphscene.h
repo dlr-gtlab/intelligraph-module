@@ -143,9 +143,15 @@ private:
     /// Currently active command when moving nodes
     GtCommand m_nodeMoveCmd = {};
 
+    /// TODO
     void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
 
+    /// TODO
     void expandGroupNode(Graph* groupNode);
+
+    /// TODO
+    void collapseNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects,
+                       bool doCollapse);
 
     /**
      * @brief Updates the connection's end points. If a node graphics object

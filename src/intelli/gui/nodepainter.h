@@ -197,6 +197,8 @@ private:
     NodeGeometry const* m_geometry;
     /// padding
     alignas(8) uint8_t __padding[16];
+
+    void drawBackgroundHelper(QPainter& painter) const;
 };
 
 } // namespace intelli
