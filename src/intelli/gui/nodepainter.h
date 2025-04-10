@@ -78,6 +78,12 @@ public:
      */
     void applyOutlineConfig(QPainter& painter) const;
 
+    void applyPortConfig(QPainter& painter,
+                         PortInfo const& port,
+                         PortType type,
+                         PortIndex idx,
+                         uint flags) const;
+
     /**
      * @brief Returns the the background color of the node. Additional effects
      * may be applied. Override `customBackgroundColor` to apply a custom

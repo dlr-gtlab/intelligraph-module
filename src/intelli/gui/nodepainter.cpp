@@ -74,6 +74,36 @@ NodePainter::applyOutlineConfig(QPainter& painter) const
     painter.setBrush(Qt::NoBrush);
 }
 
+void
+NodePainter::applyPortConfig(QPainter& painter,
+                             PortInfo const& port,
+                             PortType type,
+                             PortIndex idx,
+                             uint flags) const
+{
+    bool isPortIncompatible =  (flags & HighlightPorts) &&
+                              !(flags & PortHighlighted);
+
+    auto& style = style::currentStyle();
+    auto& nstyle = style.node;
+
+    double penWidth = object().isHovered() ?
+                          nstyle.hoveredOutlineWidth :
+                          nstyle.defaultOutlineWidth;
+
+    QColor penColor = object().isSelected() ?
+                          nstyle.selectedOutline :
+                          nstyle.defaultOutline;
+
+    QBrush brush = isPortIncompatible ?
+                       style.connection.inactiveOutline :
+                       style.connection.typeColor(port.typeId);
+
+    QPen pen(penColor, penWidth);
+    painter.setPen(pen);
+    painter.setBrush(brush);
+}
+
 QColor
 NodePainter::backgroundColor() const
 {
@@ -199,34 +229,17 @@ NodePainter::drawPort(QPainter& painter,
                       PortIndex idx,
                       uint flags) const
 {
+    applyPortConfig(painter, port, type, idx, flags);
+
     bool isPortIncompatible =  (flags & HighlightPorts) &&
                               !(flags & PortHighlighted);
 
     QSizeF offset = QSizeF{1, 1};
     if (isPortIncompatible) offset *= 3;
 
-    auto& style = style::currentStyle();
-    auto& nstyle = style.node;
-
-    double penWidth = object().isHovered() ?
-                          nstyle.hoveredOutlineWidth :
-                          nstyle.defaultOutlineWidth;
-
-    QColor penColor = object().isSelected() ?
-                          nstyle.selectedOutline :
-                          nstyle.defaultOutline;
-
-    QBrush brush = isPortIncompatible ?
-                       style.connection.inactiveOutline :
-                       style.connection.typeColor(port.typeId);
-
     QRectF p = geometry().portRect(type, idx);
     p.translate(offset.width() * 0.5, offset.height() * 0.5);
     p.setSize(p.size() - offset);
-
-    QPen pen(penColor, penWidth);
-    painter.setPen(pen);
-    painter.setBrush(brush);
 
     painter.drawEllipse(p);
 }
@@ -302,13 +315,6 @@ NodePainter::drawCaption(QPainter& painter) const
     painter.setBrush(Qt::NoBrush);
     painter.setPen(gt::gui::color::text());
     painter.drawText(rect, node.caption(), QTextOption{Qt::AlignHCenter});
-
-#ifdef GT_INTELLI_DEBUG_NODE_GRAPHICS
-    painter.setBrush(Qt::NoBrush);
-
-    painter.setPen(Qt::white);
-    painter.drawRect(rect);
-#endif
 }
 
 void
@@ -329,7 +335,11 @@ NodePainter::paint(QPainter& painter) const
     painter.setBrush(Qt::NoBrush);
 
     painter.setPen(Qt::white);
+    painter.drawRect(geometry().nodeHeaderRect());
+    painter.drawRect(geometry().nodeBodyRect());
     painter.drawRect(geometry().evalStateRect());
+    painter.drawRect(geometry().captionRect());
+    painter.drawRect(geometry().iconRect());
 
     painter.setPen(Qt::red);
     painter.drawRect(object().boundingRect());

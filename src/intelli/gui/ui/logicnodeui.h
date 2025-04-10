@@ -49,6 +49,8 @@ protected:
 
     QPainterPath computeShape() const override;
 
+    QRectF computeNodeHeaderRect() const override;
+
     QRectF computeNodeBodyRect() const override;
 
     QRectF computeBoundingRect() const override;
@@ -75,6 +77,12 @@ public:
                          PortType type,
                          PortIndex idx,
                          uint flags) const override;
+
+    void drawPort(QPainter& painter,
+                  PortInfo const& port,
+                  PortType type,
+                  PortIndex idx,
+                  uint flags) const override;
 };
 
 /**

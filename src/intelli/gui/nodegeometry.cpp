@@ -327,6 +327,7 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
 
     if (object().isCollpased())
     {
+        // position port at vertical center if collapsed
         int height = body.height() * 0.5 - style.portRadius;
 
         return QRectF{
