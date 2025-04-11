@@ -1651,8 +1651,12 @@ GraphScene::onNodeAppended(Node* node)
             this, &GraphScene::onMakeDraftConnection,
             Qt::DirectConnection);
 
+    auto* entityPtr = entity.get();
+
     // append to map
     m_nodes.push_back({node->id(), std::move(entity)});
+
+    emit nodeAppended(entityPtr);
 }
 
 void

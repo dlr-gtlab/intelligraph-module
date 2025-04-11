@@ -97,7 +97,7 @@ public:
     bool isCollpased() const;
 
     /// TODO
-    void collapse(bool doCollapse);
+    Q_INVOKABLE void collapse(bool doCollapse);
 
     /**
      * @brief Whether the resize handle should be displayed
@@ -262,6 +262,8 @@ signals:
      * @param object Object that updated its position
      */
     void nodePositionChanged(NodeGraphicsObject* object);
+
+    void nodeCollapsed(NodeGraphicsObject* object, bool isCollapsed);
 
     void nodeDoubleClicked(NodeGraphicsObject* object);
 

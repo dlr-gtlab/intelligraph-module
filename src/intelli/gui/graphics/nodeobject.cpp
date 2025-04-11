@@ -227,6 +227,9 @@ NodeGraphicsObject::collapse(bool doCollapse)
     if (centralWidget()) centralWidget()->setVisible(!doCollapse);
 
     pimpl->collapsed = doCollapse;
+
+    emit nodeCollapsed(this, doCollapse);
+
     Impl::prepareGeometryChange(this).finalize();
 }
 

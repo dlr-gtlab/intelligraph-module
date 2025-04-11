@@ -9,10 +9,11 @@
 
 #include <intelli/gui/graphstatemanager.h>
 
+#include <intelli/graph.h>
 #include <intelli/graphexecmodel.h>
 #include <intelli/gui/graphview.h>
 #include <intelli/gui/graphscene.h>
-#include <intelli/graph.h>
+#include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/private/utils.h>
 
 using namespace intelli;
@@ -117,4 +118,45 @@ GraphStateManager::onSceneChanged(GraphScene* scene)
         })
         .onValueChange(model, &GraphExecutionModel::autoEvaluationChanged)
         .finalize();
+
+    auto onNodeAppended = [guardian = &guardian](NodeGraphicsObject* object){
+        assert(object);
+
+        /// grid change state
+        auto* state = gtStateHandler->initializeState(
+            // group id
+            object->node().uuid() + QChar('(') + GT_CLASSNAME(Node) + QChar(')'),
+            // state id
+            tr("Is Collapsed"),
+            // entry for this graph
+            QString{GT_CLASSNAME(Node)} + QChar(';') + tr("is_collapsed"),
+            // default value
+            object->isCollpased(),
+            // guardian object
+            guardian
+        );
+
+        QObject::connect(state, qOverload<QVariant const&>(&GtState::valueChanged),
+                         object, [object](QVariant const& v){
+            object->collapse(v.toBool());
+        });
+
+        QObject::connect(object, &NodeGraphicsObject::nodeCollapsed, state,
+                         [state](NodeGraphicsObject* object, bool isCollapsed){
+             constexpr bool undoCommand = true;
+             if (state->getValue().toBool() != isCollapsed)
+             {
+                 state->setValue(isCollapsed, undoCommand);
+             }
+         });
+
+        object->collapse(state->getValue().toBool());
+    };
+
+    connect(scene, &GraphScene::nodeAppended, this, onNodeAppended);
+
+    for (NodeId nodeId : graph.connectionModel().iterateNodeIds())
+    {
+        onNodeAppended(scene->nodeObject(nodeId));
+    }
 }

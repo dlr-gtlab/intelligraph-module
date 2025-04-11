@@ -102,6 +102,8 @@ signals:
 
     void snapToGridChanged();
 
+    void nodeAppended(NodeGraphicsObject* object);
+
 protected:
 
     void keyPressEvent(QKeyEvent* event) override;
