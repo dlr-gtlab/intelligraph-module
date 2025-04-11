@@ -44,11 +44,11 @@ public:
     {
         NoPortFlag = 0,
         /// Whether the port is connected
-        PortConnected = 1,
+        PortConnected = 1 << 0,
         /// Whether ports should be highlighted at all
-        HighlightPorts = 2,
+        HighlightPorts = 1 << 1,
         /// Whether the port should be highlighted. Check `HighlightPorts` first
-        PortHighlighted = 4,
+        PortHighlighted = 1 << 2
     };
 
     /**
@@ -72,12 +72,18 @@ public:
     void applyBackgroundConfig(QPainter& painter) const;
 
     /**
-     * @brief Applies pen and brush to the painter to render the outlne
+     * @brief Applies pen and brush to the painter to render the outline
      * of the node uniformly.
      * @param painter Painter to configure
      */
     void applyOutlineConfig(QPainter& painter) const;
 
+    /**
+     * @brief Applies pen and brush to the painter to render a port based on
+     * the port properties uniformly.
+     * of the node uniformly.
+     * @param painter Painter to configure
+     */
     void applyPortConfig(QPainter& painter,
                          PortInfo const& port,
                          PortType type,

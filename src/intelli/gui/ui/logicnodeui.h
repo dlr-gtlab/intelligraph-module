@@ -29,12 +29,6 @@ public:
 
     LogicNodeGeometry(NodeGraphicsObject const& object);
 
-    QRectF captionRect() const override;
-
-    QRect iconRect() const override;
-
-    QRectF evalStateRect() const override;
-
     QRectF portRect(PortType type, PortIndex idx) const override;
 
     QPainterPath beginCurve() const;
@@ -48,8 +42,6 @@ public:
 protected:
 
     QPainterPath computeShape() const override;
-
-    QRectF computeNodeHeaderRect() const override;
 
     QRectF computeNodeBodyRect() const override;
 
