@@ -93,6 +93,16 @@ AbstractNumberInputWidget::AbstractNumberInputWidget(InputMode mode,
             this, &AbstractNumberInputWidget::commitSliderValueChange);
     connect(m_slider, &QSlider::sliderReleased,
             this, &AbstractNumberInputWidget::valueComitted);
+    connect(m_slider, &QSlider::valueChanged,
+            this, [this]()
+            {
+                if (!m_slider->isSliderDown()) emit valueComitted();
+            });
+    connect(m_dial, &QDial::valueChanged,
+            this, [this]()
+            {
+                if (!m_dial->isSliderDown()) emit valueComitted();
+            });
 
     applyInputMode(mode);
 }

@@ -39,10 +39,6 @@ IntInputNode::IntInputNode() :
     m_joyStickObj = new intelli::utils::JoystickReader(this);
 #endif
 
-
-
-
-
     m_useBounds.setReadOnly(true);
     m_value.hide();
     
