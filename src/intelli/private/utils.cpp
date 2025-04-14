@@ -77,10 +77,6 @@ intelli::utils::JoystickReader::pollJoyStick()
         m_pimpl->lastYAxis = currentY;
         m_pimpl->lastZAxis = currentZ;
     }
-    else
-    {
-        gtWarning() << "No joystick connected";
-    }
 }
 
 
