@@ -318,10 +318,7 @@ private:
     std::unique_ptr<Impl> m_pimpl;
 };
 
-
-
-
-#endif
+#endif // GAMEPAD_USAGE
 
 } // namespace utils
 
