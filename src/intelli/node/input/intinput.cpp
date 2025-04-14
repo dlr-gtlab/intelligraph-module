@@ -137,6 +137,8 @@ IntInputNode::IntInputNode() :
             connect(m_joyStickObj, &utils::JoystickReader::xAxisChange, [this, w]
                     (double percentage)
                     {
+                        if (!w) return;
+
                         double ref = 0.75;
                         int refEval = 90;
 
@@ -158,9 +160,12 @@ IntInputNode::IntInputNode() :
                             newVal = newMin + relativePercentage * (maximal - newMin);
                         }
 
-                    setValue(int(newVal));
+                        setValue(int(newVal));
 
-                    w->slider()->setValue(int(newVal));
+                        if (w->slider())
+                        {
+                            w->slider()->setValue(int(newVal));
+                        }
                     });
         }
 #endif
