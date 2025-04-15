@@ -13,12 +13,10 @@
 #ifdef WIN32
 #include <Windows.h>
 #endif //WIN32
-#endif //GAMEPAD_USAGE
 
 class intelli::utils::JoystickReader::Impl
 {
 
-#ifdef GAMEPAD_USAGE
 #ifdef WIN32
 public:
     DWORD lastButtonState = 0;
@@ -27,7 +25,6 @@ public:
     DWORD lastYAxis = 0;
     DWORD lastZAxis = 0;
 #endif //WIN32
-#endif //GAMEPAD_USAGE
 };
 
 intelli::utils::JoystickReader::JoystickReader(QObject *parent) :
@@ -48,7 +45,6 @@ intelli::utils::JoystickReader::~JoystickReader() = default;
 void
 intelli::utils::JoystickReader::pollJoyStick()
 {
-#ifdef GAMEPAD_USAGE
 #ifdef WIN32
     JOYINFOEX joyInfo;
     joyInfo.dwSize = sizeof(JOYINFOEX);
@@ -86,8 +82,9 @@ intelli::utils::JoystickReader::pollJoyStick()
     gtError() << tr("Joy stick usage on linux is not supported");
 #endif // WIN32
 
-#endif // GAMEPAD_USAGE
 }
+
+#endif //GAMEPAD_USAGE
 
 
 

@@ -69,7 +69,9 @@ private:
 
     PortId m_out;
 
+#ifdef GAMEPAD_USAGE
     utils::JoystickReader* m_joyStickObj;
+#endif
 };
 
 } // namespace intelli

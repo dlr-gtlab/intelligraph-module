@@ -297,7 +297,7 @@ class JoystickReader : public QObject
 public:
     explicit JoystickReader(QObject* parent = nullptr);
 
-    ~JoystickReader();
+    ~JoystickReader() override;
 signals:
     void buttonPressed(int buttonId);
 
