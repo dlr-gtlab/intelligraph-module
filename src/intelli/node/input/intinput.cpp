@@ -130,7 +130,7 @@ IntInputNode::IntInputNode() :
                         gtTrace() << "Button released: " << id;
                     });
 
-            connect(m_joyStickObj, &utils::JoystickReader::xAxisChange, [this, w]
+            connect(m_joyStickObj, &utils::JoystickReader::xAxisChange, w, [this, w]
                     (double percentage)
                     {
                         if (!w) return;
