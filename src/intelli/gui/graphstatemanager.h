@@ -57,6 +57,10 @@ private:
     QPointer<GraphView> m_view;
 
     unique_qptr<GtObject> m_guardian;
+
+    void setupUserStates(GraphScene* scene);
+
+    void setupLocalStates(GraphScene* scene);
 };
 
 } // namespace intelli

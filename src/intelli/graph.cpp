@@ -16,6 +16,7 @@
 #include "intelli/node/dummy.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
+#include "intelli/gui/guidata.h"
 
 #include <gt_qtutilities.h>
 #include <gt_algorithms.h>
@@ -31,12 +32,15 @@ Graph::Graph() :
     // we create the node connections here in this group object. This way
     // merging mementos has the correct order (first the connections are removed
     // then the nodes)
-    auto* group = new ConnectionGroup(this);
-    group->setDefault(true);
+    auto* connectionGroup = new ConnectionGroup(this);
+    connectionGroup->setDefault(true);
+
+    auto* guiData = new GuiData(this);
+    guiData->setDefault(true);
 
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    connect(group, &ConnectionGroup::mergeConnections, this, [this](){
+    connect(connectionGroup, &ConnectionGroup::mergeConnections, this, [this](){
         restoreConnections();
     });
 }

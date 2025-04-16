@@ -1611,6 +1611,19 @@ void
 GraphScene::collapseNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects,
                           bool doCollapse)
 {
+    if (selectedNodeObjects.empty()) return;
+
+    QString caption =
+        relativeNodePath(selectedNodeObjects.front()->node()) +
+        (selectedNodeObjects.size() > 1 ? ", ...":"");
+
+    auto change = gtApp->makeCommand(&graph(),
+                                     tr("Node%1 %2collapsed (%3)")
+                                         .arg(selectedNodeObjects.size() > 1 ? "s":"",
+                                              doCollapse? "":"un",
+                                              caption));
+    Q_UNUSED(change);
+
     for (NodeGraphicsObject* o : selectedNodeObjects)
     {
         o->collapse(doCollapse);
@@ -1651,12 +1664,8 @@ GraphScene::onNodeAppended(Node* node)
             this, &GraphScene::onMakeDraftConnection,
             Qt::DirectConnection);
 
-    auto* entityPtr = entity.get();
-
     // append to map
     m_nodes.push_back({node->id(), std::move(entity)});
-
-    emit nodeAppended(entityPtr);
 }
 
 void

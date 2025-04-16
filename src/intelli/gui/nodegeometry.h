@@ -81,6 +81,12 @@ public:
      */
     int vspacing() const;
 
+    /**
+     * @brief Returns whether the node should draw a display icon.
+     * This function respects `object().isCollapsed()` compared to
+     * `uiData().hasDisplayIcon`.
+     * @return Whether a display icon should be drawn
+     */
     bool hasDisplayIcon() const;
 
     /**
