@@ -12,6 +12,9 @@
 
 #include <intelli/gui/widgets/intinputwidget.h>
 
+#include <intelli/private/utils.h>
+#include <qslider.h>
+
 using namespace intelli;
 
 IntInputNode::IntInputNode() :
@@ -20,13 +23,21 @@ IntInputNode::IntInputNode() :
     m_min("min", tr("Min."), tr("Minimum value"), 0),
     m_max("max", tr("Max."), tr("Maxiumum value"), 100),
     m_useBounds("useBounds", tr("Use Min/Max"), tr("Use Min/Max bounds"), false),
-    m_inputMode("mode", tr("Input Mode"), tr("Input Mode"))
+    m_inputMode("mode", tr("Input Mode"), tr("Input Mode")),
+    m_joystick("useJoyStick", tr("useJoystick"), tr("useJoystick"), false)
 {
     registerProperty(m_value);
     registerProperty(m_min);
     registerProperty(m_max);
     registerProperty(m_useBounds);
     registerProperty(m_inputMode);
+    registerProperty(m_joystick);
+
+#ifndef GAMEPAD_USAGE
+    m_joystick.hide();
+#else
+    m_joyStickObj = new intelli::utils::JoystickReader(this);
+#endif
 
     m_useBounds.setReadOnly(true);
     m_value.hide();
@@ -105,6 +116,55 @@ IntInputNode::IntInputNode() :
                 w, onRangeChanged);
         connect(&m_inputMode, &GtAbstractProperty::changed,
                 w, updateMode);
+
+#ifdef GAMEPAD_USAGE
+        if (m_joystick)
+        {
+            connect(m_joyStickObj, &utils::JoystickReader::buttonPressed, [](int id)
+                    {
+                        gtTrace() << "Button pressed: " << id;
+                    });
+
+            connect(m_joyStickObj, &utils::JoystickReader::buttonReleased, [](int id)
+                    {
+                        gtTrace() << "Button released: " << id;
+                    });
+
+            connect(m_joyStickObj, &utils::JoystickReader::xAxisChange, w, [this, w]
+                    (double percentage)
+                    {
+                        if (!w) return;
+
+                        double ref = 0.75;
+                        int refEval = 90;
+
+                        int minimal = m_min;
+                        int maximal = m_max;
+
+                        double newVal = 0.;
+
+                        if (percentage < ref)
+                        {
+                            newVal = m_min + (percentage / ref) * (refEval);
+                        }
+                        else
+                        {
+                            double relativePercentage = (percentage - ref) / (1. - ref);
+
+                            int newMin = minimal + refEval;
+
+                            newVal = newMin + relativePercentage * (maximal - newMin);
+                        }
+
+                        setValue(int(newVal));
+
+                        if (w->slider())
+                        {
+                            w->slider()->setValue(int(newVal));
+                        }
+                    });
+        }
+#endif
 
         onRangeChanged();
         updateMode();

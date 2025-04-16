@@ -23,6 +23,7 @@
 #include <gt_logstream.h>
 
 #include <QTimer>
+#include <QThread>
 
 #include <algorithm>
 
@@ -287,6 +288,37 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
     defaultRegExp = QRegExp(pattern);
 }
+
+#ifdef GAMEPAD_USAGE
+
+class JoystickReader : public QObject
+{
+    Q_OBJECT
+public:
+    explicit JoystickReader(QObject* parent = nullptr);
+
+    ~JoystickReader() override;
+signals:
+    void buttonPressed(int buttonId);
+
+    void buttonReleased(int buttonId);
+
+    void xAxisChange(double newPercentage);
+
+protected:
+    void timerEvent(QTimerEvent* event) override;
+
+public slots:
+    void pollJoyStick();
+
+private:
+
+    /// Private implementation
+    class Impl;
+    std::unique_ptr<Impl> m_pimpl;
+};
+
+#endif // GAMEPAD_USAGE
 
 } // namespace utils
 
