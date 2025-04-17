@@ -143,9 +143,29 @@ private:
     /// Currently active command when moving nodes
     GtCommand m_nodeMoveCmd = {};
 
+    /**
+     * @brief Groups the selected nodes by moving the into a subgraph.
+     * Instantiates ingoing and outgoing connections. Nodes and internal
+     * connections are preserved.
+     * @param selectedNodeObjects Nodes that should be grouped
+     */
     void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
 
+    /**
+     * @brief Expands the selected subgraph. Its nodes and internal
+     * connections are preserved (except for the input/outputproviders).
+     * Instantiates ingoing and outgoing connections.
+     * @param groupNode Subgraph that should be expanded
+     */
     void expandGroupNode(Graph* groupNode);
+
+    /**
+     * @brief Collapsed/expands the selected nodes
+     * @param selectedNodeObjects Nodes that should be collapsed/expanded
+     * @param doCollapse Whether the nodes should be collapsed or expanded
+     */
+    void collapseNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects,
+                       bool doCollapse);
 
     /**
      * @brief Updates the connection's end points. If a node graphics object

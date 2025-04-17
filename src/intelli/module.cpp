@@ -25,10 +25,12 @@
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/gui/ui/logicnodeui.h"
 #include "intelli/gui/ui/connectionui.h"
-#include "intelli/gui/ui/packageui.h"
 #include "intelli/gui/ui/graphcategoryui.h"
+#include "intelli/gui/ui/guidataui.h"
+#include "intelli/gui/ui/packageui.h"
 #include "intelli/gui/nodeui.h"
 #include "intelli/gui/grapheditor.h"
+#include "intelli/gui/guidata.h"
 #include "intelli/gui/property_item/stringselection.h"
 
 #include "intelli/calculators/graphexeccalculator.h"
@@ -261,6 +263,11 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(PackageUI));
     map.insert(GT_CLASSNAME(GraphCategory),
                GT_METADATA(GraphCategoryUI));
+
+    map.insert(GT_CLASSNAME(GuiData),
+               GT_METADATA(GuiDataUI));
+    map.insert(GT_CLASSNAME(LocalStateContainer),
+               GT_METADATA(GuiDataUI));
 
     map.insert(GT_CLASSNAME(LogicNode),
                GT_METADATA(LogicNodeUI));

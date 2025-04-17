@@ -96,6 +96,31 @@ isNotDeletable(NodeGraphicsObject* o)
 };
 
 /**
+ * @brief Helper method that yields whether a node is collapsed
+ * @param o Object
+ * @return Whether the node is collapsed
+ */
+static bool
+isCollapsed(NodeGraphicsObject* o)
+{
+    return o->isCollpased();
+};
+
+/**
+ * @brief Negates the result of a functor.
+ * @param func Functor, must yield a boolean compatible value and accept the
+ * pointer to a node graphics object as an argument.
+ */
+template <typename Func>
+static auto
+negate(Func func)
+{
+    return [f = std::move(func)](NodeGraphicsObject* o) -> bool {
+        return !f(o);
+    };
+};
+
+/**
  * @brief Returns a functor that searches for the targeted `nodeId`
  * @param nodeId
  */
@@ -1128,6 +1153,14 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
                                      selected.nodes.end(),
                                      Impl::isNotDeletable);
 
+    bool someCollapsed = std::any_of(selected.nodes.begin(),
+                                     selected.nodes.end(),
+                                     Impl::isCollapsed);
+
+    bool someUncollapsed = std::any_of(selected.nodes.begin(),
+                                       selected.nodes.end(),
+                                       Impl::negate(Impl::isCollapsed));
+
     Node* selectedNode = &selected.nodes.at(0)->node();
     assert(selectedNode);
     Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
@@ -1143,6 +1176,14 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
     groupAction->setEnabled(allDeletable);
+
+    QAction* collapseAction = menu.addAction(tr("Collapse selected Nodes"));
+    collapseAction->setIcon(gt::gui::icon::triangleUp());
+    collapseAction->setVisible(someUncollapsed);
+
+    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Nodes"));
+    uncollapseAction->setIcon(gt::gui::icon::triangleDown());
+    uncollapseAction->setVisible(someCollapsed);
 
     menu.addSeparator();
 
@@ -1167,6 +1208,11 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     if (triggered == ungroupAction)
     {
         return expandGroupNode(selectedGraphNode);
+    }
+    if (triggered == collapseAction ||
+        triggered == uncollapseAction)
+    {
+        return collapseNodes(selected.nodes, triggered == collapseAction);
     }
     if (triggered == deleteAction)
     {
@@ -1567,6 +1613,31 @@ GraphScene::expandGroupNode(Graph* groupNode)
     }
 
     restoreCmd.clear();
+}
+
+void
+GraphScene::collapseNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects,
+                          bool doCollapse)
+{
+    if (selectedNodeObjects.empty()) return;
+
+    QString caption =
+        relativeNodePath(selectedNodeObjects.front()->node()) +
+        (selectedNodeObjects.size() > 1 ? ", ...":"");
+
+    auto change = gtApp->makeCommand(
+        &graph(),
+        tr("Node%1 %2collapsed (%3)")
+            .arg(selectedNodeObjects.size() > 1 ? "s":"",
+                 doCollapse? "":"un",
+                 caption)
+    );
+    Q_UNUSED(change);
+
+    for (NodeGraphicsObject* o : selectedNodeObjects)
+    {
+        o->collapse(doCollapse);
+    }
 }
 
 void

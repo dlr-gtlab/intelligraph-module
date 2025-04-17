@@ -82,6 +82,14 @@ public:
     int vspacing() const;
 
     /**
+     * @brief Returns whether the node should draw a display icon.
+     * This function respects collapsed-state of the node and may override
+     * `uiData().hasDisplayIcon()`.
+     * @return Whether a display icon should be drawn
+     */
+    bool hasDisplayIcon() const;
+
+    /**
      * @brief Returns the shape, which is used for the collision detection of
      * the actual graphics object. It should be accurate but not too complex.
      * The shape is cached, since it can be costly to compute. When computing

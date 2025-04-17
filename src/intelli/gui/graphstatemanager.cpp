@@ -9,10 +9,12 @@
 
 #include <intelli/gui/graphstatemanager.h>
 
+#include <intelli/graph.h>
 #include <intelli/graphexecmodel.h>
 #include <intelli/gui/graphview.h>
 #include <intelli/gui/graphscene.h>
-#include <intelli/graph.h>
+#include <intelli/gui/guidata.h>
+#include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/private/utils.h>
 
 using namespace intelli;
@@ -64,6 +66,14 @@ GraphStateManager::onSceneChanged(GraphScene* scene)
     assert(m_guardian);
     if (!scene) return;
 
+    setupUserStates(scene);
+
+    setupLocalStates(scene);
+}
+
+void
+GraphStateManager::setupUserStates(GraphScene* scene)
+{
     auto& graph = scene->graph();
     auto& guardian = *m_guardian;
 
@@ -113,8 +123,62 @@ GraphStateManager::onSceneChanged(GraphScene* scene)
             if (autoEvaluate == model->isAutoEvaluatingGraph()) return;
 
             autoEvaluate ? (void)model->autoEvaluateGraph() :
-                           (void)model->stopAutoEvaluatingGraph();
+                (void)model->stopAutoEvaluatingGraph();
         })
         .onValueChange(model, &GraphExecutionModel::autoEvaluationChanged)
         .finalize();
+
+}
+
+void
+GraphStateManager::setupLocalStates(GraphScene* scene)
+{
+    auto& graph = scene->graph();
+
+    auto* localStates = GuiData::accessLocalStates(graph);
+    if (!localStates) return;
+
+    // collapsed state
+    auto onStateChanged = [scene](QString const& nodeUuid, bool isCollapsed){
+        Graph& graph = scene->graph();
+
+        Node* node = graph.findNodeByUuid(nodeUuid);
+        if (!node || node->parent() != &graph) return;
+
+        NodeGraphicsObject* object = scene->nodeObject(node->id());
+        if (!object) return;
+
+        if (object->isCollpased() != isCollapsed)
+        {
+            object->collapse(isCollapsed);
+        }
+    };
+
+    auto onNodeAppended = [scene, localStates](Node* node){
+        assert(node);
+
+        auto object = scene->nodeObject(node->id());
+        if (!object) return;
+
+        auto onValueChanged = [localStates](NodeGraphicsObject* object, bool isCollapsed){
+            assert(object);
+            localStates->setNodeCollapsed(object->node().uuid(), isCollapsed);
+        };
+
+        QObject::connect(object, &NodeGraphicsObject::nodeCollapsed,
+                         localStates, onValueChanged);
+
+        object->collapse(localStates->isNodeCollapsed(node->uuid()));
+    };
+
+    QObject::connect(localStates, &LocalStateContainer::nodeCollapsedChanged,
+                     scene, onStateChanged);
+
+    connect(&graph, &Graph::nodeAppended, this, onNodeAppended);
+
+    // register existing nodes
+    for (NodeId nodeId : graph.connectionModel().iterateNodeIds())
+    {
+        onNodeAppended(graph.findNode(nodeId));
+    }
 }

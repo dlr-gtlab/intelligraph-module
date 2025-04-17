@@ -52,6 +52,12 @@ NodeGeometry::vspacing() const
     return 0.5 * hspacing();
 }
 
+bool
+NodeGeometry::hasDisplayIcon() const
+{
+    return uiData().hasDisplayIcon() || object().isCollpased();
+}
+
 int
 NodeGeometry::portHorizontalExtent(PortType type) const
 {
@@ -146,6 +152,8 @@ NodeGeometry::computeNodeHeaderRect() const
 QRectF
 NodeGeometry::nodeBodyRect() const
 {
+    if (object().isCollpased()) return nodeHeaderRect();
+
     if (m_bodyRect.has_value()) return *m_bodyRect;
 
     // set empty value to avoid cyclic calls
@@ -243,7 +251,7 @@ NodeGeometry::iconRect() const
 QSize
 NodeGeometry::iconSize() const
 {
-    if (!uiData().hasDisplayIcon()) return QSize{0, 0};
+    if (!hasDisplayIcon()) return QSize{0, 0};
 
     auto& style = style::currentStyle().node;
     return QSize{style.iconSize, style.iconSize};
@@ -268,7 +276,7 @@ NodeGeometry::evalStateSize() const
 QPointF
 NodeGeometry::widgetPosition() const
 {
-    if (!centralWidget()) return {};
+    if (!centralWidget() || object().isCollpased()) return {};
 
     auto body = nodeBodyRect();
 
@@ -296,8 +304,9 @@ NodeGeometry::widgetPosition() const
 QSize
 NodeGeometry::widgetSize() const
 {
-    if (auto* w = centralWidget()) return w->size();
-    return {};
+    auto* w = centralWidget();
+    if (!w || object().isCollpased()) return {};
+    return w->size();
 }
 
 QRectF
@@ -310,10 +319,25 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
     auto& node = this->node();
     auto& style = style::currentStyle().node;
 
-    QFontMetrics metrcis(style.bodyFont);
+    auto body = nodeBodyRect();
+
+    // width
+    double width = type == PortType::Out ? body.width() : 0.0;
+    width -= style.portRadius;
+
+    if (object().isCollpased())
+    {
+        // position port at vertical center if collapsed
+        int height = body.height() * 0.5 - style.portRadius;
+
+        return QRectF{
+            QPointF(width, height),
+            QSizeF{style.portRadius * 2, style.portRadius * 2}
+        };
+    }
 
     // height
-    auto body = nodeBodyRect();
+    QFontMetrics metrcis(style.bodyFont);
     int offset = metrcis.height() * 0.6;
     int height = body.topLeft().y() + vspacing() + style.portRadius;
 
@@ -329,11 +353,6 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
         height += 2 * offset + vspacing();
     }
 
-
-    // width
-    double width = type == PortType::Out ? body.width() : 0.0;
-    width -= style.portRadius;
-
     return QRectF{
         QPointF(width, height),
         QSizeF{style.portRadius * 2, style.portRadius * 2}
@@ -346,6 +365,8 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
     // bounds check
     assert(type != PortType::NoType);
     if (node().ports(type).size() < idx) return {};
+
+    if (object().isCollpased()) return {};
 
     auto& style = style::currentStyle().node;
     auto& node  = this->node();
@@ -390,6 +411,8 @@ NodeGeometry::portHit(QPointF coord) const
 NodeGeometry::PortHit
 NodeGeometry::portHit(QRectF rect) const
 {
+    if (object().isCollpased()) return {};
+
     auto body  = nodeBodyRect();
     auto coord = rect.center();
 

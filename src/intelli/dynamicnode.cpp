@@ -14,6 +14,7 @@
 #include "intelli/property/uint.h"
 #include "intelli/private/utils.h"
 
+#include "gt_propertystructcontainer.h"
 #include "gt_structproperty.h"
 #include "gt_stringproperty.h"
 #include "gt_boolproperty.h"

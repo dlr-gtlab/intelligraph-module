@@ -261,6 +261,18 @@ TEST(Graph, connection_model_custom_iterator)
                            reference.begin(), reference.end()));
 }
 
+TEST(Graph, connetion_model_reverse_iterator)
+{
+    QVector<int> data{1, 2, 3, 4, 5, 6};
+
+    // use a proxy to access `value` member of `MyStruct`
+    auto iter = makeReverseIter(data);
+
+    ASSERT_EQ(iter.size(), data.size());
+    EXPECT_TRUE(std::equal(iter.begin(), iter.end(),
+                           data.rbegin(), data.rend()));
+}
+
 TEST(Graph, predessecors_and_successors)
 {
     Graph graph;

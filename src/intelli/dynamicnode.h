@@ -12,9 +12,7 @@
 
 #include <intelli/node.h>
 
-#include <gt_propertystructcontainer.h>
-
-#include <QStringList>
+class GtPropertyStructInstance;
 
 namespace intelli
 {

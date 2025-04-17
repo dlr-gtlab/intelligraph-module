@@ -25,57 +25,42 @@ LogicNodeGeometry::LogicNodeGeometry(NodeGraphicsObject const& object) :
 }
 
 QRectF
-LogicNodeGeometry::captionRect() const
-{
-    auto& style = style::currentStyle().node;
-
-    QRectF inner = nodeBodyRect();
-    QRectF rect = NodeGeometry::captionRect();
-    rect.moveTo({inner.topLeft().x() + style.evalStateSize, -20});
-    return rect;
-}
-
-QRect
-LogicNodeGeometry::iconRect() const
-{
-    QRect rect = NodeGeometry::iconRect();
-    QRectF captionRect = NodeGeometry::captionRect();
-    rect.moveTopLeft((captionRect.topRight() - QPointF{0, (rect.height() - captionRect.height()) * 0.5})
-                         .toPoint());
-    return rect;
-}
-
-QRectF
-LogicNodeGeometry::evalStateRect() const
-{
-    auto& style = style::currentStyle().node;
-
-    QRectF rect = NodeGeometry::evalStateRect();
-    QRectF caption = captionRect();
-    double offset  = (rect.height() - caption.height()) * 0.5;
-    rect.moveTo(caption.topLeft() - QPointF{(double)style.evalStateSize, offset});
-    return rect;
-}
-
-QRectF
 LogicNodeGeometry::portRect(PortType type, PortIndex idx) const
 {
-    QPainterPath path = beginCurve();
+    QPointF p{};
 
-    size_t n = 1;
+    auto& conStyle = style::currentStyle().connection;
+
+    size_t n = node().ports(type).size();
+
+    double width = conStyle.defaultOutlineWidth * 6;
+    double height = conStyle.defaultOutlineWidth * 2;
 
     switch (type)
     {
     case PortType::In:
     {
-        n = std::max(node().ports(type).size(), n);
+        assert(n >= 1);
+
+        QPainterPath path = beginCurve();
         applyLeftCurve(path);
+
+        double percentage = 1.0 / (double)(n + 1);
+        p = path.pointAtPercent(percentage + (double)idx * percentage);
+
+        if (logicNode().operation() == LogicNode::XOR)
+        {
+            width += 2 * conStyle.defaultOutlineWidth;
+        }
+
+        p -= QPointF{width, 0};
         break;
     }
     case PortType::Out:
     {
-        n = std::max(node().ports(type).size(), n);
-        applyRightCurve(path);
+        assert(n == 1);
+        QRectF body = nodeBodyRect();
+        p = body.topRight() + QPointF{0, body.height() * 0.5};
         break;
     }
     case PortType::NoType:
@@ -84,20 +69,9 @@ LogicNodeGeometry::portRect(PortType type, PortIndex idx) const
         break;
     }
 
-    auto& style = style::currentStyle().node;
+    p -= QPointF{0, height * 0.5};
 
-    double percentage = 1.0 / (double)(n + 1);
-    QPointF p = path.pointAtPercent(percentage + (double)idx * percentage);
-    p -= QPointF{style.portRadius, style.portRadius};
-
-    if (type == PortType::In && logicNode().operation() == LogicNode::XOR)
-    {
-        p -= QPointF{0.5 * style.portRadius, 0};
-    }
-
-    return {
-        p, QSizeF{style.portRadius * 2, style.portRadius * 2}
-    };
+    return { p, QSizeF{width, height} };
 }
 
 QPainterPath
@@ -112,7 +86,13 @@ LogicNodeGeometry::applyLeftCurve(QPainterPath& path) const
 {
     QRectF rect = nodeBodyRect();
     QPointF end = rect.bottomLeft();
-    if (path.currentPosition() == rect.bottomLeft()) end = rect.topLeft();
+
+    QPointF xOffset{0.25 * rect.width(), 0};
+
+    if (path.currentPosition() == rect.bottomLeft())
+    {
+        end = rect.topLeft();
+    }
 
     switch (logicNode().operation())
     {
@@ -122,7 +102,7 @@ LogicNodeGeometry::applyLeftCurve(QPainterPath& path) const
         path.lineTo(end);
         break;
     default:
-        path.quadTo(rect.center()- QPointF{0.25 * rect.width(), 0}, end);
+        path.quadTo(rect.center()- xOffset, end);
         break;
     }
 }
@@ -131,26 +111,40 @@ void
 LogicNodeGeometry::applyRightCurve(QPainterPath& path) const
 {
     QRectF rect = nodeBodyRect();
+    QPointF start = path.currentPosition();
     QPointF end = rect.topLeft();
-    QPointF rightPos = rect.center();
-    QPointF offset{0, 0.5 * rect.height()};
+    QPointF yOffset{0, 0.5 * rect.height()};
+    QPointF xOffset{0.25 * rect.width(), 0};
+    QPointF midPos = rect.bottomLeft() - yOffset + xOffset;
+    QPointF rightPos = rect.bottomRight() - yOffset;
 
-    if (path.currentPosition() == rect.topLeft())
+    if (start == rect.topLeft())
     {
         end = rect.bottomLeft();
-        offset *= -1;
+        yOffset *= -1;
     }
+
+    auto& style = style::currentStyle().node;
 
     switch (logicNode().operation())
     {
     case LogicNode::NOT:
-        rightPos += QPointF{0.5 * rect.width() - style::currentStyle().node.portRadius, 0};
         path.lineTo(rightPos);
         path.lineTo(end);
         break;
+    case LogicNode::NAND:
+    case LogicNode::NOR:
+        // reserve space for cirle at output to denote inversion
+        rightPos -= QPointF{style.portRadius, 0};
+        path.addEllipse(rightPos, style.portRadius, style.portRadius);
+        rightPos -= QPointF{style.portRadius, 0};
+        path.moveTo(start);
     default:
-        rightPos += QPointF{0.5 * rect.width(), 0};
-        path.cubicTo(rightPos + offset, rightPos - offset, end);
+        path.lineTo(midPos + yOffset);
+        path.quadTo(rightPos - 0.5 * xOffset + yOffset, rightPos);
+        path.quadTo(rightPos - 0.5 * xOffset - yOffset, midPos - yOffset);
+        path.lineTo(end);
+        break;
     }
 }
 
@@ -164,10 +158,13 @@ LogicNodeGeometry::logicNode() const
 QPainterPath
 LogicNodeGeometry::computeShape() const
 {
+    if (object().isCollpased()) return NodeGeometry::computeShape();
+
     QPainterPath path = beginCurve();
     applyLeftCurve(path);
     applyRightCurve(path);
-    path.addRect(captionRect().united(evalStateRect()).united(iconRect()));
+    path.addRect(nodeHeaderRect());
+
     for (PortType type : {PortType::In, PortType::Out})
     {
         size_t size = node().ports(type).size();
@@ -176,25 +173,58 @@ LogicNodeGeometry::computeShape() const
             path.addRect(portRect(type, idx));
         }
     }
+
     return path;
 }
 
 QRectF
 LogicNodeGeometry::computeNodeBodyRect() const
 {
-    int n = node().ports(PortType::In).size() + 1;
-    int height = n * (NodeGeometry::portRect(PortType::In, PortIndex{1}).topLeft().y() -
-                      NodeGeometry::portRect(PortType::In, PortIndex{0}).topLeft().y());
+    auto& node = this->node();
+    auto& style = style::currentStyle().node;
 
-    bool isNot = logicNode().operation() == LogicNode::NOT;
-    int mult  = isNot ? 5 : 10;
-    int width = mult * hspacing();
-    return QRectF{QPoint{isNot ? 2 * hspacing() : 0, 0}, QSize{width, height}};
+    QRectF header = nodeHeaderRect();
+
+    // height
+    QFontMetrics metrcis(style.bodyFont);
+    int offset = metrcis.height() * 0.6;
+    int height = vspacing() + style.portRadius;
+
+    size_t n = node.ports(PortType::In).size();
+    for (PortIndex i{0}; i < n; ++i)
+    {
+        height += 2 * offset + vspacing();
+    }
+
+    // width
+    int width = 50;
+
+    switch (logicNode().operation())
+    {
+    case LogicNode::NOT:
+        width *= 0.5;
+        break;
+    case LogicNode::NAND:
+    case LogicNode::NOR:
+        width += 0.25 * width;
+    default:
+        break;
+    }
+
+    // center body
+    QPointF xOffset = QPointF{(header.width() - width) * 0.5, 0};
+
+    return QRectF{
+        header.bottomLeft() + xOffset,
+        QSize{width, height}
+    };
 }
 
 QRectF
 LogicNodeGeometry::computeBoundingRect() const
 {
+    if (object().isCollpased()) return NodeGeometry::computeBoundingRect();
+
     auto& style = style::currentStyle().node;
 
     QRectF upper = evalStateRect().united(captionRect());
@@ -214,11 +244,13 @@ LogicNodePainter::LogicNodePainter(NodeGraphicsObject const& object,
 void
 LogicNodePainter::drawBackground(QPainter& painter) const
 {
+    if (object().isCollpased()) return NodePainter::drawBackground(painter);
+
     auto geo = static_cast<LogicNodeGeometry const*>(&geometry());
 
     applyBackgroundConfig(painter);
 
-    QPainterPath path(geo->nodeBodyRect().topLeft());
+    QPainterPath path(geo->beginCurve());
     geo->applyLeftCurve(path);
     geo->applyRightCurve(path);
     painter.drawPath(path);
@@ -227,11 +259,13 @@ LogicNodePainter::drawBackground(QPainter& painter) const
 void
 LogicNodePainter::drawOutline(QPainter& painter) const
 {
+    if (object().isCollpased()) return NodePainter::drawOutline(painter);
+
     auto geo = static_cast<LogicNodeGeometry const*>(&geometry());
 
     applyOutlineConfig(painter);
 
-    QPainterPath path(geo->nodeBodyRect().topLeft());
+    QPainterPath path(geo->beginCurve());
     geo->applyLeftCurve(path);
 
     if (static_cast<LogicNode const&>(object().node()).operation() == LogicNode::XOR)
@@ -258,6 +292,35 @@ LogicNodePainter::drawPortCaption(QPainter& painter,
     Q_UNUSED(flags);
 
     // not drawing caption due to size constraint
+}
+
+void
+LogicNodePainter::drawPort(QPainter& painter,
+                           PortInfo const& port,
+                           PortType type,
+                           PortIndex idx,
+                           uint flags) const
+{
+    bool isCompatible = (flags & HighlightPorts) &&
+                        (flags & PortHighlighted);
+
+    applyPortConfig(painter, port, type, idx, flags);
+    painter.setPen(Qt::NoPen);
+
+    QRectF rect = geometry().portRect(type, idx);
+    rect.setWidth(rect.width() * 0.5);
+    rect.setHeight(rect.height() * 0.5);
+    rect.translate(type == PortType::In ? rect.width() : 0, rect.height() * 0.5);
+
+    painter.drawRect(rect);
+
+    if (isCompatible)
+    {
+        auto& style = style::currentStyle().node;
+        QPointF vcenter = type == PortType::In ? rect.topLeft() : rect.topRight();
+        vcenter += QPointF{0, rect.height() * 0.5};
+        painter.drawEllipse(vcenter, style.portRadius, style.portRadius);
+    }
 }
 
 LogicNodeUI::LogicNodeUI() = default;

@@ -18,6 +18,7 @@
 #include "intelli/gui/graphics/nodeobject.h"
 
 #include <gt_colors.h>
+#include <gt_icons.h>
 
 #include <QIcon>
 #include <QPainter>
@@ -73,6 +74,36 @@ NodePainter::applyOutlineConfig(QPainter& painter) const
     painter.setBrush(Qt::NoBrush);
 }
 
+void
+NodePainter::applyPortConfig(QPainter& painter,
+                             PortInfo const& port,
+                             PortType type,
+                             PortIndex idx,
+                             uint flags) const
+{
+    bool isPortIncompatible =  (flags & HighlightPorts) &&
+                              !(flags & PortHighlighted);
+
+    auto& style = style::currentStyle();
+    auto& nstyle = style.node;
+
+    double penWidth = object().isHovered() ?
+                          nstyle.hoveredOutlineWidth :
+                          nstyle.defaultOutlineWidth;
+
+    QColor penColor = object().isSelected() ?
+                          nstyle.selectedOutline :
+                          nstyle.defaultOutline;
+
+    QBrush brush = isPortIncompatible ?
+                       style.connection.inactiveOutline :
+                       style.connection.typeColor(port.typeId);
+
+    QPen pen(penColor, penWidth);
+    painter.setPen(pen);
+    painter.setBrush(brush);
+}
+
 QColor
 NodePainter::backgroundColor() const
 {
@@ -93,6 +124,16 @@ NodePainter::backgroundColor() const
 
     auto bg = customBackgroundColor();
     return bg;
+}
+
+QIcon
+NodePainter::displayIcon() const
+{
+    if (!geometry().hasDisplayIcon()) return {};
+
+    return object().isCollpased() ?
+               gt::gui::icon::triangleUp() :
+               uiData().displayIcon();
 }
 
 QColor
@@ -116,27 +157,32 @@ NodePainter::customBackgroundColor() const
 }
 
 void
-NodePainter::drawBackground(QPainter& painter) const
+NodePainter::drawBackgroundHelper(QPainter& painter) const
 {
-    applyBackgroundConfig(painter);
-
     auto& g = geometry();
     auto rect = g.nodeBodyRect().united(g.nodeHeaderRect());
 
     auto& style = style::currentStyle().node;
-    painter.drawRoundedRect(rect, style.roundingRadius, style.roundingRadius);
+
+    // round node's background when collapsed
+    double roundingRadius = style.roundingRadius;
+    if (object().isCollpased()) roundingRadius = rect.height() * 0.5;
+
+    painter.drawRoundedRect(rect, roundingRadius, roundingRadius);
+}
+
+void
+NodePainter::drawBackground(QPainter& painter) const
+{
+    applyBackgroundConfig(painter);
+    drawBackgroundHelper(painter);
 }
 
 void
 NodePainter::drawOutline(QPainter& painter) const
 {
     applyOutlineConfig(painter);
-
-    auto& g = geometry();
-    auto rect = g.nodeBodyRect().united(g.nodeHeaderRect());
-
-    auto& style = style::currentStyle().node;
-    painter.drawRoundedRect(rect, style.roundingRadius, style.roundingRadius);
+    drawBackgroundHelper(painter);
 }
 
 void
@@ -193,34 +239,17 @@ NodePainter::drawPort(QPainter& painter,
                       PortIndex idx,
                       uint flags) const
 {
+    applyPortConfig(painter, port, type, idx, flags);
+
     bool isPortIncompatible =  (flags & HighlightPorts) &&
                               !(flags & PortHighlighted);
 
     QSizeF offset = QSizeF{1, 1};
     if (isPortIncompatible) offset *= 3;
 
-    auto& style = style::currentStyle();
-    auto& nstyle = style.node;
-
-    double penWidth = object().isHovered() ?
-                          nstyle.hoveredOutlineWidth :
-                          nstyle.defaultOutlineWidth;
-
-    QColor penColor = object().isSelected() ?
-                          nstyle.selectedOutline :
-                          nstyle.defaultOutline;
-
-    QBrush brush = isPortIncompatible ?
-                       style.connection.inactiveOutline :
-                       style.connection.typeColor(port.typeId);
-
     QRectF p = geometry().portRect(type, idx);
     p.translate(offset.width() * 0.5, offset.height() * 0.5);
     p.setSize(p.size() - offset);
-
-    QPen pen(penColor, penWidth);
-    painter.setPen(pen);
-    painter.setBrush(brush);
 
     painter.drawEllipse(p);
 }
@@ -272,11 +301,11 @@ NodePainter::drawResizeHandle(QPainter& painter) const
 void
 NodePainter::drawIcon(QPainter& painter) const
 {
-    if (!uiData().hasDisplayIcon()) return;
+    QIcon icon = displayIcon();
+    if (icon.isNull()) return;
 
     QRect rect = geometry().iconRect();
 
-    QIcon icon = uiData().displayIcon();
     icon.paint(&painter, rect);
 }
 
@@ -293,30 +322,31 @@ NodePainter::drawCaption(QPainter& painter) const
     painter.setBrush(Qt::NoBrush);
     painter.setPen(gt::gui::color::text());
     painter.drawText(rect, node.caption(), QTextOption{Qt::AlignHCenter});
-
-#ifdef GT_INTELLI_DEBUG_NODE_GRAPHICS
-    painter.setBrush(Qt::NoBrush);
-
-    painter.setPen(Qt::white);
-    painter.drawRect(rect);
-#endif
 }
 
 void
 NodePainter::paint(QPainter& painter) const
 {
+    bool collapsed = object().isCollpased();
+
     drawBackground(painter);
-    drawResizeHandle(painter);
+    if (!collapsed) drawResizeHandle(painter);
     drawOutline(painter);
+
     drawCaption(painter);
     drawIcon(painter);
-    drawPorts(painter);
+
+    if (!collapsed) drawPorts(painter);
 
 #ifdef GT_INTELLI_DEBUG_NODE_GRAPHICS
     painter.setBrush(Qt::NoBrush);
 
     painter.setPen(Qt::white);
+    painter.drawRect(geometry().nodeHeaderRect());
+    painter.drawRect(geometry().nodeBodyRect());
     painter.drawRect(geometry().evalStateRect());
+    painter.drawRect(geometry().captionRect());
+    painter.drawRect(geometry().iconRect());
 
     painter.setPen(Qt::red);
     painter.drawRect(object().boundingRect());

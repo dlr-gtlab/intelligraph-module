@@ -57,6 +57,20 @@ private:
     QPointer<GraphView> m_view;
 
     unique_qptr<GtObject> m_guardian;
+
+    /**
+     * @brief Instantiates all global (=user specific) states. These states
+     * are not shared with other users e.g. by exchanging the project files.
+     * @param scene Scene
+     */
+    void setupUserStates(GraphScene* scene);
+
+    /**
+     * @brief Instantiates all states specific to a graph. These states are
+     * stored within the project files
+     * @param scene Scene
+     */
+    void setupLocalStates(GraphScene* scene);
 };
 
 } // namespace intelli
