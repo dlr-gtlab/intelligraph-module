@@ -82,8 +82,8 @@ LocalStateContainer::setNodeCollapsed(NodeUuid const& nodeUuid, bool collapsed)
 
     auto iter = std::find_if(m_collapsed.begin(), m_collapsed.end(),
                              [&nodeUuid](GtPropertyStructInstance const& e){
-                                 return e.ident()  == nodeUuid;
-                             });
+        return e.ident() == nodeUuid;
+    });
     if (iter == m_collapsed.end()) return;
 
     m_collapsed.removeEntry(iter);
@@ -96,7 +96,7 @@ LocalStateContainer::isNodeCollapsed(NodeUuid const& nodeUuid) const
     assert(m_collapsed.size() == (size_t)m_collapsedData.size());
     return std::find_if(m_collapsed.begin(), m_collapsed.end(),
                         [&nodeUuid](GtPropertyStructInstance const& e){
-        return e.ident()  == nodeUuid;
+        return e.ident() == nodeUuid;
     }) != m_collapsed.end();
 }
 

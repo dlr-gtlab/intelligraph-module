@@ -265,8 +265,7 @@ TEST(Graph, connetion_model_reverse_iterator)
 {
     QVector<int> data{1, 2, 3, 4, 5, 6};
 
-    // use a proxy to access `value` member of `MyStruct`
-    auto iter = makeReverseIter(data);
+    auto iter = makeReverseIterable(data);
 
     ASSERT_EQ(iter.size(), data.size());
     EXPECT_TRUE(std::equal(iter.begin(), iter.end(),

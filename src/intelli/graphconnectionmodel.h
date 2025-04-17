@@ -59,7 +59,7 @@ public:
     using reference         = typename Proxy::reference;
     using pointer           = typename Proxy::pointer;
 
-    Iterator i{};  /// base iterater
+    Iterator i{};  /// base iterator
     Proxy proxy{}; /// proxy object
 
     proxy_iterator() = default;
@@ -168,17 +168,6 @@ inline auto makeProxy(T const& t, Proxy p = {})
 }
 
 /**
- * @brief Helper method that instantiates an iterable object based on `t`'s
- * reverse begin and end operator. A default proxy object is installed that
- * yields the underlying value type.
- */
-template <typename T>
-inline auto makeReverseIter(T&& t)
-{
-    return makeProxy(t.rbegin(), t.rend(), DefaultProxy<typename std::decay_t<T>::value_type>{});
-}
-
-/**
  * @brief Helper struct that allows the use of for-range based loops and similar
  * constructs
  */
@@ -188,7 +177,7 @@ struct iterable
     T b, e;
 
     T begin() const { return b; }
-    T end() const { return b; }
+    T end() const { return e; }
 
     bool empty() const { return begin() == end(); }
     size_t size() const { return std::distance(begin(), end()); }
@@ -211,6 +200,16 @@ template <typename T>
 inline iterable<T> makeIterable(T const& t)
 {
     return makeIterable(t.begin(), t.end());
+}
+
+/**
+ * @brief Helper method that instantiates an iterable object based on `t`'s
+ * reverse begin and end operator.
+ */
+template <typename T>
+inline auto makeReverseIterable(T&& t)
+{
+    return makeIterable(t.rbegin(), t.rend());
 }
 
 template <typename NodeId_t>

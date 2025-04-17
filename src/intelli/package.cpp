@@ -143,20 +143,14 @@ struct Package::Impl
         // access collapsed states
         auto collapsedState = localStates->propertyContainers.front();
         assert(collapsedState.name == "collapsed");
-        // reverse iter to safely erase entry
-        auto reverseIter = makeReverseIter(collapsedState.childProperties);
 
-        for (auto iter = reverseIter.begin(), end = reverseIter.end(); iter != end; ++iter)
-        {
-            // check if node is still present in the graph
-            NodeUuid const& nodeUuid = iter->name;
-
-            bool isStateValid = memento.findChildByUuid(nodeUuid);
-            if (!isStateValid)
-            {
-                collapsedState.childProperties.erase(iter.i.base());
-            }
-        }
+        auto collapsedNodes = collapsedState.childProperties;
+        collapsedNodes.erase(
+            std::remove_if(collapsedNodes.begin(),
+                           collapsedNodes.end(),
+                           [&memento](GtObjectMemento::PropertyData const& e){
+            return memento.findChildByUuid(e.name);
+        }), collapsedNodes.end());
 
         // recursive search
         for (GtObjectMemento& child : memento.childObjects)
