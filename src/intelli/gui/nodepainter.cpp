@@ -126,6 +126,16 @@ NodePainter::backgroundColor() const
     return bg;
 }
 
+QIcon
+NodePainter::displayIcon() const
+{
+    if (!geometry().hasDisplayIcon()) return {};
+
+    return object().isCollpased() ?
+               gt::gui::icon::triangleUp() :
+               uiData().displayIcon();
+}
+
 QColor
 NodePainter::customBackgroundColor() const
 {
@@ -291,13 +301,10 @@ NodePainter::drawResizeHandle(QPainter& painter) const
 void
 NodePainter::drawIcon(QPainter& painter) const
 {
-    if (!geometry().hasDisplayIcon()) return;
+    QIcon icon = displayIcon();
+    if (icon.isNull()) return;
 
     QRect rect = geometry().iconRect();
-
-    QIcon icon = object().isCollpased() ?
-                     gt::gui::icon::triangleUp() :
-                     uiData().displayIcon();
 
     icon.paint(&painter, rect);
 }

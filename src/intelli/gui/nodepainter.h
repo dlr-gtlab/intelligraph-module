@@ -100,6 +100,14 @@ public:
     QColor backgroundColor() const;
 
     /**
+     * @brief Returns the icon that should be displayed in the node's header.
+     * This function respects the collapsed-state of the node and may override
+     * `uiData().displayIcon()`.
+     * @return Whether a display icon should be drawn
+     */
+    QIcon displayIcon() const;
+
+    /**
      * @brief Draws the background of the node.
      * @param painter Painter to draw with
      */

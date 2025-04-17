@@ -95,14 +95,22 @@ isNotDeletable(NodeGraphicsObject* o)
     return !(o->node().objectFlags() & GtObject::ObjectFlag::UserDeletable);
 };
 
-// TODO
+/**
+ * @brief Helper method that yields whether a node is collapsed
+ * @param o Object
+ * @return Whether the node is collapsed
+ */
 static bool
 isCollapsed(NodeGraphicsObject* o)
 {
     return o->isCollpased();
 };
 
-// TODO
+/**
+ * @brief Negates the result of a functor.
+ * @param func Functor, must yield a boolean compatible value and accept the
+ * pointer to a node graphics object as an argument.
+ */
 template <typename Func>
 static auto
 negate(Func func)
@@ -1617,11 +1625,13 @@ GraphScene::collapseNodes(QVector<NodeGraphicsObject*> const& selectedNodeObject
         relativeNodePath(selectedNodeObjects.front()->node()) +
         (selectedNodeObjects.size() > 1 ? ", ...":"");
 
-    auto change = gtApp->makeCommand(&graph(),
-                                     tr("Node%1 %2collapsed (%3)")
-                                         .arg(selectedNodeObjects.size() > 1 ? "s":"",
-                                              doCollapse? "":"un",
-                                              caption));
+    auto change = gtApp->makeCommand(
+        &graph(),
+        tr("Node%1 %2collapsed (%3)")
+            .arg(selectedNodeObjects.size() > 1 ? "s":"",
+                 doCollapse? "":"un",
+                 caption)
+    );
     Q_UNUSED(change);
 
     for (NodeGraphicsObject* o : selectedNodeObjects)

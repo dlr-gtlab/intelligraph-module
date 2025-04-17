@@ -12,7 +12,6 @@
 
 #include <intelli/globals.h>
 
-#include <gt_state.h>
 #include <gt_object.h>
 #include <gt_propertystructcontainer.h>
 
@@ -22,6 +21,9 @@ namespace intelli
 class Graph;
 class LocalStateContainer;
 
+/**
+ * @brief The GuiData class. Base object for GUI-specific data
+ */
 class GuiData : public GtObject
 {
     Q_OBJECT
@@ -33,6 +35,10 @@ public:
     static LocalStateContainer* accessLocalStates(Graph& graph);
 };
 
+/**
+ * @brief The LocalStateContainer class. Data object for storing states
+ * specific to a graph.
+ */
 class LocalStateContainer : public GtObject
 {
     Q_OBJECT
@@ -41,21 +47,37 @@ public:
 
     Q_INVOKABLE LocalStateContainer(GtObject* parent = nullptr);
 
-    void init();
-
+    /**
+     * @brief Sets the collapsed state for the given node.
+     * @param nodeUuid Node's Uuid
+     * @param collapsed Whether the node is collapsed or expanded
+     */
     void setNodeCollapsed(NodeUuid const& nodeUuid, bool collapsed = true);
 
+    /**
+     * @brief Returns whether the node is collapsed or expanded
+     * @param nodeUuid Node's Uuid
+     * @return Whether the node is collapsed or expanded
+     */
     bool isNodeCollapsed(NodeUuid const& nodeUuid) const;
 
 signals:
 
+    /**
+     * @brief Emitted once the node changes its collapsed state
+     * @param nodeUuid Node's Uuid
+     * @param isCollapsed Whether node is collapsed or not
+     */
     void nodeCollapsedChanged(QString const& nodeUuid, bool isCollapsed);
 
 private:
 
+    /// Struct container for storing all nodes that are collapsed.
+    /// Nodes that are not present are expanded.
     GtPropertyStructContainer m_collapsed;
 
-    QStringList m_collapsedMap;
+    /// TODO: remove me once core issue #1366 is merged
+    QStringList m_collapsedData;
 };
 
 } // namespace intelli

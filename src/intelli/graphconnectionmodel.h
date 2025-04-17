@@ -168,6 +168,17 @@ inline auto makeProxy(T const& t, Proxy p = {})
 }
 
 /**
+ * @brief Helper method that instantiates an iterable object based on `t`'s
+ * reverse begin and end operator. A default proxy object is installed that
+ * yields the underlying value type.
+ */
+template <typename T>
+inline auto makeReverseIter(T&& t)
+{
+    return makeProxy(t.rbegin(), t.rend(), DefaultProxy<typename std::decay_t<T>::value_type>{});
+}
+
+/**
  * @brief Helper struct that allows the use of for-range based loops and similar
  * constructs
  */

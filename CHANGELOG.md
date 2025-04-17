@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+### Added
+- Nodes can now be collapsed using the node's context menu. Collapsed nodes only consists of the node's header, reducing visual clutter. - #282
+
 ## [0.14.0] - 2025-04-04
 *This release is considered ABI compatible with `0.13.0`*
 

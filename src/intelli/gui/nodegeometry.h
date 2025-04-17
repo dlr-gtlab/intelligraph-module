@@ -83,8 +83,8 @@ public:
 
     /**
      * @brief Returns whether the node should draw a display icon.
-     * This function respects `object().isCollapsed()` compared to
-     * `uiData().hasDisplayIcon`.
+     * This function respects collapsed-state of the node and may override
+     * `uiData().hasDisplayIcon()`.
      * @return Whether a display icon should be drawn
      */
     bool hasDisplayIcon() const;

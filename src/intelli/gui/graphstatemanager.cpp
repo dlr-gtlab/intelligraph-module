@@ -167,12 +167,12 @@ GraphStateManager::setupLocalStates(GraphScene* scene)
 
         QObject::connect(object, &NodeGraphicsObject::nodeCollapsed,
                          localStates, onValueChanged);
+
+        object->collapse(localStates->isNodeCollapsed(node->uuid()));
     };
 
     QObject::connect(localStates, &LocalStateContainer::nodeCollapsedChanged,
                      scene, onStateChanged);
-
-    localStates->init();
 
     connect(&graph, &Graph::nodeAppended, this, onNodeAppended);
 

@@ -93,11 +93,17 @@ public:
      */
     bool isHovered() const;
 
-    /// TODO
+    /**
+     * @brief Returns whether this node is collapsed (node's body is hidden).
+     * @return Is collapsed
+     */
     bool isCollpased() const;
 
-    /// TODO
-    Q_INVOKABLE void collapse(bool doCollapse);
+    /**
+     * @brief Sets the collapsed state of this node (hides node's body).
+     * @param doCollapse Whether the node should be collapsed
+     */
+    void collapse(bool doCollapse = true);
 
     /**
      * @brief Whether the resize handle should be displayed
@@ -243,8 +249,9 @@ signals:
     void makeDraftConnection(NodeGraphicsObject* object, PortType type, PortId port);
 
     /**
-     * @brief Emitted if the node was shifted (moved by x,y).
-     * @param object Object that was moved
+     * @brief Emitted if the node was shifted (moved by x,y). The user is still
+     * moving the node
+     * @param object Object that was moved (this)
      * @param diff Difference that the object was moved by
      */
     void nodeShifted(NodeGraphicsObject* object, QPointF diff);
@@ -252,25 +259,49 @@ signals:
     /**
      * @brief Emitted once the node was moved to its "final" postion (i.e. the
      * user no longer has ended the move operation)
-     * @param object Object that was moved
+     * @param object Object that was moved (this)
      */
     void nodeMoved(NodeGraphicsObject* object);
 
     /**
      * @brief Emitted once a node's position was updated externally (i.e. NOT
      * by moving the node's graphics objec)
-     * @param object Object that updated its position
+     * @param object Object that updated its position (this)
      */
     void nodePositionChanged(NodeGraphicsObject* object);
 
+    /**
+     * @brief Emitted once the node was collapsed or expanded.
+     * @param object Object that was collapsed (this)
+     * @param isCollapsed Whether the node was collapsed or expanded
+     */
     void nodeCollapsed(NodeGraphicsObject* object, bool isCollapsed);
 
+    /**
+     * @brief Emitted once the node was double clicked
+     * @param object Object that was double clicked (this)
+     */
     void nodeDoubleClicked(NodeGraphicsObject* object);
 
+    /**
+     * @brief Emitted once the node's changed its geometry and was updated.
+     * @param object Object that was double clicked (this)
+     */
     void nodeGeometryChanged(NodeGraphicsObject* object);
 
+    /**
+     * @brief Emitted once the context menu of a port was requested
+     * @param object Object for which the port's context menu was requested (this)
+     * @param port Port for which the context menu should be requested
+     * @param pos Local cursor position
+     */
     void portContextMenuRequested(NodeGraphicsObject* object, PortId port, QPointF pos);
 
+    /**
+     * @brief Emitted once the context menu of a node was requested
+     * @param object Object for which the context menu was requested (this)
+     * @param pos Local cursor position
+     */
     void contextMenuRequested(NodeGraphicsObject* object, QPointF pos);
 
 private:

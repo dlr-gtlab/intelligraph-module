@@ -15,6 +15,7 @@
 #include "intelli/graph.h"
 #include "intelli/graphcategory.h"
 #include "intelli/node/dummy.h"
+#include "intelli/gui/guidata.h"
 
 #include <gt_objectmemento.h>
 #include <gt_objectfactory.h>
@@ -41,6 +42,14 @@ QString const& Package::INDEX_FILE = QStringLiteral(".gtflow.index");
 
 struct Package::Impl
 {
+    /// Helper functor to search in a memento using a class name
+    static auto findByClassName(char const* className)
+    {
+        return [className](GtObjectMemento& child){
+            return child.className() == className;
+        };
+    }
+
     /**
      * @brief Deletes all graph file of the category dir `dir`
      * @param dir Category dir
@@ -103,15 +112,56 @@ struct Package::Impl
         memento.childObjects.erase(
             std::remove_if(memento.childObjects.begin(),
                            memento.childObjects.end(),
-                           [](GtObjectMemento& child){
-                               return child.className() == GT_CLASSNAME(DummyNode);
-                           }),
+                           findByClassName(GT_CLASSNAME(DummyNode))),
             memento.childObjects.end());
 
         // recursive
         for (GtObjectMemento& child : memento.childObjects)
         {
             removeDummyNodes(child);
+        }
+    }
+
+    /**
+     * @brief Removes unused states for a memento of a grah instance
+     * @param memento Memento to cleanup
+     */
+    static void removeUnusedStates(GtObjectMemento& memento)
+    {
+        auto guiData = std::find_if(memento.childObjects.begin(),
+                                    memento.childObjects.end(),
+                                    findByClassName(GT_CLASSNAME(GuiData)));
+        if (guiData == memento.childObjects.end()) return;
+
+        auto localStates = std::find_if(guiData->childObjects.begin(),
+                                        guiData->childObjects.end(),
+                                    findByClassName(GT_CLASSNAME(LocalStateContainer)));
+        if (localStates == guiData->childObjects.end()) return;
+
+        assert(!localStates->propertyContainers.empty());
+
+        // access collapsed states
+        auto collapsedState = localStates->propertyContainers.front();
+        assert(collapsedState.name == "collapsed");
+        // reverse iter to safely erase entry
+        auto reverseIter = makeReverseIter(collapsedState.childProperties);
+
+        for (auto iter = reverseIter.begin(), end = reverseIter.end(); iter != end; ++iter)
+        {
+            // check if node is still present in the graph
+            NodeUuid const& nodeUuid = iter->name;
+
+            bool isStateValid = memento.findChildByUuid(nodeUuid);
+            if (!isStateValid)
+            {
+                collapsedState.childProperties.erase(iter.i.base());
+            }
+        }
+
+        // recursive search
+        for (GtObjectMemento& child : memento.childObjects)
+        {
+            removeUnusedStates(child);
         }
     }
 
@@ -219,6 +269,7 @@ struct Package::Impl
         GtObjectMemento memento = graph->toMemento();
 
         removeDummyNodes(memento);
+        removeUnusedStates(memento);
 
         QByteArray const& data = memento.toByteArray();
 

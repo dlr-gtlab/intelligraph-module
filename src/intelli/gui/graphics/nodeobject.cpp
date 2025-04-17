@@ -224,6 +224,8 @@ NodeGraphicsObject::isCollpased() const
 void
 NodeGraphicsObject::collapse(bool doCollapse)
 {
+    if (pimpl->collapsed == doCollapse) return; // nothing to do
+
     if (centralWidget()) centralWidget()->setVisible(!doCollapse);
 
     pimpl->collapsed = doCollapse;
