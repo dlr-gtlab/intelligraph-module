@@ -494,7 +494,6 @@ NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         {
             pimpl->node->setSize(pimpl->proxyWidget->widget()->size());
         }
-        pimpl->state = Impl::Normal;
         break;
 
     case Impl::Translating:

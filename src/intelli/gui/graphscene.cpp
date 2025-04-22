@@ -19,8 +19,9 @@
 #include <intelli/gui/nodeui.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/graphscenedata.h>
-#include <intelli/gui/graphics/nodeobject.h>
+#include <intelli/gui/graphics/commentobject.h>
 #include <intelli/gui/graphics/connectionobject.h>
+#include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/popupitem.h>
 #include <intelli/private/utils.h>
 #include <intelli/private/gui_utils.h>
@@ -50,6 +51,7 @@
 #include <QWidgetAction>
 #include <QMenuBar>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QTreeWidget>
 #include <QHeaderView>
 #include <QVarLengthArray>
@@ -707,8 +709,15 @@ GraphScene::createSceneMenu(QPointF scenePos)
     auto* txtBoxAction = new QWidgetAction(menu);
     txtBoxAction->setDefaultWidget(txtBox);
 
+    auto* button = new QPushButton(menu);
+    button->setText(tr("Add Comment"));
+
+    auto* buttonAction = new QWidgetAction(menu);
+    buttonAction->setDefaultWidget(button);
+
     // 1.
     menu->addAction(txtBoxAction);
+    menu->addAction(buttonAction);
 
     // Add result treeview to the context menu
     QTreeWidget* treeView = new QTreeWidget(menu);
@@ -793,6 +802,14 @@ GraphScene::createSceneMenu(QPointF scenePos)
             }
             ++it;
         }
+    });
+
+    connect(button, &QPushButton::clicked, menu, [this, menu, scenePos]() {
+        auto* item = new CommentGraphicsObject();
+        addItem(item);
+        item->setParent(this);
+        item->setPos(scenePos);
+        menu->close();
     });
 
     return menu;

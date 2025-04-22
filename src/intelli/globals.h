@@ -319,7 +319,8 @@ enum class GraphicsItemType
     None = 0,
     Node,
     NodeEvalState,
-    Connection
+    Connection,
+    N_ENTRIES
 };
 
 /// Enum indicating the evauation state of a node
