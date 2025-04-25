@@ -78,7 +78,7 @@ intelli::utils::JoystickReader::pollJoyStick()
         m_pimpl->lastYAxis = currentY;
         m_pimpl->lastZAxis = currentZ;
     }
-#elif
+#else
     gtError() << tr("Joy stick usage on linux is not supported");
 #endif // WIN32
 
