@@ -26,6 +26,7 @@ namespace intelli
 
 class Node;
 class NodeGraphicsObject;
+class InteractableGraphicsObject;
 class Graph;
 class GraphSceneData;
 class Connection;
@@ -191,10 +192,10 @@ private slots:
     void onNodeDeleted(NodeId nodeId);
 
     /// called while node is being moved by the user
-    void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
+    void onNodeShifted(InteractableGraphicsObject* sender, QPointF diff);
 
     /// called if node has been moved by the user (moving finished)
-    void onNodeMoved(NodeGraphicsObject* sender);
+    void onNodeMoved(InteractableGraphicsObject* sender);
 
     /// called if node changed position externally
     void onNodePositionChanged(NodeGraphicsObject* sender);

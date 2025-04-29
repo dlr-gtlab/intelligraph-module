@@ -11,10 +11,9 @@
 #define GT_INTELLI_NODEGRAPHICSOBJECT_H
 
 #include <intelli/globals.h>
-#include <intelli/exports.h>
+#include <intelli/gui/graphics/interactableobject.h>
 
 #include <QPointer>
-#include <QGraphicsObject>
 
 class QGraphicsProxyWidget;
 
@@ -35,7 +34,7 @@ struct GraphSceneData;
  * starting a draft connection or resizing the node if it has a widget.
  * The rendering is denoted by the Painter and Geometry objects.
  */
-class GT_INTELLI_EXPORT NodeGraphicsObject : public QGraphicsObject
+class GT_INTELLI_EXPORT NodeGraphicsObject : public InteractableGraphicsObject
 {
     Q_OBJECT
 
@@ -56,9 +55,7 @@ public:
      * @param node Node that this graphic object represents
      * @param ui Node UI used to access painter and geomtery data
      */
-    NodeGraphicsObject(GraphSceneData& data,
-                       Node& node,
-                       NodeUI& ui);
+    NodeGraphicsObject(GraphSceneData& data, Node& node, NodeUI& ui);
     ~NodeGraphicsObject();
 
     /**
@@ -75,35 +72,10 @@ public:
     NodeId nodeId() const;
 
     /**
-     * @brief Returns the scene data object, that is shared by all nodes and
-     * grants access to scene specific properties.
-     * @return Scene data.
-     */
-    GraphSceneData const& sceneData() const;
-
-    /**
      * @brief Returns the node's ui data object. Used for painting the node.
      * @return Ui Data
      */
     NodeUIData const& uiData() const;
-
-    /**
-     * @brief Returns whether this node is currently hovered (via the cursor).
-     * @return Is hovered
-     */
-    bool isHovered() const;
-
-    /**
-     * @brief Returns whether this node is collapsed (node's body is hidden).
-     * @return Is collapsed
-     */
-    bool isCollpased() const;
-
-    /**
-     * @brief Sets the collapsed state of this node (hides node's body).
-     * @param doCollapse Whether the node should be collapsed
-     */
-    void collapse(bool doCollapse = true);
 
     /**
      * @brief Whether the resize handle should be displayed
@@ -145,14 +117,14 @@ public:
     NodeGeometry const& geometry() const;
 
     /**
-     * @brief (Re-) embedds the main widget of this graphics object
-     */
-    void embedCentralWidget();
-
-    /**
      * @brief Commits the position of this object to the associated node
      */
     void commitPosition();
+
+    /**
+     * @brief (Re-) embedds the main widget of this graphics object
+     */
+    void embedCentralWidget();
 
     /**
      * @brief The Highlights class.
@@ -230,10 +202,6 @@ protected:
 
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
 
-    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
-
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
-
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
 
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;
@@ -244,24 +212,31 @@ protected:
 
     void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
 
+    /**
+     * @brief Whether the object should start resizing.
+     * @param localCoord Position of cursor within the graphics object.
+     * Coordinates may be used to check if mouse hovers over a resize rect or
+     * similar.
+     * @return Whether the object should start resizing
+     */
+    bool canResize(QPointF localCoord) override;
+
+    /**
+     * @brief Performs the resize action given the size difference.
+     * @param diff Difference in size
+     */
+    void resize(QSize diff) override;
+
 signals:
 
+    /**
+     * @brief Emitted once a draft connection should be started at the given
+     * port. Its up to the scene to implement and handle the draft connection.
+     * @param object Object that triggered the draft connection (this)
+     * @param type Port type
+     * @param port Port to start the connection at
+     */
     void makeDraftConnection(NodeGraphicsObject* object, PortType type, PortId port);
-
-    /**
-     * @brief Emitted if the node was shifted (moved by x,y). The user is still
-     * moving the node
-     * @param object Object that was moved (this)
-     * @param diff Difference that the object was moved by
-     */
-    void nodeShifted(NodeGraphicsObject* object, QPointF diff);
-
-    /**
-     * @brief Emitted once the node was moved to its "final" postion (i.e. the
-     * user no longer has ended the move operation)
-     * @param object Object that was moved (this)
-     */
-    void nodeMoved(NodeGraphicsObject* object);
 
     /**
      * @brief Emitted once a node's position was updated externally (i.e. NOT
@@ -269,13 +244,6 @@ signals:
      * @param object Object that updated its position (this)
      */
     void nodePositionChanged(NodeGraphicsObject* object);
-
-    /**
-     * @brief Emitted once the node was collapsed or expanded.
-     * @param object Object that was collapsed (this)
-     * @param isCollapsed Whether the node was collapsed or expanded
-     */
-    void nodeCollapsed(NodeGraphicsObject* object, bool isCollapsed);
 
     /**
      * @brief Emitted once the node was double clicked
@@ -309,25 +277,23 @@ private:
     struct Impl;
     std::unique_ptr<Impl> pimpl;
 
-    /**
-     * @brief selects the item and the node in the application
-     */
-    void selectNode();
-
 private slots:
 
     /**
-     * @brief Updates the visuals of the node
+     * @brief Updates the visuals of the node once the underlying node object
+     * has changed.
      */
     void onNodeChanged();
 
     /**
-     * @brief Updates the visuals of the node
+     * @brief Updates the visuals of the node once the position of the
+     * underlying node object has changed.
      */
     void onNodePositionChanged();
 
     /**
-     * @brief Helper method to update all child items
+     * @brief Helper method to update all child items once the object's geometry
+     * changed
      */
     void updateChildItems();
 };

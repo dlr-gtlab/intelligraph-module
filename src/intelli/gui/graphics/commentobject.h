@@ -11,6 +11,7 @@
 #define GT_INTELLI_COMMENTGRAPHICSOBJECT_H
 
 #include <intelli/globals.h>
+#include <intelli/gui/graphics/interactableobject.h>
 
 #include <QGraphicsObject>
 
@@ -20,7 +21,7 @@ class QTextEdit;
 namespace intelli
 {
 
-class CommentGraphicsObject : public QGraphicsObject
+class CommentGraphicsObject : public InteractableGraphicsObject
 {
     Q_OBJECT
 
@@ -30,13 +31,21 @@ public:
     enum { Type = UserType + (int)GraphicsItemType::N_ENTRIES + 1 };
     int type() const override { return Type; }
 
-    CommentGraphicsObject();
+    CommentGraphicsObject(GraphSceneData const& data);
 
     QRectF boundingRect() const override;
 
-protected:
+    /**
+     * @brief Starts editing the comment (makes the text edit editable)
+     */
+    void startEditing();
 
-    QRectF resizeHandleRect() const;
+    /**
+     * @brief Exits editing the comment (makes the text edit uneditable)
+     */
+    void finishEditing();
+
+protected:
 
     void paint(QPainter *painter,
                QStyleOptionGraphicsItem const* option,
@@ -44,44 +53,30 @@ protected:
 
     QVariant itemChange(GraphicsItemChange change, QVariant const& value) override;
 
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+    /**
+     * @brief Whether the object should start resizing.
+     * @param localCoord Position of cursor within the graphics object.
+     * Coordinates may be used to check if mouse hovers over a resize rect or
+     * similar.
+     * @return Whether the object should start resizing
+     */
+    bool canResize(QPointF localCoord) override;
 
-    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
-
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
-
-    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
-
-    void keyPressEvent(QKeyEvent* event) override;
-
-    void keyReleaseEvent(QKeyEvent* event) override;
-
-    void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
-
-    void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;
-
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
+    /**
+     * @brief Performs the resize action given the size difference.
+     * @param diff Difference in size
+     */
+    void resize(QSize diff) override;
 
 private:
 
-    class ProxyWidget;
-    class TextEdit;
+    class Overlay;
 
-    enum State
-    {
-        Normal = 0,
-        Translating,
-        Resizing,
-        Editing,
-    };
+    QRectF resizeHandleRect() const;
 
-    State state = Normal;
-    QPointF translationDiff;
-
-    ProxyWidget* proxyWidget;
+    QGraphicsProxyWidget* proxyWidget;
+    Overlay* overlay;
     QTextEdit* editor;
-
-    bool hovered = false;
 };
 
 } // namespace intelli

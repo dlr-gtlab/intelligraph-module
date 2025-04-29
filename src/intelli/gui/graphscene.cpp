@@ -805,7 +805,7 @@ GraphScene::createSceneMenu(QPointF scenePos)
     });
 
     connect(button, &QPushButton::clicked, menu, [this, menu, scenePos]() {
-        auto* item = new CommentGraphicsObject();
+        auto* item = new CommentGraphicsObject(sceneData());
         addItem(item);
         item->setParent(this);
         item->setPos(scenePos);
@@ -1676,10 +1676,11 @@ GraphScene::onNodeAppended(Node* node)
     connect(entity, &NodeGraphicsObject::contextMenuRequested,
             this, &GraphScene::onNodeContextMenu);
 
-    connect(entity, &NodeGraphicsObject::nodeShifted,
+    connect(entity, &InteractableGraphicsObject::objectShifted,
             this, &GraphScene::onNodeShifted, Qt::DirectConnection);
-    connect(entity, &NodeGraphicsObject::nodeMoved,
+    connect(entity, &InteractableGraphicsObject::objectMoved,
             this, &GraphScene::onNodeMoved, Qt::DirectConnection);
+
     connect(entity, &NodeGraphicsObject::nodePositionChanged,
             this, &GraphScene::onNodePositionChanged, Qt::DirectConnection);
     connect(entity, &NodeGraphicsObject::nodeDoubleClicked,
@@ -1707,7 +1708,7 @@ GraphScene::onNodeDeleted(NodeId nodeId)
 }
 
 void
-GraphScene::onNodeShifted(NodeGraphicsObject* sender, QPointF diff)
+GraphScene::onNodeShifted(InteractableGraphicsObject* sender, QPointF diff)
 {
     auto const selection = Impl::findSelectedItems(*this, Impl::NodesOnly);
 
@@ -1728,7 +1729,7 @@ GraphScene::onNodeShifted(NodeGraphicsObject* sender, QPointF diff)
 }
 
 void
-GraphScene::onNodeMoved(NodeGraphicsObject* sender)
+GraphScene::onNodeMoved(InteractableGraphicsObject* sender)
 {
     // nodes have not been moved
     if (!m_nodeMoveCmd.isValid()) return;

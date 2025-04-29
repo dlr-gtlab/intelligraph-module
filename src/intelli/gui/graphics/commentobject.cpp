@@ -21,94 +21,127 @@
 
 using namespace intelli;
 
-class CommentGraphicsObject::ProxyWidget : public QGraphicsProxyWidget
+
+class CommentGraphicsObject::Overlay : public QGraphicsObject
 {
 public:
 
-    using QGraphicsProxyWidget::QGraphicsProxyWidget;
+    Overlay(QGraphicsObject* parent = nullptr) : QGraphicsObject(parent)
+    {
+        setAcceptHoverEvents(true);
+    }
 
-    bool frwd = false;
+    QRectF boundingRect() const override
+    {
+        return static_cast<CommentGraphicsObject*>(parentObject())->boundingRect();
+    }
+
+    void paint(QPainter *painter,
+               QStyleOptionGraphicsItem const* option,
+               QWidget* widget = nullptr) override
+    {
+        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        QRectF rect = p->resizeHandleRect();
+
+        auto& style = style::currentStyle().node;
+
+        // resize rect
+        QPolygonF poly;
+        poly.append(rect.bottomLeft());
+        poly.append(rect.bottomRight());
+        poly.append(rect.topRight());
+
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(gt::gui::color::lighten(
+            style::currentStyle().node.defaultOutline, -30));
+        painter->drawPolygon(poly);
+
+        // outline
+        QPen pen;
+        pen.setColor((p->isSelected())? style.selectedOutline : style.hoveredOutline);
+        pen.setWidthF(p->isHovered() ? style.hoveredOutlineWidth : style.selectedOutlineWidth);
+
+        painter->setPen(pen);
+        painter->setBrush(Qt::NoBrush);
+        painter->drawRect(boundingRect());
+    }
 
 protected:
 
     void keyPressEvent(QKeyEvent* event) override
     {
-        if (frwd) return QGraphicsProxyWidget::keyPressEvent(event);
-
-        static_cast<CommentGraphicsObject*>(parentObject())->keyPressEvent(event);
+        event->accept();
     }
 
     void keyReleaseEvent(QKeyEvent* event) override
     {
-        if (frwd) return QGraphicsProxyWidget::keyReleaseEvent(event);
-
-        static_cast<CommentGraphicsObject*>(parentObject())->keyReleaseEvent(event);
+        event->accept();
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (frwd) return QGraphicsProxyWidget::mousePressEvent(event);
-
-        static_cast<CommentGraphicsObject*>(parentObject())->mousePressEvent(event);
+        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        p->mousePressEvent(event);
     }
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (frwd) return QGraphicsProxyWidget::mouseMoveEvent(event);
-
-        static_cast<CommentGraphicsObject*>(parentObject())->mouseMoveEvent(event);
+        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        p->mouseMoveEvent(event);
     }
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (frwd) return QGraphicsProxyWidget::mouseReleaseEvent(event);
-
-        static_cast<CommentGraphicsObject*>(parentObject())->mouseReleaseEvent(event);
+        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        p->mouseReleaseEvent(event);
     }
 
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (frwd) return QGraphicsProxyWidget::mouseDoubleClickEvent(event);
-
-        static_cast<CommentGraphicsObject*>(parentObject())->mouseDoubleClickEvent(event);
+        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        p->startEditing();
+        event->accept();
     }
 
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override
     {
-        if (frwd) return QGraphicsProxyWidget::hoverEnterEvent(event);
-
-        static_cast<CommentGraphicsObject*>(parentObject())->hoverEnterEvent(event);
+        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        p->hoverEnterEvent(event);
     }
 
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override
     {
-        if (frwd) return QGraphicsProxyWidget::hoverMoveEvent(event);
-
-        static_cast<CommentGraphicsObject*>(parentObject())->hoverMoveEvent(event);
+        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        p->hoverMoveEvent(event);
     }
 
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override
     {
-        if (frwd) return QGraphicsProxyWidget::hoverLeaveEvent(event);
-
-        static_cast<CommentGraphicsObject*>(parentObject())->hoverLeaveEvent(event);
+        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        p->hoverLeaveEvent(event);
     }
 };
 
-
-CommentGraphicsObject::CommentGraphicsObject()
+CommentGraphicsObject::CommentGraphicsObject(GraphSceneData const& data) :
+    InteractableGraphicsObject(data, nullptr)
 {
     setFlag(GraphicsItemFlag::ItemIsSelectable, true);
 
     setAcceptHoverEvents(true);
 
     editor = new QTextEdit;
-    editor->setMarkdown(tr("### Hello World\n\nthis is some text\n\n`this is code`\n"));
+    editor->setMarkdown(tr("# Hello World\n\nthis is some text\n\n`this is code`\n"));
     editor->setFrameShape(QFrame::NoFrame);
     editor->setContextMenuPolicy(Qt::NoContextMenu);
+    editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    editor->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    auto* widget = new ProxyWidget(this);
+    auto* widget = new QGraphicsProxyWidget(this);
     widget->setWidget(editor);
+    widget->setZValue(0);
+
+    overlay = new Overlay(this);
+    overlay->setZValue(1);
 
     proxyWidget = widget;
 }
@@ -118,6 +151,34 @@ CommentGraphicsObject::boundingRect() const
 {
     QRectF rect = proxyWidget->boundingRect();
     return rect;
+}
+
+void
+CommentGraphicsObject::startEditing()
+{
+    unsetCursor();
+
+    editor->setPlainText(editor->toMarkdown());
+    editor->setFocus();
+
+    auto cursor = editor->textCursor();
+    cursor.movePosition(QTextCursor::MoveOperation::End);
+    editor->setTextCursor(cursor);
+
+    overlay->setZValue(-1);
+}
+
+void
+CommentGraphicsObject::finishEditing()
+{
+    if (overlay->zValue() < 0)
+    {
+        editor->clearFocus();
+        editor->setMarkdown(editor->toPlainText());
+    }
+
+    proxyWidget->unsetCursor();
+    overlay->setZValue(1);
 }
 
 QRectF
@@ -130,150 +191,22 @@ CommentGraphicsObject::resizeHandleRect() const
 }
 
 QVariant
-CommentGraphicsObject::itemChange(GraphicsItemChange change,
-                                  QVariant const& value)
+CommentGraphicsObject::itemChange(GraphicsItemChange change, QVariant const& value)
 {
     switch (change)
     {
     case GraphicsItemChange::ItemSelectedChange:
-        if (!value.toBool())
-        {
-            proxyWidget->frwd = false;
-            if (state == Editing)
-            {
-                editor->clearFocus();
-                editor->setMarkdown(editor->toPlainText());
-            }
-            state = State::Normal;
-        }
+    {
+        bool isSelected = value.toBool();
+        if (!isSelected) finishEditing();
         break;
+    }
     default:
-        break;
+        return QGraphicsObject::itemChange(change, value);
     }
 
     return value;
 
-}
-
-void
-CommentGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
-{
-    if (event->button() != Qt::LeftButton)
-    {
-        return event->ignore();
-    }
-
-    if (state == Editing) return;
-
-    // check for resize handle hit
-    bool resize = resizeHandleRect().contains(event->pos());
-    if (resize)
-    {
-        state = Resizing;
-        return;
-    }
-
-    state = Translating;
-    translationDiff = pos();
-    setSelected(true);
-    event->accept();
-}
-
-void
-CommentGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
-{
-    QPointF diff = event->pos() - event->lastPos();
-    translationDiff += diff;
-
-    assert(state != Editing);
-
-    switch (state)
-    {
-    case Resizing:
-        event->accept();
-        proxyWidget->resize(proxyWidget->size() + QSize{(int)diff.x(), (int)diff.y()});
-        break;
-
-    case Translating:
-        event->accept();
-        moveBy(diff.x(), diff.y());
-        break;
-
-    case Normal:
-    default:
-        event->ignore();
-        break;
-    }
-}
-
-void
-CommentGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
-{
-    assert(state != Editing);
-
-    switch (state)
-    {
-    case Resizing:
-    case Translating:
-        event->accept();
-        break;
-
-    case Normal:
-    default:
-        event->ignore();
-        break;
-    }
-    state = Normal;
-}
-
-void
-CommentGraphicsObject::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
-{
-    proxyWidget->frwd = true;
-    editor->setPlainText(editor->toMarkdown());
-    editor->setFocus();
-    state = Editing;
-    return QGraphicsObject::mouseDoubleClickEvent(event);
-}
-
-void
-CommentGraphicsObject::keyPressEvent(QKeyEvent* event)
-{
-    return QGraphicsObject::keyPressEvent(event);
-}
-
-void
-CommentGraphicsObject::keyReleaseEvent(QKeyEvent* event)
-{
-    return QGraphicsObject::keyReleaseEvent(event);
-}
-
-void
-CommentGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
-{
-    hovered = true;
-    update();
-}
-
-void
-CommentGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
-{
-    QPointF pos = event->pos();
-
-    if (resizeHandleRect().contains(pos))
-    {
-        setCursor(QCursor(Qt::SizeFDiagCursor));
-        return;
-    }
-
-    setCursor(QCursor());
-}
-
-void
-CommentGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
-{
-    hovered = false;
-    update();
 }
 
 void
@@ -282,26 +215,25 @@ CommentGraphicsObject::paint(QPainter* painter,
                              QWidget* widget)
 {
     proxyWidget->paint(painter, option, widget);
+    overlay->paint(painter, option, widget);
+}
 
-    auto& style = style::currentStyle().node;
-    QPen pen;
+bool
+CommentGraphicsObject::canResize(QPointF localCoord)
+{
+    return resizeHandleRect().contains(localCoord);
+}
 
-    pen.setColor((isSelected())? style.selectedOutline : style.hoveredOutline);
-    pen.setWidthF(hovered ? style.hoveredOutlineWidth : style.selectedOutlineWidth);
+void
+CommentGraphicsObject::resize(QSize diff)
+{
+    QWidget* w = proxyWidget->widget();
+    QSize newSize = w->size() + diff;
+    QSize minSize = w->minimumSizeHint();
 
-    painter->setPen(pen);
-    painter->setBrush(Qt::NoBrush);
-    painter->drawRect(boundingRect());
+    newSize.rwidth()  = std::max(newSize.width(),  minSize.width());
+    newSize.rheight() = std::max(newSize.height(), minSize.height());
 
-    QRectF rect = resizeHandleRect();
-
-    QPolygonF poly;
-    poly.append(rect.bottomLeft());
-    poly.append(rect.bottomRight());
-    poly.append(rect.topRight());
-
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(Qt::green);
-    painter->drawPolygon(poly);
+    w->resize(newSize);
 }
 

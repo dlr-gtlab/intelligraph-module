@@ -64,6 +64,7 @@ set(PUBLIC_HEADERS
     intelli/gui/nodeuidata.h
     intelli/gui/portuiaction.h
     intelli/gui/style.h
+    intelli/gui/graphics/interactableobject.h
     intelli/gui/graphics/nodeobject.h
     intelli/node/input/boolinput.h
     intelli/node/input/doubleinput.h
@@ -128,6 +129,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/packageui.h
     intelli/gui/graphics/commentobject.h
     intelli/gui/graphics/connectionobject.h
+    intelli/gui/graphics/interactableobject.cpp
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/graphics/popupitem.h
     intelli/gui/widgets/abstractnumberinputwidget.h
