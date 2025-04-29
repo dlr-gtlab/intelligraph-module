@@ -11,6 +11,7 @@
 #include <intelli/gui/style.h>
 
 #include <gt_application.h>
+#include <gt_colors.h>
 
 #include <QPainter>
 #include <QTextEdit>
@@ -115,7 +116,17 @@ CommentGraphicsObject::CommentGraphicsObject()
 QRectF
 CommentGraphicsObject::boundingRect() const
 {
-    return proxyWidget->boundingRect();
+    QRectF rect = proxyWidget->boundingRect();
+    return rect;
+}
+
+QRectF
+CommentGraphicsObject::resizeHandleRect() const
+{
+    constexpr QSize size{8, 8};
+
+    QRectF body = boundingRect();
+    return QRectF(body.bottomRight() - QPoint{size.width(), size.height()}, size);
 }
 
 QVariant
@@ -154,6 +165,14 @@ CommentGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
     if (state == Editing) return;
 
+    // check for resize handle hit
+    bool resize = resizeHandleRect().contains(event->pos());
+    if (resize)
+    {
+        state = Resizing;
+        return;
+    }
+
     state = Translating;
     translationDiff = pos();
     setSelected(true);
@@ -170,13 +189,20 @@ CommentGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
     switch (state)
     {
+    case Resizing:
+        event->accept();
+        proxyWidget->resize(proxyWidget->size() + QSize{(int)diff.x(), (int)diff.y()});
+        break;
+
     case Translating:
         event->accept();
         moveBy(diff.x(), diff.y());
         break;
+
     case Normal:
     default:
-        return event->ignore();
+        event->ignore();
+        break;
     }
 }
 
@@ -187,12 +213,15 @@ CommentGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
     switch (state)
     {
+    case Resizing:
     case Translating:
         event->accept();
         break;
+
     case Normal:
     default:
-        return event->ignore();
+        event->ignore();
+        break;
     }
     state = Normal;
 }
@@ -200,7 +229,6 @@ CommentGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 void
 CommentGraphicsObject::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
-    gtDebug() << "FORWARDING...";
     proxyWidget->frwd = true;
     editor->setPlainText(editor->toMarkdown());
     editor->setFocus();
@@ -230,7 +258,15 @@ CommentGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 void
 CommentGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 {
+    QPointF pos = event->pos();
 
+    if (resizeHandleRect().contains(pos))
+    {
+        setCursor(QCursor(Qt::SizeFDiagCursor));
+        return;
+    }
+
+    setCursor(QCursor());
 }
 
 void
@@ -247,22 +283,25 @@ CommentGraphicsObject::paint(QPainter* painter,
 {
     proxyWidget->paint(painter, option, widget);
 
-//    if (isSelected())
-    {
-        auto& style = style::currentStyle().node;
-        QPen pen;
+    auto& style = style::currentStyle().node;
+    QPen pen;
 
-        gtDebug() << isSelected() << hovered;
+    pen.setColor((isSelected())? style.selectedOutline : style.hoveredOutline);
+    pen.setWidthF(hovered ? style.hoveredOutlineWidth : style.selectedOutlineWidth);
 
-        pen.setColor((isSelected())? style.selectedOutline : style.hoveredOutline);
-        pen.setWidthF(hovered ? style.hoveredOutlineWidth : style.selectedOutlineWidth);
+    painter->setPen(pen);
+    painter->setBrush(Qt::NoBrush);
+    painter->drawRect(boundingRect());
 
-        painter->setPen(pen);
-        painter->setBrush(Qt::NoBrush);
-        painter->drawRect(boundingRect());
-    }
-//    painter->setBrush(Qt::darkGreen);
-//    painter->setPen(Qt::black);
-    //    painter->drawRect(boundingRect());
+    QRectF rect = resizeHandleRect();
+
+    QPolygonF poly;
+    poly.append(rect.bottomLeft());
+    poly.append(rect.bottomRight());
+    poly.append(rect.topRight());
+
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(Qt::green);
+    painter->drawPolygon(poly);
 }
 

@@ -36,6 +36,8 @@ public:
 
 protected:
 
+    QRectF resizeHandleRect() const;
+
     void paint(QPainter *painter,
                QStyleOptionGraphicsItem const* option,
                QWidget* widget = nullptr) override;
@@ -69,6 +71,7 @@ private:
     {
         Normal = 0,
         Translating,
+        Resizing,
         Editing,
     };
 
