@@ -53,6 +53,8 @@ protected:
 
     QVariant itemChange(GraphicsItemChange change, QVariant const& value) override;
 
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
+
     /**
      * @brief Whether the object should start resizing.
      * @param localCoord Position of cursor within the graphics object.

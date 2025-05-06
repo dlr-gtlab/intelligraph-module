@@ -38,19 +38,19 @@ public:
      * grants access to scene specific properties.
      * @return Scene data.
      */
-    GraphSceneData const& sceneData() const { return *m_sceneData; }
+    inline GraphSceneData const& sceneData() const { return *m_sceneData; }
 
     /**
      * @brief Returns whether this node is currently hovered (via the cursor).
      * @return Is hovered
      */
-    bool isHovered() const { return m_hovered; }
+    inline bool isHovered() const { return m_hovered; }
 
     /**
      * @brief Returns whether this node is collapsed (node's body is hidden).
      * @return Is collapsed
      */
-    bool isCollpased() const { return m_collapsed; }
+    inline bool isCollapsed() const { return m_collapsed; }
 
     /**
      * @brief Sets the collapsed state of this objects (hides this object's body).
@@ -72,7 +72,7 @@ protected:
      * @brief Returns the current state
      * @return Current state
      */
-    State state() const { return m_state; }
+    inline State state() const { return m_state; }
 
     /**
      * @brief Whether the object should start resizing.

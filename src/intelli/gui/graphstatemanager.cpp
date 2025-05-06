@@ -147,8 +147,8 @@ GraphStateManager::setupLocalStates(GraphScene* scene)
 
         NodeGraphicsObject* object = scene->nodeObject(node->id());
         if (!object) return;
-
-        if (object->isCollpased() != isCollapsed)
+        
+        if (object->isCollapsed() != isCollapsed)
         {
             object->collapse(isCollapsed);
         }

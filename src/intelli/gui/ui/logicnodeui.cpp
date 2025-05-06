@@ -158,7 +158,7 @@ LogicNodeGeometry::logicNode() const
 QPainterPath
 LogicNodeGeometry::computeShape() const
 {
-    if (object().isCollpased()) return NodeGeometry::computeShape();
+    if (object().isCollapsed()) return NodeGeometry::computeShape();
 
     QPainterPath path = beginCurve();
     applyLeftCurve(path);
@@ -223,7 +223,7 @@ LogicNodeGeometry::computeNodeBodyRect() const
 QRectF
 LogicNodeGeometry::computeBoundingRect() const
 {
-    if (object().isCollpased()) return NodeGeometry::computeBoundingRect();
+    if (object().isCollapsed()) return NodeGeometry::computeBoundingRect();
 
     auto& style = style::currentStyle().node;
 
@@ -244,7 +244,7 @@ LogicNodePainter::LogicNodePainter(NodeGraphicsObject const& object,
 void
 LogicNodePainter::drawBackground(QPainter& painter) const
 {
-    if (object().isCollpased()) return NodePainter::drawBackground(painter);
+    if (object().isCollapsed()) return NodePainter::drawBackground(painter);
 
     auto geo = static_cast<LogicNodeGeometry const*>(&geometry());
 
@@ -259,7 +259,7 @@ LogicNodePainter::drawBackground(QPainter& painter) const
 void
 LogicNodePainter::drawOutline(QPainter& painter) const
 {
-    if (object().isCollpased()) return NodePainter::drawOutline(painter);
+    if (object().isCollapsed()) return NodePainter::drawOutline(painter);
 
     auto geo = static_cast<LogicNodeGeometry const*>(&geometry());
 

@@ -131,7 +131,7 @@ NodePainter::displayIcon() const
 {
     if (!geometry().hasDisplayIcon()) return {};
 
-    return object().isCollpased() ?
+    return object().isCollapsed() ?
                gt::gui::icon::triangleUp() :
                uiData().displayIcon();
 }
@@ -166,7 +166,7 @@ NodePainter::drawBackgroundHelper(QPainter& painter) const
 
     // round node's background when collapsed
     double roundingRadius = style.roundingRadius;
-    if (object().isCollpased()) roundingRadius = rect.height() * 0.5;
+    if (object().isCollapsed()) roundingRadius = rect.height() * 0.5;
 
     painter.drawRoundedRect(rect, roundingRadius, roundingRadius);
 }
@@ -327,7 +327,7 @@ NodePainter::drawCaption(QPainter& painter) const
 void
 NodePainter::paint(QPainter& painter) const
 {
-    bool collapsed = object().isCollpased();
+    bool collapsed = object().isCollapsed();
 
     drawBackground(painter);
     if (!collapsed) drawResizeHandle(painter);

@@ -146,10 +146,7 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
             Qt::DirectConnection);
 
     connect(this, &InteractableGraphicsObject::objectCollapsed, this, [this](){
-        if (centralWidget())
-        {
-            centralWidget()->setVisible(!isCollpased());
-        }
+        if (auto w = centralWidget()) w->setVisible(!isCollapsed());
         Impl::prepareGeometryChange(this).finalize();
     }, Qt::DirectConnection);
 

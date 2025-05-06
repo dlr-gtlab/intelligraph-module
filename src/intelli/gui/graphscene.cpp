@@ -32,6 +32,7 @@
 #include <gt_qtutilities.h>
 #include <gt_guiutilities.h>
 #include <gt_icons.h>
+#include <gt_stylesheets.h>
 #include <gt_inputdialog.h>
 #include <gt_objectmemento.h>
 #include <gt_objectio.h>
@@ -105,7 +106,7 @@ isNotDeletable(NodeGraphicsObject* o)
 static bool
 isCollapsed(NodeGraphicsObject* o)
 {
-    return o->isCollpased();
+    return o->isCollapsed();
 };
 
 /**
@@ -711,6 +712,11 @@ GraphScene::createSceneMenu(QPointF scenePos)
 
     auto* button = new QPushButton(menu);
     button->setText(tr("Add Comment"));
+    button->setIcon(gt::gui::icon::comment());
+    button->setFlat(true);
+    button->setStyleSheet(gt::gui::stylesheet::button());
+
+    txtBox->setMinimumHeight(button->sizeHint().height());
 
     auto* buttonAction = new QWidgetAction(menu);
     buttonAction->setDefaultWidget(button);
@@ -722,6 +728,7 @@ GraphScene::createSceneMenu(QPointF scenePos)
     // Add result treeview to the context menu
     QTreeWidget* treeView = new QTreeWidget(menu);
     treeView->header()->close();
+    treeView->setFrameShape(QFrame::NoFrame);
 
     auto* treeViewAction = new QWidgetAction(menu);
     treeViewAction->setDefaultWidget(treeView);

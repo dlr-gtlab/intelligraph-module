@@ -31,7 +31,9 @@ InteractableGraphicsObject::~InteractableGraphicsObject() = default;
 void
 InteractableGraphicsObject::collapse(bool doCollapse)
 {
-    if (isCollpased() == doCollapse) return; // nothing to do
+    if (isCollapsed() == doCollapse) return; // nothing to do
+
+    prepareGeometryChange();
 
     m_collapsed = doCollapse;
 

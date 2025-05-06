@@ -12,6 +12,7 @@
 
 #include <gt_application.h>
 #include <gt_colors.h>
+#include <gt_icons.h>
 
 #include <QPainter>
 #include <QTextEdit>
@@ -41,15 +42,28 @@ public:
                QWidget* widget = nullptr) override
     {
         auto* p = static_cast<CommentGraphicsObject*>(parentObject());
-        QRectF rect = p->resizeHandleRect();
+
+        if (p->isCollapsed())
+        {
+            QRect rect{QPoint{3, 4}, QSize{24, 24}};
+            auto icon = gt::gui::icon::comment();
+            painter->setBrush(Qt::black);
+            painter->setPen(Qt::NoPen);
+            painter->drawEllipse(boundingRect().center(), 15, 15);
+            gt::gui::colorize(icon, Qt::yellow).paint(painter, rect);
+//            gt::gui::colorize(icon, Qt::yellow).paint(painter, rect2);
+            return;
+        }
+
+        QRectF resizeRect = p->resizeHandleRect();
 
         auto& style = style::currentStyle().node;
 
         // resize rect
         QPolygonF poly;
-        poly.append(rect.bottomLeft());
-        poly.append(rect.bottomRight());
-        poly.append(rect.topRight());
+        poly.append(resizeRect.bottomLeft());
+        poly.append(resizeRect.bottomRight());
+        poly.append(resizeRect.topRight());
 
         painter->setPen(Qt::NoPen);
         painter->setBrush(gt::gui::color::lighten(
@@ -82,18 +96,21 @@ protected:
     {
         auto* p = static_cast<CommentGraphicsObject*>(parentObject());
         p->mousePressEvent(event);
+        event->accept();
     }
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
         auto* p = static_cast<CommentGraphicsObject*>(parentObject());
         p->mouseMoveEvent(event);
+        event->accept();
     }
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
         auto* p = static_cast<CommentGraphicsObject*>(parentObject());
         p->mouseReleaseEvent(event);
+        event->accept();
     }
 
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override
@@ -120,6 +137,12 @@ protected:
         auto* p = static_cast<CommentGraphicsObject*>(parentObject());
         p->hoverLeaveEvent(event);
     }
+
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override
+    {
+        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        p->contextMenuEvent(event);
+    }
 };
 
 CommentGraphicsObject::CommentGraphicsObject(GraphSceneData const& data) :
@@ -144,11 +167,17 @@ CommentGraphicsObject::CommentGraphicsObject(GraphSceneData const& data) :
     overlay->setZValue(1);
 
     proxyWidget = widget;
+
+    connect(this, &InteractableGraphicsObject::objectCollapsed, this, [this](){
+        proxyWidget->setVisible(!isCollapsed());
+    }, Qt::DirectConnection);
 }
 
 QRectF
 CommentGraphicsObject::boundingRect() const
 {
+    if (isCollapsed()) return QRectF{QPointF{0, 0}, QSizeF{30, 30}};
+
     QRectF rect = proxyWidget->boundingRect();
     return rect;
 }
@@ -209,6 +238,21 @@ CommentGraphicsObject::itemChange(GraphicsItemChange change, QVariant const& val
 
 }
 
+#include <QMenu>
+
+void
+CommentGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
+{
+    QMenu menu;
+    QAction* collapse = menu.addAction("Collapse");
+    QAction* uncollapse = menu.addAction("Uncollapse");
+
+
+    auto* act = menu.exec(QCursor::pos());
+    if (act == collapse) this->collapse(true);
+    if (act == uncollapse) this->collapse(false);
+}
+
 void
 CommentGraphicsObject::paint(QPainter* painter,
                              QStyleOptionGraphicsItem const* option,
@@ -221,7 +265,7 @@ CommentGraphicsObject::paint(QPainter* painter,
 bool
 CommentGraphicsObject::canResize(QPointF localCoord)
 {
-    return resizeHandleRect().contains(localCoord);
+    return !isCollapsed() && resizeHandleRect().contains(localCoord);
 }
 
 void
