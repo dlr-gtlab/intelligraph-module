@@ -16,6 +16,9 @@
 #include <intelli/nodedatafactory.h>
 #include <intelli/node/groupinputprovider.h>
 #include <intelli/node/groupoutputprovider.h>
+#include <intelli/gui/commentgroup.h>
+#include <intelli/gui/commentobject.h>
+#include <intelli/gui/guidata.h>
 #include <intelli/gui/nodeui.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/graphscenedata.h>
@@ -75,16 +78,20 @@ struct SelectedItems
 {
     QVector<NodeGraphicsObject*> nodes;
     QVector<ConnectionGraphicsObject*> connections;
+    QVector<CommentGraphicsObject*> comments;
 
-    bool empty() const { return nodes.empty() && connections.empty(); }
+    bool empty() const { return nodes.empty() && connections.empty() && comments.empty(); }
 };
 
+using SelectionFilters = size_t;
 /// enum to filter selection
-enum SelectionFilter
+enum SelectionFilter : size_t
 {
-    NoFilter,
-    NodesOnly,
-    ConnectionsOnly
+    NoFilter = 0,
+    FilterNodes = 1 << 0,
+    FilterConnections = 1 << 1,
+    FilterComments = 1 << 2,
+    FilterNodesAndComments = FilterNodes | FilterComments,
 };
 
 /**
@@ -104,7 +111,7 @@ isNotDeletable(NodeGraphicsObject* o)
  * @return Whether the node is collapsed
  */
 static bool
-isCollapsed(NodeGraphicsObject* o)
+isCollapsed(InteractableGraphicsObject* o)
 {
     return o->isCollapsed();
 };
@@ -118,7 +125,7 @@ template <typename Func>
 static auto
 negate(Func func)
 {
-    return [f = std::move(func)](NodeGraphicsObject* o) -> bool {
+    return [f = std::move(func)](auto* o) -> bool {
         return !f(o);
     };
 };
@@ -144,6 +151,15 @@ findObjectById(ConnectionId conId)
 {
     return [conId](ConnectionEntry const& e){
         return e.conId == conId;
+    };
+}
+
+/// TODO
+static auto
+findObjectById(CommentObject* comment)
+{
+    return [uuid = comment->uuid()](CommentEntry const& e){
+        return e.uuid == uuid;
     };
 }
 
@@ -177,16 +193,22 @@ findSelectedItems(GraphScene& scene, SelectionFilter filter = NoFilter)
     SelectedItems items;
     for (auto* item : selected)
     {
-        if (filter != ConnectionsOnly)
+        if (filter & FilterNodes)
         if (auto* node = qgraphicsitem_cast<NodeGraphicsObject*>(item))
         {
             items.nodes << node;
             continue;
         }
-        if (filter != NodesOnly)
+        if (filter & FilterConnections)
         if (auto* con = qgraphicsitem_cast<ConnectionGraphicsObject*>(item))
         {
             items.connections << con;
+            continue;
+        }
+        if (filter & FilterComments)
+        if (auto* comment = qgraphicsitem_cast<CommentGraphicsObject*>(item))
+        {
+            items.comments << comment;
             continue;
         }
     }
@@ -583,13 +605,34 @@ GraphScene::GraphScene(Graph& graph) :
         onConnectionAppended(con);
     }
 
-    connect(m_graph, &Graph::nodeAppended, this, &GraphScene::onNodeAppended, Qt::DirectConnection);
-    connect(m_graph, &Graph::childNodeAboutToBeDeleted, this, &GraphScene::onNodeDeleted, Qt::DirectConnection);
+    // comments
+    CommentGroup* commentGroup = GuiData::accessCommentGroup(*m_graph);
+    if (commentGroup)
+    {
+        auto const& comments = commentGroup->comments();
+        for (auto* comment : comments)
+        {
+            onCommentAppended(comment);
+        }
 
-    connect(m_graph, &Graph::connectionAppended, this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
-    connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
+        connect(commentGroup, &CommentGroup::commentAppended,
+                this, &GraphScene::onCommentAppended, Qt::DirectConnection);
+        connect(commentGroup, &CommentGroup::commentAboutToBeDeleted,
+                this, &GraphScene::onCommentDeleted, Qt::DirectConnection);
+    }
 
-    connect(m_graph, &Graph::graphAboutToBeDeleted, this, &QObject::deleteLater);
+    connect(m_graph, &Graph::nodeAppended,
+            this, &GraphScene::onNodeAppended, Qt::DirectConnection);
+    connect(m_graph, &Graph::childNodeAboutToBeDeleted,
+            this, &GraphScene::onNodeDeleted, Qt::DirectConnection);
+
+    connect(m_graph, &Graph::connectionAppended,
+            this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
+    connect(m_graph, &Graph::connectionDeleted,
+            this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
+
+    connect(m_graph, &Graph::graphAboutToBeDeleted,
+            this, &QObject::deleteLater);
 }
 
 GraphScene::~GraphScene() = default;
@@ -690,14 +733,15 @@ GraphScene::connectionObject(ConnectionId conId) const
     return const_cast<GraphScene*>(this)->connectionObject(conId);
 }
 
-QMenu*
+std::unique_ptr<QMenu>
 GraphScene::createSceneMenu(QPointF scenePos)
 {
 // (adapted)
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
 // SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
-    auto* menu = new QMenu;
+    auto menuPtr = std::make_unique<QMenu>();
+    auto* menu = menuPtr.get();
 
     // Add filterbox to the context menu
     auto* txtBox = new QLineEdit(menu);
@@ -812,14 +856,29 @@ GraphScene::createSceneMenu(QPointF scenePos)
     });
 
     connect(button, &QPushButton::clicked, menu, [this, menu, scenePos]() {
-        auto* item = new CommentGraphicsObject(sceneData());
-        addItem(item);
-        item->setParent(this);
-        item->setPos(scenePos);
+        auto* commentGroup = GuiData::accessCommentGroup(graph());
+        if (!commentGroup) return;
+
+        auto commentPtr = std::make_unique<CommentObject>();
+        commentPtr->setPos(scenePos);
+
+        auto cmd = gtApp->makeCommand(m_graph, tr("Append comment '%1'").arg(commentPtr->objectName()));
+        Q_UNUSED(cmd);
+
+        CommentObject* comment = commentGroup->appendComment(std::move(commentPtr));
+        if (!comment) return;
+
+        // start editing comment
+        auto iter = std::find_if(m_comments.begin(),
+                                 m_comments.end(),
+                                 Impl::findObjectById(comment));
+        if (iter == m_comments.end()) return;
+
+        iter->object->startEditing();
         menu->close();
     });
 
-    return menu;
+    return menuPtr;
 // SPDX-SnippetEnd
 }
 
@@ -903,6 +962,12 @@ GraphScene::deleteSelectedObjects()
                    [](NodeGraphicsObject* o){
         return &o->node();
     });
+    std::transform(selected.comments.begin(),
+                   selected.comments.end(),
+                   std::back_inserter(objects),
+                   [](CommentGraphicsObject* o){
+        return &o->commentObject();
+    });
 
     auto modifyCmd = m_graph->modify();
     Q_UNUSED(modifyCmd);
@@ -953,7 +1018,7 @@ void
 GraphScene::keyPressEvent(QKeyEvent* event)
 {
     // perform keyevent on node
-    auto selected = Impl::findSelectedItems(*this, Impl::NodesOnly);
+    auto selected = Impl::findSelectedItems(*this, Impl::FilterNodes);
 
     if (selected.nodes.size() != 1) return QGraphicsScene::keyPressEvent(event);
 
@@ -1159,6 +1224,19 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
 }
 
 void
+GraphScene::onCommentContextMenu(CommentGraphicsObject* object, QPointF pos)
+{
+    QMenu menu;
+    QAction* collapse = menu.addAction("Collapse");
+    QAction* uncollapse = menu.addAction("Uncollapse");
+
+
+    auto* act = menu.exec(QCursor::pos());
+    if (act == collapse) object->collapse(true);
+    if (act == uncollapse) object->collapse(false);
+}
+
+void
 GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
 {
     assert(object);
@@ -1169,7 +1247,7 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     object->setSelected(true);
 
     // retrieve selected nodes
-    auto selected = Impl::findSelectedItems(*this, Impl::NodesOnly);
+    auto selected = Impl::findSelectedItems(*this, Impl::FilterNodes);
     // selection should not be empty
     assert(!selected.nodes.empty());
 
@@ -1717,14 +1795,16 @@ GraphScene::onNodeDeleted(NodeId nodeId)
 void
 GraphScene::onNodeShifted(InteractableGraphicsObject* sender, QPointF diff)
 {
-    auto const selection = Impl::findSelectedItems(*this, Impl::NodesOnly);
+    auto const selection = Impl::findSelectedItems(*this, Impl::FilterNodesAndComments);
 
     if (!m_nodeMoveCmd.isValid())
     {
-        QString const txt = selection.nodes.size() > 1 ?
-                                tr("Nodes moved") :
-                                tr("Node '%1' moved")
-                                    .arg(relativeNodePath(selection.nodes.at(0)->node()));
+        QString const txt = selection.nodes.empty() ?
+                                tr("Objects moved") :
+                                selection.nodes.size() > 1 ?
+                                    tr("Nodes moved") :
+                                    tr("Node '%1' moved")
+                                        .arg(relativeNodePath(selection.nodes.at(0)->node()));
         m_nodeMoveCmd = gtApp->startCommand(m_graph, txt);
     }
 
@@ -1732,6 +1812,10 @@ GraphScene::onNodeShifted(InteractableGraphicsObject* sender, QPointF diff)
     {
         if (sender != o) o->moveBy(diff.x(), diff.y());
         moveConnections(o);
+    }
+    for (auto* o : selection.comments)
+    {
+        if (sender != o) o->moveBy(diff.x(), diff.y());
     }
 }
 
@@ -1741,9 +1825,13 @@ GraphScene::onNodeMoved(InteractableGraphicsObject* sender)
     // nodes have not been moved
     if (!m_nodeMoveCmd.isValid()) return;
 
-    auto const selection = Impl::findSelectedItems(*this, Impl::NodesOnly);
+    auto const selection = Impl::findSelectedItems(*this, Impl::FilterNodesAndComments);
     // commit position to data model
     for (auto* o : selection.nodes)
+    {
+        o->commitPosition();
+    }
+    for (auto* o : selection.comments)
     {
         o->commitPosition();
     }
@@ -1920,4 +2008,40 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object,
 
     // create new connection
     Impl::instantiateDraftConnection(*this, *object, type, portId);
+}
+
+void
+GraphScene::onCommentAppended(CommentObject* comment)
+{
+    assert(comment);
+
+    ObjectUuid uuid = comment->uuid();
+
+    auto entity = make_unique_qptr<CommentGraphicsObject, DirectDeleter>(*comment, sceneData());
+
+    connect(entity, &InteractableGraphicsObject::objectShifted,
+            this, &GraphScene::onNodeShifted, Qt::DirectConnection);
+    connect(entity, &InteractableGraphicsObject::objectMoved,
+            this, &GraphScene::onNodeMoved, Qt::DirectConnection);
+
+    // add to scene
+    addItem(entity);
+
+    m_comments.push_back({std::move(uuid), std::move(entity)});
+}
+
+void
+GraphScene::onCommentDeleted(CommentObject* comment)
+{
+    auto iter = std::find_if(m_comments.begin(),
+                             m_comments.end(),
+                             Impl::findObjectById(comment));
+    if (iter == m_comments.end())
+    {
+        gtError() << utils::logId(this)
+                  << tr("Failed to remove comment:") << (void*)comment;
+        return;
+    }
+
+    m_comments.erase(iter);
 }

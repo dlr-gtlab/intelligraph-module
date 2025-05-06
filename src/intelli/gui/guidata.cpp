@@ -9,6 +9,7 @@
 
 #include <intelli/graph.h>
 #include <intelli/gui/guidata.h>
+#include <intelli/gui/commentgroup.h>
 
 #include <gt_application.h>
 #include <gt_structproperty.h>
@@ -25,6 +26,9 @@ GuiData::GuiData(GtObject* parent) :
     auto* localStates = new LocalStateContainer(this);
     localStates->setDefault(true);
 
+    auto* commentGroup = new CommentGroup(this);
+    commentGroup->setDefault(true);
+
     if (!gtApp || !gtApp->devMode()) setFlag(UserHidden);
 }
 
@@ -35,6 +39,16 @@ GuiData::accessLocalStates(Graph& graph)
     if (!guiData) return {};
 
     return guiData->findDirectChild<LocalStateContainer*>();
+}
+
+CommentGroup*
+GuiData::accessCommentGroup(Graph& graph)
+{
+    auto* guiData = graph.findDirectChild<GuiData*>();
+    if (!guiData) return {};
+
+    return guiData->findDirectChild<CommentGroup*>();
+
 }
 
 char const* S_TYPE_ID = "Collapsed";

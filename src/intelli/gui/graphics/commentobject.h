@@ -14,6 +14,7 @@
 #include <intelli/gui/graphics/interactableobject.h>
 
 #include <QGraphicsObject>
+#include <QPointer>
 
 class QGraphicsProxyWidget;
 class QTextEdit;
@@ -21,6 +22,7 @@ class QTextEdit;
 namespace intelli
 {
 
+class CommentObject;
 class CommentGraphicsObject : public InteractableGraphicsObject
 {
     Q_OBJECT
@@ -31,7 +33,10 @@ public:
     enum { Type = UserType + (int)GraphicsItemType::N_ENTRIES + 1 };
     int type() const override { return Type; }
 
-    CommentGraphicsObject(GraphSceneData const& data);
+    CommentGraphicsObject(CommentObject& comment, GraphSceneData const& data);
+
+    CommentObject& commentObject();
+    CommentObject const& commentObject() const;
 
     QRectF boundingRect() const override;
 
@@ -45,6 +50,7 @@ public:
      */
     void finishEditing();
 
+    void commitPosition();
 protected:
 
     void paint(QPainter *painter,
@@ -52,6 +58,8 @@ protected:
                QWidget* widget = nullptr) override;
 
     QVariant itemChange(GraphicsItemChange change, QVariant const& value) override;
+
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
     void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
 
@@ -70,12 +78,22 @@ protected:
      */
     void resize(QSize diff) override;
 
+signals:
+
+    /**
+     * @brief Emitted once the context menu of a comment was requested
+     * @param object Object for which the context menu was requested (this)
+     * @param pos Local cursor position
+     */
+    void contextMenuRequested(CommentGraphicsObject* object, QPointF pos);
+
 private:
 
     class Overlay;
 
     QRectF resizeHandleRect() const;
 
+    QPointer<CommentObject> m_comment;
     QGraphicsProxyWidget* proxyWidget;
     Overlay* overlay;
     QTextEdit* editor;

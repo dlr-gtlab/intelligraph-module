@@ -344,7 +344,7 @@ GraphView::contextMenuEvent(QContextMenuEvent* event)
 
     auto const scenePos = mapToScene(mapFromGlobal(QCursor::pos()));
 
-    if (QMenu* menu = scene->createSceneMenu(scenePos))
+    if (auto menu = scene->createSceneMenu(scenePos))
     {
         menu->exec(event->globalPos());
     }

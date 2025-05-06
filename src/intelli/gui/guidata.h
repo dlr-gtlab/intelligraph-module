@@ -19,6 +19,7 @@ namespace intelli
 {
 
 class Graph;
+class CommentGroup;
 class LocalStateContainer;
 
 /**
@@ -33,6 +34,8 @@ public:
     Q_INVOKABLE GuiData(GtObject* parent = nullptr);
 
     static LocalStateContainer* accessLocalStates(Graph& graph);
+
+    static CommentGroup* accessCommentGroup(Graph& graph);
 };
 
 /**

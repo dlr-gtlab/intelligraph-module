@@ -23,7 +23,7 @@ InteractableGraphicsObject::InteractableGraphicsObject(GraphSceneData const& dat
     QGraphicsObject(parent),
     m_sceneData(&data)
 {
-
+    setZValue(style::zValue(style::ZValue::Node));
 }
 
 InteractableGraphicsObject::~InteractableGraphicsObject() = default;
@@ -38,6 +38,12 @@ InteractableGraphicsObject::collapse(bool doCollapse)
     m_collapsed = doCollapse;
 
     emit objectCollapsed(this, doCollapse);
+}
+
+void
+InteractableGraphicsObject::setCollapse(bool doCollapse)
+{
+    return collapse(doCollapse);
 }
 
 void

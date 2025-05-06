@@ -24,13 +24,15 @@ class QMenu;
 namespace intelli
 {
 
+class InteractableGraphicsObject;
 class Node;
 class NodeGraphicsObject;
-class InteractableGraphicsObject;
 class Graph;
 class GraphSceneData;
 class Connection;
 class ConnectionGraphicsObject;
+class CommentObject;
+class CommentGraphicsObject;
 
 class GraphScene : public GtGraphicsScene
 {
@@ -78,7 +80,7 @@ public:
     ConnectionGraphicsObject* connectionObject(ConnectionId conId);
     ConnectionGraphicsObject const* connectionObject(ConnectionId conId) const;
 
-    QMenu* createSceneMenu(QPointF scenePos);
+    std::unique_ptr<QMenu> createSceneMenu(QPointF scenePos);
 
 public slots:
 
@@ -129,12 +131,20 @@ private:
         unique_qptr<ConnectionGraphicsObject, DirectDeleter> object;
     };
 
+    struct CommentEntry
+    {
+        ObjectUuid uuid;
+        unique_qptr<CommentGraphicsObject, DirectDeleter> object;
+    };
+
     /// graph this scene refers to
     QPointer<Graph> m_graph;
     /// Node objects in this scene
     std::vector<NodeEntry> m_nodes;
     /// Connection objects in this scene
     std::vector<ConnectionEntry> m_connections;
+    /// Comment objects in this scene
+    std::vector<CommentEntry> m_comments;
     /// Draft connection if active
     unique_qptr<ConnectionGraphicsObject> m_draftConnection;
     /// Shared scene data
@@ -212,9 +222,15 @@ private slots:
                                PortType type,
                                PortId portId);
 
+    void onCommentAppended(CommentObject* comment);
+
+    void onCommentDeleted(CommentObject* comment);
+
     void onNodeContextMenu(NodeGraphicsObject* object, QPointF pos);
 
     void onPortContextMenu(NodeGraphicsObject* object, PortId portId, QPointF pos);
+
+    void onCommentContextMenu(CommentGraphicsObject* object, QPointF pos);
 };
 
 inline GraphScene*

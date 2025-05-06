@@ -57,6 +57,7 @@ public:
      * @param doCollapse Whether the object should be collapsed
      */
     void collapse(bool doCollapse = true);
+    void setCollapse(bool doCollapse = true);
 
 protected:
 

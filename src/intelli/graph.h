@@ -674,7 +674,7 @@ signals:
     void nodePositionChanged(NodeId nodeId, QPointF pos);
 
 protected:
-    
+
     void eval() override;
 
     void onObjectDataMerged() override;

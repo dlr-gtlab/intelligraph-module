@@ -136,7 +136,6 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
 
     setAcceptHoverEvents(true);
 
-    setZValue(style::zValue(style::ZValue::Node));
     setPos(pimpl->node->pos());
 
     embedCentralWidget();
@@ -362,6 +361,22 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
 
     return InteractableGraphicsObject::mousePressEvent(event);
+}
+
+void
+NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
+{
+    bool isResizing = state() == State::Resizing;
+
+    InteractableGraphicsObject::mouseReleaseEvent(event);
+
+    if (isResizing)
+    {
+        assert(pimpl->proxyWidget);
+
+        QWidget* w = pimpl->proxyWidget->widget();
+        pimpl->node->setSize(w->size());
+    }
 }
 
 void

@@ -168,6 +168,8 @@ private:
     T m_value = InitValue;
 };
 
+using ObjectUuid  = QString;
+
 using NodeUuid  = QString;
 using NodeId    = StrongType<unsigned, struct NodeId_, std::numeric_limits<unsigned>::max()>;
 using PortIndex = StrongType<unsigned, struct PortIndex_, std::numeric_limits<unsigned>::max()>;

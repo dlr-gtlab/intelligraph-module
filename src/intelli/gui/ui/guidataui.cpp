@@ -20,4 +20,3 @@ GuiDataUI::icon(GtObject* obj) const
 {
     return gt::gui::icon::data();
 }
-

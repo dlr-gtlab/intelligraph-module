@@ -115,6 +115,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/textdisplay.h
     intelli/node/input/fileinput.h
     intelli/gui/commentgroup.h
+    intelli/gui/commentobject.h
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
     intelli/gui/graphscenemanager.h
@@ -123,6 +124,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphview.h
     intelli/gui/graphviewoverlay.h
     intelli/gui/guidata.h
+    intelli/gui/ui/commentui.h
     intelli/gui/ui/connectionui.h
     intelli/gui/ui/guidataui.h
     intelli/gui/ui/graphcategoryui.h
@@ -199,6 +201,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/input/objectinput.cpp
     intelli/node/input/stringinput.cpp
     intelli/gui/commentgroup.cpp
+    intelli/gui/commentobject.cpp
     intelli/gui/nodegeometry.cpp
     intelli/gui/nodepainter.cpp
     intelli/gui/nodeui.cpp
@@ -213,6 +216,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/guidata.cpp
     intelli/gui/icons.cpp
     intelli/gui/style.cpp
+    intelli/gui/ui/commentui.cpp
     intelli/gui/ui/connectionui.cpp
     intelli/gui/ui/guidataui.cpp
     intelli/gui/ui/logicnodeui.cpp

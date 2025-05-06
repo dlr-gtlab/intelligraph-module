@@ -9,6 +9,7 @@
 
 #include <intelli/gui/graphics/commentobject.h>
 #include <intelli/gui/style.h>
+#include <intelli/gui/commentobject.h>
 
 #include <gt_application.h>
 #include <gt_colors.h>
@@ -50,8 +51,7 @@ public:
             painter->setBrush(Qt::black);
             painter->setPen(Qt::NoPen);
             painter->drawEllipse(boundingRect().center(), 15, 15);
-            gt::gui::colorize(icon, Qt::yellow).paint(painter, rect);
-//            gt::gui::colorize(icon, Qt::yellow).paint(painter, rect2);
+            gt::gui::colorize(icon, Qt::white).paint(painter, rect);
             return;
         }
 
@@ -137,27 +137,27 @@ protected:
         auto* p = static_cast<CommentGraphicsObject*>(parentObject());
         p->hoverLeaveEvent(event);
     }
-
-    void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override
-    {
-        auto* p = static_cast<CommentGraphicsObject*>(parentObject());
-        p->contextMenuEvent(event);
-    }
 };
 
-CommentGraphicsObject::CommentGraphicsObject(GraphSceneData const& data) :
-    InteractableGraphicsObject(data, nullptr)
+CommentGraphicsObject::CommentGraphicsObject(CommentObject& comment,
+                                             GraphSceneData const& data) :
+    InteractableGraphicsObject(data, nullptr),
+    m_comment(&comment)
 {
     setFlag(GraphicsItemFlag::ItemIsSelectable, true);
 
     setAcceptHoverEvents(true);
 
+    setPos(comment.pos());
+
     editor = new QTextEdit;
+    editor->setPlaceholderText(tr("Enter comment..."));
     editor->setMarkdown(tr("# Hello World\n\nthis is some text\n\n`this is code`\n"));
     editor->setFrameShape(QFrame::NoFrame);
     editor->setContextMenuPolicy(Qt::NoContextMenu);
     editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     editor->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
 
     auto* widget = new QGraphicsProxyWidget(this);
     widget->setWidget(editor);
@@ -171,6 +171,29 @@ CommentGraphicsObject::CommentGraphicsObject(GraphSceneData const& data) :
     connect(this, &InteractableGraphicsObject::objectCollapsed, this, [this](){
         proxyWidget->setVisible(!isCollapsed());
     }, Qt::DirectConnection);
+
+    connect(this, &InteractableGraphicsObject::objectMoved, this, [this](){
+        commitPosition();
+    }, Qt::DirectConnection);
+
+    connect(this, &InteractableGraphicsObject::objectCollapsed, this, [this](){
+        m_comment->setCollapsed(isCollapsed());
+    }, Qt::DirectConnection);
+
+    collapse(m_comment->isCollapsed());
+}
+
+CommentObject&
+CommentGraphicsObject::commentObject()
+{
+    assert (m_comment);
+    return *m_comment;
+}
+
+CommentObject const&
+CommentGraphicsObject::commentObject() const
+{
+    return const_cast<CommentGraphicsObject*>(this)->commentObject();
 }
 
 QRectF
@@ -186,6 +209,7 @@ void
 CommentGraphicsObject::startEditing()
 {
     unsetCursor();
+    setSelected(true);
 
     editor->setPlainText(editor->toMarkdown());
     editor->setFocus();
@@ -208,6 +232,12 @@ CommentGraphicsObject::finishEditing()
 
     proxyWidget->unsetCursor();
     overlay->setZValue(1);
+}
+
+void
+CommentGraphicsObject::commitPosition()
+{
+    m_comment->setPos(pos());
 }
 
 QRectF
@@ -238,19 +268,25 @@ CommentGraphicsObject::itemChange(GraphicsItemChange change, QVariant const& val
 
 }
 
-#include <QMenu>
+void
+CommentGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
+{
+    bool isResizing = state() == State::Resizing;
+
+    InteractableGraphicsObject::mouseReleaseEvent(event);
+
+    if (isResizing)
+    {
+        QWidget* w = proxyWidget->widget();
+        m_comment->setSize(w->size());
+    }
+}
 
 void
 CommentGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 {
-    QMenu menu;
-    QAction* collapse = menu.addAction("Collapse");
-    QAction* uncollapse = menu.addAction("Uncollapse");
-
-
-    auto* act = menu.exec(QCursor::pos());
-    if (act == collapse) this->collapse(true);
-    if (act == uncollapse) this->collapse(false);
+    auto const& pos = event->pos();
+    emit contextMenuRequested(this, pos);
 }
 
 void
