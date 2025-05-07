@@ -131,6 +131,7 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
 
     setFlag(QGraphicsItem::ItemIsSelectable, true);
     setFlag(QGraphicsItem::ItemIsFocusable, true);
+    setFlag(GraphicsItemFlag::ItemContainsChildrenInShape, true);
 
     setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
@@ -282,6 +283,8 @@ NodeGraphicsObject::embedCentralWidget()
 
     if (auto w = makeWidget())
     {
+        setFlag(GraphicsItemFlag::ItemContainsChildrenInShape, false);
+
         pimpl->geometry->setWidget(w.get());
 
         pimpl->proxyWidget = new NodeProxyWidget(this);
@@ -327,11 +330,6 @@ NodeGraphicsObject::itemChange(GraphicsItemChange change, QVariant const& value)
         bool isSelected = value.toBool();
         setZValue(style::zValue(!isSelected ? style::ZValue::Node :
                                               style::ZValue::NodeHovered));
-
-        if (isSelected)
-        {
-            emit gtApp->objectSelected(pimpl->node);
-        }
         break;
     }
     default:
@@ -359,6 +357,9 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
         return emit makeDraftConnection(this, hit.type, hit.port);
     }
+
+    // object will be selected
+    if (!isSelected()) emit gtApp->objectSelected(pimpl->node);
 
     return InteractableGraphicsObject::mousePressEvent(event);
 }

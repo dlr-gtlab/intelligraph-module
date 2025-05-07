@@ -22,7 +22,7 @@ namespace intelli
  * @brief The InteractableGraphicsObject class.
  * Base class for all graph scene objects that should be moveable, resizeable,
  * collapsable, and that can recieve/react to hover events.
- * Implements translation and resizing in a uniformly.
+ * Hanldes translation and resizing uniformly.
  */
 class GT_INTELLI_EXPORT InteractableGraphicsObject : public QGraphicsObject
 {

@@ -81,17 +81,20 @@ struct SelectedItems
     QVector<CommentGraphicsObject*> comments;
 
     bool empty() const { return nodes.empty() && connections.empty() && comments.empty(); }
+
+    int size() const { return nodes.size() + connections.size() + comments.size(); }
 };
 
 using SelectionFilters = size_t;
 /// enum to filter selection
-enum SelectionFilter : size_t
+enum SelectionFilter : SelectionFilters
 {
-    NoFilter = 0,
     FilterNodes = 1 << 0,
     FilterConnections = 1 << 1,
     FilterComments = 1 << 2,
     FilterNodesAndComments = FilterNodes | FilterComments,
+
+    NoFilter = FilterNodes | FilterConnections | FilterComments,
 };
 
 /**
@@ -456,6 +459,126 @@ moveConnectionPoint(ConnectionGraphicsObject& object,
     PortIndex portIdx = node.node().portIndex(type, port);
 
     moveConnectionPoint(object, node, type, portIdx);
+}
+
+/**
+ * @brief Collapsed/expands the selected nodes
+ * @param selectedNodeObjects Nodes that should be collapsed/expanded
+ * @param doCollapse Whether the nodes should be collapsed or expanded
+ */
+static void
+collapseNodes(GraphScene& scene,
+              SelectedItems const& selected,
+              bool doCollapse)
+{
+    if (selected.empty()) return;
+
+    QString caption = QChar{'('} +
+                      (selected.nodes.size() > 1 ?
+                           relativeNodePath(selected.nodes.front()->node()) +
+                               (selected.size() > 1 ? ", ...":"") :
+                           QString{"..."}) +
+                      QChar{')'};
+
+    auto change = gtApp->makeCommand(
+        &scene.graph(),
+        tr("Object%1 %2collapsed %3")
+            .arg(selected.size() > 1 ? "s":"", doCollapse? "":"un", caption)
+    );
+    Q_UNUSED(change);
+
+    for (InteractableGraphicsObject* o : selected.nodes)
+    {
+        o->collapse(doCollapse);
+    }
+    for (InteractableGraphicsObject* o : selected.comments)
+    {
+        o->collapse(doCollapse);
+    }
+}
+
+static SelectedItems
+applyCommonMenu(GraphScene& scene,
+                InteractableGraphicsObject& object,
+                QMenu& menu)
+{
+    if (!object.isSelected()) scene.clearSelection();
+    object.setSelected(true);
+
+    auto selected = Impl::findSelectedItems(scene, Impl::FilterNodesAndComments);
+
+    // selection should not be empty
+    assert(!selected.empty());
+
+    bool allDeletable = std::none_of(selected.nodes.begin(),
+                                     selected.nodes.end(),
+                                     Impl::isNotDeletable);
+
+    bool someCollapsed = std::any_of(selected.nodes.begin(),
+                                     selected.nodes.end(),
+                                     Impl::isCollapsed) ||
+                         std::any_of(selected.comments.begin(),
+                                     selected.comments.end(),
+                                     Impl::isCollapsed);
+
+    bool someUncollapsed = std::any_of(selected.nodes.begin(),
+                                       selected.nodes.end(),
+                                       Impl::negate(Impl::isCollapsed)) ||
+                           std::any_of(selected.comments.begin(),
+                                       selected.comments.end(),
+                                       Impl::negate(Impl::isCollapsed));
+
+    QAction* collapseAction = menu.addAction(tr("Collapse selected Nodes"));
+    collapseAction->setIcon(gt::gui::icon::triangleUp());
+    collapseAction->setVisible(someUncollapsed);
+
+    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Nodes"));
+    uncollapseAction->setIcon(gt::gui::icon::triangleDown());
+    uncollapseAction->setVisible(someCollapsed);
+
+    menu.addSeparator();
+
+    QAction* deleteAction = menu.addAction(tr("Delete selected Nodes"));
+    deleteAction->setIcon(gt::gui::icon::delete_());
+    deleteAction->setEnabled(allDeletable);
+
+    // add custom object menu
+    if (selected.nodes.size() == 1 && selected.size() == 1)
+    {
+        menu.addSeparator();
+        gt::gui::makeObjectContextMenu(menu, selected.nodes.front()->node());
+        deleteAction->setVisible(false);
+    }
+    else if (selected.comments.size() == 1 && selected.size() == 1)
+    {
+        menu.addSeparator();
+        gt::gui::makeObjectContextMenu(menu, selected.comments.front()->commentObject());
+        deleteAction->setVisible(false);
+    }
+
+    QObject::connect(&menu, &QMenu::triggered, &scene, [=, s = &scene](QAction* triggered){
+        if (triggered == collapseAction ||
+            triggered == uncollapseAction)
+        {
+            bool doCollapse = (triggered == collapseAction);
+            return collapseNodes(*s, selected, doCollapse);
+        }
+        if (triggered == deleteAction)
+        {
+            GtObjectList list;
+            std::transform(selected.nodes.begin(), selected.nodes.end(),
+                           std::back_inserter(list), [](NodeGraphicsObject* o) {
+                return &o->node();
+            });
+            std::transform(selected.comments.begin(), selected.comments.end(),
+                           std::back_inserter(list), [](CommentGraphicsObject* o) {
+                return &o->commentObject();
+            });
+            return (void)gtDataModel->deleteFromModel(list);
+        }
+    });
+
+    return selected;
 }
 
 /**
@@ -1227,13 +1350,10 @@ void
 GraphScene::onCommentContextMenu(CommentGraphicsObject* object, QPointF pos)
 {
     QMenu menu;
-    QAction* collapse = menu.addAction("Collapse");
-    QAction* uncollapse = menu.addAction("Uncollapse");
 
+    auto selected = Impl::applyCommonMenu(*this, *object, menu);
 
-    auto* act = menu.exec(QCursor::pos());
-    if (act == collapse) object->collapse(true);
-    if (act == uncollapse) object->collapse(false);
+    QAction* triggered = menu.exec(QCursor::pos());
 }
 
 void
@@ -1241,65 +1361,71 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
 {
     assert(object);
 
-    auto* node = &object->node();
+//    auto* node = &object->node();
 
-    if (!object->isSelected()) clearSelection();
-    object->setSelected(true);
+    // create menu
+    QMenu menu;
 
-    // retrieve selected nodes
-    auto selected = Impl::findSelectedItems(*this, Impl::FilterNodes);
-    // selection should not be empty
-    assert(!selected.nodes.empty());
+    auto selected = Impl::applyCommonMenu(*this, *object, menu);
+
+//    if (!object->isSelected()) clearSelection();
+//    object->setSelected(true);
+
+//    // retrieve selected nodes
+//    auto selected = Impl::findSelectedItems(*this, Impl::FilterNodes);
+//    // selection should not be empty
+//    assert(!selected.nodes.empty());
 
     bool allDeletable = std::none_of(selected.nodes.begin(),
                                      selected.nodes.end(),
                                      Impl::isNotDeletable);
 
-    bool someCollapsed = std::any_of(selected.nodes.begin(),
-                                     selected.nodes.end(),
-                                     Impl::isCollapsed);
+//    bool someCollapsed = std::any_of(selected.nodes.begin(),
+//                                     selected.nodes.end(),
+//                                     Impl::isCollapsed);
 
-    bool someUncollapsed = std::any_of(selected.nodes.begin(),
-                                       selected.nodes.end(),
-                                       Impl::negate(Impl::isCollapsed));
+//    bool someUncollapsed = std::any_of(selected.nodes.begin(),
+//                                       selected.nodes.end(),
+//                                       Impl::negate(Impl::isCollapsed));
 
     Node* selectedNode = &selected.nodes.at(0)->node();
     assert(selectedNode);
     Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
 
-    // create menu
-    QMenu menu;
+//    // create menu
+//    QMenu menu;
 
     QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
     ungroupAction->setIcon(gt::gui::icon::stretch());
     ungroupAction->setEnabled(allDeletable);
     ungroupAction->setVisible(selectedGraphNode && selected.nodes.size() == 1);
 
+
     QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
     groupAction->setEnabled(allDeletable);
 
-    QAction* collapseAction = menu.addAction(tr("Collapse selected Nodes"));
-    collapseAction->setIcon(gt::gui::icon::triangleUp());
-    collapseAction->setVisible(someUncollapsed);
+//    QAction* collapseAction = menu.addAction(tr("Collapse selected Nodes"));
+//    collapseAction->setIcon(gt::gui::icon::triangleUp());
+//    collapseAction->setVisible(someUncollapsed);
 
-    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Nodes"));
-    uncollapseAction->setIcon(gt::gui::icon::triangleDown());
-    uncollapseAction->setVisible(someCollapsed);
+//    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Nodes"));
+//    uncollapseAction->setIcon(gt::gui::icon::triangleDown());
+//    uncollapseAction->setVisible(someCollapsed);
 
-    menu.addSeparator();
+//    menu.addSeparator();
 
-    QAction* deleteAction = menu.addAction(tr("Delete selected Nodes"));
-    deleteAction->setIcon(gt::gui::icon::delete_());
-    deleteAction->setEnabled(allDeletable);
+//    QAction* deleteAction = menu.addAction(tr("Delete selected Nodes"));
+//    deleteAction->setIcon(gt::gui::icon::delete_());
+//    deleteAction->setEnabled(allDeletable);
 
-    // add custom object menu
-    if (selected.nodes.size() == 1)
-    {
-        menu.addSeparator();
-        gt::gui::makeObjectContextMenu(menu, *node);
-        deleteAction->setVisible(false);
-    }
+//    // add custom object menu
+//    if (selected.nodes.size() == 1)
+//    {
+//        menu.addSeparator();
+//        gt::gui::makeObjectContextMenu(menu, *node);
+//        deleteAction->setVisible(false);
+//    }
 
     QAction* triggered = menu.exec(QCursor::pos());
 
@@ -1311,20 +1437,20 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
     {
         return expandGroupNode(selectedGraphNode);
     }
-    if (triggered == collapseAction ||
-        triggered == uncollapseAction)
-    {
-        return collapseNodes(selected.nodes, triggered == collapseAction);
-    }
-    if (triggered == deleteAction)
-    {
-        GtObjectList list;
-        std::transform(selected.nodes.begin(), selected.nodes.end(),
-                       std::back_inserter(list), [](NodeGraphicsObject* o) {
-             return &o->node();
-         });
-        return (void)gtDataModel->deleteFromModel(list);
-    }
+//    if (triggered == collapseAction ||
+//        triggered == uncollapseAction)
+//    {
+//        return collapseNodes(*this, selected, triggered == collapseAction);
+//    }
+//    if (triggered == deleteAction)
+//    {
+//        GtObjectList list;
+//        std::transform(selected.nodes.begin(), selected.nodes.end(),
+//                       std::back_inserter(list), [](NodeGraphicsObject* o) {
+//             return &o->node();
+//         });
+//        return (void)gtDataModel->deleteFromModel(list);
+//    }
 }
 
 void
@@ -1718,31 +1844,6 @@ GraphScene::expandGroupNode(Graph* groupNode)
 }
 
 void
-GraphScene::collapseNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects,
-                          bool doCollapse)
-{
-    if (selectedNodeObjects.empty()) return;
-
-    QString caption =
-        relativeNodePath(selectedNodeObjects.front()->node()) +
-        (selectedNodeObjects.size() > 1 ? ", ...":"");
-
-    auto change = gtApp->makeCommand(
-        &graph(),
-        tr("Node%1 %2collapsed (%3)")
-            .arg(selectedNodeObjects.size() > 1 ? "s":"",
-                 doCollapse? "":"un",
-                 caption)
-    );
-    Q_UNUSED(change);
-
-    for (NodeGraphicsObject* o : selectedNodeObjects)
-    {
-        o->collapse(doCollapse);
-    }
-}
-
-void
 GraphScene::onNodeAppended(Node* node)
 {
     static NodeUI defaultUI;
@@ -2023,6 +2124,9 @@ GraphScene::onCommentAppended(CommentObject* comment)
             this, &GraphScene::onNodeShifted, Qt::DirectConnection);
     connect(entity, &InteractableGraphicsObject::objectMoved,
             this, &GraphScene::onNodeMoved, Qt::DirectConnection);
+
+    connect(entity, &CommentGraphicsObject::contextMenuRequested,
+            this, &GraphScene::onCommentContextMenu, Qt::DirectConnection);
 
     // add to scene
     addItem(entity);

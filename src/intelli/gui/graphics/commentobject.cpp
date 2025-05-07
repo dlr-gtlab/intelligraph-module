@@ -145,10 +145,9 @@ CommentGraphicsObject::CommentGraphicsObject(CommentObject& comment,
     m_comment(&comment)
 {
     setFlag(GraphicsItemFlag::ItemIsSelectable, true);
+    setFlag(GraphicsItemFlag::ItemContainsChildrenInShape, true);
 
     setAcceptHoverEvents(true);
-
-    setPos(comment.pos());
 
     editor = new QTextEdit;
     editor->setPlaceholderText(tr("Enter comment..."));
@@ -157,7 +156,6 @@ CommentGraphicsObject::CommentGraphicsObject(CommentObject& comment,
     editor->setContextMenuPolicy(Qt::NoContextMenu);
     editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     editor->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
 
     auto* widget = new QGraphicsProxyWidget(this);
     widget->setWidget(editor);
@@ -168,6 +166,7 @@ CommentGraphicsObject::CommentGraphicsObject(CommentObject& comment,
 
     proxyWidget = widget;
 
+    // setup connections
     connect(this, &InteractableGraphicsObject::objectCollapsed, this, [this](){
         proxyWidget->setVisible(!isCollapsed());
     }, Qt::DirectConnection);
@@ -180,7 +179,17 @@ CommentGraphicsObject::CommentGraphicsObject(CommentObject& comment,
         m_comment->setCollapsed(isCollapsed());
     }, Qt::DirectConnection);
 
+    connect(m_comment, &CommentObject::commentPositionChanged, this, [this](){
+        setPos(m_comment->pos());
+    }, Qt::DirectConnection);
+
+    // setup object
+    setPos(m_comment->pos());
+
     collapse(m_comment->isCollapsed());
+
+    QSize size = m_comment->size();
+    if (size.isValid()) editor->resize(size);
 }
 
 CommentObject&
@@ -271,7 +280,7 @@ CommentGraphicsObject::itemChange(GraphicsItemChange change, QVariant const& val
 void
 CommentGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    bool isResizing = state() == State::Resizing;
+    bool isResizing = (state() == State::Resizing);
 
     InteractableGraphicsObject::mouseReleaseEvent(event);
 

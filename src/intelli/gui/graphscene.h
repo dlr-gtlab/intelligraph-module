@@ -171,14 +171,6 @@ private:
     void expandGroupNode(Graph* groupNode);
 
     /**
-     * @brief Collapsed/expands the selected nodes
-     * @param selectedNodeObjects Nodes that should be collapsed/expanded
-     * @param doCollapse Whether the nodes should be collapsed or expanded
-     */
-    void collapseNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects,
-                       bool doCollapse);
-
-    /**
      * @brief Updates the connection's end points. If a node graphics object
      * is passed in, only this side is updated.
      * @param object Connection object to update
