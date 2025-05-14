@@ -132,7 +132,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/packageui.h
     intelli/gui/graphics/commentobject.h
     intelli/gui/graphics/connectionobject.h
-    intelli/gui/graphics/interactableobject.cpp
+    intelli/gui/graphics/lineobject.h
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/graphics/popupitem.h
     intelli/gui/widgets/abstractnumberinputwidget.h
@@ -224,6 +224,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/packageui.cpp
     intelli/gui/graphics/commentobject.cpp
     intelli/gui/graphics/connectionobject.cpp
+    intelli/gui/graphics/interactableobject.cpp
+    intelli/gui/graphics/lineobject.cpp
     intelli/gui/graphics/nodeevalstateobject.cpp
     intelli/gui/graphics/nodeobject.cpp
     intelli/gui/graphics/popupitem.cpp

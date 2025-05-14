@@ -24,6 +24,7 @@
 #include <intelli/gui/graphscenedata.h>
 #include <intelli/gui/graphics/commentobject.h>
 #include <intelli/gui/graphics/connectionobject.h>
+#include <intelli/gui/graphics/lineobject.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/popupitem.h>
 #include <intelli/private/utils.h>
@@ -83,6 +84,17 @@ struct SelectedItems
     bool empty() const { return nodes.empty() && connections.empty() && comments.empty(); }
 
     int size() const { return nodes.size() + connections.size() + comments.size(); }
+
+    NodeGraphicsObject* nodeObject()
+    {
+        assert(!nodes.empty()); return nodes.front();
+    }
+
+    CommentGraphicsObject* commentObject()
+    {
+        assert(!comments.empty());
+        return comments.front();
+    }
 };
 
 using SelectionFilters = size_t;
@@ -366,6 +378,8 @@ instantiateDraftConnection(GraphScene& scene,
     entity->setEndPoint(invert(sourceType), entity->endPoint(sourceType));
     entity->grabMouse();
 
+    connect(&sourceObject, &QObject::destroyed, entity, [c = entity.get()](){ delete c; });
+
     scene.m_draftConnection = std::move(entity);
 
     highlightCompatibleNodes(scene, sourceNode, *sourcePort);
@@ -467,9 +481,9 @@ moveConnectionPoint(ConnectionGraphicsObject& object,
  * @param doCollapse Whether the nodes should be collapsed or expanded
  */
 static void
-collapseNodes(GraphScene& scene,
-              SelectedItems const& selected,
-              bool doCollapse)
+collapseObjects(GraphScene& scene,
+                SelectedItems const& selected,
+                bool doCollapse)
 {
     if (selected.empty()) return;
 
@@ -497,88 +511,119 @@ collapseNodes(GraphScene& scene,
     }
 }
 
-static SelectedItems
-applyCommonMenu(GraphScene& scene,
-                InteractableGraphicsObject& object,
-                QMenu& menu)
+static void
+setupDefaultActions(GraphScene* scene,
+                    SelectedItems* selected,
+                    QMenu& menu)
 {
-    if (!object.isSelected()) scene.clearSelection();
-    object.setSelected(true);
+    menu.addSeparator();
 
-    auto selected = Impl::findSelectedItems(scene, Impl::FilterNodesAndComments);
-
-    // selection should not be empty
-    assert(!selected.empty());
-
-    bool allDeletable = std::none_of(selected.nodes.begin(),
-                                     selected.nodes.end(),
+    bool allDeletable = std::none_of(selected->nodes.begin(),
+                                     selected->nodes.end(),
                                      Impl::isNotDeletable);
 
-    bool someCollapsed = std::any_of(selected.nodes.begin(),
-                                     selected.nodes.end(),
+    QAction* deleteAction = menu.addAction(tr("Delete selected Objects"));
+    deleteAction->setIcon(gt::gui::icon::delete_());
+    deleteAction->setEnabled(allDeletable);
+    deleteAction->setShortcut(QKeySequence::Delete);
+
+    // add custom object menu
+    if (selected->nodes.size() == 1 && selected->size() == 1)
+    {
+        menu.addSeparator();
+        gt::gui::makeObjectContextMenu(menu, selected->nodeObject()->node());
+        deleteAction->setVisible(false);
+    }
+    else if (selected->comments.size() == 1 && selected->size() == 1)
+    {
+        menu.addSeparator();
+        gt::gui::makeObjectContextMenu(menu, selected->commentObject()->commentObject());
+        deleteAction->setVisible(false);
+    }
+
+    QObject::connect(deleteAction, &QAction::triggered, scene, [=](){
+        GtObjectList list;
+        std::transform(selected->nodes.begin(), selected->nodes.end(),
+                       std::back_inserter(list), [](NodeGraphicsObject* o) {
+            return &o->node();
+        });
+        std::transform(selected->comments.begin(), selected->comments.end(),
+                       std::back_inserter(list), [](CommentGraphicsObject* o) {
+            return &o->commentObject();
+        });
+        gtDataModel->deleteFromModel(list);
+    });
+}
+
+static void
+setupCollapsedActions(GraphScene* scene,
+                      SelectedItems* selected,
+                      QMenu& menu)
+{
+    bool someCollapsed = std::any_of(selected->nodes.begin(),
+                                     selected->nodes.end(),
                                      Impl::isCollapsed) ||
-                         std::any_of(selected.comments.begin(),
-                                     selected.comments.end(),
+                         std::any_of(selected->comments.begin(),
+                                     selected->comments.end(),
                                      Impl::isCollapsed);
 
-    bool someUncollapsed = std::any_of(selected.nodes.begin(),
-                                       selected.nodes.end(),
+    bool someUncollapsed = std::any_of(selected->nodes.begin(),
+                                       selected->nodes.end(),
                                        Impl::negate(Impl::isCollapsed)) ||
-                           std::any_of(selected.comments.begin(),
-                                       selected.comments.end(),
+                           std::any_of(selected->comments.begin(),
+                                       selected->comments.end(),
                                        Impl::negate(Impl::isCollapsed));
 
-    QAction* collapseAction = menu.addAction(tr("Collapse selected Nodes"));
+    QAction* collapseAction = menu.addAction(tr("Collapse selected Objects"));
     collapseAction->setIcon(gt::gui::icon::triangleUp());
     collapseAction->setVisible(someUncollapsed);
 
-    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Nodes"));
+    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Objects"));
     uncollapseAction->setIcon(gt::gui::icon::triangleDown());
     uncollapseAction->setVisible(someCollapsed);
 
-    menu.addSeparator();
-
-    QAction* deleteAction = menu.addAction(tr("Delete selected Nodes"));
-    deleteAction->setIcon(gt::gui::icon::delete_());
-    deleteAction->setEnabled(allDeletable);
-
-    // add custom object menu
-    if (selected.nodes.size() == 1 && selected.size() == 1)
-    {
-        menu.addSeparator();
-        gt::gui::makeObjectContextMenu(menu, selected.nodes.front()->node());
-        deleteAction->setVisible(false);
-    }
-    else if (selected.comments.size() == 1 && selected.size() == 1)
-    {
-        menu.addSeparator();
-        gt::gui::makeObjectContextMenu(menu, selected.comments.front()->commentObject());
-        deleteAction->setVisible(false);
-    }
-
-    QObject::connect(&menu, &QMenu::triggered, &scene, [=, s = &scene](QAction* triggered){
+    QObject::connect(&menu, &QMenu::triggered, scene, [=](QAction* triggered){
         if (triggered == collapseAction ||
             triggered == uncollapseAction)
         {
             bool doCollapse = (triggered == collapseAction);
-            return collapseNodes(*s, selected, doCollapse);
-        }
-        if (triggered == deleteAction)
-        {
-            GtObjectList list;
-            std::transform(selected.nodes.begin(), selected.nodes.end(),
-                           std::back_inserter(list), [](NodeGraphicsObject* o) {
-                return &o->node();
-            });
-            std::transform(selected.comments.begin(), selected.comments.end(),
-                           std::back_inserter(list), [](CommentGraphicsObject* o) {
-                return &o->commentObject();
-            });
-            return (void)gtDataModel->deleteFromModel(list);
+            return collapseObjects(*scene, *selected, doCollapse);
         }
     });
+}
 
-    return selected;
+static void
+setupGroupingActions(GraphScene* scene,
+                     SelectedItems* selected,
+                     QMenu& menu)
+{
+    bool areNodesSelected = !selected->nodes.empty();
+    Node* selectedNode = areNodesSelected ? &selected->nodeObject()->node() : nullptr;
+    Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
+
+    bool allDeletable = std::none_of(selected->nodes.begin(),
+                                     selected->nodes.end(),
+                                     Impl::isNotDeletable);
+
+    QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
+    ungroupAction->setIcon(gt::gui::icon::stretch());
+    ungroupAction->setEnabled(allDeletable);
+    ungroupAction->setVisible(selectedGraphNode && selected->nodes.size() == 1);
+
+    QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
+    groupAction->setIcon(gt::gui::icon::select());
+    groupAction->setEnabled(allDeletable);
+
+    QObject::connect(&menu, &QMenu::triggered, scene, [=](QAction* triggered){
+        if (triggered == groupAction)
+        {
+            return scene->groupNodes(selected->nodes);
+        }
+        if (triggered == ungroupAction)
+        {
+            return scene->expandGroupNode(selectedGraphNode);
+        }
+    });
 }
 
 /**
@@ -877,16 +922,14 @@ GraphScene::createSceneMenu(QPointF scenePos)
     auto* txtBoxAction = new QWidgetAction(menu);
     txtBoxAction->setDefaultWidget(txtBox);
 
-    auto* button = new QPushButton(menu);
-    button->setText(tr("Add Comment"));
-    button->setIcon(gt::gui::icon::comment());
-    button->setFlat(true);
-    button->setStyleSheet(gt::gui::stylesheet::button());
+    txtBox->setMinimumHeight(txtBox->sizeHint().height());
 
-    txtBox->setMinimumHeight(button->sizeHint().height());
-
-    auto* buttonAction = new QWidgetAction(menu);
-    buttonAction->setDefaultWidget(button);
+    auto* buttonAction = new QAction(menu);
+//    buttonAction->setDefaultWidget(button);
+    buttonAction->setText(tr("Add Comment"));
+    buttonAction->setIcon(gt::gui::icon::comment());
+    //    txtBoxAction->setFlat(true);
+    //    txtBoxAction->setStyleSheet(gt::gui::stylesheet::button());
 
     // 1.
     menu->addAction(txtBoxAction);
@@ -939,12 +982,14 @@ GraphScene::createSceneMenu(QPointF scenePos)
         auto node = factory.makeNode(item->whatsThis(0));
         if (!node)
         {
-            gtWarning() << tr("Failed to create new node of type %1").arg(item->text(0));
+            gtWarning() << tr("Failed to create new node of type %1")
+                               .arg(item->text(0));
             return;
         }
         node->setPos(scenePos);
 
-        auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'").arg(node->caption()));
+        auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'")
+                                                   .arg(node->caption()));
         Q_UNUSED(cmd);
 
         m_graph->appendNode(std::move(node));
@@ -977,15 +1022,17 @@ GraphScene::createSceneMenu(QPointF scenePos)
             ++it;
         }
     });
+// SPDX-SnippetEnd
 
-    connect(button, &QPushButton::clicked, menu, [this, menu, scenePos]() {
+    connect(buttonAction, &QAction::triggered, menu, [this, menu, scenePos]() {
         auto* commentGroup = GuiData::accessCommentGroup(graph());
         if (!commentGroup) return;
 
         auto commentPtr = std::make_unique<CommentObject>();
         commentPtr->setPos(scenePos);
 
-        auto cmd = gtApp->makeCommand(m_graph, tr("Append comment '%1'").arg(commentPtr->objectName()));
+        auto cmd = gtApp->makeCommand(m_graph, tr("Append comment '%1'")
+                                                   .arg(commentPtr->objectName()));
         Q_UNUSED(cmd);
 
         CommentObject* comment = commentGroup->appendComment(std::move(commentPtr));
@@ -1002,7 +1049,6 @@ GraphScene::createSceneMenu(QPointF scenePos)
     });
 
     return menuPtr;
-// SPDX-SnippetEnd
 }
 
 void
@@ -1077,6 +1123,7 @@ GraphScene::deleteSelectedObjects()
                    selected.connections.end(),
                    std::back_inserter(objects),
                    [this](ConnectionGraphicsObject* o){
+                       gtDebug() << o->connectionId() << m_graph->findConnection(o->connectionId());
         return m_graph->findConnection(o->connectionId());
     });
     std::transform(selected.nodes.begin(),
@@ -1158,6 +1205,33 @@ GraphScene::keyPressEvent(QKeyEvent* event)
 void
 GraphScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    if (m_draftLine)
+    {
+        auto const* startItem = qgraphicsitem_cast<CommentGraphicsObject const*>(m_draftLine->startItem());
+        m_draftLine->ungrabMouse();
+        m_draftLine.reset();
+
+        event->accept();
+
+        QPointF pos = event->scenePos();
+        QRectF rect{pos - s_connection_distance, pos + s_connection_distance};
+
+        auto const& items = this->items(rect);
+        for (auto* item : items)
+        {
+            auto* endItem = qgraphicsitem_cast<NodeGraphicsObject*>(item);
+            if (!endItem) continue;
+
+            auto cmd = gtApp->makeCommand(m_graph, tr("Link comment to %1")
+                                                       .arg(relativeNodePath(endItem->node())));
+            Q_UNUSED(cmd);
+
+            const_cast<CommentGraphicsObject*>(startItem)
+                ->commentObject().appendConnection(endItem->node().uuid());
+            break;
+        }
+        return;
+    }
     return QGraphicsScene::mousePressEvent(event);
 }
 
@@ -1199,6 +1273,26 @@ GraphScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
         m_draftConnection->setEndPoint(targetType, event->scenePos());
         return event->accept();
+    }
+
+    if (m_draftLine)
+    {
+        event->accept();
+        m_draftLine->setEndPoint(PortType::Out, event->scenePos());
+
+        QPointF pos = event->scenePos();
+        QRectF rect{pos - s_connection_distance, pos + s_connection_distance};
+
+        auto const& items = this->items(rect);
+        for (auto* item : items)
+        {
+            auto* endItem = qgraphicsitem_cast<NodeGraphicsObject*>(item);
+            if (!endItem) continue;
+
+            m_draftLine->setEndPoint(PortType::Out, *endItem);
+            break;
+        }
+        return;
     }
 
     return QGraphicsScene::mouseMoveEvent(event);
@@ -1349,11 +1443,32 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
 void
 GraphScene::onCommentContextMenu(CommentGraphicsObject* object, QPointF pos)
 {
+    assert(object);
+
+    if (!object->isSelected()) clearSelection();
+    object->setSelected(true);
+
+    auto selected = Impl::findSelectedItems(*this, Impl::FilterNodesAndComments);
+    assert(!selected.comments.empty());
+
+    // create menu
     QMenu menu;
 
-    auto selected = Impl::applyCommonMenu(*this, *object, menu);
+    Impl::setupCollapsedActions(this, &selected, menu);
+    Impl::setupDefaultActions(this, &selected, menu);
 
-    QAction* triggered = menu.exec(QCursor::pos());
+    QAction* connectAction = menu.addAction(tr("Connect to..."));
+    connectAction->setIcon(gt::gui::icon::chain());
+    connectAction->setVisible(!object->isCollapsed());
+
+    QAction* action = menu.exec(QCursor::pos());
+
+    if (action == connectAction)
+    {
+        m_draftLine = make_unique_qptr<LineGraphicsObject>(*object, nullptr);
+        addItem(m_draftLine);
+        m_draftLine->grabMouse();
+    }
 }
 
 void
@@ -1361,96 +1476,20 @@ GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
 {
     assert(object);
 
-//    auto* node = &object->node();
+    if (!object->isSelected()) clearSelection();
+    object->setSelected(true);
+
+    auto selected = Impl::findSelectedItems(*this, Impl::FilterNodesAndComments);
+    assert(!selected.nodes.empty());
 
     // create menu
     QMenu menu;
 
-    auto selected = Impl::applyCommonMenu(*this, *object, menu);
+    Impl::setupCollapsedActions(this, &selected, menu);
+    Impl::setupGroupingActions(this, &selected, menu);
+    Impl::setupDefaultActions(this, &selected, menu);
 
-//    if (!object->isSelected()) clearSelection();
-//    object->setSelected(true);
-
-//    // retrieve selected nodes
-//    auto selected = Impl::findSelectedItems(*this, Impl::FilterNodes);
-//    // selection should not be empty
-//    assert(!selected.nodes.empty());
-
-    bool allDeletable = std::none_of(selected.nodes.begin(),
-                                     selected.nodes.end(),
-                                     Impl::isNotDeletable);
-
-//    bool someCollapsed = std::any_of(selected.nodes.begin(),
-//                                     selected.nodes.end(),
-//                                     Impl::isCollapsed);
-
-//    bool someUncollapsed = std::any_of(selected.nodes.begin(),
-//                                       selected.nodes.end(),
-//                                       Impl::negate(Impl::isCollapsed));
-
-    Node* selectedNode = &selected.nodes.at(0)->node();
-    assert(selectedNode);
-    Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
-
-//    // create menu
-//    QMenu menu;
-
-    QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
-    ungroupAction->setIcon(gt::gui::icon::stretch());
-    ungroupAction->setEnabled(allDeletable);
-    ungroupAction->setVisible(selectedGraphNode && selected.nodes.size() == 1);
-
-
-    QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
-    groupAction->setIcon(gt::gui::icon::select());
-    groupAction->setEnabled(allDeletable);
-
-//    QAction* collapseAction = menu.addAction(tr("Collapse selected Nodes"));
-//    collapseAction->setIcon(gt::gui::icon::triangleUp());
-//    collapseAction->setVisible(someUncollapsed);
-
-//    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Nodes"));
-//    uncollapseAction->setIcon(gt::gui::icon::triangleDown());
-//    uncollapseAction->setVisible(someCollapsed);
-
-//    menu.addSeparator();
-
-//    QAction* deleteAction = menu.addAction(tr("Delete selected Nodes"));
-//    deleteAction->setIcon(gt::gui::icon::delete_());
-//    deleteAction->setEnabled(allDeletable);
-
-//    // add custom object menu
-//    if (selected.nodes.size() == 1)
-//    {
-//        menu.addSeparator();
-//        gt::gui::makeObjectContextMenu(menu, *node);
-//        deleteAction->setVisible(false);
-//    }
-
-    QAction* triggered = menu.exec(QCursor::pos());
-
-    if (triggered == groupAction)
-    {
-        return groupNodes(selected.nodes);
-    }
-    if (triggered == ungroupAction)
-    {
-        return expandGroupNode(selectedGraphNode);
-    }
-//    if (triggered == collapseAction ||
-//        triggered == uncollapseAction)
-//    {
-//        return collapseNodes(*this, selected, triggered == collapseAction);
-//    }
-//    if (triggered == deleteAction)
-//    {
-//        GtObjectList list;
-//        std::transform(selected.nodes.begin(), selected.nodes.end(),
-//                       std::back_inserter(list), [](NodeGraphicsObject* o) {
-//             return &o->node();
-//         });
-//        return (void)gtDataModel->deleteFromModel(list);
-//    }
+    menu.exec(QCursor::pos());
 }
 
 void
@@ -1513,7 +1552,8 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
     std::sort(connectionsOut.begin(), connectionsOut.end(), sortByEndPoint);
 
     // create undo command
-    auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'").arg(groupNodeName));
+    auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'")
+                                                  .arg(groupNodeName));
     auto modifyCmd = m_graph->modify();
     Q_UNUSED(modifyCmd);
 
@@ -1863,9 +1903,9 @@ GraphScene::onNodeAppended(Node* node)
             this, &GraphScene::onNodeContextMenu);
 
     connect(entity, &InteractableGraphicsObject::objectShifted,
-            this, &GraphScene::onNodeShifted, Qt::DirectConnection);
+            this, &GraphScene::onObjectShifted, Qt::DirectConnection);
     connect(entity, &InteractableGraphicsObject::objectMoved,
-            this, &GraphScene::onNodeMoved, Qt::DirectConnection);
+            this, &GraphScene::onObjectMoved, Qt::DirectConnection);
 
     connect(entity, &NodeGraphicsObject::nodePositionChanged,
             this, &GraphScene::onNodePositionChanged, Qt::DirectConnection);
@@ -1894,7 +1934,7 @@ GraphScene::onNodeDeleted(NodeId nodeId)
 }
 
 void
-GraphScene::onNodeShifted(InteractableGraphicsObject* sender, QPointF diff)
+GraphScene::onObjectShifted(InteractableGraphicsObject* sender, QPointF diff)
 {
     auto const selection = Impl::findSelectedItems(*this, Impl::FilterNodesAndComments);
 
@@ -1911,17 +1951,17 @@ GraphScene::onNodeShifted(InteractableGraphicsObject* sender, QPointF diff)
 
     for (auto* o : selection.nodes)
     {
-        if (sender != o) o->moveBy(diff.x(), diff.y());
+        if (sender != o) o->shiftBy(diff.x(), diff.y());
         moveConnections(o);
     }
     for (auto* o : selection.comments)
     {
-        if (sender != o) o->moveBy(diff.x(), diff.y());
+        if (sender != o) o->shiftBy(diff.x(), diff.y());
     }
 }
 
 void
-GraphScene::onNodeMoved(InteractableGraphicsObject* sender)
+GraphScene::onObjectMoved(InteractableGraphicsObject* sender)
 {
     // nodes have not been moved
     if (!m_nodeMoveCmd.isValid()) return;
@@ -2121,12 +2161,50 @@ GraphScene::onCommentAppended(CommentObject* comment)
     auto entity = make_unique_qptr<CommentGraphicsObject, DirectDeleter>(*comment, sceneData());
 
     connect(entity, &InteractableGraphicsObject::objectShifted,
-            this, &GraphScene::onNodeShifted, Qt::DirectConnection);
+            this, &GraphScene::onObjectShifted, Qt::DirectConnection);
     connect(entity, &InteractableGraphicsObject::objectMoved,
-            this, &GraphScene::onNodeMoved, Qt::DirectConnection);
+            this, &GraphScene::onObjectMoved, Qt::DirectConnection);
 
     connect(entity, &CommentGraphicsObject::contextMenuRequested,
             this, &GraphScene::onCommentContextMenu, Qt::DirectConnection);
+
+    auto onCommentConnectionAdded = [this, startItem = entity.get()]
+                                    (ObjectUuid const& objectUuid){
+        Node* node = graph().findNodeByUuid(objectUuid);
+        if (!node) return;
+
+        NodeGraphicsObject* endItem = this->nodeObject(node->id());
+        if (!endItem) return;
+
+        auto* lineItem = new LineGraphicsObject(*startItem, endItem);
+
+        connect(startItem, &InteractableGraphicsObject::objectResized,
+                lineItem, &LineGraphicsObject::updateEndPoints);
+        connect(endItem, &InteractableGraphicsObject::objectResized,
+                lineItem, &LineGraphicsObject::updateEndPoints);
+
+        connect(&startItem->commentObject(), &CommentObject::connectionRemoved,
+                lineItem, [lineItem, objectUuid](ObjectUuid uuid){
+            if (objectUuid == uuid) delete lineItem;
+        }, Qt::DirectConnection);
+
+        addItem(lineItem);
+        startItem->addConnection(lineItem);
+    };
+
+    connect(comment, &CommentObject::connectionAppended,
+            entity, onCommentConnectionAdded,
+            Qt::DirectConnection);
+
+    for (size_t i = 0; i < comment->nconnections(); i++)
+    {
+        onCommentConnectionAdded(comment->connectionAt(i));
+    }
+
+    if (comment->nconnections() == 1)
+    {
+        emit entity->objectCollapsed(entity.get(), entity->isCollapsed());
+    }
 
     // add to scene
     addItem(entity);

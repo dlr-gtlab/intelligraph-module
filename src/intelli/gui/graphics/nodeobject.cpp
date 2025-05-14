@@ -204,6 +204,14 @@ NodeGraphicsObject::boundingRect() const
     return pimpl->geometry->boundingRect();
 }
 
+QRectF
+NodeGraphicsObject::widgetSceneBoundingRect() const
+{
+    if (!pimpl->proxyWidget || !pimpl->proxyWidget->widget()) return {};
+
+    return pimpl->proxyWidget->sceneBoundingRect();
+}
+
 QPainterPath
 NodeGraphicsObject::shape() const
 {
@@ -333,7 +341,7 @@ NodeGraphicsObject::itemChange(GraphicsItemChange change, QVariant const& value)
         break;
     }
     default:
-        return QGraphicsObject::itemChange(change, value);
+        break;
     }
 
     return value;

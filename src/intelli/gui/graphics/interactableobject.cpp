@@ -2,7 +2,7 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
@@ -26,6 +26,21 @@ InteractableGraphicsObject::InteractableGraphicsObject(GraphSceneData const& dat
     setZValue(style::zValue(style::ZValue::Node));
 }
 
+void
+InteractableGraphicsObject::setInteractionFlag(InteractionFlag flag, bool enable)
+{
+    enable ? m_flags |= flag : m_flags &= ~flag;
+}
+
+void
+InteractableGraphicsObject::shiftBy(double x, double y)
+{
+    if (interactionFlags() & AllowTranslation)
+    {
+        moveBy(x, y);
+    }
+}
+
 InteractableGraphicsObject::~InteractableGraphicsObject() = default;
 
 void
@@ -38,10 +53,11 @@ InteractableGraphicsObject::collapse(bool doCollapse)
     m_collapsed = doCollapse;
 
     emit objectCollapsed(this, doCollapse);
+    emit objectResized(this);
 }
 
 void
-InteractableGraphicsObject::setCollapse(bool doCollapse)
+InteractableGraphicsObject::setCollapsed(bool doCollapse)
 {
     return collapse(doCollapse);
 }
@@ -56,32 +72,43 @@ InteractableGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
     event->accept();
 
-    // bring this node forward
-    setZValue(style::zValue(style::ZValue::NodeHovered));
-
     // handle resizing
     if (canResize(event->pos()))
     {
+        if (!(interactionFlags() & AllowResizing)) return;
+
+        // bring this node forward
+        setZValue(style::zValue(style::ZValue::NodeHovered));
+
         m_state = State::Resizing;
         m_translationStart = {0.0, 0.0};
         return;
     }
 
-    // handle translating
-    m_state = State::Translating;
-    m_translationStart = pos();
-
-    // update selection
-    if (!isSelected())
+    if (interactionFlags() & AllowTranslation)
     {
-        if (!(event->modifiers() & Qt::ControlModifier))
-        {
-            QGraphicsScene* scene = this->scene();
-            assert(scene);
-            scene->clearSelection();
-        }
+        // handle translating
+        m_state = State::Translating;
+        m_translationStart = pos();
+    }
 
-        setSelected(true);
+    if (interactionFlags() & AllowSelecting)
+    {
+        // bring this node forward
+        setZValue(style::zValue(style::ZValue::NodeHovered));
+
+        // update selection
+        if (!isSelected())
+        {
+            if (!(event->modifiers() & Qt::ControlModifier))
+            {
+                QGraphicsScene* scene = this->scene();
+                assert(scene);
+                scene->clearSelection();
+            }
+
+            setSelected(true);
+        }
     }
 }
 
@@ -99,6 +126,8 @@ InteractableGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         m_translationStart.ry() = diff.y() - floor(diff.y());
 
         resize(QSize{(int)floor(diff.x()), (int)floor(diff.y())});
+
+        emit objectResized(this);
         break;
 
     case State::Translating:

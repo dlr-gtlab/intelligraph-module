@@ -2,7 +2,7 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
@@ -43,6 +43,16 @@ public:
 
     bool isCollapsed() const;
 
+    void appendConnection(ObjectUuid const& targetUuid);
+
+    bool removeConnection(ObjectUuid const& targetUuid);
+
+    bool isObjectConnected(ObjectUuid const& targetUuid);
+
+    size_t nconnections() const;
+
+    ObjectUuid const& connectionAt(size_t idx) const;
+
 signals:
 
     void aboutToBeDeleted();
@@ -50,6 +60,10 @@ signals:
     void commentCollapsedChanged(bool collapsed);
 
     void commentPositionChanged();
+
+    void connectionAppended(ObjectUuid const& objectUuid);
+
+    void connectionRemoved(ObjectUuid const& objectUuid);
 
 private:
 

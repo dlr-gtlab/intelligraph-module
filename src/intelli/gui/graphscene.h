@@ -33,6 +33,7 @@ class Connection;
 class ConnectionGraphicsObject;
 class CommentObject;
 class CommentGraphicsObject;
+class LineGraphicsObject;
 
 class GraphScene : public GtGraphicsScene
 {
@@ -147,6 +148,7 @@ private:
     std::vector<CommentEntry> m_comments;
     /// Draft connection if active
     unique_qptr<ConnectionGraphicsObject> m_draftConnection;
+    unique_qptr<LineGraphicsObject> m_draftLine;
     /// Shared scene data
     std::unique_ptr<GraphSceneData> m_sceneData;
     /// Shape style of the connections in this scene
@@ -193,11 +195,11 @@ private slots:
 
     void onNodeDeleted(NodeId nodeId);
 
-    /// called while node is being moved by the user
-    void onNodeShifted(InteractableGraphicsObject* sender, QPointF diff);
+    /// called while an object is being moved by the user
+    void onObjectShifted(InteractableGraphicsObject* sender, QPointF diff);
 
-    /// called if node has been moved by the user (moving finished)
-    void onNodeMoved(InteractableGraphicsObject* sender);
+    /// called if an object has been moved by the user (moving finished)
+    void onObjectMoved(InteractableGraphicsObject* sender);
 
     /// called if node changed position externally
     void onNodePositionChanged(NodeGraphicsObject* sender);

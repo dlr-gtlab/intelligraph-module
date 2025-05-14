@@ -25,7 +25,6 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection,
     m_startType(std::move(outType)),
     m_endType(std::move(inType))
 {
-    setFlag(QGraphicsItem::ItemIsFocusable, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);
 
     setAcceptHoverEvents(true);
@@ -44,22 +43,35 @@ ConnectionGraphicsObject::boundingRect() const
 // SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     auto points = controlPoints();
 
+    // include end points
     // `normalized()` fixes inverted rects.
     QRectF basicRect = QRectF{m_start, m_end}.normalized();
 
+    // include control points
     QRectF c1c2Rect = QRectF(points.first, points.second).normalized();
 
     QRectF commonRect = basicRect.united(c1c2Rect);
 
+    // Expand rect by port circle diameter
     double const diam = style::currentStyle().node.portRadius * 2;
     QPointF const cornerOffset(diam, diam);
 
-    // Expand rect by port circle diameter
     commonRect.setTopLeft(commonRect.topLeft() - cornerOffset);
     commonRect.setBottomRight(commonRect.bottomRight() + 2 * cornerOffset);
 
     return commonRect;
 // SPDX-SnippetEnd
+}
+
+QPainterPath
+ConnectionGraphicsObject::shape() const
+{
+    auto path = this->path();
+
+    QPainterPathStroker stroker;
+    stroker.setWidth(10.0);
+
+    return stroker.createStroke(path);
 }
 
 ConnectionId
@@ -344,27 +356,6 @@ ConnectionGraphicsObject::itemChange(GraphicsItemChange change, const QVariant& 
     }
 
     return value;
-}
-
-QPainterPath
-ConnectionGraphicsObject::shape() const
-{
-    constexpr size_t segments = 20;
-
-    auto path = this->path();
-
-    QPainterPath result(endPoint(PortType::Out));
-
-    for (size_t i = 0; i < segments; ++i)
-    {
-        double ratio = double(i + 1) / segments;
-        result.lineTo(path.pointAtPercent(ratio));
-    };
-
-    QPainterPathStroker stroker;
-    stroker.setWidth(10.0);
-
-    return stroker.createStroke(result);
 }
 
 void

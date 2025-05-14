@@ -89,6 +89,8 @@ public:
      */
     QRectF boundingRect() const override;
 
+    QRectF widgetSceneBoundingRect() const override;
+
     /**
      * @brief Shape for collision detection
      * @return Shape

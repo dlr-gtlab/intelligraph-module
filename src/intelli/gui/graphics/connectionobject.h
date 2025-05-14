@@ -137,7 +137,7 @@ private:
     /// The shape of the connection
     ConnectionShape m_shape = ConnectionShape::DefaultShape;
     /// Start and end point
-    mutable QPointF m_start, m_end;
+    QPointF m_start, m_end;
     /// Whether the object is hovered
     bool m_hovered = false;
     /// Whether this object is considered inactive

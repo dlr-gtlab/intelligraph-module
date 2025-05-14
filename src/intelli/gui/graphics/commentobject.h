@@ -2,7 +2,7 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
@@ -15,6 +15,7 @@
 
 #include <QGraphicsObject>
 #include <QPointer>
+#include <QList>
 
 class QGraphicsProxyWidget;
 class QTextEdit;
@@ -22,6 +23,7 @@ class QTextEdit;
 namespace intelli
 {
 
+class LineGraphicsObject;
 class CommentObject;
 class CommentGraphicsObject : public InteractableGraphicsObject
 {
@@ -30,7 +32,7 @@ class CommentGraphicsObject : public InteractableGraphicsObject
 public:
 
     // Needed for qgraphicsitem_cast
-    enum { Type = UserType + (int)GraphicsItemType::N_ENTRIES + 1 };
+    enum { Type = UserType + (int)GraphicsItemType::Comment };
     int type() const override { return Type; }
 
     CommentGraphicsObject(CommentObject& comment, GraphSceneData const& data);
@@ -39,6 +41,8 @@ public:
     CommentObject const& commentObject() const;
 
     QRectF boundingRect() const override;
+
+    QRectF widgetSceneBoundingRect() const override;
 
     /**
      * @brief Starts editing the comment (makes the text edit editable)
@@ -51,13 +55,16 @@ public:
     void finishEditing();
 
     void commitPosition();
+
+    void addConnection(LineGraphicsObject* line);
+
 protected:
 
     void paint(QPainter *painter,
                QStyleOptionGraphicsItem const* option,
                QWidget* widget = nullptr) override;
 
-    QVariant itemChange(GraphicsItemChange change, QVariant const& value) override;
+    QVariant itemChange(GraphicsItemChange ch5ange, QVariant const& value) override;
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
@@ -91,12 +98,14 @@ private:
 
     class Overlay;
 
-    QRectF resizeHandleRect() const;
-
+    QList<QPointer<LineGraphicsObject const>> m_connetions;
+    QPointer<QGraphicsObject const> m_collapsedAnchor;
     QPointer<CommentObject> m_comment;
-    QGraphicsProxyWidget* proxyWidget;
-    Overlay* overlay;
-    QTextEdit* editor;
+    QGraphicsProxyWidget* m_proxyWidget;
+    Overlay* m_overlay;
+    QTextEdit* m_editor;
+
+    QRectF resizeHandleRect() const;
 };
 
 } // namespace intelli

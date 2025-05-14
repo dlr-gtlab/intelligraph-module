@@ -323,7 +323,7 @@ NodeUI::isDynamicNode(GtObject* obj, PortType, PortIndex)
 bool
 NodeUI::canRenameNodeObject(GtObject* obj)
 {
-    if (!obj || obj->objectFlags() & GtObject::UserRenamable)
+    if (!obj || !(obj->objectFlags() & GtObject::UserRenamable))
     {
         return false;
     }

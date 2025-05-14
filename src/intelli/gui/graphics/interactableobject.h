@@ -2,7 +2,7 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
@@ -30,8 +30,27 @@ class GT_INTELLI_EXPORT InteractableGraphicsObject : public QGraphicsObject
 
 public:
 
+    using InteractionFlags = size_t;
+
+    enum InteractionFlag : InteractionFlags
+    {
+        NoInteractionFlag = 0,
+        AllowTranslation  = 1 << 0,
+        AllowResizing     = 1 << 1,
+        AllowSelecting    = 1 << 2,
+        DefaultInteractionFlags = AllowTranslation | AllowResizing | AllowSelecting
+    };
+
     InteractableGraphicsObject(GraphSceneData const& data, QGraphicsObject* parent = nullptr);
     ~InteractableGraphicsObject();
+
+    void setInteractionFlag(InteractionFlag flag, bool enable = true);
+
+    size_t interactionFlags() { return m_flags; }
+
+    void shiftBy(double x, double y);
+    
+    virtual QRectF widgetSceneBoundingRect() const { return {}; }
 
     /**
      * @brief Returns the scene data object, that is shared by all nodes and
@@ -57,7 +76,7 @@ public:
      * @param doCollapse Whether the object should be collapsed
      */
     void collapse(bool doCollapse = true);
-    void setCollapse(bool doCollapse = true);
+    void setCollapsed(bool doCollapse = true);
 
 protected:
 
@@ -126,6 +145,8 @@ signals:
      */
     void objectCollapsed(InteractableGraphicsObject*, bool isCollapsed);
 
+    void objectResized(InteractableGraphicsObject*);
+
 private:
 
     /// Pointer to graph scene data
@@ -135,6 +156,8 @@ private:
     QPointF m_translationStart;
     /// State flag
     State m_state = State::Normal;
+    /// Interaction flags
+    InteractionFlags m_flags = DefaultInteractionFlags;
     /// Whether node is hovered
     bool m_hovered = false;
     /// Whether the node is collapsed

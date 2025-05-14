@@ -8,11 +8,11 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include "intelli/graph.h"
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
+#include "intelli/gui/graphics/commentobject.h"
 
 #include <gt_application.h>
 #include <gt_filedialog.h>
@@ -38,10 +38,10 @@ using namespace intelli;
 struct GraphView::Impl
 {
 
-/// attempts to lacate a node at the given scene position
-static NodeGraphicsObject* locateNode(QPointF scenePoint,
-                                      QGraphicsScene& scene,
-                                      QTransform const& viewTransform)
+/// attempts to lacate an interactable object at the given scene position
+static InteractableGraphicsObject* locateObject(QPointF scenePoint,
+                                                QGraphicsScene& scene,
+                                                QTransform const& viewTransform)
 {
     for (auto* item : scene.items(scenePoint,
                                   Qt::IntersectsItemShape,
@@ -49,6 +49,10 @@ static NodeGraphicsObject* locateNode(QPointF scenePoint,
                                   viewTransform))
     {
         if (auto* node = qgraphicsitem_cast<NodeGraphicsObject*>(item))
+        {
+            return node;
+        }
+        if (auto* node = qgraphicsitem_cast<CommentGraphicsObject*>(item))
         {
             return node;
         }
@@ -357,15 +361,18 @@ GraphView::wheelEvent(QWheelEvent* event)
     if (auto* s = scene())
     {
         auto pos = event->position().toPoint();
-        auto* node = Impl::locateNode(mapToScene(pos), *s, transform());
 
-        if (node)
-        if (auto* w = node->centralWidget())
+        InteractableGraphicsObject* object = Impl::locateObject(
+            mapToScene(pos), *s, transform()
+        );
+
+        if (object)
         {
-            QPolygon bounding = mapFromScene(w->sceneBoundingRect());
+            QRectF localBoundingRect = object->widgetSceneBoundingRect();
+            QPolygon bounds = mapFromScene(localBoundingRect);
 
             // forward event to widget
-            if (bounding.containsPoint(pos, Qt::OddEvenFill))
+            if (bounds.containsPoint(pos, Qt::WindingFill))
             {
                 QGraphicsSceneWheelEvent wheelEvent(QEvent::GraphicsSceneWheel);
                 wheelEvent.setWidget(viewport());

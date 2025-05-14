@@ -322,6 +322,8 @@ enum class GraphicsItemType
     Node,
     NodeEvalState,
     Connection,
+    Comment,
+    Line,
     N_ENTRIES
 };
 

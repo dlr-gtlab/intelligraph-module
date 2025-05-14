@@ -49,7 +49,8 @@ namespace style
 /// enum holding the zvalue of the different graphical objects
 enum class ZValue : int
 {
-    Connection        = -2,
+    Line              = -2,
+    Connection        = -5,
     ConnectionHovered = -1,
     DraftConnection   =  2,
     Node              =  0,
