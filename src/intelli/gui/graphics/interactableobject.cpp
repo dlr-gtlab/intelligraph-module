@@ -16,15 +16,19 @@
 #include <QGraphicsScene>
 #include <QCursor>
 
+#include <cmath>
+
 using namespace intelli;
 
 InteractableGraphicsObject::InteractableGraphicsObject(GraphSceneData const& data,
-                                                       QGraphicsObject* parent) :
-    QGraphicsObject(parent),
+                                                       QGraphicsItem* parent) :
+    GraphicsObject(parent),
     m_sceneData(&data)
 {
     setZValue(style::zValue(style::ZValue::Node));
 }
+
+InteractableGraphicsObject::~InteractableGraphicsObject() = default;
 
 void
 InteractableGraphicsObject::setInteractionFlag(InteractionFlag flag, bool enable)
@@ -41,7 +45,15 @@ InteractableGraphicsObject::shiftBy(double x, double y)
     }
 }
 
-InteractableGraphicsObject::~InteractableGraphicsObject() = default;
+void
+InteractableGraphicsObject::alignToGrid()
+{
+    if (m_sceneData->gridSize <= 0) return;
+
+    QPoint newPos = quantize(pos(), m_sceneData->gridSize);
+    setPos(newPos);
+    commitPosition();
+}
 
 void
 InteractableGraphicsObject::collapse(bool doCollapse)
@@ -59,7 +71,7 @@ InteractableGraphicsObject::collapse(bool doCollapse)
 void
 InteractableGraphicsObject::setCollapsed(bool doCollapse)
 {
-    return collapse(doCollapse);
+    collapse(doCollapse);
 }
 
 void
@@ -122,8 +134,8 @@ InteractableGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     case State::Resizing:
         // round down to integers but keep remainder
         diff += m_translationStart;
-        m_translationStart.rx() = diff.x() - floor(diff.x());
-        m_translationStart.ry() = diff.y() - floor(diff.y());
+        m_translationStart.rx() = diff.x() - std::floor(diff.x());
+        m_translationStart.ry() = diff.y() - std::floor(diff.y());
 
         resize(QSize{(int)floor(diff.x()), (int)floor(diff.y())});
 
@@ -133,8 +145,10 @@ InteractableGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     case State::Translating:
         m_translationStart += diff;
 
-        if ((m_sceneData->snapToGrid || event->modifiers() & Qt::ControlModifier)
-            && m_sceneData->gridSize > 0)
+        if (m_sceneData->gridSize > 0 && (
+             (!m_sceneData->snapToGrid &&   event->modifiers() & Qt::ControlModifier) ||
+             ( m_sceneData->snapToGrid && !(event->modifiers() & Qt::AltModifier   ))
+            ))
         {
             QPoint newPos = quantize(m_translationStart, m_sceneData->gridSize);
 
@@ -144,7 +158,15 @@ InteractableGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             diff = newPos - pos();
         }
 
-        moveBy(diff.x(), diff.y());
+        assert(scene());
+        for (QGraphicsItem* item : scene()->selectedItems())
+        {
+            if (auto* object = graphics_cast<InteractableGraphicsObject*>(item))
+            {
+                object->shiftBy(diff.x(), diff.y());
+            }
+        }
+
         emit objectShifted(this, diff);
         break;
 
@@ -169,6 +191,14 @@ InteractableGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         break;
 
     case State::Translating:
+        assert(scene());
+        for (QGraphicsItem* item : scene()->selectedItems())
+        {
+            if (auto* object = graphics_cast<InteractableGraphicsObject*>(item))
+            {
+                object->commitPosition();
+            }
+        }
         emit objectMoved(this);
         break;
     }
@@ -176,17 +206,6 @@ InteractableGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     m_state = State::Normal;
 
     event->accept();
-}
-
-void
-InteractableGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
-{
-    event->accept();
-
-    setZValue(style::zValue(style::ZValue::NodeHovered));
-
-    m_hovered = true;
-    update();
 }
 
 void
@@ -207,15 +226,8 @@ InteractableGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 }
 
 void
-InteractableGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
+InteractableGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 {
     event->accept();
-
-    if (!isSelected())
-    {
-        setZValue(style::zValue(style::ZValue::Node));
-    }
-
-    m_hovered = false;
-    update();
+    emit contextMenuRequested(this);
 }

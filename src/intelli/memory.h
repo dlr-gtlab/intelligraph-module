@@ -39,6 +39,8 @@ class unique_qptr
 {
 public:
 
+    using pointer = T;
+
     unique_qptr(std::nullptr_t) :
         unique_qptr((T*)nullptr)
     { }
@@ -113,6 +115,12 @@ template <typename T, typename Deleter = DeferredDeleter, typename ...Args>
 inline unique_qptr<T, Deleter> make_unique_qptr(Args&&... args) noexcept
 {
     return unique_qptr<T, Deleter>(new T{std::forward<Args>(args)...});
+}
+
+template <typename Deleter = DeferredDeleter, typename Pointer, typename T = std::remove_pointer_t<typename Pointer::pointer>>
+inline unique_qptr<T, Deleter> convert_to_unique_qptr(Pointer pointer) noexcept
+{
+    return unique_qptr<T, Deleter>{pointer.release()};
 }
 
 template <typename T, typename Deleter = DeferredDeleter, typename ...Args>

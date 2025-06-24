@@ -8,18 +8,21 @@
  */
 
 #include <intelli/gui/graphics/lineobject.h>
+#include <intelli/gui/connectionpainter.h>
 #include <intelli/gui/style.h>
 
 #include <QPainter>
 #include <QGraphicsSceneHoverEvent>
-#include <QCursor>
+#include <QGraphicsScene>
 
 using namespace intelli;
 
-LineGraphicsObject::LineGraphicsObject(QGraphicsObject const& start,
-                                       QGraphicsObject const* end) :
+constexpr QPointF s_connection_distance{5, 5};
+
+LineGraphicsObject::LineGraphicsObject(InteractableGraphicsObject const& start,
+                                       InteractableGraphicsObject const* end) :
     m_startItem(&start),
-    m_endItem(end ? end : &start)
+    m_endItem(end)
 {
     setFlag(QGraphicsItem::ItemIsSelectable, true);
 
@@ -27,54 +30,86 @@ LineGraphicsObject::LineGraphicsObject(QGraphicsObject const& start,
 
     setZValue(style::zValue(style::ZValue::Line));
 
-    setEndPoint(PortType::In, start);
-    setEndPoint(PortType::Out, end ? *end : start);
+    setEndPoint(PortType::Out, start);
+    setEndPoint(PortType::In, end ? *end : start);
 
-    for (QGraphicsObject const* item : {m_startItem, m_endItem})
+    for (InteractableGraphicsObject const* item : {m_startItem, m_endItem})
     {
+        if (!item) continue;
         connect(item, &QGraphicsObject::xChanged,
                 this, &LineGraphicsObject::updateEndPoint);
         connect(item, &QGraphicsObject::yChanged,
                 this, &LineGraphicsObject::updateEndPoint);
         connect(item, &QGraphicsObject::widthChanged,
                 this, &LineGraphicsObject::updateEndPoint);
-        connect(item, &QObject::destroyed, this, [this](){ delete this; });
+        connect(item, &InteractableGraphicsObject::objectResized,
+                this, &LineGraphicsObject::updateEndPoints);
     }
+}
+
+std::unique_ptr<LineGraphicsObject>
+LineGraphicsObject::makeLine(InteractableGraphicsObject const& startObj,
+                             InteractableGraphicsObject const& endObj)
+{
+    auto obj = new LineGraphicsObject{startObj, &endObj};
+    return std::unique_ptr<LineGraphicsObject>(obj);
+}
+
+std::unique_ptr<LineGraphicsObject>
+LineGraphicsObject::makeDraftLine(InteractableGraphicsObject const& startObj)
+{
+    auto obj = new LineGraphicsObject{startObj, nullptr};
+    return std::unique_ptr<LineGraphicsObject>(obj);
+}
+
+LineGraphicsObject::~LineGraphicsObject() = default;
+
+
+bool
+LineGraphicsObject::deleteObject()
+{
+    emit deleteRequested();
+    return true;
+}
+
+bool
+LineGraphicsObject::isDraft() const
+{
+    return !m_endItem;
+}
+
+void
+LineGraphicsObject::setTypeMask(size_t mask)
+{
+    m_mask = mask;
 }
 
 QRectF
 LineGraphicsObject::boundingRect() const
 {
-    QRectF rect = QRectF{m_start, m_end}.normalized();
-    return rect;
+    return m_geometry.boundingRect();
 }
 
 QPainterPath
 LineGraphicsObject::shape() const
 {
-    QPainterPath path(m_start);
-    path.lineTo(m_end);
-
-    QPainterPathStroker stroker;
-    stroker.setWidth(10.0);
-
-    return stroker.createStroke(path);
+    return m_geometry.shape();
 }
 
-QGraphicsObject const*
+GraphicsObject const*
 LineGraphicsObject::startItem() const
 {
     return m_startItem;
 }
 
-QGraphicsObject const*
+GraphicsObject const*
 LineGraphicsObject::endItem() const
 {
     return m_endItem;
 }
 
 void
-LineGraphicsObject::setEndPoint(PortType type, QGraphicsObject const& object)
+LineGraphicsObject::setEndPoint(PortType type, QGraphicsItem const& object)
 {
     setEndPoint(type, object.boundingRect().center() + object.pos());
 }
@@ -83,14 +118,16 @@ void
 LineGraphicsObject::setEndPoint(PortType type, QPointF pos)
 {
     prepareGeometryChange();
-    (type == PortType::In ? m_start : m_end) = pos;
+    (type == PortType::Out ? m_start : m_end) = pos;
+    m_geometry.recomputeGeometry(m_start, m_end, ConnectionShape::Straight);
 }
 
 void
 LineGraphicsObject::updateEndPoints()
 {
-    setEndPoint(PortType::In, *m_startItem);
-    setEndPoint(PortType::Out, *m_endItem);
+    assert(m_startItem);
+    setEndPoint(PortType::Out, *m_startItem);
+    if (m_endItem) setEndPoint(PortType::In, *m_endItem);
 }
 
 void
@@ -98,38 +135,66 @@ LineGraphicsObject::paint(QPainter* painter,
                           QStyleOptionGraphicsItem const* option,
                           QWidget* widget)
 {
-    auto& style = style::currentStyle().connection;
+    auto style = style::currentStyle().connection;
+    style.defaultOutline = style.hoveredOutline;
+    style.defaultOutlineWidth = 1;
+    style.hoveredOutlineWidth = 2;
+    style.selectedOutlineWidth = 2;
 
-    Qt::PenStyle penStyle = Qt::DotLine;
-    QColor outColor = Qt::gray;
-    QBrush penBrush = outColor;
-    double penWidth = 0.5 * style.defaultOutlineWidth;
+    ConnectionPainter::PainterFlags flags = ConnectionPainter::DrawDotted;
+    if (isHovered())  flags = ConnectionPainter::ObjectIsHovered;
+    if (isSelected()) flags = ConnectionPainter::ObjectIsSelected;
 
-    QPen pen{penBrush, penWidth, penStyle};
-    painter->setPen(pen);
-    painter->setBrush(Qt::NoBrush);
-
-    // draw path
-    QPainterPath path(m_start);
-    path.lineTo(m_end);
-
-    painter->drawPath(path);
+    ConnectionPainter p;
+    p.drawPath(*painter, m_geometry.path(), style, flags);
 }
 
 void
-LineGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
+LineGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
-    m_hovered = true;
-    update();
+    if (!isDraft()) return GraphicsObject::mousePressEvent(event);
+
+    assert(scene());
+
+    ungrabMouse();
+
     event->accept();
+
+    QPointF pos = event->scenePos();
+    QRectF rect{pos - s_connection_distance, pos + s_connection_distance};
+
+    auto const& items = scene()->items(rect);
+    for (auto* item : items)
+    {
+        if (!item || ((size_t)item->type() & m_mask) != m_mask) continue;
+
+        return emit finalizeDraftConnection(item);
+    }
+
+    emit finalizeDraftConnection(nullptr);
 }
 
 void
-LineGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
+LineGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    m_hovered = false;
-    update();
+    if (!isDraft()) return GraphicsObject::mouseMoveEvent(event);
+
+    assert(scene());
+
     event->accept();
+
+    QPointF pos = event->scenePos();
+    QRectF rect{pos - s_connection_distance, pos + s_connection_distance};
+
+    auto const& items = scene()->items(rect);
+    for (auto* item : items)
+    {
+        if (!item || ((size_t)item->type() & m_mask) != m_mask) continue;
+
+        return setEndPoint(PortType::In, *item);
+    }
+
+    setEndPoint(PortType::In, event->scenePos());
 }
 
 void
@@ -142,8 +207,8 @@ LineGraphicsObject::updateEndPoint()
 
     bool isStartItem = sender == (QObject*)&*m_startItem;
 
-    assert(dynamic_cast<QGraphicsObject*>(sender));
+    assert(dynamic_cast<GraphicsObject*>(sender));
 
-    setEndPoint(isStartItem ? PortType::In : PortType::Out, *(QGraphicsObject*)sender);
+    setEndPoint(isStartItem ? PortType::Out : PortType::In, *(GraphicsObject*)sender);
 }
 

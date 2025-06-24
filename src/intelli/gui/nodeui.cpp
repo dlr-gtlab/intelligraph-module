@@ -40,6 +40,9 @@ using namespace intelli;
 
 using BoolObjectMethod = std::function<bool (GtObject*)>;
 
+using DeleteAction = std::pair<NodeUI::CustomDeleteFunctor,
+                               NodeUI::EnableCustomDeleteFunctor>;
+
 template <typename Functor>
 inline BoolObjectMethod NOT(Functor fA)
 {
@@ -57,10 +60,14 @@ inline BoolObjectMethod operator+(BoolObjectMethod fA, Functor fOther)
 
 DummyNode* toDummy(GtObject* obj) { return qobject_cast<DummyNode*>(obj); }
 
+bool isDummy(Node const* obj) { return qobject_cast<DummyNode const*>(obj); }
+
 struct NodeUI::Impl
 {
     /// List of custom port actions
     QList<PortUIAction> portActions;
+
+    QList<DeleteAction> deleteActions;
 };
 
 NodeUI::NodeUI(Option option) :
@@ -166,10 +173,7 @@ NodeUI::NodeUI(Option option) :
 
     addSeparator();
 
-    addSingleAction(tr("Delete Dummy Node"), deleteDummyNode)
-        .setIcon(gt::gui::icon::delete_())
-        .setVisibilityMethod(toDummy)
-        .setShortCut(gtApp->getShortCutSequence("delete"));
+    addCustomDeleteAction(tr("Delete Dummy Node"), deleteDummyNode, isDummy);
 }
 
 NodeUI::~NodeUI() = default;
@@ -192,7 +196,20 @@ NodeUI::uiData(Node const& node) const
 {
     auto uiData = std::unique_ptr<NodeUIData>(new NodeUIData{});
     uiData->setDisplayIcon(displayIcon(node));
+    uiData->setCustomDeleteFunction(customDeleteAction(node));
     return uiData;
+}
+
+NodeUI::CustomDeleteFunctor
+NodeUI::customDeleteAction(Node const& node) const
+{
+     auto iter = std::find_if(pimpl->deleteActions.begin(),
+                              pimpl->deleteActions.end(),
+                              [n = &node](DeleteAction element){
+         return element.second(n);
+     });
+    if (iter == pimpl->deleteActions.end()) return {};
+    return iter->first;
 }
 
 QIcon
@@ -265,6 +282,32 @@ NodeUI::addPortAction(const QString& actionText,
 {
     pimpl->portActions.append(PortUIAction(actionText, std::move(actionMethod)));
     return pimpl->portActions.back();
+}
+
+void
+NodeUI::addCustomDeleteAction(QString const& text,
+                              CustomDeleteFunctor deleteFunctor,
+                              EnableCustomDeleteFunctor enableDeleteFunctor)
+{
+    pimpl->deleteActions.push_back({ deleteFunctor, enableDeleteFunctor });
+
+    auto& action = addSingleAction(text, [f = std::move(deleteFunctor)](GtObject* obj) {
+        f(qobject_cast<Node*>(obj));
+    });
+    action.setIcon(gt::gui::icon::delete_());
+    action.setShortCut(gtApp->getShortCutSequence("delete"));
+    action.setVisibilityMethod([f = std::move(enableDeleteFunctor)](GtObject* obj) {
+        return f(qobject_cast<Node*>(obj));
+    });
+}
+
+void
+NodeUI::addCustomDeleteAction(CustomDeleteFunctor deleteFunctor,
+                              EnableCustomDeleteFunctor enableDeleteFunctor)
+{
+    return addCustomDeleteAction(
+        tr("delete"), std::move(deleteFunctor), std::move(enableDeleteFunctor)
+    );
 }
 
 Node*
@@ -415,14 +458,14 @@ NodeUI::clearNodeGraph(GtObject* obj)
     graph->clearGraph();
 }
 
-void
-NodeUI::deleteDummyNode(GtObject* obj)
+bool
+NodeUI::deleteDummyNode(Node* node)
 {
-    DummyNode* dummy = toDummy(obj);
-    if (!dummy) return;
+    DummyNode* dummy = toDummy(node);
+    if (!dummy) return false;
 
     GtObject* linkedObject = dummy->linkedObject();
-    if (!linkedObject) return;
+    if (!linkedObject) return false;
 
     assert(linkedObject->isDummy());
 
@@ -436,7 +479,7 @@ NodeUI::deleteDummyNode(GtObject* obj)
         QMessageBox::Yes
     );
 
-    if (result != QMessageBox::Yes) return;
+    if (result != QMessageBox::Yes) return false;
 
     auto cmd = gtApp->makeCommand(dummy->parentObject(),
                                   tr("Delete dummy object '%1'")
@@ -445,6 +488,7 @@ NodeUI::deleteDummyNode(GtObject* obj)
 
     delete dummy;
     delete linkedObject;
+    return true;
 }
 
 void

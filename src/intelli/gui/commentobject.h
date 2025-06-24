@@ -11,14 +11,15 @@
 #define GT_INTELLI_COMMENTOBJECT_H
 
 #include <intelli/globals.h>
+#include <intelli/exports.h>
 
 #include <gt_object.h>
 
 namespace intelli
 {
 
-/// TODO
-class CommentObject : public GtObject
+// TODO: description
+class GT_INTELLI_TEST_EXPORT CommentObject : public GtObject
 {
     Q_OBJECT
 

@@ -44,8 +44,8 @@ public:
 
     class Highlights;
 
-    // Needed for qgraphicsitem_cast
-    enum { Type = UserType + (int)GraphicsItemType::Node };
+    // Needed for graphics_cast
+    enum { Type = make_graphics_type<GraphicsItemType::Node, InteractableGraphicsObject>() };
     int type() const override { return Type; }
 
     /**
@@ -82,6 +82,12 @@ public:
      * @return Has resize handle
      */
     bool hasResizeHandle() const;
+
+    DeletableFlag deletableFlag() const override;
+
+    DeleteOrdering deleteOrdering() const override;
+
+    bool deleteObject() override;
 
     /**
      * @brief Bounding rect of this object
@@ -121,12 +127,14 @@ public:
     /**
      * @brief Commits the position of this object to the associated node
      */
-    void commitPosition();
+    void commitPosition() override;
 
     /**
      * @brief (Re-) embedds the main widget of this graphics object
      */
     void embedCentralWidget();
+
+    void setupContextMenu(QMenu& menu) override;
 
     /**
      * @brief The Highlights class.
@@ -265,16 +273,8 @@ signals:
      * @brief Emitted once the context menu of a port was requested
      * @param object Object for which the port's context menu was requested (this)
      * @param port Port for which the context menu should be requested
-     * @param pos Local cursor position
      */
-    void portContextMenuRequested(NodeGraphicsObject* object, PortId port, QPointF pos);
-
-    /**
-     * @brief Emitted once the context menu of a node was requested
-     * @param object Object for which the context menu was requested (this)
-     * @param pos Local cursor position
-     */
-    void contextMenuRequested(NodeGraphicsObject* object, QPointF pos);
+    void portContextMenuRequested(NodeGraphicsObject* object, PortId port);
 
 private:
 

@@ -2,7 +2,7 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
@@ -39,6 +39,8 @@ public:
     {
         return new PopupItem(scene, std::move(text), timeout);
     }
+
+    static void clearActivePopups();
 
     /**
      * @brief Bounding rect of this object

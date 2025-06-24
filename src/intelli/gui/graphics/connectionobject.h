@@ -10,14 +10,15 @@
 #ifndef GT_INTELLI_CONNECTIONGRAPHICSOBJECT_H
 #define GT_INTELLI_CONNECTIONGRAPHICSOBJECT_H
 
+#include <intelli/memory.h>
 #include <intelli/connection.h>
-#include <intelli/gui/style.h>
-
-#include <QGraphicsObject>
-#include <QPointer>
+#include <intelli/gui/connectiongeometry.h>
+#include <intelli/gui/graphics/graphicsobject.h>
 
 namespace intelli
 {
+
+class NodeGraphicsObject;
 
 /**
  * @brief Graphics object used to represent a connection between to an output
@@ -26,29 +27,46 @@ namespace intelli
  * to apply different shapes to the connection.
  * The `pos` of this object is not representative of its actual position.
  */
-class ConnectionGraphicsObject : public QGraphicsObject
+class GT_INTELLI_TEST_EXPORT ConnectionGraphicsObject : public GraphicsObject
 {
     Q_OBJECT
 
 public:
 
-    /// Control points for rectangle and cubic shapes
-    using ControlPoints = std::pair<QPointF, QPointF>;
-
-    // Needed for qgraphicsitem_cast
-    enum { Type = UserType + (int)GraphicsItemType::Connection };
+    // Needed for graphics_cast
+    enum { Type = make_graphics_type<GraphicsItemType::Connection, GraphicsObject>() };
     int type() const override { return Type; }
 
+    static std::unique_ptr<ConnectionGraphicsObject>
+    makeConnection(QGraphicsScene& scene,
+                   Connection& object,
+                   NodeGraphicsObject const& outNodeObj,
+                   NodeGraphicsObject const& inNodeObj);
+
+    static std::unique_ptr<ConnectionGraphicsObject>
+    makeDraftConnection(QGraphicsScene& scene,
+                        ConnectionId draftConId,
+                        NodeGraphicsObject const& startObj);
+
+    ~ConnectionGraphicsObject();
+
+    DeleteOrdering deleteOrdering() const override { return DeleteFirst; }
+
+    bool deleteObject() override;
+
     /**
-     * @brief constructor
-     * @param connection ConnectionId to render. May be partially invalid,
-     * indicating a draft connection.
-     * @param outType typeId of the output side, used for rendering
-     * @param inType typeId of the input side, used for rendering
+     * @brief Whether this connection is a draft.
+     * @return Is a draft connection.
      */
-    explicit ConnectionGraphicsObject(ConnectionId connection,
-                                      TypeId outType = {},
-                                      TypeId inType = {});
+    bool isDraft() const;
+
+    /**
+     * @brief Returns the associated connection object. May be null if the
+     * connection is a draft connection. Prefer to use `connectionId`.
+     * @return Connection object.
+     */
+    Connection* connection();
+    Connection const* connection() const;
 
     /**
      * @brief Bounding rect of this object
@@ -99,18 +117,22 @@ public:
     void setConnectionShape(ConnectionShape shape);
 
     /**
-     * @brief Returns the control points to draw the connection shape properly.
-     * For a straight connection these are the start and end point respectively.
-     * @return Control points
-     */
-    ControlPoints controlPoints() const;
-
-    /**
      * @brief Deemphasizes this object, i.e. to visually highlight other
      * objects.
      * @param inactive Whether this object should be made inactive
      */
     void makeInactive(bool inactive = true);
+
+signals:
+
+    /**
+     * @brief Emitted once a draft connection should be finalized, which
+     * either means creating a new connection or aborting the
+     * creation of a draft connection if `conId` is invalid
+     * @param conId Final connection id. May be invalid, indicating that the
+     * creation should be aborted.
+     */
+    void finalizeDraftConnnection(ConnectionId conId);
 
 protected:
 
@@ -120,31 +142,50 @@ protected:
 
     QVariant itemChange(GraphicsItemChange change, QVariant const& value) override;
 
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
-    void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
-
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
-
 private:
 
+    /// Pointer to connection object
+    QPointer<Connection> m_object;
+    /// pointers to outNode and inNode i.e. the start and end node
+    QPointer<NodeGraphicsObject const> m_outNode, m_inNode;
     /// Connection id
     ConnectionId m_connection;
-    /// Type ids for the start and end point, used for rendering
-    TypeId m_startType, m_endType;
+    /// Type ids for the start and end point
+    TypeId m_outType, m_inType;
+    /// Geometry info of current connection
+    ConnectionGeometry m_geometry;
     /// The shape of the connection
     ConnectionShape m_shape = ConnectionShape::DefaultShape;
-    /// Start and end point
+    /// Start and end point of the connection
     QPointF m_start, m_end;
-    /// Whether the object is hovered
-    bool m_hovered = false;
     /// Whether this object is considered inactive
     bool m_inactive = false;
 
-    /// returns the painter path for the current connection shape.
-    QPainterPath path() const;
+    /**
+     * @brief constructor. In case the connection is a draft connection, either
+     * `outNodeObj` or `inNodeObj` must be not null, else both objects must
+     * not be null.
+     * @param scene Scene this object will be added to
+     * @param object Connection object this object refers to. May be invalid
+     * if the connection is a draft.
+     * @param connection ConnectionId to render. May be partially invalid,
+     * indicating a draft connection.
+     * @param outNodeObj graphics object for the output side
+     * @param inNodeObj graphics object for the output side
+     */
+    explicit ConnectionGraphicsObject(QGraphicsScene& scene,
+                                      Connection* object,
+                                      ConnectionId connection,
+                                      NodeGraphicsObject const* outNodeObj = {},
+                                      NodeGraphicsObject const* inNodeObj = {});
+
+    QPointF calcEndPoint(NodeGraphicsObject const* nodeObj,
+                         PortType portType,
+                         PortId portId);
 };
 
 } // namespace intelli

@@ -11,11 +11,10 @@
 #define GT_INTELLI_COMMENTGRAPHICSOBJECT_H
 
 #include <intelli/globals.h>
+#include <intelli/memory.h>
 #include <intelli/gui/graphics/interactableobject.h>
 
-#include <QGraphicsObject>
-#include <QPointer>
-#include <QList>
+#include <unordered_map>
 
 class QGraphicsProxyWidget;
 class QTextEdit;
@@ -23,22 +22,32 @@ class QTextEdit;
 namespace intelli
 {
 
+class Graph;
 class LineGraphicsObject;
 class CommentObject;
-class CommentGraphicsObject : public InteractableGraphicsObject
+
+class GT_INTELLI_TEST_EXPORT CommentGraphicsObject : public InteractableGraphicsObject
 {
     Q_OBJECT
 
 public:
 
-    // Needed for qgraphicsitem_cast
-    enum { Type = UserType + (int)GraphicsItemType::Comment };
+    // Needed for graphics_cast
+    enum { Type = make_graphics_type<GraphicsItemType::Comment, InteractableGraphicsObject>() };
     int type() const override { return Type; }
 
-    CommentGraphicsObject(CommentObject& comment, GraphSceneData const& data);
+    CommentGraphicsObject(QGraphicsScene& scene,
+                          Graph& graph,
+                          CommentObject& comment,
+                          GraphSceneData const& data);
+    ~CommentGraphicsObject();
 
     CommentObject& commentObject();
     CommentObject const& commentObject() const;
+
+    DeleteOrdering deleteOrdering() const override;
+
+    bool deleteObject() override;
 
     QRectF boundingRect() const override;
 
@@ -54,9 +63,12 @@ public:
      */
     void finishEditing();
 
-    void commitPosition();
+    /**
+     * @brief Commits the position of this object to the associated node
+     */
+    void commitPosition() override;
 
-    void addConnection(LineGraphicsObject* line);
+    void setupContextMenu(QMenu& menu) override;
 
 protected:
 
@@ -67,8 +79,6 @@ protected:
     QVariant itemChange(GraphicsItemChange ch5ange, QVariant const& value) override;
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
-
-    void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
 
     /**
      * @brief Whether the object should start resizing.
@@ -85,27 +95,35 @@ protected:
      */
     void resize(QSize diff) override;
 
-signals:
-
-    /**
-     * @brief Emitted once the context menu of a comment was requested
-     * @param object Object for which the context menu was requested (this)
-     * @param pos Local cursor position
-     */
-    void contextMenuRequested(CommentGraphicsObject* object, QPointF pos);
-
 private:
 
     class Overlay;
 
-    QList<QPointer<LineGraphicsObject const>> m_connetions;
-    QPointer<QGraphicsObject const> m_collapsedAnchor;
+    std::unordered_map<ObjectUuid, unique_qptr<LineGraphicsObject, DirectDeleter>> m_connections;
+    QPointer<Graph> m_graph;
+    /// pointer to comment object
     QPointer<CommentObject> m_comment;
+    /// anchor object when comment is collapsed. Object is attached to this
+    /// anchor object and cannot be moved unless its uncollapsed.
+    QPointer<GraphicsObject const> m_anchor;
+    /// Main widget
     QGraphicsProxyWidget* m_proxyWidget;
+    /// Overlay widget to supress mouse and key event to the main widget
     Overlay* m_overlay;
+    /// Comment editor
     QTextEdit* m_editor;
 
     QRectF resizeHandleRect() const;
+
+private slots:
+
+    void onCommentConnectionAppended(ObjectUuid const& objectUuid);
+
+    void onCommentConnectionRemoved(ObjectUuid const& objectUuid);
+
+    void onObjectCollapsed();
+
+    void instantiateMissingConnections();
 };
 
 } // namespace intelli

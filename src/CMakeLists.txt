@@ -75,6 +75,11 @@ set(PUBLIC_HEADERS
     intelli/property/metaenum.h
     intelli/property/stringselection.h
     intelli/property/uint.h
+
+    # TODO
+    intelli/gui/graphics/graphicsobject.h intelli/gui/graphics/graphicsobject.cpp
+    intelli/gui/connectiongeometry.h intelli/gui/connectiongeometry.cpp
+    intelli/gui/connectionpainter.h intelli/gui/connectionpainter.cpp
 )
 
 qt5_add_resources (RCC_SOURCES

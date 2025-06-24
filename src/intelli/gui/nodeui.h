@@ -13,10 +13,10 @@
 #include <intelli/gui/portuiaction.h>
 #include <intelli/exports.h>
 
+#include <gt_objectui.h>
 #include <thirdparty/tl/optional.hpp>
 
-#include <gt_objectui.h>
-
+#include <functional>
 
 namespace intelli
 {
@@ -34,6 +34,9 @@ class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
     Q_OBJECT
 
 public:
+
+    using CustomDeleteFunctor = std::function<bool (Node*)>;
+    using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
 
     /// Option enum, can be used to deactive certain default actions
     enum Option
@@ -76,6 +79,8 @@ public:
     virtual std::unique_ptr<NodeGeometry> geometry(NodeGraphicsObject const& object) const;
 
     std::unique_ptr<NodeUIData> uiData(Node const& node) const;
+
+    CustomDeleteFunctor customDeleteAction(Node const& node) const;
 
     /**
      * @brief Icon for the object (in the explorer)
@@ -202,6 +207,15 @@ protected:
     PortUIAction& addPortAction(QString const& actionText,
                                 PortActionFunction actionMethod);
 
+    // TODO: description
+    void addCustomDeleteAction(QString const& actionText,
+                               CustomDeleteFunctor deleteFunctor,
+                               EnableCustomDeleteFunctor isDeletable);
+
+    // TODO: description
+    void addCustomDeleteAction(CustomDeleteFunctor deleteFunctor,
+                               EnableCustomDeleteFunctor isDeletable);
+
 private:
 
     struct Impl;
@@ -213,7 +227,7 @@ private:
      */
     static void clearNodeGraph(GtObject* obj);
 
-    static void deleteDummyNode(GtObject* obj);
+    static bool deleteDummyNode(Node* node);
 
     /**
      * @brief Checks if node can be renamed (i.e. node should be valid but not unique)

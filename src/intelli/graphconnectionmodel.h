@@ -45,7 +45,7 @@ struct end_iterator<true, Container>
 
 /**
  * @brief Iterator wrapper class that can be used to alter the behavior
- * (e.g. return type) of iterators
+ * (e.g. return type) of iterators.
  */
 template <typename Iterator, typename Proxy>
 class proxy_iterator
@@ -67,8 +67,10 @@ public:
         i(std::move(i_)), proxy(std::move(p_))
     { proxy.init(i); }
 
+    Iterator base() { return i; }
+
     reference operator*() { return proxy.get(i); }
-    pointer operator->() { return &(proxy.get(i)); }
+    pointer operator->() { return &(operator*()); };
 
     bool operator==(proxy_iterator const& o) const { return i == o.i; }
     bool operator!=(proxy_iterator const& o) const { return !(operator==(o)); }
@@ -197,7 +199,7 @@ inline iterable<Iterator> makeIterable(Iterator begin, Iterator end)
  * begin and end operator.
  */
 template <typename T>
-inline iterable<T> makeIterable(T const& t)
+inline auto makeIterable(T& t)
 {
     return makeIterable(t.begin(), t.end());
 }

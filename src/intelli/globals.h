@@ -30,11 +30,12 @@ class NodeData;
  * Example:
  *     quantize(QPointF(42.4,9.75), 5) -> QPoint(40, 10)
  * @param point Point to quantize
- * @param stepSize Step size to use for quantization
+ * @param stepSize Step size to use for quantization. Must not be zero.
  * @return quantized point
  */
 inline QPoint quantize(QPointF point, int stepSize)
 {
+    assert(stepSize > 0);
     auto divX = std::div(point.x(), stepSize);
     auto divY = std::div(point.y(), stepSize);
     double x = divX.rem;
@@ -71,7 +72,7 @@ constexpr inline U map(T value, std::pair<T, T> inputRange, std::pair<U, U> outp
 /**
  * @brief Denotes the possible port types
  */
-enum class PortType
+enum class PortType : unsigned
 {
     /// Input port
     In = 0,
@@ -168,7 +169,7 @@ private:
     T m_value = InitValue;
 };
 
-using ObjectUuid  = QString;
+using ObjectUuid = QString;
 
 using NodeUuid  = QString;
 using NodeId    = StrongType<unsigned, struct NodeId_, std::numeric_limits<unsigned>::max()>;
@@ -316,19 +317,17 @@ using ConnectionId   = ConnectionId_t<NodeId>;
 using ConnectionUuid = ConnectionId_t<NodeUuid>;
 
 /// Enum for GraphicsObject::Type value
-enum class GraphicsItemType
+enum class GraphicsItemType : unsigned
 {
     None = 0,
     Node,
-    NodeEvalState,
     Connection,
     Comment,
-    Line,
-    N_ENTRIES
+    Line
 };
 
 /// Enum indicating the evauation state of a node
-enum class NodeEvalState
+enum class NodeEvalState : unsigned
 {
     Invalid = 0,
     Outdated,
@@ -338,7 +337,7 @@ enum class NodeEvalState
 };
 
 // Enum indicating the data state of a node port
-enum class PortDataState
+enum class PortDataState : unsigned
 {
     /// Port data is outdated
     Outdated = 0,

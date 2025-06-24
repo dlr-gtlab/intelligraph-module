@@ -9,12 +9,16 @@
 
 #include <intelli/gui/graphics/commentobject.h>
 #include <intelli/gui/graphics/lineobject.h>
+#include "intelli/gui/graphics/nodeobject.h"
 #include <intelli/gui/style.h>
 #include <intelli/gui/commentobject.h>
+#include <intelli/node.h>
+#include <intelli/private/utils.h>
 
 #include <gt_application.h>
 #include <gt_colors.h>
 #include <gt_icons.h>
+#include <gt_guiutilities.h>
 
 #include <QPainter>
 #include <QTextEdit>
@@ -22,12 +26,16 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsSceneHoverEvent>
 #include <QRegularExpression>
+#include <QGraphicsScene>
+#include <QMenu>
+#include <QAction>
+#include <QVBoxLayout>
 
 using namespace intelli;
 
 /**
  * @brief The CommentGraphicsObject::Overlay class.
- * Helper class that forwards all key, mouse and hover events it recieves
+ * Helper class that forwards all key, mouse, and hover events it recieves
  * to its parent object.
  */
 class CommentGraphicsObject::Overlay : public QGraphicsObject
@@ -54,6 +62,10 @@ public:
 
         bool isSelected = p->isSelected();
         bool isHovered  = p->isHovered();
+        if (auto anchor = graphics_cast<GraphicsObject*>(p->m_anchor.data()))
+        {
+            if (anchor->isHovered()) isHovered = true;
+        }
         QPen pen;
         pen.setColor((isSelected)? style.selectedOutline : style.hoveredOutline);
         pen.setWidthF(isHovered ? style.hoveredOutlineWidth : style.selectedOutlineWidth);
@@ -147,9 +159,12 @@ protected:
     }
 };
 
-CommentGraphicsObject::CommentGraphicsObject(CommentObject& comment,
+CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
+                                             Graph& graph,
+                                             CommentObject& comment,
                                              GraphSceneData const& data) :
     InteractableGraphicsObject(data, nullptr),
+    m_graph(&graph),
     m_comment(&comment)
 {
     setFlag(GraphicsItemFlag::ItemIsSelectable, true);
@@ -164,59 +179,35 @@ CommentGraphicsObject::CommentGraphicsObject(CommentObject& comment,
     m_editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_editor->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_editor->setReadOnly(true);
-    m_editor->setMarkdown(comment.text());
+    m_editor->setMarkdown(m_comment->text());
+    m_editor->setMinimumSize(50, 25);
 
-    auto* widget = new QGraphicsProxyWidget(this);
-    widget->setWidget(m_editor);
-    widget->setZValue(0);
+    auto* w = new QWidget();
+    auto* lay = new QVBoxLayout(w);
+    lay->setContentsMargins(0, 0, 0, 0);
+    lay->addWidget(m_editor);
+    w->setLayout(lay);
+
+    m_proxyWidget = new QGraphicsProxyWidget(this);
+    m_proxyWidget->setWidget(w);
+    m_proxyWidget->setZValue(0);
+
 
     m_overlay = new Overlay(this);
     m_overlay->setZValue(1);
 
-    m_proxyWidget = widget;
-
     // setup connections
+    connect(this, &GraphicsObject::hoveredChanged, this, [this](){
+        if (isHovered()) return setZValue(style::zValue(style::ZValue::NodeHovered));
+        if (!isSelected()) return setZValue(style::zValue(style::ZValue::Node));
+    });
+
     connect(this, &InteractableGraphicsObject::objectMoved, this, [this](){
         commitPosition();
     }, Qt::DirectConnection);
 
-    connect(this, &InteractableGraphicsObject::objectCollapsed, this, [this](){
-        m_proxyWidget->setVisible(!isCollapsed());
-        m_comment->setCollapsed(isCollapsed());
-
-        if (isCollapsed() && m_connetions.size() == 1 && m_connetions.front())
-        {
-            auto const* endItem = m_connetions.front()->endItem();
-            assert(endItem);
-
-            m_collapsedAnchor = endItem;
-
-            setPos(endItem->pos() +
-                   endItem->boundingRect().topRight() -
-                   boundingRect().center());
-
-            setInteractionFlag(DefaultInteractionFlags, false);
-            setInteractionFlag(AllowSelecting, true);
-
-            connect(endItem, &QGraphicsObject::xChanged, this, [endItem, this]{
-                setPos(endItem->pos() +
-                       endItem->boundingRect().topRight() -
-                       boundingRect().center());
-            });
-            connect(endItem, &QGraphicsObject::yChanged, this, [endItem, this]{
-                setPos(endItem->pos() +
-                       endItem->boundingRect().topRight() -
-                       boundingRect().center());
-            });
-            return;
-        }
-
-        if (m_collapsedAnchor) m_collapsedAnchor->disconnect(this);
-        m_collapsedAnchor = nullptr;
-
-        setPos(m_comment->pos());
-        setInteractionFlag(DefaultInteractionFlags, true);
-    }, Qt::DirectConnection);
+    connect(this, &InteractableGraphicsObject::objectCollapsed,
+            this, &CommentGraphicsObject::onObjectCollapsed);
 
     connect(m_comment, &CommentObject::commentPositionChanged, this, [this](){
         setPos(m_comment->pos());
@@ -230,11 +221,29 @@ CommentGraphicsObject::CommentGraphicsObject(CommentObject& comment,
     // setup object
     setPos(m_comment->pos());
 
-    collapse(m_comment->isCollapsed());
-
     QSize size = m_comment->size();
-    if (size.isValid()) m_editor->resize(size);
+    if (size.isValid()) m_proxyWidget->widget()->resize(size);
+
+    // setup comment connections
+    scene.addItem(this);
+
+    for (size_t i = 0; i < m_comment->nconnections(); i++)
+    {
+        onCommentConnectionAppended(m_comment->connectionAt(i));
+    }
+
+    connect(m_comment, &CommentObject::connectionAppended,
+            this, &CommentGraphicsObject::onCommentConnectionAppended,
+            Qt::DirectConnection);
+
+    connect(m_comment, &CommentObject::connectionRemoved,
+            this, &CommentGraphicsObject::onCommentConnectionRemoved,
+            Qt::DirectConnection);
+
+    collapse(m_comment->isCollapsed());
 }
+
+CommentGraphicsObject::~CommentGraphicsObject() = default;
 
 CommentObject&
 CommentGraphicsObject::commentObject()
@@ -247,6 +256,19 @@ CommentObject const&
 CommentGraphicsObject::commentObject() const
 {
     return const_cast<CommentGraphicsObject*>(this)->commentObject();
+}
+
+GraphicsObject::DeleteOrdering
+CommentGraphicsObject::deleteOrdering() const
+{
+    return DeleteLast;
+}
+
+bool
+CommentGraphicsObject::deleteObject()
+{
+    delete m_comment;
+    return true;
 }
 
 QRectF
@@ -319,23 +341,7 @@ CommentGraphicsObject::finishEditing()
 void
 CommentGraphicsObject::commitPosition()
 {
-    if (!isCollapsed()) m_comment->setPos(pos());
-}
-
-void
-CommentGraphicsObject::addConnection(LineGraphicsObject* line)
-{
-    if (!line) return;
-
-    m_connetions.append(line);
-
-    connect(line, &QObject::destroyed, this, [this](){
-        // remove null connections
-        m_connetions.erase(std::remove_if(m_connetions.begin(),
-                                          m_connetions.end(),
-                                          [](auto const& e){ return !e; }),
-                           m_connetions.end());
-    }, Qt::QueuedConnection);
+    if (!isCollapsed() || m_connections.size() != 1) m_comment->setPos(pos());
 }
 
 QRectF
@@ -363,7 +369,6 @@ CommentGraphicsObject::itemChange(GraphicsItemChange change, QVariant const& val
     }
 
     return value;
-
 }
 
 void
@@ -381,10 +386,40 @@ CommentGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 }
 
 void
-CommentGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
+CommentGraphicsObject::setupContextMenu(QMenu& menu)
 {
-    auto const& pos = event->pos();
-    emit contextMenuRequested(this, pos);
+    QAction* connectAction = menu.addAction(tr("Connect to..."));
+    connectAction->setIcon(gt::gui::icon::chain());
+    connectAction->setVisible(!isCollapsed());
+
+    connect(connectAction, &QAction::triggered, this, [this](){
+        auto* scene = this->scene();
+        assert(scene);
+
+        auto* draftLine = LineGraphicsObject::makeDraftLine(*this).release();
+        scene->addItem(draftLine);
+        draftLine->setTypeMask(NodeGraphicsObject::Type);
+        draftLine->grabMouse();
+
+        connect(this, &QObject::destroyed,
+                draftLine, [draftLine](){ delete draftLine; });
+
+        connect(draftLine, &LineGraphicsObject::finalizeDraftConnection,
+                this, [draftLine, this](QGraphicsItem* endItem) mutable {
+            delete draftLine;
+            auto* nodeItem = graphics_cast<NodeGraphicsObject*>(endItem);
+            if (!nodeItem) return;
+
+            auto cmd = gtApp->makeCommand(&commentObject(),
+                                          tr("Link comment to %1")
+                                              .arg(relativeNodePath(nodeItem->node())));
+            Q_UNUSED(cmd);
+
+            commentObject().appendConnection(nodeItem->node().uuid());
+        });
+    });
+
+    gt::gui::makeObjectContextMenu(menu, commentObject());
 }
 
 void
@@ -407,13 +442,137 @@ CommentGraphicsObject::resize(QSize diff)
 {
     prepareGeometryChange();
 
-    QWidget* w = m_proxyWidget->widget();
-    QSize newSize = w->size() + diff;
-    QSize minSize = w->minimumSizeHint();
+    QSize newSize = m_proxyWidget->widget()->size() + diff;
+//    QSize minSize = m_editor->minimumSizeHint();
 
-    newSize.rwidth()  = std::max(newSize.width(),  minSize.width());
-    newSize.rheight() = std::max(newSize.height(), minSize.height());
+//    newSize.rwidth()  = std::max(newSize.width(),  minSize.width());
+//    newSize.rheight() = std::max(newSize.height(), minSize.height());
 
-    w->resize(newSize);
+    m_proxyWidget->widget()->resize(newSize);
 }
 
+void
+CommentGraphicsObject::onCommentConnectionAppended(ObjectUuid const& objectUuid)
+{
+    if (m_connections.find(objectUuid) != m_connections.end()) return;
+
+    assert(scene());
+
+    // find node to connect to
+    InteractableGraphicsObject* endItem = nullptr;
+    auto const& items = scene()->items();
+    for (auto* item : items)
+    {
+        auto* nodeItem = graphics_cast<NodeGraphicsObject*>(item);
+        if (!nodeItem) continue;
+
+        if (nodeItem->node().uuid() != objectUuid) continue;
+
+        endItem = nodeItem;
+        break;
+    }
+
+    if (!endItem)
+    {
+        connect(m_graph.data(), SIGNAL(nodeAppended(Node*)),
+                this, SLOT(instantiateMissingConnections()),
+                Qt::UniqueConnection);
+        return;
+    }
+
+    auto lineItem = convert_to_unique_qptr<DirectDeleter>(
+        LineGraphicsObject::makeLine(*this, *endItem)
+    );
+
+    connect(endItem, &QObject::destroyed, lineItem.get(), [this, objectUuid](){
+        m_comment->removeConnection(objectUuid);
+    });
+    connect(lineItem, &LineGraphicsObject::deleteRequested, this, [this, objectUuid](){
+        m_comment->removeConnection(objectUuid);
+    });
+
+    scene()->addItem(lineItem);
+    m_connections.insert({objectUuid, std::move(lineItem)});
+}
+
+void
+CommentGraphicsObject::onCommentConnectionRemoved(ObjectUuid const& objectUuid)
+{
+    auto iter = m_connections.find(objectUuid);
+    if (iter == m_connections.end()) return;
+
+    m_connections.erase(iter);
+}
+
+void
+CommentGraphicsObject::onObjectCollapsed()
+{
+    m_proxyWidget->setVisible(!isCollapsed());
+    m_comment->setCollapsed(isCollapsed());
+
+    if (!isCollapsed() || m_connections.size() != 1)
+    {
+        if (m_anchor) m_anchor->disconnect(this);
+        m_anchor = nullptr;
+
+        setPos(m_comment->pos());
+        setInteractionFlag(DefaultInteractionFlags, true);
+
+        for (auto& pair : m_connections)
+        {
+            LineGraphicsObject* connection = std::get<1>(pair).get();
+            assert(connection);
+            connection->setVisible(true);
+        }
+        return;
+    }
+
+    LineGraphicsObject* connection = std::get<1>(*m_connections.begin()).get();
+    assert(connection);
+
+    connection->setVisible(false);
+
+    auto const* endItem = connection->endItem();
+    assert(endItem);
+
+    m_anchor = endItem;
+
+    auto updatePos = [endItem, this]{
+        setPos(endItem->pos() +
+               endItem->boundingRect().topRight() -
+               boundingRect().center());
+    };
+
+    setInteractionFlag(DefaultInteractionFlags, false);
+    setInteractionFlag(AllowSelecting, true);
+
+    connect(endItem, &QGraphicsObject::xChanged, this, updatePos);
+    connect(endItem, &QGraphicsObject::yChanged, this, updatePos);
+    updatePos();
+
+    auto graphicsObject = graphics_cast<GraphicsObject*>(endItem);
+    if (!graphicsObject) return;
+
+    // trigger update if hovered state of anchored object changed
+    connect(graphicsObject, &GraphicsObject::hoveredChanged, this, [this]{
+        update();
+    });
+}
+
+void
+CommentGraphicsObject::instantiateMissingConnections()
+{
+    if (m_comment->nconnections() == m_connections.size())
+    {
+        m_graph->disconnect(this, SLOT(instantiateMissingConnections()));
+    }
+
+    for (size_t i = 0; i < m_comment->nconnections(); i++)
+    {
+        ObjectUuid const& uuid = m_comment->connectionAt(i);
+        if (m_connections.find(uuid) != m_connections.end()) continue;
+
+        // attempt to instantiate missing connection
+        onCommentConnectionAppended(uuid);
+    }
+}

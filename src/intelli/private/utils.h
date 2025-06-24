@@ -34,7 +34,7 @@ intelli::Profiler profiler__{X}; (void)profiler__;
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& data)
 {
-    // TODO: remove
+    // TODO: remove me, for debuggin purposes only
     if (auto* d = qobject_cast<intelli::DoubleData const*>(data.get()))
     {
         gt::log::StreamStateSaver saver(s);
@@ -254,7 +254,19 @@ inline void setObjectName(Node& obj, QString const& name)
     obj.setCaption(name);
 }
 
-
+// thanks to https://stackoverflow.com/questions/55000571/qt5-one-shot-connection-to-lambda
+template <typename Sender, typename Emitter, typename Reciever, typename Slot, typename... Args>
+QMetaObject::Connection
+connectOneShot(Sender* pSender, void (Emitter::*pSignal)(Args ...args), Reciever* reciever, Slot slot)
+{
+    QMetaObject::Connection* pConnection = new QMetaObject::Connection;
+    *pConnection = QObject::connect(pSender, pSignal, reciever, [pConnection, slot](Args... args){
+        QObject::disconnect(*pConnection);
+        delete pConnection;
+        slot();
+    });
+    return *pConnection;
+}
 
 template <typename T>
 inline void restrictRegExpWithSiblingsNames(GtObject& obj,

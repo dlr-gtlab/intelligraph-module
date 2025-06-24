@@ -13,12 +13,14 @@
 #include <intelli/exports.h>
 
 #include <memory>
+#include <functional>
 
 class QIcon;
 
 namespace intelli
 {
 
+class Node;
 class NodeUI;
 class NodeUIData
 {
@@ -27,6 +29,8 @@ class NodeUIData
     NodeUIData();
 
 public:
+
+    using CustomDeleteFunction = std::function<bool (Node*)>;
 
     NodeUIData(NodeUIData const&) = delete;
     NodeUIData(NodeUIData&&) = delete;
@@ -39,6 +43,12 @@ public:
     GT_INTELLI_EXPORT void setDisplayIcon(QIcon icon);
 
     GT_INTELLI_EXPORT bool hasDisplayIcon() const;
+
+    GT_INTELLI_EXPORT CustomDeleteFunction const& customDeleteFunction() const;
+
+    GT_INTELLI_EXPORT bool hasCustomDeleteFunction() const;
+
+    void setCustomDeleteFunction(CustomDeleteFunction functor);
 
 private:
 

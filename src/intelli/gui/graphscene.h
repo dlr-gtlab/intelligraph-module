@@ -33,7 +33,6 @@ class Connection;
 class ConnectionGraphicsObject;
 class CommentObject;
 class CommentGraphicsObject;
-class LineGraphicsObject;
 
 class GraphScene : public GtGraphicsScene
 {
@@ -86,16 +85,37 @@ public:
 public slots:
 
     /**
-     * @brief Alings all nodes to the grid
+     * @brief Alings all objects to the grid. If the scene contains a valid
+     * selection, only the selected objects are aligned otherwise all objects
+     * are aligned. Creates an undo-redo command.
      */
     void alignObjectsToGrid();
 
+    /**
+     * @brief Attempts to delete all selected object. If no objects are
+     * selected, no objects will be deleted. Creates an undo-redo command.
+     */
     void deleteSelectedObjects();
 
+    /**
+     * @brief Duplicates the selection. If no objects are selected, no action is
+     * performed. Creates an undo-redo command.
+     * TODO: Not applied to comments
+     */
     void duplicateSelectedObjects();
 
+    /**
+     * @brief Copies the selection to the clipboard. If no objects are selected,
+     * no action is performed.
+     * TODO: Not applied to comments
+     */
     bool copySelectedObjects();
 
+    /**
+     * @brief Pastes the selection from the clipboard. Creates an undo-redo
+     * command.
+     * TODO: Not applied to comments
+     */
     void pasteObjects();
 
 signals:
@@ -109,12 +129,6 @@ signals:
 protected:
 
     void keyPressEvent(QKeyEvent* event) override;
-
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
-
-    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
-
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
 private:
 
@@ -146,15 +160,12 @@ private:
     std::vector<ConnectionEntry> m_connections;
     /// Comment objects in this scene
     std::vector<CommentEntry> m_comments;
-    /// Draft connection if active
-    unique_qptr<ConnectionGraphicsObject> m_draftConnection;
-    unique_qptr<LineGraphicsObject> m_draftLine;
     /// Shared scene data
     std::unique_ptr<GraphSceneData> m_sceneData;
     /// Shape style of the connections in this scene
     ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
-    /// Currently active command when moving nodes
-    GtCommand m_nodeMoveCmd = {};
+    /// Currently active command when moving objects
+    GtCommand m_objectMoveCmd = {};
 
     /**
      * @brief Groups the selected nodes by moving the into a subgraph.
@@ -172,37 +183,19 @@ private:
      */
     void expandGroupNode(Graph* groupNode);
 
-    /**
-     * @brief Updates the connection's end points. If a node graphics object
-     * is passed in, only this side is updated.
-     * @param object Connection object to update
-     * @param node Node object that has changed (optional)
-     */
-    void moveConnection(ConnectionGraphicsObject* object,
-                        NodeGraphicsObject* node = nullptr);
-
-    /**
-     * @brief Updates the connection's end point that the specified port type
-     * refers to.
-     * @param object Connection object to update
-     * @param type Port type of the end point
-     */
-    void moveConnectionPoint(ConnectionGraphicsObject& object, PortType type);
-
 private slots:
+
+    /// called while an object is being moved by the user, inititates a move
+    /// command if none has been started already
+    void beginMoveCommand(InteractableGraphicsObject* sender, QPointF diff);
+
+    /// called if an object has been moved by the user (moving finished),
+    /// finalizes a move command if one is currently active
+    void endMoveCommand(InteractableGraphicsObject* sender);
 
     void onNodeAppended(Node* node);
 
     void onNodeDeleted(NodeId nodeId);
-
-    /// called while an object is being moved by the user
-    void onObjectShifted(InteractableGraphicsObject* sender, QPointF diff);
-
-    /// called if an object has been moved by the user (moving finished)
-    void onObjectMoved(InteractableGraphicsObject* sender);
-
-    /// called if node changed position externally
-    void onNodePositionChanged(NodeGraphicsObject* sender);
 
     void onNodeDoubleClicked(NodeGraphicsObject* sender);
 
@@ -210,21 +203,19 @@ private slots:
 
     void onConnectionDeleted(ConnectionId conId);
 
-    void moveConnections(NodeGraphicsObject* object);
-
     void onMakeDraftConnection(NodeGraphicsObject* object,
                                PortType type,
                                PortId portId);
+
+    void onFinalizeDraftConnection(ConnectionId conId);
 
     void onCommentAppended(CommentObject* comment);
 
     void onCommentDeleted(CommentObject* comment);
 
-    void onNodeContextMenu(NodeGraphicsObject* object, QPointF pos);
+    void onPortContextMenu(NodeGraphicsObject* object, PortId portId);
 
-    void onPortContextMenu(NodeGraphicsObject* object, PortId portId, QPointF pos);
-
-    void onCommentContextMenu(CommentGraphicsObject* object, QPointF pos);
+    void onObjectContextMenu(InteractableGraphicsObject* object);
 };
 
 inline GraphScene*

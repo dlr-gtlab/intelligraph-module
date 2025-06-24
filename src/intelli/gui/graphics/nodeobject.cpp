@@ -141,18 +141,23 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
 
     embedCentralWidget();
 
-    connect(this, &NodeGraphicsObject::nodeGeometryChanged,
-            this, &NodeGraphicsObject::updateChildItems,
-            Qt::DirectConnection);
+    connect(this, &GraphicsObject::hoveredChanged, this, [this](){
+        if (isHovered()) return setZValue(style::zValue(style::ZValue::NodeHovered));
+        if (!isSelected()) return setZValue(style::zValue(style::ZValue::Node));
+    });
+
+    connect(this, &InteractableGraphicsObject::objectMoved, this, [this](){
+        commitPosition();
+    }, Qt::DirectConnection);
 
     connect(this, &InteractableGraphicsObject::objectCollapsed, this, [this](){
         if (auto w = centralWidget()) w->setVisible(!isCollapsed());
         Impl::prepareGeometryChange(this).finalize();
     }, Qt::DirectConnection);
 
-    connect(this, &InteractableGraphicsObject::objectMoved, this, [this](){
-        commitPosition();
-    }, Qt::DirectConnection);
+    connect(this, &NodeGraphicsObject::nodeGeometryChanged,
+            this, &NodeGraphicsObject::updateChildItems,
+            Qt::DirectConnection);
 
     connect(&node, &Node::nodeChanged,
             this, &NodeGraphicsObject::onNodeChanged, Qt::DirectConnection);
@@ -196,6 +201,39 @@ NodeGraphicsObject::hasResizeHandle() const
 {
     return pimpl->node->nodeFlags() & IsResizableMask &&
            pimpl->proxyWidget && pimpl->proxyWidget->widget();
+}
+
+GraphicsObject::DeletableFlag
+NodeGraphicsObject::deletableFlag() const
+{
+    if (node().objectFlags() & GtObject::ObjectFlag::UserDeletable)
+    {
+        return DefaultDeletable;
+    }
+
+    if (uiData().hasCustomDeleteFunction())
+    {
+        return NotBulkDeletable;
+    }
+
+    return NotDeletable;
+}
+
+GraphicsObject::DeleteOrdering
+NodeGraphicsObject::deleteOrdering() const
+{
+    return DefaultDeleteOrdering;
+}
+
+bool
+NodeGraphicsObject::deleteObject()
+{
+    if (uiData().hasCustomDeleteFunction())
+    {
+        return uiData().customDeleteFunction()(&node());
+    }
+    delete pimpl->node;
+    return true;
 }
 
 QRectF
@@ -313,6 +351,12 @@ NodeGraphicsObject::embedCentralWidget()
             Impl::prepareGeometryChange(this).finalize();
         });
     }
+}
+
+void
+NodeGraphicsObject::setupContextMenu(QMenu& menu)
+{
+    gt::gui::makeObjectContextMenu(menu, node());
 }
 
 void
@@ -440,24 +484,23 @@ NodeGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 {
     auto const& pos = event->pos();
 
-    if (event->modifiers() & Qt::ControlModifier)
-    {
-        setSelected(true);
-        update();
-    }
+    // if (event->modifiers() & Qt::ControlModifier)
+    // {
+    //     setSelected(true);
+    //     update();
+    // }
 
+    event->accept();
     NodeGeometry::PortHit hit = pimpl->geometry->portHit(pos);
 
     if (!hit)
     {
-        emit contextMenuRequested(this, pos);
+        emit contextMenuRequested(this);
     }
     else
     {
-        emit portContextMenuRequested(this, hit.port, pos);
+        emit portContextMenuRequested(this, hit.port);
     }
-
-    event->accept();
 }
 
 bool

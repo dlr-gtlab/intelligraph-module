@@ -12,8 +12,7 @@
 
 #include <intelli/exports.h>
 #include <intelli/gui/graphscenedata.h>
-
-#include <QGraphicsObject>
+#include <intelli/gui/graphics/graphicsobject.h>
 
 namespace intelli
 {
@@ -24,11 +23,13 @@ namespace intelli
  * collapsable, and that can recieve/react to hover events.
  * Hanldes translation and resizing uniformly.
  */
-class GT_INTELLI_EXPORT InteractableGraphicsObject : public QGraphicsObject
+class GT_INTELLI_EXPORT InteractableGraphicsObject : public GraphicsObject
 {
     Q_OBJECT
 
 public:
+
+    enum { Type = make_graphics_type<1>() };
 
     using InteractionFlags = size_t;
 
@@ -41,7 +42,7 @@ public:
         DefaultInteractionFlags = AllowTranslation | AllowResizing | AllowSelecting
     };
 
-    InteractableGraphicsObject(GraphSceneData const& data, QGraphicsObject* parent = nullptr);
+    InteractableGraphicsObject(GraphSceneData const& data, QGraphicsItem* parent = nullptr);
     ~InteractableGraphicsObject();
 
     void setInteractionFlag(InteractionFlag flag, bool enable = true);
@@ -49,8 +50,8 @@ public:
     size_t interactionFlags() { return m_flags; }
 
     void shiftBy(double x, double y);
-    
-    virtual QRectF widgetSceneBoundingRect() const { return {}; }
+
+    void alignToGrid();
 
     /**
      * @brief Returns the scene data object, that is shared by all nodes and
@@ -58,12 +59,6 @@ public:
      * @return Scene data.
      */
     inline GraphSceneData const& sceneData() const { return *m_sceneData; }
-
-    /**
-     * @brief Returns whether this node is currently hovered (via the cursor).
-     * @return Is hovered
-     */
-    inline bool isHovered() const { return m_hovered; }
 
     /**
      * @brief Returns whether this node is collapsed (node's body is hidden).
@@ -77,6 +72,15 @@ public:
      */
     void collapse(bool doCollapse = true);
     void setCollapsed(bool doCollapse = true);
+
+    virtual QRectF widgetSceneBoundingRect() const { return {}; }
+
+    /**
+     * @brief Commits the position of this object to the associated node
+     */
+    virtual void commitPosition() {}
+
+    virtual void setupContextMenu(QMenu&) { }
 
 protected:
 
@@ -115,11 +119,9 @@ protected:
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
-    void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
-
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override;
 
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
 
 signals:
 
@@ -147,6 +149,12 @@ signals:
 
     void objectResized(InteractableGraphicsObject*);
 
+    /**
+     * @brief Emitted once the context menu of an object was requested
+     * @param object Object for which the context menu was requested (this)
+     */
+    void contextMenuRequested(InteractableGraphicsObject*);
+
 private:
 
     /// Pointer to graph scene data
@@ -158,8 +166,6 @@ private:
     State m_state = State::Normal;
     /// Interaction flags
     InteractionFlags m_flags = DefaultInteractionFlags;
-    /// Whether node is hovered
-    bool m_hovered = false;
     /// Whether the node is collapsed
     bool m_collapsed = false;
 };
