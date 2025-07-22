@@ -12,6 +12,7 @@
 
 #include <intelli/node.h>
 #include <intelli/graphconnectionmodel.h>
+#include <intelli/view.h>
 
 #include <gt_finally.h>
 #include <gt_platform.h>
@@ -62,7 +63,8 @@ QVector<NodeId> cyclicNodes(Graph const& graph);
  * @param graph Graph to check for cycles
  * @return Returns true if graph is acyclic otherwise returns false
  */
-inline bool isAcyclic(Graph const& graph) { return cyclicNodes(graph).empty(); }
+GT_INTELLI_EXPORT
+bool isAcyclic(Graph const& graph);
 
 /**
  * @brief Policy for handling node id collisions, when appending a node to a graph
@@ -88,7 +90,7 @@ GT_INTELLI_EXPORT void debug(GlobalConnectionModel const& model);
  * @return Whether the list contains a node with the desired id
  */
 template <typename NodeId_t, typename NodeList>
-static bool containsNodeId(NodeId_t const& nodeId, NodeList const& nodes)
+bool containsNodeId(NodeId_t const& nodeId, NodeList const& nodes)
 {
     auto iter = std::find_if(nodes.begin(), nodes.end(), [&nodeId](auto node){
         return nodeId == get_node_id<NodeId_t>{}(node);
@@ -129,6 +131,15 @@ public:
      * @return port id (may be invalid)
      */
     PortId portId(NodeId nodeId, PortType type, PortIndex portIdx) const;
+
+    /**
+     * @brief Returns the node id for the node given its object uuid. Returned
+     * node id may be invalid if the object uuid does not belong to a node
+     * belonging to this graph.
+     * @param nodeUuid Node's oobject uuid
+     * @return Node id (may be invalid)
+     */
+    NodeId nodeId(NodeUuid const& nodeUuid) const;
 
     /**
      * @brief Returns the connection id matched by the given nodes and port
@@ -468,43 +479,17 @@ public:
      * @param policy Whether to generate a new id if necessary
      * @return success
      */
-    template <typename NodeList>
-    bool moveNodesAndConnections(NodeList const& nodes,
+    bool moveNodesAndConnections(View<Node const*> nodes,
                                  Graph& targetGraph,
-                                 NodeIdPolicy policy = NodeIdPolicy::Update)
-    {
-        Modification changeCmd = modify();
-        Modification changeTargetCmd = targetGraph.modify();
-        Q_UNUSED(changeCmd);
-        Q_UNUSED(changeTargetCmd);
-
-        auto const& conModel = connectionModel();
-
-        QVector<ConnectionUuid> connectionsToMove;
-        // find internal connections
-        for (auto node : nodes)
-        {
-            auto iter = conModel.iterateConnections(get_node_id<NodeId>{}(node), PortType::Out);
-            for (ConnectionId conId : iter)
-            {
-                if (containsNodeId(conId.inNodeId, nodes))
-                {
-                    connectionsToMove.push_back(connectionUuid(conId));
-                }
-            }
-        }
-
-        if (!moveNodes(nodes, targetGraph, policy)) return false;
-
-        // reinstantiate internal connections
-        bool success = std::all_of(connectionsToMove.begin(),
-                           connectionsToMove.end(),
-                           [&targetGraph](auto const& conUuid){
-            return targetGraph.appendConnection(targetGraph.connectionId(conUuid));
-        });
-
-        return success;
-    }
+                                 NodeIdPolicy policy = NodeIdPolicy::Update);
+    /// NodeId overload
+    bool moveNodesAndConnections(View<NodeId> nodes,
+                                 Graph& targetGraph,
+                                 NodeIdPolicy policy = NodeIdPolicy::Update);
+    /// QList overload
+    bool moveNodesAndConnections(QList<Node const*> const& nodes,
+                                 Graph& targetGraph,
+                                 NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
      * @brief Same as `moveNodesAndConnections' except that no connection is
@@ -514,24 +499,17 @@ public:
      * @param policy Whether to generate a new id if necessary
      * @return success
      */
-    template <typename NodeList>
-    bool moveNodes(NodeList const& nodes,
+    bool moveNodes(View<Node const*> nodes,
                    Graph& targetGraph,
-                   NodeIdPolicy policy = NodeIdPolicy::Update)
-    {
-        Modification changeCmd = modify();
-        Modification changeTargetCmd = targetGraph.modify();
-        Q_UNUSED(changeCmd);
-        Q_UNUSED(changeTargetCmd);
-
-        // NOTE: nodes's iterators may get invalidated if a node is removed
-        // and if nodes's iterators point to the underlying connection models
-        // causing UDB?
-        return std::all_of(nodes.begin(), nodes.end(),
-                           [this, &targetGraph, policy](auto node){
-            return moveNode(get_node_id<NodeId>{}(node), targetGraph, policy);
-        });
-    }
+                   NodeIdPolicy policy = NodeIdPolicy::Update);
+    /// NodeId overload
+    bool moveNodes(View<NodeId> nodes,
+                   Graph& targetGraph,
+                   NodeIdPolicy policy = NodeIdPolicy::Update);
+    /// QList overload
+    bool moveNodes(QList<Node const*> const& nodes,
+                   Graph& targetGraph,
+                   NodeIdPolicy policy = NodeIdPolicy::Update);
 
     /**
      * @brief Returns the local connection model.
@@ -664,14 +642,6 @@ signals:
      * @param Node id of the deleted node
      */
     void childNodeDeleted(NodeId nodeId);
-
-    /**
-     * @brief Emitted once the position of a node was altered. Is only triggered
-     * by calling `setNodePosition`.
-     * @param nodeId NodeId that changed the position
-     * @param pos New position
-     */
-    void nodePositionChanged(NodeId nodeId, QPointF pos);
 
 protected:
 

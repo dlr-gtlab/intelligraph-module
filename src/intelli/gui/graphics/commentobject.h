@@ -24,7 +24,7 @@ namespace intelli
 
 class Graph;
 class LineGraphicsObject;
-class CommentObject;
+class CommentData;
 
 class GT_INTELLI_TEST_EXPORT CommentGraphicsObject : public InteractableGraphicsObject
 {
@@ -38,12 +38,14 @@ public:
 
     CommentGraphicsObject(QGraphicsScene& scene,
                           Graph& graph,
-                          CommentObject& comment,
+                          CommentData& comment,
                           GraphSceneData const& data);
     ~CommentGraphicsObject();
 
-    CommentObject& commentObject();
-    CommentObject const& commentObject() const;
+    CommentData& commentObject();
+    CommentData const& commentObject() const;
+
+    ObjectUuid objectUuid() const override;
 
     DeleteOrdering deleteOrdering() const override;
 
@@ -51,6 +53,11 @@ public:
 
     QRectF boundingRect() const override;
 
+    /**
+     * @brief Returns the bounding rect of the main widget in scene-coordianates
+     * May return an invalid rect if no widget is available
+     * @return Scene bounding rect of the main widget
+     */
     QRectF widgetSceneBoundingRect() const override;
 
     /**
@@ -68,6 +75,10 @@ public:
      */
     void commitPosition() override;
 
+    /**
+     * @brief Appends actions for the context menu
+     * @param menu Menu
+     */
     void setupContextMenu(QMenu& menu) override;
 
 protected:
@@ -99,16 +110,18 @@ private:
 
     class Overlay;
 
-    std::unordered_map<ObjectUuid, unique_qptr<LineGraphicsObject, DirectDeleter>> m_connections;
+    /// node connections
+    std::unordered_map<size_t, unique_qptr<LineGraphicsObject, DirectDeleter>> m_connections;
+    /// pointer to Graph
     QPointer<Graph> m_graph;
     /// pointer to comment object
-    QPointer<CommentObject> m_comment;
+    QPointer<CommentData> m_comment;
     /// anchor object when comment is collapsed. Object is attached to this
     /// anchor object and cannot be moved unless its uncollapsed.
     QPointer<GraphicsObject const> m_anchor;
     /// Main widget
     QGraphicsProxyWidget* m_proxyWidget;
-    /// Overlay widget to supress mouse and key event to the main widget
+    /// Overlay widget to suppress mouse and key event to the main widget
     Overlay* m_overlay;
     /// Comment editor
     QTextEdit* m_editor;
@@ -117,9 +130,9 @@ private:
 
 private slots:
 
-    void onCommentConnectionAppended(ObjectUuid const& objectUuid);
+    void onCommentConnectionAppended(NodeId nodeId);
 
-    void onCommentConnectionRemoved(ObjectUuid const& objectUuid);
+    void onCommentConnectionRemoved(NodeId nodeId);
 
     void onObjectCollapsed();
 

@@ -12,6 +12,7 @@
 #include "node/test_dynamic.h"
 
 #include "intelli/connection.h"
+#include "intelli/utilities.h"
 
 #include <gt_objectmemento.h>
 #include <gt_objectmementodiff.h>
@@ -657,8 +658,10 @@ TEST(Graph, restore_connections_only_on_memento_diff)
 
     Graph graph;
     graph.setFactory(gtObjectFactory);
-    
+
     ASSERT_TRUE(test::buildGraphWithGroup(graph));
+
+    auto& conModel = graph.connectionModel();
 
     EXPECT_EQ(graph.connections().size(), 5);
     EXPECT_EQ(graph.nodes().size(), 5);
@@ -675,7 +678,7 @@ TEST(Graph, restore_connections_only_on_memento_diff)
     EXPECT_NE(D, nullptr);
     EXPECT_NE(E, nullptr);
 
-    EXPECT_EQ(graph.findConnections(C_id, PortType::Out).size(), 1);
+    EXPECT_EQ(conModel.iterateConnections(C_id, PortType::Out).size(), 1);
     
     debug(graph);
 
@@ -695,7 +698,7 @@ TEST(Graph, restore_connections_only_on_memento_diff)
     EXPECT_EQ(graph.findNode(D_id), D);
     EXPECT_EQ(graph.findNode(E_id), E);
 
-    EXPECT_EQ(graph.findConnections(C_id, PortType::Out).size(), 0);
+    EXPECT_EQ(conModel.iterateConnections(C_id, PortType::Out).size(), 0);
     
     debug(graph);
 
@@ -716,8 +719,8 @@ TEST(Graph, restore_connections_only_on_memento_diff)
     EXPECT_EQ(graph.findNode(D_id), D);
     EXPECT_EQ(graph.findNode(E_id), E);
 
-    EXPECT_EQ(graph.findConnections(C_id, PortType::Out).size(), 1);
-    EXPECT_TRUE(graph.findConnections(C_id, PortType::Out).contains(connectionToDelete));
+    EXPECT_EQ(conModel.iterateConnections(C_id, PortType::Out).size(), 1);
+    EXPECT_TRUE(utils::contains(conModel.iterateConnections(C_id, PortType::Out), connectionToDelete));
     
     debug(graph);
 
@@ -734,7 +737,7 @@ TEST(Graph, restore_connections_only_on_memento_diff)
     EXPECT_EQ(graph.findNode(D_id), D);
     EXPECT_EQ(graph.findNode(E_id), E);
 
-    EXPECT_EQ(graph.findConnections(C_id, PortType::Out).size(), 0);
+    EXPECT_EQ(conModel.iterateConnections(C_id, PortType::Out).size(), 0);
 }
 
 TEST(Graph, move_node_to_subgraph)

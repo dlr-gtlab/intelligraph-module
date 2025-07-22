@@ -11,11 +11,17 @@
 #define GT_INTELLI_COMMENTGROUP_H
 
 #include <gt_objectgroup.h>
+#include <intelli/globals.h>
 
 namespace intelli
 {
 
-class CommentObject;
+class CommentData;
+
+/**
+ * @brief The CommentGroup class.
+ * Organizes all comments for a local graph.
+ */
 class CommentGroup : public GtObjectGroup
 {
     Q_OBJECT
@@ -24,17 +30,20 @@ public:
 
     Q_INVOKABLE CommentGroup(GtObject* parent = nullptr);
     ~CommentGroup();
+    
+    QList<CommentData*> comments();
+    QList<CommentData const*> comments() const;
 
-    QList<CommentObject*> comments();
-    QList<CommentObject const*> comments() const;
+    CommentData* findCommentByUuid(ObjectUuid const& uuid);
+    CommentData const* findCommentByUuid(ObjectUuid const& uuid) const;
 
-    CommentObject* appendComment(std::unique_ptr<CommentObject> comment);
+    CommentData* appendComment(std::unique_ptr<CommentData> comment);
 
 signals:
-
-    void commentAppended(CommentObject*);
-
-    void commentAboutToBeDeleted(CommentObject*);
+    
+    void commentAppended(CommentData*);
+    
+    void commentAboutToBeDeleted(CommentData*);
 
 protected:
 
@@ -42,8 +51,8 @@ protected:
 
 private:
 
-    /// List of all comments, used soely for identifying pruposes
-    QVector<void*> m_comments;
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
 };
 
 } // namespace intelli

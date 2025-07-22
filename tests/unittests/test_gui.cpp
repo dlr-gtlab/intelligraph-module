@@ -16,7 +16,7 @@
 
 #if 0
 #include <intelli/gui/nodeui.h>
-#include <intelli/gui/commentobject.h>
+#include <intelli/gui/commentdata.h>
 #include <intelli/node.h>
 
 #include "node/test_node.h"

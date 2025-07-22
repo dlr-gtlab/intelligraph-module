@@ -9,7 +9,7 @@
 
 #include "intelli/dynamicnode.h"
 #include "intelli/nodedatafactory.h"
-#include "intelli/data/invalid.h"
+#include "intelli/utilities.h"
 #include "intelli/property/stringselection.h"
 #include "intelli/property/uint.h"
 #include "intelli/private/utils.h"
@@ -193,11 +193,11 @@ DynamicNode::insertPort(PortOption option, PortType type, PortInfo port, int idx
     }
 
     // ignore changed signals of property container
-    auto ignoreAdded = ignoreSignal(
+    auto ignoreAdded = utils::ignoreSignal(
         &dynamicPorts, &GtPropertyStructContainer::entryAdded,
         this, &DynamicNode::onPortEntryAdded
     );
-    auto ignoreChanged = ignoreSignal(
+    auto ignoreChanged = utils::ignoreSignal(
         &dynamicPorts, &GtPropertyStructContainer::entryChanged,
         this, &DynamicNode::onPortEntryChanged
     );
@@ -255,7 +255,7 @@ DynamicNode::onPortDeleted(PortType type, PortIndex idx)
     GtPropertyStructContainer& dynamicPorts = this->dynamicPorts(type);
 
     // ignore removed signal of property container
-    auto ignoreRemoved = ignoreSignal(
+    auto ignoreRemoved = utils::ignoreSignal(
         &dynamicPorts, &GtPropertyStructContainer::entryRemoved,
         this, &DynamicNode::onPortEntryRemoved
     );
@@ -390,7 +390,7 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
         PortInfo updatedPort = PortInfo::customId(newPortId, *port);
 
         // hacky solution -> remove port and insert new port with new id
-        auto ignoreRemoved = ignoreSignal(
+        auto ignoreRemoved = utils::ignoreSignal(
             this, &Node::portAboutToBeDeleted,
             this, &DynamicNode::onPortDeleted
         );
@@ -424,7 +424,7 @@ DynamicNode::onPortEntryRemoved(int idx)
     }
 
     // ignore removed signal
-    auto ignoreRemoved = ignoreSignal(
+    auto ignoreRemoved = utils::ignoreSignal(
         this, &Node::portAboutToBeDeleted,
         this, &DynamicNode::onPortDeleted
     );

@@ -7,7 +7,7 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include <intelli/gui/commentobject.h>
+#include <intelli/gui/commentdata.h>
 
 #include <gt_stringproperty.h>
 #include <gt_intproperty.h>
@@ -23,13 +23,13 @@
 
 using namespace intelli;
 
-struct CommentObject::Impl
+struct CommentData::Impl
 {
     Impl() { }
 
     /// text of comment
     GtStringProperty text{
-        "text", QObject::tr("text"), QObject::tr("Comment text")
+        "text", QObject::tr("Text"), QObject::tr("Comment Text")
     };
     /// x position of comment
     GtDoubleProperty posX{
@@ -43,19 +43,19 @@ struct CommentObject::Impl
     /// width of comment widget
     GtIntProperty sizeWidth{
         "sizeWidth",
-        QObject::tr("Size width"),
-        QObject::tr("Size width"), -1
+        QObject::tr("Size Width"),
+        QObject::tr("Size Width"), -1
     };
     /// height of comment widget
     GtIntProperty sizeHeight{
         "sizeHeight",
-        QObject::tr("Size height"),
-        QObject::tr("Size height"), -1
+        QObject::tr("Size Height"),
+        QObject::tr("Size Height"), -1
     };
 
     /// whether the comment is collapsed
     GtBoolProperty collapsed{
-        "collapsed", QObject::tr("collapsed"), QObject::tr("collapsed"), false
+        "collapsed", QObject::tr("Collapsed"), QObject::tr("Collapsed"), false
     };
 
     GtPropertyStructContainer connections{
@@ -63,14 +63,14 @@ struct CommentObject::Impl
     };
 
     /// TODO: remove me once core issue #1366 is merged
-    QStringList connectionsData;
+    QVector<NodeId> connectionsData;
 };
 
 char const* S_CONNECTION_DATA_TYPE_ID = "ConnectionData";
 
 #define ASSERT_EQ_SIZE() assert(pimpl->connections.size() == (size_t)pimpl->connectionsData.size())
 
-CommentObject::CommentObject(GtObject* parent) :
+CommentData::CommentData(GtObject* parent) :
     GtObject(parent),
     pimpl(std::make_unique<Impl>())
 {
@@ -119,41 +119,47 @@ CommentObject::CommentObject(GtObject* parent) :
                       .arg(uuid().remove("{").remove("-").mid(0, 8)));
 
     connect(&pimpl->connections, &GtPropertyStructContainer::entryAdded,
-        this, [this](int idx){
-            GtPropertyStructInstance& entry = pimpl->connections.at(idx);
-            pimpl->connectionsData.insert(idx, entry.ident());
-            emit connectionAppended(entry.ident());
+            this, [this](int idx){
+        NodeId nodeId = nodeConnectionAt(idx);
+        if (!nodeId.isValid())
+        {
+            pimpl->connectionsData.insert(idx, invalid<NodeId>());
             ASSERT_EQ_SIZE();
-        }, Qt::DirectConnection);
+            return;
+        }
+        pimpl->connectionsData.insert(idx, nodeId);
+        emit nodeConnectionAppended(nodeId);
+        ASSERT_EQ_SIZE();
+    }, Qt::DirectConnection);
 
     connect(&pimpl->connections, &GtPropertyStructContainer::entryRemoved,
-        this, [this](int idx){
-            ObjectUuid uuid = pimpl->connectionsData.at(idx);
-            pimpl->connectionsData.removeAt(idx);
-            emit connectionRemoved(uuid);
-            ASSERT_EQ_SIZE();
-        }, Qt::DirectConnection);
+            this, [this](int idx){
+        NodeId nodeId = pimpl->connectionsData.at(idx);
+        pimpl->connectionsData.removeAt(idx);
+        emit nodeConnectionRemoved(nodeId);
+        ASSERT_EQ_SIZE();
+    }, Qt::DirectConnection);
 }
 
-CommentObject::~CommentObject()
+CommentData::~CommentData()
 {
     emit aboutToBeDeleted();
 }
 
 void
-CommentObject::setText(QString text)
+CommentData::setText(QString text)
 {
     pimpl->text = std::move(text);
 }
 
 QString const&
-CommentObject::text() const
+CommentData::text() const
 {
     return pimpl->text.get();
 }
 
 void
-CommentObject::setPos(Position pos)
+CommentData::setPos(Position pos)
 {
     if (this->pos() != pos)
     {
@@ -164,13 +170,13 @@ CommentObject::setPos(Position pos)
 }
 
 Position
-CommentObject::pos() const
+CommentData::pos() const
 {
     return { pimpl->posX, pimpl->posY };
 }
 
 void
-CommentObject::setSize(QSize size)
+CommentData::setSize(QSize size)
 {
     if (this->size() != size)
     {
@@ -181,13 +187,13 @@ CommentObject::setSize(QSize size)
 }
 
 QSize
-CommentObject::size() const
+CommentData::size() const
 {
     return { pimpl->sizeWidth, pimpl->sizeHeight };
 }
 
 void
-CommentObject::setCollapsed(bool collapsed)
+CommentData::setCollapsed(bool collapsed)
 {
     if (this->isCollapsed() != collapsed)
     {
@@ -197,27 +203,29 @@ CommentObject::setCollapsed(bool collapsed)
 }
 
 bool
-CommentObject::isCollapsed() const
+CommentData::isCollapsed() const
 {
     return pimpl->collapsed;
 }
 
 void
-CommentObject::appendConnection(ObjectUuid const& targetUuid)
+CommentData::appendNodeConnection(NodeId targetNodeId)
 {
-    if (isObjectConnected(targetUuid)) return;
+    if (!targetNodeId.isValid() || isNodeConnected(targetNodeId)) return;
 
-    pimpl->connections.newEntry(S_CONNECTION_DATA_TYPE_ID, targetUuid);
+    pimpl->connections.newEntry(S_CONNECTION_DATA_TYPE_ID, QString::number(targetNodeId));
     ASSERT_EQ_SIZE();
 }
 
 bool
-CommentObject::removeConnection(ObjectUuid const& targetUuid)
+CommentData::removeNodeConnection(NodeId targetNodeId)
 {
-    auto iter = std::find_if(pimpl->connections.begin(), pimpl->connections.end(),
-                            [&targetUuid](GtPropertyStructInstance const& e){
-                                return e.ident() == targetUuid;
-                            });
+    auto iter = std::find_if(pimpl->connections.begin(),
+                             pimpl->connections.end(),
+                             [targetNodeId](GtPropertyStructInstance const& e){
+         bool ok = true;
+         return e.ident().toUInt(&ok) == targetNodeId && ok;
+    });
     if (iter == pimpl->connections.end()) return false;
 
     pimpl->connections.removeEntry(iter);
@@ -227,24 +235,44 @@ CommentObject::removeConnection(ObjectUuid const& targetUuid)
 }
 
 bool
-CommentObject::isObjectConnected(ObjectUuid const& targetUuid)
+CommentData::isNodeConnected(NodeId targetNodeId)
 {
     ASSERT_EQ_SIZE();
-    return std::find_if(pimpl->connections.begin(), pimpl->connections.end(),
-                        [&targetUuid](GtPropertyStructInstance const& e){
-        return e.ident() == targetUuid;
+    return std::find_if(pimpl->connections.begin(),
+                        pimpl->connections.end(),
+                        [targetNodeId](GtPropertyStructInstance const& e){
+        return e.ident().toUInt() == targetNodeId;
     }) != pimpl->connections.end();
 }
 
 size_t
-CommentObject::nconnections() const
+CommentData::nNodeConnections() const
 {
     return pimpl->connections.size();
 }
 
-ObjectUuid const&
-CommentObject::connectionAt(size_t idx) const
+NodeId
+CommentData::nodeConnectionAt(size_t idx) const
 {
-    assert(idx < pimpl->connections.size());
-    return pimpl->connections.at(idx).ident();
+    assert(idx < pimpl->connections.size() && "idx out of bounds!");
+
+    bool ok = true;
+    NodeId nodeId = NodeId::fromValue(pimpl->connections.at(idx).ident().toUInt(&ok));
+    return ok ? nodeId : invalid<NodeId>();
+}
+
+void
+CommentData::onObjectDataMerged()
+{
+    // remove all invalid connections (i.e. NodeId == invalid<NodeId>())
+    auto iter = std::find(pimpl->connectionsData.begin(),
+                          pimpl->connectionsData.end(),
+                          invalid<NodeId>());
+    if (iter == pimpl->connectionsData.end()) return;
+
+    size_t idx = std::distance(pimpl->connectionsData.begin(), iter);
+    pimpl->connections.removeEntry(std::next(pimpl->connections.begin(), idx));
+
+    ASSERT_EQ_SIZE();
+    return CommentData::onObjectDataMerged(); // check once more
 }

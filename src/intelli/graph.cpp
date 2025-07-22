@@ -413,6 +413,15 @@ Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
     return port;
 }
 
+NodeId
+Graph::nodeId(NodeUuid const& nodeUuid) const
+{
+    Node const* node = globalConnectionModel().node(nodeUuid);
+    if (!node || Graph::accessGraph(*node) != this) return NodeId{};
+
+    return node->id();
+}
+
 ConnectionId
 Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, PortIndex inPortIdx) const
 {
@@ -556,14 +565,20 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
 
     node->updateObjectName();
 
+#if 0
+    gtDebug() << utils::logId(*this)
+              << tr("Appended node '%1' (ID: %3, UUID: %2)")
+                     .arg(node->caption(), node->uuid()).arg(node->id());
+#endif
+
     // deprecation notice
     if (node->nodeFlags() & NodeFlag::Deprecated &&
         gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Medium)
     {
         gtLogOnce(Warning)
-        << tr("Node '%1' (%2) is deprecated and may be removed in "
-              "a future release of the associated module!")
-                .arg(relativeNodePath(*node), node->metaObject()->className());
+            << tr("Node '%1' is deprecated and may be removed in "
+                  "a future release of the associated module!")
+                   .arg(node->metaObject()->className());
     }
 
     // append nodes of subgraph
@@ -855,10 +870,122 @@ Graph::moveNode(Node& node, Graph& targetGraph, NodeIdPolicy policy)
     node.disconnectFromParent();
     ((QObject*)&node)->setParent(nullptr);
 
-    if (!targetGraph.appendNode(&node, policy)) return {};
+    if (!targetGraph.appendNode(&node, policy)) return false;
 
     restoreOnFailure.clear();
     return true;
+}
+
+namespace
+{
+
+template<typename NodeList>
+bool moveNodesHelper(Graph& sourceGraph,
+                     NodeList const& nodes,
+                     Graph& targetGraph,
+                     NodeIdPolicy policy)
+{
+    auto changeCmd = sourceGraph.modify();
+    auto changeTargetCmd = targetGraph.modify();
+    Q_UNUSED(changeCmd);
+    Q_UNUSED(changeTargetCmd);
+
+    // NOTE: Cannot use connectionModel.iterate-functions as iterators may get
+    // invalidated if a node is removed!
+    return std::all_of(nodes.begin(), nodes.end(),
+                       [&sourceGraph, &targetGraph, policy](auto node){
+        return sourceGraph.moveNode(get_node_id<NodeId>{}(node), targetGraph, policy);
+    });
+}
+
+template <typename NodeList>
+bool moveNodesAndConnectionsHelper(Graph& sourceGraph,
+                                   NodeList const& nodes,
+                                   Graph& targetGraph,
+                                   NodeIdPolicy policy = NodeIdPolicy::Update)
+{
+    auto changeCmd = sourceGraph.modify();
+    auto changeTargetCmd = targetGraph.modify();
+    Q_UNUSED(changeCmd);
+    Q_UNUSED(changeTargetCmd);
+
+    auto const& conModel = sourceGraph.connectionModel();
+
+    QVector<ConnectionUuid> connectionsToMove;
+    // find internal connections
+    for (auto node : nodes)
+    {
+        auto iter = conModel.iterateConnections(get_node_id<NodeId>{}(node), PortType::Out);
+        for (ConnectionId conId : iter)
+        {
+            if (containsNodeId(conId.inNodeId, nodes))
+            {
+                connectionsToMove.push_back(sourceGraph.connectionUuid(conId));
+            }
+        }
+    }
+
+    if (!::moveNodesHelper(sourceGraph, nodes, targetGraph, policy)) return false;
+
+    // reinstantiate internal connections
+    bool success = std::all_of(connectionsToMove.begin(),
+                               connectionsToMove.end(),
+                               [&targetGraph](auto const& conUuid){
+        return targetGraph.appendConnection(targetGraph.connectionId(conUuid));
+    });
+
+    return success;
+}
+
+
+} // namespace
+
+bool
+Graph::moveNodesAndConnections(View<Node const*> nodes,
+                               Graph& targetGraph,
+                               NodeIdPolicy policy)
+{
+    return ::moveNodesAndConnectionsHelper(*this, nodes, targetGraph, policy);
+}
+
+bool
+Graph::moveNodesAndConnections(View<NodeId> nodes,
+                               Graph& targetGraph,
+                               NodeIdPolicy policy)
+{
+    return ::moveNodesAndConnectionsHelper(*this, nodes, targetGraph, policy);
+}
+
+bool
+Graph::moveNodesAndConnections(QList<Node const*> const& nodes,
+                               Graph& targetGraph,
+                               NodeIdPolicy policy)
+{
+    return ::moveNodesAndConnectionsHelper(*this, nodes, targetGraph, policy);
+}
+
+bool
+Graph::moveNodes(View<Node const*> nodes,
+                 Graph& targetGraph,
+                 NodeIdPolicy policy)
+{
+    return ::moveNodesHelper(*this, nodes, targetGraph, policy);
+}
+
+bool
+Graph::moveNodes(View<NodeId> nodes,
+                 Graph& targetGraph,
+                 NodeIdPolicy policy)
+{
+    return ::moveNodesHelper(*this, nodes, targetGraph, policy);
+}
+
+bool
+Graph::moveNodes(QList<Node const*> const& nodes,
+                 Graph& targetGraph,
+                 NodeIdPolicy policy)
+{
+    return ::moveNodesAndConnectionsHelper(*this, nodes, targetGraph, policy);
 }
 
 bool
@@ -1180,7 +1307,13 @@ intelli::cyclicNodes(Graph const& graph)
     return pending;
 }
 
-namespace intelli
+bool
+intelli::isAcyclic(Graph const& graph)
+{
+    return cyclicNodes(graph).empty();
+}
+
+namespace
 {
 
 template<typename NodeId_t>
@@ -1255,13 +1388,13 @@ debugGraphHelper(Model const& data)
     return debugString;
 }
 
-} // namespace intelli
+} // namespace
 
 void
 intelli::debug(GlobalConnectionModel const& model)
 {
     QString text = QStringLiteral("flowchart LR\n");
-    text += debugGraphHelper(model);
+    text += ::debugGraphHelper(model);
 
     gtInfo().nospace() << text;
 }
@@ -1270,7 +1403,7 @@ void
 intelli::debug(ConnectionModel const& model)
 {
     QString text = QStringLiteral("flowchart LR\n");
-    text += debugGraphHelper(model);
+    text += ::debugGraphHelper(model);
 
     gtInfo().nospace() << text;
 }
@@ -1279,7 +1412,7 @@ void
 intelli::debug(Graph const& graph)
 {
     QString text = QStringLiteral("flowchart LR\n");
-    text += debugGraphHelper(graph.globalConnectionModel());
+    text += ::debugGraphHelper(graph.globalConnectionModel());
 
     gtInfo().nospace() << "Debugging graph...\n\"\n" << text << "\"";
 }

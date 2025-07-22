@@ -71,6 +71,8 @@ public:
      */
     NodeId nodeId() const;
 
+    ObjectUuid objectUuid() const override;
+
     /**
      * @brief Returns the node's ui data object. Used for painting the node.
      * @return Ui Data
@@ -95,6 +97,11 @@ public:
      */
     QRectF boundingRect() const override;
 
+    /**
+     * @brief Returns the bounding rect of the main widget in scene-coordianates
+     * May return an invalid rect if no widget is available
+     * @return Scene bounding rect of the main widget
+     */
     QRectF widgetSceneBoundingRect() const override;
 
     /**
@@ -134,6 +141,10 @@ public:
      */
     void embedCentralWidget();
 
+    /**
+     * @brief Appends actions for the context menu
+     * @param menu Menu
+     */
     void setupContextMenu(QMenu& menu) override;
 
     /**

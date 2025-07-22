@@ -8,8 +8,8 @@
  */
 
 #include <intelli/gui/graphics/interactableobject.h>
-
 #include <intelli/gui/style.h>
+#include <intelli/utilities.h>
 
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsSceneHoverEvent>
@@ -50,9 +50,21 @@ InteractableGraphicsObject::alignToGrid()
 {
     if (m_sceneData->gridSize <= 0) return;
 
-    QPoint newPos = quantize(pos(), m_sceneData->gridSize);
+    QPoint newPos = utils::quantize(pos(), m_sceneData->gridSize);
     setPos(newPos);
     commitPosition();
+}
+
+GraphSceneData const&
+InteractableGraphicsObject::sceneData() const
+{
+    return *m_sceneData;
+}
+
+bool
+InteractableGraphicsObject::isCollapsed() const
+{
+    return m_collapsed;
 }
 
 void
@@ -72,6 +84,26 @@ void
 InteractableGraphicsObject::setCollapsed(bool doCollapse)
 {
     collapse(doCollapse);
+}
+
+QRectF
+InteractableGraphicsObject::widgetSceneBoundingRect() const
+{
+    // nothing to do
+    return {};
+}
+
+void
+InteractableGraphicsObject::commitPosition()
+{
+    // nothing to do
+}
+
+void
+InteractableGraphicsObject::setupContextMenu(QMenu& menu)
+{
+    Q_UNUSED(menu);
+    // nothing to do
 }
 
 void
@@ -150,7 +182,7 @@ InteractableGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
              ( m_sceneData->snapToGrid && !(event->modifiers() & Qt::AltModifier   ))
             ))
         {
-            QPoint newPos = quantize(m_translationStart, m_sceneData->gridSize);
+            QPoint newPos = utils::quantize(m_translationStart, m_sceneData->gridSize);
 
             // position not changed
             if (newPos == pos()) return event->accept();

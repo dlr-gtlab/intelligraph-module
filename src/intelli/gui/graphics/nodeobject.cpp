@@ -190,6 +190,12 @@ NodeGraphicsObject::nodeId() const
     return pimpl->node->id();
 }
 
+ObjectUuid
+NodeGraphicsObject::objectUuid() const
+{
+    return pimpl->node->uuid();
+}
+
 NodeUIData const&
 NodeGraphicsObject::uiData() const
 {

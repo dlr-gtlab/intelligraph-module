@@ -40,6 +40,12 @@ GuiData::accessLocalStates(Graph& graph)
     return guiData->findDirectChild<LocalStateContainer*>();
 }
 
+LocalStateContainer const*
+GuiData::accessLocalStates(Graph const& graph)
+{
+    return accessLocalStates(const_cast<Graph&>(graph));
+}
+
 CommentGroup*
 GuiData::accessCommentGroup(Graph& graph)
 {
@@ -47,6 +53,12 @@ GuiData::accessCommentGroup(Graph& graph)
     if (!guiData) return {};
 
     return guiData->findDirectChild<CommentGroup*>();
+}
+
+CommentGroup const*
+GuiData::accessCommentGroup(Graph const& graph)
+{
+    return accessCommentGroup(const_cast<Graph&>(graph));
 }
 
 char const* S_COLLAPSED_TYPE_ID = "Collapsed";

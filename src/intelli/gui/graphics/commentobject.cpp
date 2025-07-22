@@ -11,8 +11,7 @@
 #include <intelli/gui/graphics/lineobject.h>
 #include "intelli/gui/graphics/nodeobject.h"
 #include <intelli/gui/style.h>
-#include <intelli/gui/commentobject.h>
-#include <intelli/node.h>
+#include <intelli/gui/commentdata.h>
 #include <intelli/private/utils.h>
 
 #include <gt_application.h>
@@ -161,7 +160,7 @@ protected:
 
 CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
                                              Graph& graph,
-                                             CommentObject& comment,
+                                             CommentData& comment,
                                              GraphSceneData const& data) :
     InteractableGraphicsObject(data, nullptr),
     m_graph(&graph),
@@ -208,12 +207,12 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
 
     connect(this, &InteractableGraphicsObject::objectCollapsed,
             this, &CommentGraphicsObject::onObjectCollapsed);
-
-    connect(m_comment, &CommentObject::commentPositionChanged, this, [this](){
+    
+    connect(m_comment, &CommentData::commentPositionChanged, this, [this](){
         setPos(m_comment->pos());
     }, Qt::DirectConnection);
-
-    connect(m_comment, &CommentObject::commentCollapsedChanged, this,
+    
+    connect(m_comment, &CommentData::commentCollapsedChanged, this,
             [this](bool doCollapse){
         setCollapsed(doCollapse);
     });
@@ -226,17 +225,17 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
 
     // setup comment connections
     scene.addItem(this);
-
-    for (size_t i = 0; i < m_comment->nconnections(); i++)
+    
+    for (size_t i = 0; i < m_comment->nNodeConnections(); i++)
     {
-        onCommentConnectionAppended(m_comment->connectionAt(i));
+        onCommentConnectionAppended(m_comment->nodeConnectionAt(i));
     }
-
-    connect(m_comment, &CommentObject::connectionAppended,
+    
+    connect(m_comment, &CommentData::nodeConnectionAppended,
             this, &CommentGraphicsObject::onCommentConnectionAppended,
             Qt::DirectConnection);
-
-    connect(m_comment, &CommentObject::connectionRemoved,
+    
+    connect(m_comment, &CommentData::nodeConnectionRemoved,
             this, &CommentGraphicsObject::onCommentConnectionRemoved,
             Qt::DirectConnection);
 
@@ -245,17 +244,23 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
 
 CommentGraphicsObject::~CommentGraphicsObject() = default;
 
-CommentObject&
+CommentData&
 CommentGraphicsObject::commentObject()
 {
     assert (m_comment);
     return *m_comment;
 }
 
-CommentObject const&
+CommentData const&
 CommentGraphicsObject::commentObject() const
 {
     return const_cast<CommentGraphicsObject*>(this)->commentObject();
+}
+
+ObjectUuid
+CommentGraphicsObject::objectUuid() const
+{
+    return commentObject().uuid();
 }
 
 GraphicsObject::DeleteOrdering
@@ -414,8 +419,8 @@ CommentGraphicsObject::setupContextMenu(QMenu& menu)
                                           tr("Link comment to %1")
                                               .arg(relativeNodePath(nodeItem->node())));
             Q_UNUSED(cmd);
-
-            commentObject().appendConnection(nodeItem->node().uuid());
+            
+            commentObject().appendNodeConnection(nodeItem->nodeId());
         });
     });
 
@@ -452,9 +457,9 @@ CommentGraphicsObject::resize(QSize diff)
 }
 
 void
-CommentGraphicsObject::onCommentConnectionAppended(ObjectUuid const& objectUuid)
+CommentGraphicsObject::onCommentConnectionAppended(NodeId nodeId)
 {
-    if (m_connections.find(objectUuid) != m_connections.end()) return;
+    if (m_connections.find(nodeId) != m_connections.end()) return;
 
     assert(scene());
 
@@ -466,7 +471,7 @@ CommentGraphicsObject::onCommentConnectionAppended(ObjectUuid const& objectUuid)
         auto* nodeItem = graphics_cast<NodeGraphicsObject*>(item);
         if (!nodeItem) continue;
 
-        if (nodeItem->node().uuid() != objectUuid) continue;
+        if (nodeItem->nodeId() != nodeId) continue;
 
         endItem = nodeItem;
         break;
@@ -484,21 +489,21 @@ CommentGraphicsObject::onCommentConnectionAppended(ObjectUuid const& objectUuid)
         LineGraphicsObject::makeLine(*this, *endItem)
     );
 
-    connect(endItem, &QObject::destroyed, lineItem.get(), [this, objectUuid](){
-        m_comment->removeConnection(objectUuid);
+    connect(endItem, &QObject::destroyed, lineItem.get(), [this, nodeId](){
+        m_comment->removeNodeConnection(nodeId);
     });
-    connect(lineItem, &LineGraphicsObject::deleteRequested, this, [this, objectUuid](){
-        m_comment->removeConnection(objectUuid);
+    connect(lineItem, &LineGraphicsObject::deleteRequested, this, [this, nodeId](){
+        m_comment->removeNodeConnection(nodeId);
     });
 
     scene()->addItem(lineItem);
-    m_connections.insert({objectUuid, std::move(lineItem)});
+    m_connections.insert({nodeId, std::move(lineItem)});
 }
 
 void
-CommentGraphicsObject::onCommentConnectionRemoved(ObjectUuid const& objectUuid)
+CommentGraphicsObject::onCommentConnectionRemoved(NodeId nodeId)
 {
-    auto iter = m_connections.find(objectUuid);
+    auto iter = m_connections.find(nodeId);
     if (iter == m_connections.end()) return;
 
     m_connections.erase(iter);
@@ -562,17 +567,17 @@ CommentGraphicsObject::onObjectCollapsed()
 void
 CommentGraphicsObject::instantiateMissingConnections()
 {
-    if (m_comment->nconnections() == m_connections.size())
+    if (m_comment->nNodeConnections() == m_connections.size())
     {
         m_graph->disconnect(this, SLOT(instantiateMissingConnections()));
     }
-
-    for (size_t i = 0; i < m_comment->nconnections(); i++)
+    
+    for (size_t i = 0; i < m_comment->nNodeConnections(); i++)
     {
-        ObjectUuid const& uuid = m_comment->connectionAt(i);
-        if (m_connections.find(uuid) != m_connections.end()) continue;
+        NodeId nodeId = m_comment->nodeConnectionAt(i);
+        if (m_connections.find(nodeId) != m_connections.end()) continue;
 
         // attempt to instantiate missing connection
-        onCommentConnectionAppended(uuid);
+        onCommentConnectionAppended(nodeId);
     }
 }

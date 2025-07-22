@@ -1002,7 +1002,7 @@ public:
     }
     auto iterateNodes()
     {
-        return iterator_instantiator<const_iterator, NodeProxy<Node>>{begin(), end()};
+        return iterator_instantiator<iterator, NodeProxy<Node>>{begin(), end()};
     }
 
     /**

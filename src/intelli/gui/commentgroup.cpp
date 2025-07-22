@@ -8,25 +8,35 @@
  */
 
 #include <intelli/gui/commentgroup.h>
-#include <intelli/gui/commentobject.h>
+#include <intelli/gui/commentdata.h>
 
 #include <gt_qtutilities.h>
 
 using namespace intelli;
 
+struct CommentGroup::Impl
+{
+    /// List of all comments, used soely for identifying pruposes
+    /// for onObjectDataMerged
+    QVector<void*> comments;
+};
+
 CommentGroup::CommentGroup(GtObject* parent) :
-    GtObjectGroup(parent)
+    GtObjectGroup(parent),
+    pimpl(std::make_unique<Impl>())
 {
     setObjectName(QStringLiteral("comments"));
 }
 
-QList<CommentObject*>
+CommentGroup::~CommentGroup() = default;
+
+QList<CommentData*>
 CommentGroup::comments()
 {
-    return findDirectChildren<CommentObject*>();
+    return findDirectChildren<CommentData*>();
 }
 
-QList<CommentObject const*>
+QList<CommentData const*>
 CommentGroup::comments() const
 {
     return gt::container_const_cast(
@@ -34,20 +44,30 @@ CommentGroup::comments() const
     );
 }
 
-CommentGroup::~CommentGroup() = default;
+CommentData*
+CommentGroup::findCommentByUuid(ObjectUuid const& uuid)
+{
+    return qobject_cast<CommentData*>(getObjectByUuid(uuid));
+}
 
-CommentObject*
-CommentGroup::appendComment(std::unique_ptr<CommentObject> comment)
+CommentData const*
+CommentGroup::findCommentByUuid(ObjectUuid const& uuid) const
+{
+    return qobject_cast<CommentData const*>(getObjectByUuid(uuid));
+}
+
+CommentData*
+CommentGroup::appendComment(std::unique_ptr<CommentData> comment)
 {
     if (!appendChild(comment.get())) return {};
-
-    connect(comment.get(), &CommentObject::aboutToBeDeleted,
+    
+    connect(comment.get(), &CommentData::aboutToBeDeleted,
             this, [this, c = comment.get()](){
-        m_comments.removeOne(c);
+        pimpl->comments.removeOne(c);
         emit commentAboutToBeDeleted(c);
     });
 
-    m_comments.append(comment.get());
+    pimpl->comments.append(comment.get());
     emit commentAppended(comment.get());
 
     return comment.release();
@@ -61,9 +81,9 @@ CommentGroup::onObjectDataMerged()
     auto const& comments = this->comments();
     for (auto* comment : comments)
     {
-        if (m_comments.contains(comment)) continue;
-
-        std::unique_ptr<CommentObject> ptr{comment};
+        if (pimpl->comments.contains(comment)) continue;
+        
+        std::unique_ptr<CommentData> ptr{comment};
         ptr->setParent(nullptr);
 
         appendComment(std::move(ptr));

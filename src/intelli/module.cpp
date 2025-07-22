@@ -24,7 +24,7 @@
 #include "intelli/node/logicoperation.h"
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/gui/commentgroup.h"
-#include "intelli/gui/commentobject.h"
+#include "intelli/gui/commentdata.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/guidata.h"
 #include "intelli/gui/nodeui.h"
@@ -205,7 +205,7 @@ GtIntelliGraphModule::data()
     list << GT_METADATA(LocalStateContainer);
 
     list << GT_METADATA(CommentGroup);
-    list << GT_METADATA(CommentObject);
+    list << GT_METADATA(CommentData);
 
     return list;
 }
@@ -280,7 +280,7 @@ GtIntelliGraphModule::uiItems()
 
     map.insert(GT_CLASSNAME(CommentGroup),
                GT_METADATA(CommentUI));
-    map.insert(GT_CLASSNAME(CommentObject),
+    map.insert(GT_CLASSNAME(CommentData),
                GT_METADATA(CommentUI));
 
     map.insert(GT_CLASSNAME(LogicNode),

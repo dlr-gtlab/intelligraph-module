@@ -14,10 +14,11 @@
 #include <intelli/connection.h>
 #include <intelli/nodefactory.h>
 #include <intelli/nodedatafactory.h>
+#include <intelli/utilities.h>
 #include <intelli/node/groupinputprovider.h>
 #include <intelli/node/groupoutputprovider.h>
 #include <intelli/gui/commentgroup.h>
-#include <intelli/gui/commentobject.h>
+#include <intelli/gui/commentdata.h>
 #include <intelli/gui/guidata.h>
 #include <intelli/gui/nodeui.h>
 #include <intelli/gui/nodegeometry.h>
@@ -134,7 +135,7 @@ findObjectById(ConnectionId conId)
 
 // TODO: description
 static auto
-findObjectById(CommentObject* comment)
+findObjectById(CommentData* comment)
 {
     return [uuid = comment->uuid()](CommentEntry const& e){
         return e.uuid == uuid;
@@ -402,58 +403,20 @@ collapseObjects(GraphScene& scene,
 static bool
 copySelectionTo(GraphScene& scene, Graph& dummy)
 {
-    auto selectedNodes = Impl::findSelectedItems<NodeGraphicsObject*>(scene);
-    if (selectedNodes.empty()) return false;
+    auto selectedObjects= Impl::findSelectedItems<InteractableGraphicsObject*>(scene);
+    if (selectedObjects.empty()) return false;
 
-    // remove unqiue nodes
-    auto const isUnique = [](NodeGraphicsObject const* o){
-        return o->node().nodeFlags() & NodeFlag::Unique;
-    };
+    QVector<ObjectUuid> selection;
 
-    selectedNodes.erase(
-        std::remove_if(selectedNodes.begin(),
-                       selectedNodes.end(),
-                       isUnique),
-        selectedNodes.end());
+    std::transform(selectedObjects.begin(),
+                   selectedObjects.end(),
+                   std::back_inserter(selection),
+                   [](InteractableGraphicsObject* object){
+        assert(object);
+        return object->objectUuid();
+    });
 
-    // remove not deletable nodes
-    selectedNodes.erase(
-        std::remove_if(selectedNodes.begin(),
-                       selectedNodes.end(),
-                       isNotDeletable),
-        selectedNodes.end());
-
-    // at least one node should be selected
-    if (selectedNodes.empty()) return false;
-
-    auto selectedCons = Impl::findSelectedItems<ConnectionGraphicsObject*>(scene);
-
-    // only duplicate internal connections
-    auto const isExternalConnection = [&selectedNodes](ConnectionGraphicsObject const* o){
-        auto con = o->connectionId();
-        return !containsNodeId(con.inNodeId, selectedNodes) ||
-               !containsNodeId(con.outNodeId, selectedNodes);
-    };
-
-    selectedCons.erase(
-        std::remove_if(selectedCons.begin(),
-                       selectedCons.end(),
-                       isExternalConnection),
-        selectedCons.end());
-
-    // append nodes and connections to dummy graph
-    bool success = true;
-    for (auto* o : qAsConst(selectedNodes))
-    {
-        success &= !!dummy.appendNode(makeCopy(o->node()));
-    }
-    for (auto* o : qAsConst(selectedCons))
-    {
-        auto con = o->connection();
-        assert(con);
-        success &= !!dummy.appendConnection(makeCopy(*con));
-    }
-    return success;
+    return utils::copyObjectsToGraph(scene.graph(), selection, dummy);
 }
 
 /**
@@ -466,64 +429,20 @@ copySelectionTo(GraphScene& scene, Graph& dummy)
 static bool
 pasteFrom(GraphScene& scene, Graph& dummy)
 {
-    // regenerate uuids
-    dummy.newUuid(true);
-    dummy.resetGlobalConnectionModel();
+    scene.clearSelection();
 
-    auto& conModel = dummy.connectionModel();
-    if (conModel.empty()) return false;
-
-    auto nodes = dummy.nodes();
-    bool hasConnections = conModel.hasConnections();
-
-    // shift node positions
-    constexpr QPointF offset{50, 50};
-    for (auto& entry : conModel)
-    {
-        Node* node = entry.node;
-        node->setPos(node->pos() + offset);
-    }
-
+    // shift all new objects and make them selected
+    auto scope = utils::connectScoped(&scene, &GraphScene::objectAdded,
+                                      &scene, [](InteractableGraphicsObject* object){
+        object->shiftBy(50, 50);
+        object->commitPosition();
+        object->setSelected(true);
+    });
+    Q_UNUSED(scope);
     auto cmd = gtApp->makeCommand(&scene.graph(), tr("Paste objects"));
     Q_UNUSED(cmd);
 
-    // append objects
-    bool success = dummy.moveNodesAndConnections(nodes, scene.graph());
-    if (!success)
-    {
-        gtWarning() << tr("Pasting selection failed!");
-
-        // restore previous state
-        cmd.finalize();
-        gtApp->undoStack()->undo();
-        return false;
-    }
-
-    // find affected graphics objects and set selection
-    scene.clearSelection();
-
-    auto nodeObjects = Impl::findItems<NodeGraphicsObject*>(scene);
-    for (auto* nodeObj : qAsConst(nodeObjects))
-    {
-        if (containsNodeId(nodeObj->nodeId(), nodes))
-        {
-            nodeObj->setSelected(true);
-        }
-    }
-
-    if (!hasConnections) return true;
-
-    auto connectionObjects = Impl::findItems<ConnectionGraphicsObject*>(scene);
-    for (auto* conObj : qAsConst(connectionObjects))
-    {
-        auto conId = conObj->connectionId();
-        if (containsNodeId(conId.inNodeId, nodes) &&
-            containsNodeId(conId.outNodeId, nodes))
-        {
-            conObj->setSelected(true);
-        }
-    }
-    return true;
+    return utils::moveObjectsToGraph(dummy, scene.graph());
 }
 
 }; // struct Impl
@@ -791,15 +710,15 @@ GraphScene::createSceneMenu(QPointF scenePos)
     connect(buttonAction, &QAction::triggered, menu, [this, menu, scenePos]() {
         auto* commentGroup = GuiData::accessCommentGroup(graph());
         if (!commentGroup) return;
-
-        auto commentPtr = std::make_unique<CommentObject>();
+        
+        auto commentPtr = std::make_unique<CommentData>();
         commentPtr->setPos(scenePos);
 
         auto cmd = gtApp->makeCommand(m_graph, tr("Append comment '%1'")
                                                    .arg(commentPtr->objectName()));
         Q_UNUSED(cmd);
-
-        CommentObject* comment = commentGroup->appendComment(std::move(commentPtr));
+        
+        CommentData* comment = commentGroup->appendComment(std::move(commentPtr));
         if (!comment) return;
 
         // start editing comment
@@ -842,7 +761,7 @@ GraphScene::deleteSelectedObjects()
 {
     /// std::erase_if wrapper
     static auto const eraseByFlag = [](QList<QGraphicsItem*>& selected,
-                                           GraphicsObject::DeletableFlag flag){
+                                       GraphicsObject::DeletableFlag flag){
         return std::partition(selected.begin(),
                               selected.end(),
                               [flag](QGraphicsItem* item){
@@ -1531,7 +1450,7 @@ GraphScene::expandGroupNode(Graph* groupNode)
     }
 
     // move internal connections
-    if (!groupNode->moveNodesAndConnections(nodes, *m_graph))
+    if (!groupNode->moveNodesAndConnections(gt::container_const_cast(nodes), *m_graph))
     {
         gtError() << tr("Expanding group node '%1' failed! "
                         "(Failed to move internal nodes)")
@@ -1615,8 +1534,12 @@ GraphScene::onNodeAppended(Node* node)
             this, &GraphScene::onMakeDraftConnection,
             Qt::DirectConnection);
 
+    auto* ptr = entity.get();
+
     // append to map
     m_nodes.push_back({node->id(), std::move(entity)});
+
+    emit objectAdded(ptr, QPrivateSignal());
 }
 
 void
@@ -1735,7 +1658,7 @@ GraphScene::onFinalizeDraftConnection(ConnectionId conId)
 }
 
 void
-GraphScene::onCommentAppended(CommentObject* comment)
+GraphScene::onCommentAppended(CommentData* comment)
 {
     assert(comment);
 
@@ -1749,14 +1672,15 @@ GraphScene::onCommentAppended(CommentObject* comment)
     connect(entity, &CommentGraphicsObject::contextMenuRequested,
             this, &GraphScene::onObjectContextMenu, Qt::DirectConnection);
 
-    // add to scene
-    addItem(entity);
+    auto* ptr = entity.get();
 
     m_comments.push_back({comment->uuid(), std::move(entity)});
+
+    emit objectAdded(ptr, QPrivateSignal());
 }
 
 void
-GraphScene::onCommentDeleted(CommentObject* comment)
+GraphScene::onCommentDeleted(CommentData* comment)
 {
     auto iter = std::find_if(m_comments.begin(),
                              m_comments.end(),

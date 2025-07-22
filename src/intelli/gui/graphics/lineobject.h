@@ -20,6 +20,7 @@
 namespace intelli
 {
 
+// TODO: description
 class GT_INTELLI_TEST_EXPORT LineGraphicsObject : public GraphicsObject
 {
     Q_OBJECT

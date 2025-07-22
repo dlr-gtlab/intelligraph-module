@@ -1,7 +1,8 @@
 /*
  * GTlab IntelliGraph
  *
- *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-License-Identifier: BSD-3-Clause AND LicenseRef-BSD-3-Clause-Dimitri
+ *  SPDX-FileCopyrightText: 2022 Dimitri Pinaev
  *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>

@@ -17,6 +17,8 @@
 namespace intelli
 {
 
+class Graph;
+
 /**
  * @brief The InteractableGraphicsObject class.
  * Base class for all graph scene objects that should be moveable, resizeable,
@@ -26,6 +28,8 @@ namespace intelli
 class GT_INTELLI_EXPORT InteractableGraphicsObject : public GraphicsObject
 {
     Q_OBJECT
+
+    using GraphicsObject::moveBy;
 
 public:
 
@@ -49,8 +53,17 @@ public:
 
     size_t interactionFlags() { return m_flags; }
 
+    /**
+     * @brief Shifts (i.e. moves) the object by x and y respectively.
+     * Object may not be shifted if the `AllowTranslation` flag is not set
+     * @param x X difference
+     * @param y Y difference
+     */
     void shiftBy(double x, double y);
 
+    /**
+     * @brief Aligns the object to the grid
+     */
     void alignToGrid();
 
     /**
@@ -58,13 +71,13 @@ public:
      * grants access to scene specific properties.
      * @return Scene data.
      */
-    inline GraphSceneData const& sceneData() const { return *m_sceneData; }
+    GraphSceneData const& sceneData() const;
 
     /**
      * @brief Returns whether this node is collapsed (node's body is hidden).
      * @return Is collapsed
      */
-    inline bool isCollapsed() const { return m_collapsed; }
+    bool isCollapsed() const;
 
     /**
      * @brief Sets the collapsed state of this objects (hides this object's body).
@@ -73,14 +86,25 @@ public:
     void collapse(bool doCollapse = true);
     void setCollapsed(bool doCollapse = true);
 
-    virtual QRectF widgetSceneBoundingRect() const { return {}; }
+    /**
+     * @brief Returns the bounding rect of the main widget in scene-coordianates
+     * May return an invalid rect if no widget is available
+     * @return Scene bounding rect of the main widget
+     */
+    virtual QRectF widgetSceneBoundingRect() const;
+
+    virtual ObjectUuid objectUuid() const = 0;
 
     /**
      * @brief Commits the position of this object to the associated node
      */
-    virtual void commitPosition() {}
+    virtual void commitPosition();
 
-    virtual void setupContextMenu(QMenu&) { }
+    /**
+     * @brief Appends actions for the context menu
+     * @param menu Menu
+     */
+    virtual void setupContextMenu(QMenu& menu);
 
 protected:
 

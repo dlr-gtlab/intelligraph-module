@@ -34,8 +34,10 @@ public:
     Q_INVOKABLE GuiData(GtObject* parent = nullptr);
 
     static LocalStateContainer* accessLocalStates(Graph& graph);
+    static LocalStateContainer const* accessLocalStates(Graph const& graph);
 
     static CommentGroup* accessCommentGroup(Graph& graph);
+    static CommentGroup const* accessCommentGroup(Graph const& graph);
 };
 
 /**

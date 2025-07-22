@@ -31,7 +31,7 @@ class Graph;
 class GraphSceneData;
 class Connection;
 class ConnectionGraphicsObject;
-class CommentObject;
+class CommentData;
 class CommentGraphicsObject;
 
 class GraphScene : public GtGraphicsScene
@@ -100,21 +100,18 @@ public slots:
     /**
      * @brief Duplicates the selection. If no objects are selected, no action is
      * performed. Creates an undo-redo command.
-     * TODO: Not applied to comments
      */
     void duplicateSelectedObjects();
 
     /**
      * @brief Copies the selection to the clipboard. If no objects are selected,
      * no action is performed.
-     * TODO: Not applied to comments
      */
     bool copySelectedObjects();
 
     /**
      * @brief Pastes the selection from the clipboard. Creates an undo-redo
      * command.
-     * TODO: Not applied to comments
      */
     void pasteObjects();
 
@@ -125,6 +122,8 @@ signals:
     void connectionShapeChanged();
 
     void snapToGridChanged();
+
+    void objectAdded(InteractableGraphicsObject* object, QPrivateSignal);
 
 protected:
 
@@ -208,10 +207,10 @@ private slots:
                                PortId portId);
 
     void onFinalizeDraftConnection(ConnectionId conId);
-
-    void onCommentAppended(CommentObject* comment);
-
-    void onCommentDeleted(CommentObject* comment);
+    
+    void onCommentAppended(CommentData* comment);
+    
+    void onCommentDeleted(CommentData* comment);
 
     void onPortContextMenu(NodeGraphicsObject* object, PortId portId);
 

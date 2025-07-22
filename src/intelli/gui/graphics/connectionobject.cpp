@@ -42,7 +42,7 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(QGraphicsScene& scene,
     // object ptr should be valid if the connection is valid
     assert((!!m_object) == !isDraft());
     // if connection is draft only node should be valid
-    assert((!!m_outNode ^ !!m_inNode) == isDraft());
+    assert(((!!m_outNode) ^ (!!m_inNode)) == isDraft());
 
     scene.addItem(this);
 
