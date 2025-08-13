@@ -18,7 +18,12 @@
 namespace intelli
 {
 
-// TODO: description
+/**
+ * @brief Helper function that creates a unqiue type-id based on the given
+ * `Pattern` that supports casting a `QGraphicsItem` not only to its acutal
+ * derived type but also any base type that is a base of `GraphicsObject`.
+ * @return Graphics Type id
+ */
 template <size_t Pattern>
 static constexpr unsigned make_graphics_type()
 {
@@ -40,7 +45,11 @@ static constexpr unsigned make_graphics_type()
     return (graphics_base_type | Pattern) << (end_of_user_type + 1);
 }
 
-// TODO: description
+/**
+ * @brief Helper function that creates a unqiue type-id based on the
+ * `ItemType` enum and the base class of the current object.
+ * @return Graphics Type id
+ */
 template <GraphicsItemType ItemType, typename BaseClass>
 static constexpr unsigned make_graphics_type()
 {
@@ -48,7 +57,14 @@ static constexpr unsigned make_graphics_type()
            (unsigned)BaseClass::Type;
 }
 
-// TODO: description
+/**
+ * @brief Improvement over `qgraphicsitem_cast` as this casting function allows
+ * to cast a `QGraphicsItem` not only to the actual derived type but also any
+ * intermediate base type upto `GraphicsObject`. `T` must contain a valid
+ * graphics type id.
+ * @param u Type that should be casted to `T`
+ * @return Pointer casted to `T`, returns null if `U` is not comatible to `T`.
+ */
 template <typename T,
           typename U,
           typename T_decay = std::remove_pointer_t<T>,
@@ -80,7 +96,14 @@ T_decay const* graphics_cast(U const* u)
     return graphics_cast<T_decay const*>(u);
 }
 
-// TODO: description
+/**
+ * @brief The GraphicsObject class. Base class for all Graphics Objects
+ * related to IntelliGraphs.
+ *
+ * Grpahic objects can use `graphics_cast` for casting a `QGraphicsItem` with
+ * little overhead to the desired class type. For this pupose `type` must be
+ * implemented using `make_graphics_type`.
+ */
 class GT_INTELLI_EXPORT GraphicsObject : public QGraphicsObject
 {
     Q_OBJECT

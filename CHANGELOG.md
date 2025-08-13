@@ -5,8 +5,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+*This release is not ABI compatible with `0.14.0` and introduces small API changes*
+
 ### Added
 - Nodes can now be collapsed using the node's context menu. Collapsed nodes only consists of the node's header, reducing visual clutter. - #282
+- Comments can now be embedded into a graph scene. Comments may either be standalone or may be linked to nodes using the comment's context menu. Comments support markdown. - #65
+
+### Changed
+- Copying nodes will now always copy connections inbetween the selected nodes, regardless of
+  whether the connections were selected or not.
+- *Internal:* Moved utility functions from `intelli/globals.h` to `intelli/utilities.h`.
+- *Internal:* Implemented copy, move, and group functions in `intelli/graphutilities.h`.
+- *Internal:* Major refactoring of graph scene and related graphics objects.
+
+### Fixed
+- fixed a bug where small mouse movements would not cause the widget to resize. - #288
 
 ## [0.14.0] - 2025-04-04
 *This release is considered ABI compatible with `0.13.0`*

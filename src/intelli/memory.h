@@ -111,12 +111,14 @@ private:
     QPointer<T> m_ptr;
 };
 
+/// Instantiates a new object of type `T` and returns a unqiue_qptr handle
 template <typename T, typename Deleter = DeferredDeleter, typename ...Args>
 inline unique_qptr<T, Deleter> make_unique_qptr(Args&&... args) noexcept
 {
     return unique_qptr<T, Deleter>(new T{std::forward<Args>(args)...});
 }
 
+/// Converts a unique_ptr type to a unqiue_qptr handle
 template <typename Deleter = DeferredDeleter, typename Pointer, typename T = std::remove_pointer_t<typename Pointer::pointer>>
 inline unique_qptr<T, Deleter> convert_to_unique_qptr(Pointer pointer) noexcept
 {

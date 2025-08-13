@@ -207,12 +207,24 @@ protected:
     PortUIAction& addPortAction(QString const& actionText,
                                 PortActionFunction actionMethod);
 
-    // TODO: description
+    /**
+     * @brief Allows to register a dedicated delete action that will be called
+     * when invoked by the user (i.e. in a GraphicsScene instance).
+     * @param actionText Name of the delete action
+     * @param deleteFunctor Deletion action
+     * @param isDeletable Functor that yields whether the delete action is
+     * enabled.
+     */
     void addCustomDeleteAction(QString const& actionText,
                                CustomDeleteFunctor deleteFunctor,
                                EnableCustomDeleteFunctor isDeletable);
 
-    // TODO: description
+    /**
+     * @brief Overload, that uses a default name for the delete action.
+     * @param deleteFunctor Deletion action
+     * @param isDeletable Functor that yields whether the delete action is
+     * enabled.
+     */
     void addCustomDeleteAction(CustomDeleteFunctor deleteFunctor,
                                EnableCustomDeleteFunctor isDeletable);
 

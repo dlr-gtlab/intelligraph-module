@@ -20,7 +20,12 @@
 namespace intelli
 {
 
-// TODO: description
+/**
+ * @brief The LineGraphicsObject class.
+ * Graphics object that is used for rendering a line between two objects of
+ * type `InteractableGraphicsObject`. A mask can be set, to only allow
+ * connections to to objects with the correct type id (GraphicsObject::type)
+ */
 class GT_INTELLI_TEST_EXPORT LineGraphicsObject : public GraphicsObject
 {
     Q_OBJECT
@@ -96,7 +101,8 @@ private:
     ConnectionGeometry m_geometry;
     /// Start and end point
     QPointF m_start, m_end;
-    // TODO: description
+    /// Mask to only allow connections to objects with the correct type id
+    /// (GraphicsObject::type)
     size_t m_mask{};
 
     LineGraphicsObject(InteractableGraphicsObject const& start,

@@ -134,7 +134,10 @@ findObjectById(ConnectionId conId)
     };
 }
 
-// TODO: description
+/**
+ * @brief Returns a functor that searches for the targeted `comment`
+ * @param nodeId
+ */
 static auto
 findObjectById(CommentData* comment)
 {

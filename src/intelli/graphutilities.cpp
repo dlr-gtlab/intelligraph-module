@@ -488,8 +488,8 @@ Graph* groupObjects(Graph& source,
     QPolygonF selectionPoly;
     std::transform(nodes.begin(), nodes.end(),
                    std::back_inserter(selectionPoly), [](auto const* node){
-                       return node->pos();
-                   });
+        return node->pos();
+    });
 
     auto boundingRect = selectionPoly.boundingRect();
     auto center = boundingRect.center();
@@ -787,7 +787,7 @@ utils::expandSubgraph(std::unique_ptr<Graph> groupNode)
         node->setPos(groupNode->pos() + offset);
     }
 
-    // move internal connections
+    // move objects
     if (!moveObjectsToGraph(*groupNode, *targetGraph))
     {
         gtError() << makeError

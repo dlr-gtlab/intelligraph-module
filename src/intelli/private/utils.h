@@ -34,7 +34,7 @@ intelli::Profiler profiler__{X}; (void)profiler__;
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& data)
 {
-    // TODO: remove me, for debuggin purposes only
+    // TODO: remove me, for debugging purposes only
     if (auto* d = qobject_cast<intelli::DoubleData const*>(data.get()))
     {
         gt::log::StreamStateSaver saver(s);
