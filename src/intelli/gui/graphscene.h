@@ -167,12 +167,11 @@ private:
     GtCommand m_objectMoveCmd = {};
 
     /**
-     * @brief Groups the selected nodes by moving the into a subgraph.
+     * @brief Groups the selected objects by moving them into a subgraph.
      * Instantiates ingoing and outgoing connections. Nodes and internal
      * connections are preserved.
-     * @param selectedNodeObjects Nodes that should be grouped
      */
-    void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
+    void groupSelection();
 
     /**
      * @brief Expands the selected subgraph. Its nodes and internal
@@ -180,7 +179,7 @@ private:
      * Instantiates ingoing and outgoing connections.
      * @param groupNode Subgraph that should be expanded
      */
-    void expandGroupNode(Graph* groupNode);
+    void expandSubgraph(Graph* groupNode);
 
 private slots:
 

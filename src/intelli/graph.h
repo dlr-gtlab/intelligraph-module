@@ -122,9 +122,9 @@ public:
     using Node::portId;
 
     /**
-     * @brief Overload that accepts a node. Will search for the node and return
-     * the port id of the port specified port its type and index. An invalid
-     * port id is returned if the node was not found or the port is out of bounds.
+     * @brief Overload. Attempts to find the port id for the given node, the
+     * given port type and the given port index. An invalid port id is returned
+     * if the node was not found or the port is out of bounds.
      * @param nodeId Node to access port id of
      * @param type Port type
      * @param portIdx Port index

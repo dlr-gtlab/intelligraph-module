@@ -401,8 +401,8 @@ Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
         return invalid<PortId>();
     }
 
-    auto port = node->portId(type, portIdx);
-    if (port == invalid<PortId>())
+    PortId portId = node->portId(type, portIdx);
+    if (portId == invalid<PortId>())
     {
         gtWarning() << utils::logId(*this) << makeError()
                     << tr("(port idx %1 of type %2 out of bounds)")
@@ -410,7 +410,7 @@ Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
         return invalid<PortId>();
     }
 
-    return port;
+    return portId;
 }
 
 NodeId

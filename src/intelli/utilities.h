@@ -10,16 +10,12 @@
 #ifndef GT_INTELLI_UTILITIES_H
 #define GT_INTELLI_UTILITIES_H
 
-#include <intelli/exports.h>
 #include <intelli/globals.h>
-#include <intelli/view.h>
 
 #include <gt_finally.h>
 
 namespace intelli
 {
-
-class Graph;
 
 namespace utils
 {
@@ -140,46 +136,6 @@ inline auto connectScoped(Sender sender, SignalSender signalSender,
         sender->disconnect(connection);
     });
 }
-
-/**
- * @brief Copies the object given their uuid from the source graph to the
- * target graph. The original objects are not deleted. The selected objects
- * may include nodes and comments. All connections inbetween nodes are copied
- * even if they are not selected. Copied objects are assigned a new UUID.
- *
- * @param source Source graph. Selected objects are only copied and remain in
- * the source graph.
- * @param selection Vector-like list of uuids to copy
- * @param target Target graph
- * @return Success
- */
-GT_INTELLI_EXPORT
-bool copyObjectsToGraph(Graph const& source, View<ObjectUuid> selection, Graph& target);
-
-/**
- * @brief Overload that copies all objects from the source graph to the target
- * graph.
- *
- * @param source Source graph. Objects are only copied and remain in
- * the source graph.
- * @param target Target graph
- * @return Success
- */
-GT_INTELLI_EXPORT
-bool copyObjectsToGraph(Graph const& source, Graph& target);
-
-GT_INTELLI_EXPORT
-bool moveObjectsToGraph(Graph& source, View<ObjectUuid> selection, Graph& target);
-
-/**
- * @brief Moves all objects from the source graph to the target graph.
- * @param source Source graph. Objects are moved and thus do not remain in
- * the source graph.
- * @param target Target graph
- * @return Success
- */
-GT_INTELLI_EXPORT
-bool moveObjectsToGraph(Graph& source, Graph& target);
 
 } // namespace utils
 

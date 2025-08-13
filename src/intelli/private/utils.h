@@ -58,6 +58,8 @@ template<typename T>
 struct apply_const<true, T> { using type = std::add_const_t<T>; };
 template<typename T>
 struct apply_const<false, T> { using type = std::remove_const_t<T>; };
+template<bool IsConst, typename T>
+using apply_const_t = typename apply_const<IsConst, T>::type;
 
 /// wrapper to apply const to `T` if `IsConst` is true
 template<bool IsConst, typename T>
