@@ -21,12 +21,14 @@
 
 #include <gt_logging.h>
 
-#include <QCoreApplication>
 #include <QMenu>
+#include <QCoreApplication>
 #include <QGraphicsSceneWheelEvent>
 #include <QGraphicsWidget>
-#include <QWheelEvent>
 #include <QPrinter>
+#include <QWheelEvent>
+#include <QGestureEvent>
+#include <QPinchGesture>
 
 #include <cmath>
 
@@ -59,7 +61,7 @@ static InteractableGraphicsObject* locateObject(QPointF scenePoint,
 }; // Impl
 
 GraphView::GraphView(QWidget* parent) :
-    GtGraphicsView(nullptr, parent)
+    QGraphicsView(nullptr, parent)
 {
 
     setDragMode(QGraphicsView::ScrollHandDrag);
@@ -86,14 +88,14 @@ GraphView::GraphView(QWidget* parent) :
     setSceneRect(-maxSize, -maxSize, (maxSize * 2), (maxSize * 2));
 
     /* GRID */
-    auto* grid = new GtGrid(*this);
-    setGrid(grid);
-    grid->setHorizontalGridLineColor(style.gridline);
-    grid->setVerticalGridLineColor(style.gridline);
-    grid->setShowAxis(false);
-    // controls minor and major lines
-    grid->setGridHeight(s_major_grid_size);
-    grid->setGridWidth(s_major_grid_size);
+    // auto* grid = new GtGrid(*this);
+    // setGrid(grid);
+    // grid->setHorizontalGridLineColor(style.gridline);
+    // grid->setVerticalGridLineColor(style.gridline);
+    // grid->setShowAxis(false);
+    // // controls minor and major lines
+    // grid->setGridHeight(s_major_grid_size);
+    // grid->setGridWidth(s_major_grid_size);
 
     showGrid(true);
 
@@ -141,6 +143,8 @@ GraphView::GraphView(QWidget* parent) :
                                                  &GraphScene::clearSelection);
     clearSelectionAction->setIcon(gt::gui::icon::clear());
     clearSelectionAction->setShortcut(Qt::Key_Escape);
+
+    grabGesture(Qt::GestureType::PinchGesture);
 }
 
 GraphView::~GraphView() = default;
@@ -210,8 +214,8 @@ GraphView::showGrid(bool show)
     if (m_gridVisible == show) return;
 
     m_gridVisible = show;
-    resetCachedContent();
-    grid()->showGrid(show);
+    // resetCachedContent();
+    // grid()->showGrid(show);
     emit gridVisibilityChanged();
 }
 
@@ -460,20 +464,87 @@ GraphView::mousePressEvent(QMouseEvent* event)
 void
 GraphView::mouseMoveEvent(QMouseEvent* event)
 {
+// (adapted)
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
 // SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     QGraphicsView::mouseMoveEvent(event);
-    if (scene() && !scene()->mouseGrabberItem() && event->buttons() & Qt::LeftButton)
+    auto* s = this->scene();
+    if (!s || s->mouseGrabberItem() || !m_handleMouseMovement) return;
+
+    // Make sure were are not in selection mode
+    if (event->modifiers() & Qt::ShiftModifier) return;
+
+    if (event->buttons() & Qt::LeftButton)
     {
-        // Make sure shift is not being pressed
-        if (!(event->modifiers() & Qt::ShiftModifier))
-        {
-            QPointF difference = m_panPosition - mapToScene(event->pos());
-            setSceneRect(sceneRect().translated(difference.x(), difference.y()));
-        }
+        QPointF difference = m_panPosition - mapToScene(event->pos());
+        s->addRect(m_panPosition.x() + difference.x(), m_panPosition.y() + difference.y(), 5, 5, QPen{Qt::yellow});
+        panView(difference);
     }
 // SPDX-SnippetEnd
+}
+
+bool
+GraphView::event(QEvent* event)
+{
+    switch (event->type())
+    {
+    case QEvent::Gesture:
+        auto* gesture = static_cast<QGestureEvent*>(event);
+        return gestureEvent(gesture);
+    }
+    return QGraphicsView::event(event);
+}
+
+bool
+GraphView::gestureEvent(QGestureEvent* event)
+{
+    if (!scene()) return false;
+
+    if (QGesture* gesture = event->gesture(Qt::PinchGesture))
+    {
+        auto* pinch = static_cast<QPinchGesture*>(gesture);
+
+        gtDebug() << "PINCH:" << pinch->state() << "\n"
+                  << "scale: " << pinch->scaleFactor() - pinch->lastScaleFactor() << "\n"
+                  << "center:" << pinch->centerPoint() - pinch->lastCenterPoint();
+
+        switch (pinch->state())
+        {
+        case Qt::GestureStarted:
+            m_handleMouseMovement = false;
+            // m_panPosition = pinch->centerPoint().toPoint();
+            break;
+        case Qt::GestureUpdated:
+        {
+            QTransform t = transform();
+            t.scale(pinch->scaleFactor(), pinch->scaleFactor());
+            setScale(t.m11());
+
+            // auto local = mapToScene(mapFromGlobal(pinch->centerPoint()));
+            auto diff = pinch->lastCenterPoint() - pinch->centerPoint();
+            // mapFromGlobal(pinch->centerPoint().toPoint());
+            // scene()->addRect(local.x(), local.y(), 5, 5, QPen{Qt::red});
+
+            // QPointF diff = pinch->startCenterPoint() - pinch->centerPoint();
+            // panView(diff * 100);
+            break;
+        }
+        case Qt::GestureCanceled:
+        case Qt::GestureFinished:
+            m_handleMouseMovement = true;
+            break;
+        }
+
+        return true;
+    }
+    return false;
+}
+
+void
+GraphView::panView(QPointF delta)
+{
+    setSceneRect(sceneRect().translated(delta.x(), delta.y()));
 }
 
 GraphScene*
