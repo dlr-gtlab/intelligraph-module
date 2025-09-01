@@ -364,9 +364,9 @@ moveObjectsToGraph(Graph& source,
                 continue;
             }
 
-            size_t idx = std::distance(originalNodeIds.begin(), iter);
-            assert(idx < nodes.size());
-            Node const* node = nodes.at(idx);
+            size_t pos = std::distance(originalNodeIds.begin(), iter);
+            assert(pos < nodes.size());
+            Node const* node = nodes.at(pos);
             if (nodeId == node->id()) // node id has not changed
             {
                 idx++;
