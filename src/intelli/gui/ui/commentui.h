@@ -7,25 +7,25 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef GT_INTELLI_GUIDATAUI_H
-#define GT_INTELLI_GUIDATAUI_H
+#ifndef GT_INTELLI_COMMENTUI_H
+#define GT_INTELLI_COMMENTUI_H
 
 #include <gt_objectui.h>
 
 namespace intelli
 {
 
-class GuiDataUI : public GtObjectUI
+class CommentUI : public GtObjectUI
 {
     Q_OBJECT
 
 public:
 
-    Q_INVOKABLE GuiDataUI();
+    Q_INVOKABLE CommentUI();
 
     QIcon icon(GtObject* obj) const override;
 };
 
-} // namespace intelli
+} // namespace intelli;
 
-#endif // GT_INTELLI_GUIDATAUI_H
+#endif // GT_INTELLI_COMMENTUI_H

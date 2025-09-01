@@ -10,56 +10,155 @@
 
 #include <intelli/gui/graphics/connectionobject.h>
 #include <intelli/gui/graphics/nodeobject.h>
+#include <intelli/gui/connectionpainter.h>
+#include <intelli/gui/nodegeometry.h>
+#include <intelli/graph.h>
+#include <intelli/node.h>
 
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsSceneMouseEvent>
+#include <QGraphicsScene>
+
+constexpr QPointF s_connection_distance{5, 5};
 
 using namespace intelli;
 
-ConnectionGraphicsObject::ConnectionGraphicsObject(ConnectionId connection,
-                                                   TypeId outType,
-                                                   TypeId inType) :
-    m_connection(connection),
-    m_startType(std::move(outType)),
-    m_endType(std::move(inType))
+ConnectionGraphicsObject::ConnectionGraphicsObject(QGraphicsScene& scene,
+                                                   Connection* object,
+                                                   ConnectionId connection,
+                                                   NodeGraphicsObject const* outNodeObj,
+                                                   NodeGraphicsObject const* inNodeObj) :
+    m_object(object),
+    m_outNode(outNodeObj),
+    m_inNode(inNodeObj),
+    m_connection(connection)
 {
-    setFlag(QGraphicsItem::ItemIsFocusable, true);
     setFlag(QGraphicsItem::ItemIsSelectable, true);
 
     setAcceptHoverEvents(true);
 
-    setZValue(style::zValue(connection.isDraft() ?
+    // object ptr should be valid if the connection is valid
+    assert((!!m_object) == !isDraft());
+    // if connection is draft only node should be valid
+    assert(((!!m_outNode) ^ (!!m_inNode)) == isDraft());
+
+    scene.addItem(this);
+
+    if (isDraft()) grabMouse();
+
+    setZValue(style::zValue(isDraft() ?
                                 style::ZValue::DraftConnection :
                                 style::ZValue::Connection));
+
+    connect(this, &GraphicsObject::hoveredChanged, this, [this](){
+        return setZValue(style::zValue(isHovered() ?
+                                           style::ZValue::ConnectionHovered :
+                                           style::ZValue::Connection));
+    });
+
+    // update type ids if port changes to make sure connections stay updated
+    for (auto pair : {std::make_pair(outNodeObj, PortType::Out),
+                      std::make_pair(inNodeObj , PortType::In )})
+    {
+        NodeGraphicsObject const* nodeObj = std::get<0>(pair);
+        if (!nodeObj) continue;
+
+        Node const* node = &nodeObj->node();
+        PortType const type = std::get<1>(pair);
+        PortId const portId = connectionId().port(type);
+        assert(portId.isValid());
+
+        // update connection data if port changes
+        auto updatePortType = [this, node, type, portId](PortId id){
+            if (portId != id) return;
+            auto* port = node->port(id);
+            assert(port);
+            setPortTypeId(type, port->typeId);
+        };
+
+        connect(node, &Node::portChanged, this, updatePortType);
+        updatePortType(connectionId().port(type));
+
+        // update connection's position if node object changes
+        auto updateEndPoint = [this, nodeObj, type, portId](){
+            QPointF endPoint = calcEndPoint(nodeObj, type, portId);
+            setEndPoint(type, endPoint);
+        };
+        connect(nodeObj, &NodeGraphicsObject::xChanged, this, updateEndPoint);
+        connect(nodeObj, &NodeGraphicsObject::yChanged, this, updateEndPoint);
+        connect(nodeObj, &NodeGraphicsObject::nodeGeometryChanged, this, updateEndPoint);
+        updateEndPoint();
+    }
+}
+
+std::unique_ptr<ConnectionGraphicsObject>
+ConnectionGraphicsObject::makeConnection(QGraphicsScene& scene,
+                                         Connection& object,
+                                         NodeGraphicsObject const& outNodeObj,
+                                         NodeGraphicsObject const& inNodeObj)
+{
+    auto obj = new ConnectionGraphicsObject(
+        scene, &object, object.connectionId(), &outNodeObj, &inNodeObj
+    );
+    return std::unique_ptr<ConnectionGraphicsObject>{obj};
+}
+
+std::unique_ptr<ConnectionGraphicsObject>
+ConnectionGraphicsObject::makeDraftConnection(QGraphicsScene& scene,
+                                              ConnectionId draftConId,
+                                              NodeGraphicsObject const& startObj)
+{
+    PortType type = draftConId.draftType();
+    auto obj = new ConnectionGraphicsObject(
+        scene, nullptr, draftConId,
+        type == PortType::Out ? &startObj : nullptr,
+        type == PortType::Out ? nullptr   : &startObj
+    );
+    return std::unique_ptr<ConnectionGraphicsObject>{obj};
+}
+
+ConnectionGraphicsObject::~ConnectionGraphicsObject() = default;
+
+
+bool
+ConnectionGraphicsObject::deleteObject()
+{
+    if (isDraft()) return false;
+    delete m_object;
+    return true;
+}
+
+bool
+ConnectionGraphicsObject::isDraft() const
+{
+    return connectionId().isDraft();
+}
+
+Connection*
+ConnectionGraphicsObject::connection()
+{
+    assert(m_object && !isDraft());
+    return m_object;
+}
+
+Connection const*
+ConnectionGraphicsObject::connection() const
+{
+    return const_cast<ConnectionGraphicsObject*>(this)->connection();
 }
 
 QRectF
 ConnectionGraphicsObject::boundingRect() const
 {
-// (adapted)
-// SPDX-SnippetBegin
-// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
-// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
-    auto points = controlPoints();
+    return m_geometry.boundingRect();
+}
 
-    // `normalized()` fixes inverted rects.
-    QRectF basicRect = QRectF{m_start, m_end}.normalized();
-
-    QRectF c1c2Rect = QRectF(points.first, points.second).normalized();
-
-    QRectF commonRect = basicRect.united(c1c2Rect);
-
-    double const diam = style::currentStyle().node.portRadius * 2;
-    QPointF const cornerOffset(diam, diam);
-
-    // Expand rect by port circle diameter
-    commonRect.setTopLeft(commonRect.topLeft() - cornerOffset);
-    commonRect.setBottomRight(commonRect.bottomRight() + 2 * cornerOffset);
-
-    return commonRect;
-// SPDX-SnippetEnd
+QPainterPath
+ConnectionGraphicsObject::shape() const
+{
+    return m_geometry.shape();
 }
 
 ConnectionId
@@ -101,13 +200,14 @@ ConnectionGraphicsObject::setEndPoint(PortType type, QPointF pos)
         throw GTlabException(__FUNCTION__, "invalid port type!");
     }
 
+    m_geometry.recomputeGeometry(m_start, m_end, m_shape);
     update();
 }
 
 void
 ConnectionGraphicsObject::setPortTypeId(PortType type, TypeId typeId)
 {
-    (type == PortType::In ? m_endType : m_startType) = std::move(typeId);
+    (type == PortType::In ? m_inType : m_outType) = std::move(typeId);
 
     update();
 }
@@ -119,90 +219,8 @@ ConnectionGraphicsObject::setConnectionShape(ConnectionShape shape)
 
     prepareGeometryChange();
     m_shape = shape;
+    m_geometry.recomputeGeometry(m_start, m_end, m_shape);
     update();
-}
-
-ConnectionGraphicsObject::ControlPoints
-ConnectionGraphicsObject::controlPoints() const
-{
-    switch (m_shape)
-    {
-
-    case ConnectionShape::Straight:
-    {
-        return {m_start, m_end};
-    }
-
-    case ConnectionShape::Cubic:
-    {
-// (adapted)
-// SPDX-SnippetBegin
-// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
-// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
-        constexpr double maxControlPointExtent = 200;
-
-        double xDistance = m_end.x() - m_start.x();
-
-        double horizontalOffset = qMin(maxControlPointExtent, std::abs(xDistance)) * 0.5;
-
-        double verticalOffset = 0;
-
-        if (xDistance < 0)
-        {
-            constexpr double offset = 5;
-
-            double yDistance = m_end.y() - m_start.y() + offset;
-
-            verticalOffset  = qMin(maxControlPointExtent, std::abs(yDistance));
-            verticalOffset *= (yDistance < 0) ? -1.0 : 1.0;
-
-            horizontalOffset *= 2;
-        }
-
-        QPointF c1 = m_start + QPointF{horizontalOffset, verticalOffset};
-        QPointF c2 = m_end  - QPointF{horizontalOffset, verticalOffset};
-
-        return {c1, c2};
-// SPDX-SnippetEnd
-    }
-
-    case ConnectionShape::Rectangle:
-    {
-        constexpr double cutoffValue = 0.025;
-
-        double xDistance = m_end.x() - m_start.x();
-        double yDistance = m_end.y() - m_start.y();
-
-        double horizontalOffset = std::abs(xDistance) * 0.5;
-
-        double verticalOffset = 0;
-
-        if (xDistance < 0)
-        {
-            constexpr double maxHorizontalOffset = 10;
-
-            yDistance = m_end.y() - m_start.y();
-
-            verticalOffset  = std::abs(yDistance) * 0.5;
-            verticalOffset *= (yDistance < 0) ? -1.0 : 1.0;
-
-            horizontalOffset = qMin(maxHorizontalOffset, horizontalOffset);
-        }
-        // dont draw rectangle shaped connections if y distance is small
-        else if (std::abs(yDistance / (xDistance + 0.1)) <= cutoffValue)
-        {
-            return {m_start, m_end};
-        }
-
-        QPointF c1 = m_start + QPointF{horizontalOffset, verticalOffset};
-        QPointF c2 = m_end  - QPointF{horizontalOffset, verticalOffset};
-
-        return {c1, c2};
-    }
-
-    }
-
-    return {m_start, m_end};
 }
 
 void
@@ -221,84 +239,37 @@ ConnectionGraphicsObject::paint(QPainter* painter,
 
     painter->setClipRect(option->exposedRect);
 
-    bool hovered  = m_hovered;
-    bool selected = isSelected();
-    bool isDraft  = m_connection.isDraft();
-    bool isInactive = m_inactive;
+    bool const isDraft  = this->isDraft();
+    bool const isInactive = m_inactive;
 
-    auto& style = style::currentStyle();
-    auto& cstyle = style.connection;
+    PortType const draftType = connectionId().draftType();
+    assert(!isDraft == (draftType == PortType::NoType)); // NoType if not draft
 
-    auto const makePen = [this, &cstyle, &hovered, &selected, &isDraft, &isInactive](){
+    ConnectionPainter::PainterFlags flags = 0;
+    if (isHovered())  flags |= ConnectionPainter::ObjectIsHovered;
+    if (isSelected()) flags |= ConnectionPainter::ObjectIsSelected;
+    if (isDraft)      flags |= ConnectionPainter::DrawDashed;
+    if (isInactive)   flags |= ConnectionPainter::ObjectIsInactive;
 
-        QColor outColor = cstyle.typeColor(m_startType);
-        QBrush penBrush = outColor;
+    auto const& style = style::currentStyle();
+    auto const& cstyle = style.connection;
 
-        Qt::PenStyle penStyle = Qt::SolidLine;
-        double penWidth = cstyle.defaultOutlineWidth;
+    auto const path = m_geometry.path();
 
-        if (isInactive)
-        {
-            penBrush = cstyle.inactiveOutline;
-        }
-        else if (hovered)
-        {
-            penWidth = cstyle.hoveredOutlineWidth;
-            penBrush = cstyle.hoveredOutline;
-        }
-        else if (selected)
-        {
-            penWidth = cstyle.selectedOutlineWidth;
-            penBrush = cstyle.selectedOutline;
-        }
-        else if (isDraft)
-        {
-            if (m_connection.draftType() == PortType::In)
-            {
-                penBrush = cstyle.typeColor(m_endType);
-            }
+    ConnectionPainter p;
+    p.drawPath(
+        *painter,
+        path,
+        cstyle,
+        draftType == PortType::In  ? m_inType  : m_outType,
+        draftType == PortType::Out ? m_outType : m_inType,
+        flags
+    );
 
-            penStyle = Qt::DashLine;
-        }
-        else if (m_startType != m_endType)
-        {
-            QColor inColor  = cstyle.typeColor(m_endType);
-            QLinearGradient gradient(m_start, m_end);
-            gradient.setColorAt(0.1, outColor);
-            gradient.setColorAt(0.9, inColor);
-            penBrush = gradient;
-        }
-
-        return QPen{penBrush, penWidth, penStyle};
-    };
-
-    QPen pen = makePen();
-    painter->setPen(pen);
-    painter->setBrush(Qt::NoBrush);
-
-    // draw path
-    auto const path = this->path();
-    painter->drawPath(path);
-
-    if (selected)
-    {
-        selected = false;
-        pen = makePen();
-        pen.setWidth(pen.width() - 1);
-        painter->setPen(pen);
-        painter->setPen(pen);
-        painter->drawPath(path);
-    }
-
-    // draw end points
     if (isDraft)
     {
         double const portRadius = style.node.portRadius;
-
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(pen.brush());
-        painter->drawEllipse(m_connection.draftType() == PortType::Out ? m_end : m_start,
-                             portRadius, portRadius);
+        p.drawEndPoint(*painter, path, portRadius, invert(draftType));
     }
 
 #ifdef GT_INTELLI_DEBUG_CONNECTION_GRAPHICS
@@ -309,7 +280,7 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     QPointF in  = endPoint(PortType::In);
     QPointF out = endPoint(PortType::Out);
 
-    auto const points = controlPoints();
+    auto const points = m_geometry.controlPoints(in, out, m_shape);
 
     painter->setPen(Qt::magenta);
     painter->setBrush(Qt::magenta);
@@ -335,10 +306,13 @@ ConnectionGraphicsObject::itemChange(GraphicsItemChange change, const QVariant& 
     switch (change)
     {
     case GraphicsItemChange::ItemSelectedChange:
-        setZValue(style::zValue(!value.toBool() ?
+    {
+        bool isSelected = value.toBool();
+        setZValue(style::zValue(!isSelected ?
                                     style::ZValue::Connection :
                                     style::ZValue::ConnectionHovered));
         break;
+    }
     default:
         break;
     }
@@ -346,82 +320,112 @@ ConnectionGraphicsObject::itemChange(GraphicsItemChange change, const QVariant& 
     return value;
 }
 
-QPainterPath
-ConnectionGraphicsObject::shape() const
-{
-    constexpr size_t segments = 20;
-
-    auto path = this->path();
-
-    QPainterPath result(endPoint(PortType::Out));
-
-    for (size_t i = 0; i < segments; ++i)
-    {
-        double ratio = double(i + 1) / segments;
-        result.lineTo(path.pointAtPercent(ratio));
-    };
-
-    QPainterPathStroker stroker;
-    stroker.setWidth(10.0);
-
-    return stroker.createStroke(result);
-}
-
 void
-ConnectionGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
+ConnectionGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    return QGraphicsObject::mousePressEvent(event);
+    if (!isDraft()) return GraphicsObject::mouseMoveEvent(event);
+
+    assert(scene());
+
+    // snap to nearest possible port
+    ConnectionId conId = connectionId();
+    PortType draftType = conId.draftType();
+
+    QPointF pos = event->scenePos();
+    QRectF rect{pos - s_connection_distance, pos + s_connection_distance};
+
+    auto const& items = scene()->items(rect);
+    for (auto* item : items)
+    {
+        auto* object = graphics_cast<NodeGraphicsObject*>(item);
+        if (!object) continue;
+
+        auto hit = object->geometry().portHit(object->mapFromScene(rect).boundingRect());
+        if (!hit) continue;
+
+        bool reverse = draftType == PortType::In;
+        if (reverse) conId.reverse();
+
+        conId.inNodeId = object->nodeId();
+        conId.inPort   = hit.port;
+        assert(conId.isValid());
+
+        if (reverse) conId.reverse();
+
+        auto* graph = Graph::accessGraph(object->node());
+        if (!graph || !graph->canAppendConnections(conId)) continue;
+
+        QPointF endPoint = calcEndPoint(object, hit.type, hit.port);
+        setEndPoint(invert(draftType), endPoint);
+        return event->accept();
+    }
+
+    setEndPoint(invert(draftType), event->scenePos());
+
+    return GraphicsObject::mouseMoveEvent(event);
 }
 
 void
 ConnectionGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    return QGraphicsObject::mouseReleaseEvent(event);
-}
+    if (!isDraft()) return GraphicsObject::mouseMoveEvent(event);
 
-void
-ConnectionGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
-{
-    m_hovered = true;
-    setZValue(style::zValue(style::ZValue::ConnectionHovered));
-    update();
-    event->accept();
-}
+    assert(scene());
 
-void
-ConnectionGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
-{
-    m_hovered = false;
-    setZValue(style::zValue(style::ZValue::Connection));
-    update();
-    event->accept();
-}
+    ungrabMouse();
 
-QPainterPath
-ConnectionGraphicsObject::path() const
-{
-    QPointF const& in = endPoint(PortType::In);
-    QPointF const& out = endPoint(PortType::Out);
+    ConnectionId conId = connectionId();
+    PortType draftType = conId.draftType();
 
-    auto const c1c2 = controlPoints();
+    QPointF pos = event->scenePos();
 
-    // cubic spline
-    QPainterPath path(out);
+    QRectF rect{pos - s_connection_distance, pos + s_connection_distance};
 
-    switch (m_shape)
+    // find node to connect to
+    auto const& items = scene()->items(rect);
+    for (auto* item : items)
     {
-    case ConnectionShape::Cubic:
-        path.cubicTo(c1c2.first, c1c2.second, in);
-        break;
-    case ConnectionShape::Rectangle:
-        path.lineTo(c1c2.first);
-        path.lineTo(c1c2.second);
-        path.lineTo(in);
-        break;
-    case ConnectionShape::Straight:
-        path.lineTo(in);
+        auto* object = qgraphicsitem_cast<NodeGraphicsObject*>(item);
+        if (!object) continue;
+
+        auto hit = object->geometry().portHit(object->mapFromScene(rect).boundingRect());
+        if (!hit) continue;
+
+        bool reverse = draftType == PortType::In;
+        if (reverse) conId.reverse();
+
+        conId.inNodeId = object->nodeId();
+        conId.inPort   = hit.port;
+        assert(conId.isValid());
+
+        if (reverse) conId.reverse();
+
+        auto* graph = Graph::accessGraph(object->node());
+        if (!graph || !graph->canAppendConnections(conId)) continue;
+
+        event->accept();
+
         break;
     }
 
-    return path;
+    event->accept();
+    emit finalizeDraftConnnection(conId);
+    delete this;
+}
+
+QPointF
+ConnectionGraphicsObject::calcEndPoint(NodeGraphicsObject const* nodeObj,
+                                       PortType portType,
+                                       PortId portId)
+{
+    assert(nodeObj);
+
+    PortIndex const portIdx = nodeObj->node().portIndex(portType, portId);
+    assert(portIdx.isValid());
+    auto const& geometry = nodeObj->geometry();
+
+    QRectF const portRect = geometry.portRect(portType, portIdx);
+    QPointF const nodePos = nodeObj->sceneTransform().map(portRect.center());
+
+    return sceneTransform().inverted().map(nodePos);
 }

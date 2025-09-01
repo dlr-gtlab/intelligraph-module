@@ -10,11 +10,11 @@
 #include <gtest/gtest.h>
 
 #include <intelli/globals.h>
-
+#include <intelli/utilities.h>
 
 TEST(Globals, quantize)
 {
-    using namespace intelli;
+    using namespace intelli::utils;
 
     EXPECT_EQ(quantize(QPointF(42.4,  9.75), 5), QPoint(40,  10));
     EXPECT_EQ(quantize(QPointF(42.7, -9.75), 5), QPoint(40, -10));

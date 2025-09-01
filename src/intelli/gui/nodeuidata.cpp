@@ -16,6 +16,8 @@ using namespace intelli;
 struct NodeUIData::Impl
 {
     QIcon icon;
+
+    CustomDeleteFunction deleteFunction;
 };
 
 NodeUIData::NodeUIData() :
@@ -42,4 +44,22 @@ bool
 NodeUIData::hasDisplayIcon() const
 {
     return !pimpl->icon.isNull();
+}
+
+NodeUIData::CustomDeleteFunction const&
+NodeUIData::customDeleteFunction() const
+{
+    return pimpl->deleteFunction;
+}
+
+bool
+NodeUIData::hasCustomDeleteFunction() const
+{
+    return !!pimpl->deleteFunction;
+}
+
+void
+NodeUIData::setCustomDeleteFunction(CustomDeleteFunction functor)
+{
+    pimpl->deleteFunction = std::move(functor);
 }

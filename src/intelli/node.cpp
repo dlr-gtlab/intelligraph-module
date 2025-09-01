@@ -192,7 +192,8 @@ Node::setNodeFlag(NodeFlag flag, bool enable)
     case Deprecated:
         if (tooltip().isEmpty())
         {
-            setToolTip(tr("This node is deprecated and will be removed in a future relase."));
+            setToolTip(tr("This node is deprecated and will "
+                          "be removed in a future relase."));
         }
         break;
     default:

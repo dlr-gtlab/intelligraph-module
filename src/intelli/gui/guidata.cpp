@@ -2,17 +2,17 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include <intelli/graph.h>
 #include <intelli/gui/guidata.h>
+#include <intelli/gui/commentgroup.h>
 
 #include <gt_application.h>
 #include <gt_structproperty.h>
-
 #include <gt_stringproperty.h>
 
 using namespace intelli;
@@ -24,6 +24,9 @@ GuiData::GuiData(GtObject* parent) :
 
     auto* localStates = new LocalStateContainer(this);
     localStates->setDefault(true);
+
+    auto* commentGroup = new CommentGroup(this);
+    commentGroup->setDefault(true);
 
     if (!gtApp || !gtApp->devMode()) setFlag(UserHidden);
 }
@@ -37,7 +40,30 @@ GuiData::accessLocalStates(Graph& graph)
     return guiData->findDirectChild<LocalStateContainer*>();
 }
 
-char const* S_TYPE_ID = "Collapsed";
+LocalStateContainer const*
+GuiData::accessLocalStates(Graph const& graph)
+{
+    return accessLocalStates(const_cast<Graph&>(graph));
+}
+
+CommentGroup*
+GuiData::accessCommentGroup(Graph& graph)
+{
+    auto* guiData = graph.findDirectChild<GuiData*>();
+    if (!guiData) return {};
+
+    return guiData->findDirectChild<CommentGroup*>();
+}
+
+CommentGroup const*
+GuiData::accessCommentGroup(Graph const& graph)
+{
+    return accessCommentGroup(const_cast<Graph&>(graph));
+}
+
+char const* S_COLLAPSED_TYPE_ID = "Collapsed";
+
+#define ASSERT_EQ_SIZE() assert(m_collapsed.size() == (size_t)m_collapsedData.size())
 
 LocalStateContainer::LocalStateContainer(GtObject* parent) :
     GtObject(parent),
@@ -46,7 +72,7 @@ LocalStateContainer::LocalStateContainer(GtObject* parent) :
     setObjectName(tr("local_states"));
 
     // presence of struct indicates that the node is collapsed
-    GtPropertyStructDefinition structType{S_TYPE_ID};
+    GtPropertyStructDefinition structType{S_COLLAPSED_TYPE_ID};
     m_collapsed.registerAllowedType(structType);
 
     registerPropertyStructContainer(m_collapsed);
@@ -56,7 +82,7 @@ LocalStateContainer::LocalStateContainer(GtObject* parent) :
         GtPropertyStructInstance& entry = m_collapsed.at(idx);
         m_collapsedData.insert(idx, entry.ident());
         emit nodeCollapsedChanged(entry.ident(), true);
-        assert(m_collapsed.size() == (size_t)m_collapsedData.size());
+        ASSERT_EQ_SIZE();
     }, Qt::DirectConnection);
 
     connect(&m_collapsed, &GtPropertyStructContainer::entryRemoved,
@@ -64,7 +90,7 @@ LocalStateContainer::LocalStateContainer(GtObject* parent) :
         NodeUuid nodeUuid = m_collapsedData.at(idx);
         m_collapsedData.removeAt(idx);
         emit nodeCollapsedChanged(nodeUuid, false);
-        assert(m_collapsed.size() == (size_t)m_collapsedData.size());
+        ASSERT_EQ_SIZE();
     }, Qt::DirectConnection);
 }
 
@@ -75,8 +101,8 @@ LocalStateContainer::setNodeCollapsed(NodeUuid const& nodeUuid, bool collapsed)
 
     if (collapsed)
     {
-        m_collapsed.newEntry(S_TYPE_ID, nodeUuid);
-        assert(m_collapsed.size() == (size_t)m_collapsedData.size());
+        m_collapsed.newEntry(S_COLLAPSED_TYPE_ID, nodeUuid);
+        ASSERT_EQ_SIZE();
         return;
     }
 
@@ -87,13 +113,13 @@ LocalStateContainer::setNodeCollapsed(NodeUuid const& nodeUuid, bool collapsed)
     if (iter == m_collapsed.end()) return;
 
     m_collapsed.removeEntry(iter);
-    assert(m_collapsed.size() == (size_t)m_collapsedData.size());
+    ASSERT_EQ_SIZE();
 }
 
 bool
 LocalStateContainer::isNodeCollapsed(NodeUuid const& nodeUuid) const
 {
-    assert(m_collapsed.size() == (size_t)m_collapsedData.size());
+    ASSERT_EQ_SIZE();
     return std::find_if(m_collapsed.begin(), m_collapsed.end(),
                         [&nodeUuid](GtPropertyStructInstance const& e){
         return e.ident() == nodeUuid;

@@ -52,10 +52,8 @@ protected:
             scene->clearSelection();
         }
 
-        assert(qgraphicsitem_cast<NodeGraphicsObject*>(parentItem()));
-
-        auto item = static_cast<NodeGraphicsObject*>(parentItem());
-        item->selectNode();
+        assert(parentItem());
+        parentItem()->setSelected(true);
 
         return QGraphicsProxyWidget::mousePressEvent(event);
     }
@@ -64,15 +62,6 @@ protected:
 
 struct NodeGraphicsObject::Impl
 {
-    enum State
-    {
-        Normal = 0,
-        Translating,
-        Resizing
-    };
-
-    /// Pointer to graph scene data
-    GraphSceneData* sceneData;
     /// Node eval state object
     NodeEvalStateGraphicsObject* evalStateObject = nullptr;
     /// Associated node
@@ -87,18 +76,8 @@ struct NodeGraphicsObject::Impl
     std::unique_ptr<NodePainter> painter;
     /// Highlight data
     Highlights highlights;
-    /// Holds how much the node was shifted since the beginning of a
-    /// translation operation
-    QPointF translationDiff;
-    /// State flag
-    State state = Normal;
-    /// Whether node is hovered
-    bool hovered = false;
-    /// Whether the node is collapsed
-    bool collapsed = false;
 
-    Impl(NodeGraphicsObject* obj, GraphSceneData& data_, Node& node_) :
-        sceneData(&data_),
+    Impl(NodeGraphicsObject* obj, Node& node_) :
         node(&node_),
         highlights(*obj)
     {
@@ -141,8 +120,8 @@ struct NodeGraphicsObject::Impl
 NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
                                        Node& node,
                                        NodeUI& ui) :
-    QGraphicsObject(nullptr),
-    pimpl(std::make_unique<Impl>(this, data, node))
+    InteractableGraphicsObject(data, nullptr),
+    pimpl(std::make_unique<Impl>(this, node))
 {
     // impl must be created first
     pimpl->uiData = ui.uiData(node);
@@ -152,15 +131,29 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
 
     setFlag(QGraphicsItem::ItemIsSelectable, true);
     setFlag(QGraphicsItem::ItemIsFocusable, true);
+    setFlag(GraphicsItemFlag::ItemContainsChildrenInShape, true);
 
     setCacheMode(QGraphicsItem::DeviceCoordinateCache);
 
     setAcceptHoverEvents(true);
 
-    setZValue(style::zValue(style::ZValue::Node));
     setPos(pimpl->node->pos());
 
     embedCentralWidget();
+
+    connect(this, &GraphicsObject::hoveredChanged, this, [this](){
+        if (isHovered()) return setZValue(style::zValue(style::ZValue::NodeHovered));
+        if (!isSelected()) return setZValue(style::zValue(style::ZValue::Node));
+    });
+
+    connect(this, &InteractableGraphicsObject::objectMoved, this, [this](){
+        commitPosition();
+    }, Qt::DirectConnection);
+
+    connect(this, &InteractableGraphicsObject::objectCollapsed, this, [this](){
+        if (auto w = centralWidget()) w->setVisible(!isCollapsed());
+        Impl::prepareGeometryChange(this).finalize();
+    }, Qt::DirectConnection);
 
     connect(this, &NodeGraphicsObject::nodeGeometryChanged,
             this, &NodeGraphicsObject::updateChildItems,
@@ -197,10 +190,10 @@ NodeGraphicsObject::nodeId() const
     return pimpl->node->id();
 }
 
-GraphSceneData const&
-NodeGraphicsObject::sceneData() const
+ObjectUuid
+NodeGraphicsObject::objectUuid() const
 {
-    return *pimpl->sceneData;
+    return pimpl->node->uuid();
 }
 
 NodeUIData const&
@@ -210,42 +203,57 @@ NodeGraphicsObject::uiData() const
 }
 
 bool
-NodeGraphicsObject::isHovered() const
-{
-    return pimpl->hovered;
-}
-
-bool
-NodeGraphicsObject::isCollpased() const
-{
-    return pimpl->collapsed;
-}
-
-void
-NodeGraphicsObject::collapse(bool doCollapse)
-{
-    if (pimpl->collapsed == doCollapse) return; // nothing to do
-
-    if (centralWidget()) centralWidget()->setVisible(!doCollapse);
-
-    pimpl->collapsed = doCollapse;
-
-    emit nodeCollapsed(this, doCollapse);
-
-    Impl::prepareGeometryChange(this).finalize();
-}
-
-bool
 NodeGraphicsObject::hasResizeHandle() const
 {
     return pimpl->node->nodeFlags() & IsResizableMask &&
            pimpl->proxyWidget && pimpl->proxyWidget->widget();
 }
 
+GraphicsObject::DeletableFlag
+NodeGraphicsObject::deletableFlag() const
+{
+    if (node().objectFlags() & GtObject::ObjectFlag::UserDeletable)
+    {
+        return DefaultDeletable;
+    }
+
+    if (uiData().hasCustomDeleteFunction())
+    {
+        return NotBulkDeletable;
+    }
+
+    return NotDeletable;
+}
+
+GraphicsObject::DeleteOrdering
+NodeGraphicsObject::deleteOrdering() const
+{
+    return DefaultDeleteOrdering;
+}
+
+bool
+NodeGraphicsObject::deleteObject()
+{
+    if (uiData().hasCustomDeleteFunction())
+    {
+        return uiData().customDeleteFunction()(&node());
+    }
+    delete pimpl->node;
+    return true;
+}
+
 QRectF
 NodeGraphicsObject::boundingRect() const
 {
     return pimpl->geometry->boundingRect();
+}
+
+QRectF
+NodeGraphicsObject::widgetSceneBoundingRect() const
+{
+    if (!pimpl->proxyWidget || !pimpl->proxyWidget->widget()) return {};
+
+    return pimpl->proxyWidget->sceneBoundingRect();
 }
 
 QPainterPath
@@ -287,6 +295,12 @@ NodeGraphicsObject::geometry() const
 }
 
 void
+NodeGraphicsObject::commitPosition()
+{
+    pimpl->node->setPos(pos());
+}
+
+void
 NodeGraphicsObject::embedCentralWidget()
 {
     auto const makeWidget = [this]() -> std::unique_ptr<QWidget> {
@@ -321,6 +335,8 @@ NodeGraphicsObject::embedCentralWidget()
 
     if (auto w = makeWidget())
     {
+        setFlag(GraphicsItemFlag::ItemContainsChildrenInShape, false);
+
         pimpl->geometry->setWidget(w.get());
 
         pimpl->proxyWidget = new NodeProxyWidget(this);
@@ -331,7 +347,7 @@ NodeGraphicsObject::embedCentralWidget()
 
         // update node's size if widget changes size
         connect(pimpl->proxyWidget, &QGraphicsWidget::geometryChanged, this, [this](){
-            if (pimpl->state == Impl::Resizing) return;
+            if (state() == State::Resizing) return;
 
             if (pimpl->proxyWidget->widget() &&
                 pimpl->node->nodeFlags() & IsResizableMask)
@@ -344,9 +360,9 @@ NodeGraphicsObject::embedCentralWidget()
 }
 
 void
-NodeGraphicsObject::commitPosition()
+NodeGraphicsObject::setupContextMenu(QMenu& menu)
 {
-    pimpl->node->setPos(pos());
+    gt::gui::makeObjectContextMenu(menu, node());
 }
 
 void
@@ -363,15 +379,17 @@ NodeGraphicsObject::paint(QPainter* painter,
 }
 
 QVariant
-NodeGraphicsObject::itemChange(GraphicsItemChange change, const QVariant& value)
+NodeGraphicsObject::itemChange(GraphicsItemChange change, QVariant const& value)
 {
     switch (change)
     {
     case GraphicsItemChange::ItemSelectedChange:
-        setZValue(style::zValue(!value.toBool() ?
-                                    style::ZValue::Node :
-                                    style::ZValue::NodeHovered));
+    {
+        bool isSelected = value.toBool();
+        setZValue(style::zValue(!isSelected ? style::ZValue::Node :
+                                              style::ZValue::NodeHovered));
         break;
+    }
     default:
         break;
     }
@@ -387,165 +405,54 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
         return event->ignore();
     }
 
-    auto accept = gt::finally(event, &QEvent::accept);
-    Q_UNUSED(accept);
-
-    // bring this node forward
-    setZValue(style::zValue(style::ZValue::NodeHovered));
-
-    QPointF coord = sceneTransform().inverted().map(event->scenePos());
-
     // check for port hit
-    NodeGeometry::PortHit hit = pimpl->geometry->portHit(coord);
+    NodeGeometry::PortHit hit = pimpl->geometry->portHit(event->pos());
     if (hit)
     {
+        event->accept();
+
         if (!pimpl->node->port(hit.port)) return;
 
         return emit makeDraftConnection(this, hit.type, hit.port);
     }
 
-    // check for resize handle hit
-    if (hasResizeHandle())
-    {
-        bool resize = pimpl->geometry->resizeHandleRect().contains(event->pos());
-        if (resize)
-        {
-            pimpl->state = Impl::Resizing;
-            return;
-        }
-    }
+    // object will be selected
+    if (!isSelected()) emit gtApp->objectSelected(pimpl->node);
 
-    bool select = !(event->modifiers() & Qt::ControlModifier);
-
-    // clear selection
-    if (!isSelected())
-    {
-        select = true;
-        if (!(event->modifiers() & Qt::ControlModifier))
-        {
-            auto* scene = this->scene();
-            assert(scene);
-            scene->clearSelection();
-        }
-    }
-
-    if (select) selectNode();
-
-    pimpl->state = Impl::Translating;
-    pimpl->translationDiff = pos();
+    return InteractableGraphicsObject::mousePressEvent(event);
 }
-
-void
-NodeGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
-{
-    QPointF diff = event->pos() - event->lastPos();
-    pimpl->translationDiff += diff;
-
-    switch (pimpl->state)
-    {
-    case Impl::Resizing:
-        if (pimpl->proxyWidget)
-        if (auto w = pimpl->proxyWidget->widget())
-        {
-            auto change = Impl::prepareGeometryChange(this);
-            Q_UNUSED(change);
-
-            QSize oldSize = w->size();
-            oldSize += QSize(diff.x(), (pimpl->node->nodeFlags() & ResizableHOnly) ? 0 : diff.y());
-
-            w->resize(oldSize);
-        }
-        return event->accept();
-
-    case Impl::Translating:
-        if ((pimpl->sceneData->snapToGrid || event->modifiers() & Qt::ControlModifier)
-            && pimpl->sceneData->gridSize > 0)
-        {
-            QPoint newPos = quantize(pimpl->translationDiff, pimpl->sceneData->gridSize);
-
-            // position not changed
-            if (pos() == newPos) return event->accept();
-
-            diff = newPos - pos();
-        }
-
-        moveBy(diff.x(), diff.y());
-        emit nodeShifted(this, diff);
-        return event->accept();
-
-    case Impl::Normal:
-    default:
-        return event->ignore();
-    }
-}
-
 
 void
 NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    switch (pimpl->state)
+    bool isResizing = state() == State::Resizing;
+
+    InteractableGraphicsObject::mouseReleaseEvent(event);
+
+    if (isResizing)
     {
-    case Impl::Normal:
-    default:
-        return event->ignore();
+        assert(pimpl->proxyWidget);
 
-    case Impl::Resizing:
-        if (pimpl->proxyWidget)
-        {
-            pimpl->node->setSize(pimpl->proxyWidget->widget()->size());
-        }
-        pimpl->state = Impl::Normal;
-        break;
-
-    case Impl::Translating:
-        commitPosition();
-        emit nodeMoved(this);
-        break;
+        QWidget* w = pimpl->proxyWidget->widget();
+        pimpl->node->setSize(w->size());
     }
-
-    pimpl->state = Impl::Normal;
-
-    if (!isSelected())
-    {
-        setZValue(style::zValue(style::ZValue::Node));
-    }
-
-    event->accept();
-
 }
 
 void
 NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
+    InteractableGraphicsObject::hoverEnterEvent(event);
+
     setToolTip(pimpl->node->tooltip());
-
-    setZValue(style::zValue(style::ZValue::NodeHovered));
-
-    pimpl->hovered = true;
-    update();
-
-    event->accept();
 }
 
 void
 NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 {
-    QPointF pos = event->pos();
-
-    auto accept = gt::finally(event, &QEvent::accept);
-    Q_UNUSED(accept);
-
-    // check for resize handle hit and change cursor
-    if (hasResizeHandle() && pimpl->geometry->resizeHandleRect().contains(pos))
-    {
-        setCursor(QCursor(Qt::SizeFDiagCursor));
-        return;
-    }
-
-    setCursor(QCursor());
+    InteractableGraphicsObject::hoverMoveEvent(event);
 
     // set tooltip for ports
-    NodeGeometry::PortHit hit = pimpl->geometry->portHit(pos);
+    NodeGeometry::PortHit hit = pimpl->geometry->portHit(event->pos());
     if (hit)
     {
         auto* port = pimpl->node->port(hit.port);
@@ -565,17 +472,9 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
 void
 NodeGraphicsObject::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
+    InteractableGraphicsObject::hoverLeaveEvent(event);
+
     setToolTip({});
-
-    if (!isSelected())
-    {
-        setZValue(style::zValue(style::ZValue::Node));
-    }
-
-    pimpl->hovered = false;
-    update();
-
-    event->accept();
 }
 
 
@@ -591,31 +490,46 @@ NodeGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 {
     auto const& pos = event->pos();
 
-    if (event->modifiers() & Qt::ControlModifier)
-    {
-        setSelected(true);
-        update();
-    }
+    // if (event->modifiers() & Qt::ControlModifier)
+    // {
+    //     setSelected(true);
+    //     update();
+    // }
 
+    event->accept();
     NodeGeometry::PortHit hit = pimpl->geometry->portHit(pos);
 
     if (!hit)
     {
-        emit contextMenuRequested(this, pos);
+        emit contextMenuRequested(this);
     }
     else
     {
-        emit portContextMenuRequested(this, hit.port, pos);
+        emit portContextMenuRequested(this, hit.port);
     }
+}
 
-    event->accept();
+bool
+NodeGraphicsObject::canResize(QPointF localCoord)
+{
+    return hasResizeHandle() && geometry().resizeHandleRect().contains(localCoord);
 }
 
 void
-NodeGraphicsObject::selectNode()
+NodeGraphicsObject::resize(QSize diff)
 {
-    setSelected(true);
-    emit gtApp->objectSelected(pimpl->node);
+    assert(pimpl->proxyWidget);
+    QWidget* w = pimpl->proxyWidget->widget();
+    assert(w);
+
+    auto change = Impl::prepareGeometryChange(this);
+    Q_UNUSED(change);
+
+    QSize oldSize = w->size();
+    oldSize.rwidth()  += diff.width();
+    oldSize.rheight() += (pimpl->node->nodeFlags() & ResizableHOnly) ? 0 : diff.height();
+
+    w->resize(oldSize);
 }
 
 void

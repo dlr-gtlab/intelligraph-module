@@ -32,10 +32,6 @@ class NodeEvalStateGraphicsObject : public QGraphicsObject
 
 public:
 
-    // Needed for qgraphicsitem_cast
-    enum { Type = UserType + (int)GraphicsItemType::NodeEvalState };
-    int type() const override { return Type; }
-
     NodeEvalStateGraphicsObject(QGraphicsObject& parent,
                                 NodePainter& painter,
                                 Node& node);

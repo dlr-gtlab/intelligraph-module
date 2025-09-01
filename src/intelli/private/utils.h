@@ -34,7 +34,7 @@ intelli::Profiler profiler__{X}; (void)profiler__;
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& data)
 {
-    // TODO: remove
+    // TODO: remove me, for debugging purposes only
     if (auto* d = qobject_cast<intelli::DoubleData const*>(data.get()))
     {
         gt::log::StreamStateSaver saver(s);
@@ -58,6 +58,8 @@ template<typename T>
 struct apply_const<true, T> { using type = std::add_const_t<T>; };
 template<typename T>
 struct apply_const<false, T> { using type = std::remove_const_t<T>; };
+template<bool IsConst, typename T>
+using apply_const_t = typename apply_const<IsConst, T>::type;
 
 /// wrapper to apply const to `T` if `IsConst` is true
 template<bool IsConst, typename T>
@@ -253,8 +255,6 @@ inline void setObjectName(Node& obj, QString const& name)
 {
     obj.setCaption(name);
 }
-
-
 
 template <typename T>
 inline void restrictRegExpWithSiblingsNames(GtObject& obj,

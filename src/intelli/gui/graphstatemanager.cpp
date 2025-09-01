@@ -147,8 +147,8 @@ GraphStateManager::setupLocalStates(GraphScene* scene)
 
         NodeGraphicsObject* object = scene->nodeObject(node->id());
         if (!object) return;
-
-        if (object->isCollpased() != isCollapsed)
+        
+        if (object->isCollapsed() != isCollapsed)
         {
             object->collapse(isCollapsed);
         }
@@ -160,12 +160,12 @@ GraphStateManager::setupLocalStates(GraphScene* scene)
         auto object = scene->nodeObject(node->id());
         if (!object) return;
 
-        auto onValueChanged = [localStates](NodeGraphicsObject* object, bool isCollapsed){
+        auto onValueChanged = [nodeUuid = node->uuid(), localStates](InteractableGraphicsObject* object, bool isCollapsed){
             assert(object);
-            localStates->setNodeCollapsed(object->node().uuid(), isCollapsed);
+            localStates->setNodeCollapsed(nodeUuid, isCollapsed);
         };
 
-        QObject::connect(object, &NodeGraphicsObject::nodeCollapsed,
+        QObject::connect(object, &InteractableGraphicsObject::objectCollapsed,
                          localStates, onValueChanged);
 
         object->collapse(localStates->isNodeCollapsed(node->uuid()));

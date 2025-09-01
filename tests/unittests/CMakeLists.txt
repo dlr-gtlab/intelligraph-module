@@ -23,6 +23,7 @@ add_executable(IntelliGraphUnitTests
     test_graph.cpp
     test_graphbuilder.cpp
     test_graphexecmodel.cpp
+    test_gui.cpp
     test_memory.cpp
     test_nodedata.cpp
     test_portinfo.cpp

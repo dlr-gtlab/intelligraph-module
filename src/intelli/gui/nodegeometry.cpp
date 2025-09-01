@@ -55,7 +55,7 @@ NodeGeometry::vspacing() const
 bool
 NodeGeometry::hasDisplayIcon() const
 {
-    return uiData().hasDisplayIcon() || object().isCollpased();
+    return uiData().hasDisplayIcon() || object().isCollapsed();
 }
 
 int
@@ -152,7 +152,7 @@ NodeGeometry::computeNodeHeaderRect() const
 QRectF
 NodeGeometry::nodeBodyRect() const
 {
-    if (object().isCollpased()) return nodeHeaderRect();
+    if (object().isCollapsed()) return nodeHeaderRect();
 
     if (m_bodyRect.has_value()) return *m_bodyRect;
 
@@ -276,7 +276,7 @@ NodeGeometry::evalStateSize() const
 QPointF
 NodeGeometry::widgetPosition() const
 {
-    if (!centralWidget() || object().isCollpased()) return {};
+    if (!centralWidget() || object().isCollapsed()) return {};
 
     auto body = nodeBodyRect();
 
@@ -305,7 +305,7 @@ QSize
 NodeGeometry::widgetSize() const
 {
     auto* w = centralWidget();
-    if (!w || object().isCollpased()) return {};
+    if (!w || object().isCollapsed()) return {};
     return w->size();
 }
 
@@ -325,7 +325,7 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
     double width = type == PortType::Out ? body.width() : 0.0;
     width -= style.portRadius;
 
-    if (object().isCollpased())
+    if (object().isCollapsed())
     {
         // position port at vertical center if collapsed
         int height = body.height() * 0.5 - style.portRadius;
@@ -366,7 +366,7 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
     assert(type != PortType::NoType);
     if (node().ports(type).size() < idx) return {};
 
-    if (object().isCollpased()) return {};
+    if (object().isCollapsed()) return {};
 
     auto& style = style::currentStyle().node;
     auto& node  = this->node();
@@ -411,7 +411,7 @@ NodeGeometry::portHit(QPointF coord) const
 NodeGeometry::PortHit
 NodeGeometry::portHit(QRectF rect) const
 {
-    if (object().isCollpased()) return {};
+    if (object().isCollapsed()) return {};
 
     auto body  = nodeBodyRect();
     auto coord = rect.center();

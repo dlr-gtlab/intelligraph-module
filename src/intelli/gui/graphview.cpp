@@ -8,11 +8,11 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include "intelli/graph.h"
 #include "intelli/gui/graphview.h"
 #include "intelli/gui/graphscene.h"
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
+#include "intelli/gui/graphics/commentobject.h"
 
 #include <gt_application.h>
 #include <gt_filedialog.h>
@@ -38,19 +38,19 @@ using namespace intelli;
 struct GraphView::Impl
 {
 
-/// attempts to lacate a node at the given scene position
-static NodeGraphicsObject* locateNode(QPointF scenePoint,
-                                      QGraphicsScene& scene,
-                                      QTransform const& viewTransform)
+/// attempts to lacate an interactable object at the given scene position
+static InteractableGraphicsObject* locateObject(QPointF scenePoint,
+                                                QGraphicsScene& scene,
+                                                QTransform const& viewTransform)
 {
     for (auto* item : scene.items(scenePoint,
                                   Qt::IntersectsItemShape,
                                   Qt::DescendingOrder,
                                   viewTransform))
     {
-        if (auto* node = qgraphicsitem_cast<NodeGraphicsObject*>(item))
+        if (auto* obj = graphics_cast<InteractableGraphicsObject*>(item))
         {
-            return node;
+            return obj;
         }
     }
     return nullptr;
@@ -297,7 +297,7 @@ GraphView::printToPDF()
     }
 
     QPrinter printer(QPrinter::HighResolution);
-    printer.setPageSize(QPrinter::A4);
+    printer.setPageSize(QPageSize(QPageSize::A4));
     printer.setPageOrientation(QPageLayout::Landscape);
     printer.setOutputFormat(QPrinter::PdfFormat);
     printer.setOutputFileName(filePath);
@@ -336,15 +336,16 @@ GraphView::contextMenuEvent(QContextMenuEvent* event)
 {
     if (itemAt(event->pos()))
     {
-        return QGraphicsView::contextMenuEvent(event);
+        return GtGraphicsView::contextMenuEvent(event);
     }
 
     auto* scene = nodeScene();
-    if (!scene) return;
+    if (!scene) return GtGraphicsView::contextMenuEvent(event);
 
+    event->accept();
     auto const scenePos = mapToScene(mapFromGlobal(QCursor::pos()));
 
-    if (QMenu* menu = scene->createSceneMenu(scenePos))
+    if (auto menu = scene->createSceneMenu(scenePos))
     {
         menu->exec(event->globalPos());
     }
@@ -357,15 +358,18 @@ GraphView::wheelEvent(QWheelEvent* event)
     if (auto* s = scene())
     {
         auto pos = event->position().toPoint();
-        auto* node = Impl::locateNode(mapToScene(pos), *s, transform());
 
-        if (node)
-        if (auto* w = node->centralWidget())
+        InteractableGraphicsObject* object = Impl::locateObject(
+            mapToScene(pos), *s, transform()
+        );
+
+        if (object)
         {
-            QPolygon bounding = mapFromScene(w->sceneBoundingRect());
+            QRectF localBoundingRect = object->widgetSceneBoundingRect();
+            QPolygon bounds = mapFromScene(localBoundingRect);
 
             // forward event to widget
-            if (bounding.containsPoint(pos, Qt::OddEvenFill))
+            if (bounds.containsPoint(pos, Qt::WindingFill))
             {
                 QGraphicsSceneWheelEvent wheelEvent(QEvent::GraphicsSceneWheel);
                 wheelEvent.setWidget(viewport());
@@ -382,6 +386,7 @@ GraphView::wheelEvent(QWheelEvent* event)
         }
     }
 
+    event->accept();
 // (refactored)
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
@@ -402,37 +407,39 @@ GraphView::wheelEvent(QWheelEvent* event)
 void
 GraphView::keyPressEvent(QKeyEvent* event)
 {
-// SPDX-SnippetBegin
+// SPDX-SnippetBegin (adapted)
 // SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
 // SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     switch (event->key())
     {
     case Qt::Key_Shift:
         setDragMode(QGraphicsView::RubberBandDrag);
+        event->accept();
         break;
     default:
         break;
     }
 
-    QGraphicsView::keyPressEvent(event);
+    return GtGraphicsView::keyPressEvent(event);
 // SPDX-SnippetEnd
 }
 
 void
 GraphView::keyReleaseEvent(QKeyEvent* event)
 {
-// SPDX-SnippetBegin
+// SPDX-SnippetBegin (modified)
 // SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
 // SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
     switch (event->key())
     {
     case Qt::Key_Shift:
         setDragMode(QGraphicsView::ScrollHandDrag);
+        event->accept();
         break;
     default:
         break;
     }
-    QGraphicsView::keyReleaseEvent(event);
+    return GtGraphicsView::keyReleaseEvent(event);
 // SPDX-SnippetEnd
 }
 

@@ -2,7 +2,7 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
@@ -19,6 +19,7 @@ namespace intelli
 {
 
 class Graph;
+class CommentGroup;
 class LocalStateContainer;
 
 /**
@@ -33,6 +34,10 @@ public:
     Q_INVOKABLE GuiData(GtObject* parent = nullptr);
 
     static LocalStateContainer* accessLocalStates(Graph& graph);
+    static LocalStateContainer const* accessLocalStates(Graph const& graph);
+
+    static CommentGroup* accessCommentGroup(Graph& graph);
+    static CommentGroup const* accessCommentGroup(Graph const& graph);
 };
 
 /**

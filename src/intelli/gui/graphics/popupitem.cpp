@@ -2,13 +2,14 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
 #include <intelli/gui/graphics/popupitem.h>
 #include <intelli/gui/style.h>
+#include <intelli/graphconnectionmodel.h>
 
 #include <gt_colors.h>
 
@@ -20,7 +21,7 @@
 
 using namespace intelli;
 
-static PopupItem* s_activeItem{};
+static QVector<PopupItem*> s_activeItems{};
 
 PopupItem::PopupItem(QGraphicsScene& scene, QString const& text, seconds timeout)
 {
@@ -43,8 +44,7 @@ PopupItem::PopupItem(QGraphicsScene& scene, QString const& text, seconds timeout
 
     scene.addItem(this);
 
-    if (s_activeItem) s_activeItem->hide();
-    s_activeItem = this;
+    s_activeItems.push_back(this);
 
     // setup fading animation
     m_timeLine.setEasingCurve(QEasingCurve::Linear);
@@ -70,7 +70,17 @@ PopupItem::PopupItem(QGraphicsScene& scene, QString const& text, seconds timeout
 
 PopupItem::~PopupItem()
 {
-    if (s_activeItem == this) s_activeItem = nullptr;
+    s_activeItems.removeOne(this);
+}
+
+void
+PopupItem::clearActivePopups()
+{
+    // reverse iterate to not cause access to dangling iterator
+    for (auto i : makeIterable(s_activeItems))
+    {
+        i->hide();
+    }
 }
 
 QRectF

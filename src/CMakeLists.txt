@@ -39,12 +39,16 @@ set(PUBLIC_HEADERS
     intelli/graphconnectionmodel.h
     intelli/graphdatamodel.h
     intelli/graphexecmodel.h
+    intelli/graphutilities.h
     intelli/memory.h
     intelli/node.h
     intelli/nodedata.h
     intelli/nodedatafactory.h
     intelli/nodedatainterface.h
     intelli/nodefactory.h
+    intelli/span.h
+    intelli/utilities.h
+    intelli/view.h
     intelli/data/bool.h
     intelli/data/bytearray.h
     intelli/data/bytearraydata.h
@@ -56,6 +60,8 @@ set(PUBLIC_HEADERS
     intelli/data/object.h
     intelli/data/string.h
     intelli/data/stringlist.h
+    intelli/gui/connectiongeometry.h
+    intelli/gui/connectionpainter.h
     intelli/gui/icons.h
     intelli/gui/graphscenedata.h
     intelli/gui/nodegeometry.h
@@ -64,6 +70,8 @@ set(PUBLIC_HEADERS
     intelli/gui/nodeuidata.h
     intelli/gui/portuiaction.h
     intelli/gui/style.h
+    intelli/gui/graphics/graphicsobject.h
+    intelli/gui/graphics/interactableobject.h
     intelli/gui/graphics/nodeobject.h
     intelli/node/input/boolinput.h
     intelli/node/input/doubleinput.h
@@ -113,6 +121,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/stringselection.h
     intelli/node/textdisplay.h
     intelli/node/input/fileinput.h
+    intelli/gui/commentgroup.h
+    intelli/gui/commentdata.h
     intelli/gui/grapheditor.h
     intelli/gui/graphscene.h
     intelli/gui/graphscenemanager.h
@@ -121,12 +131,15 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphview.h
     intelli/gui/graphviewoverlay.h
     intelli/gui/guidata.h
+    intelli/gui/ui/commentui.h
     intelli/gui/ui/connectionui.h
     intelli/gui/ui/guidataui.h
     intelli/gui/ui/graphcategoryui.h
     intelli/gui/ui/logicnodeui.h
     intelli/gui/ui/packageui.h
+    intelli/gui/graphics/commentobject.h
     intelli/gui/graphics/connectionobject.h
+    intelli/gui/graphics/lineobject.h
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/graphics/popupitem.h
     intelli/gui/widgets/abstractnumberinputwidget.h
@@ -151,6 +164,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp
     intelli/graphexecmodel.cpp
+    intelli/graphutilities.cpp
     intelli/module.cpp
     intelli/node.cpp
     intelli/nodedata.cpp
@@ -194,6 +208,10 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/input/intinput.cpp
     intelli/node/input/objectinput.cpp
     intelli/node/input/stringinput.cpp
+    intelli/gui/connectiongeometry.cpp
+    intelli/gui/connectionpainter.cpp
+    intelli/gui/commentgroup.cpp
+    intelli/gui/commentdata.cpp
     intelli/gui/nodegeometry.cpp
     intelli/gui/nodepainter.cpp
     intelli/gui/nodeui.cpp
@@ -208,14 +226,19 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/guidata.cpp
     intelli/gui/icons.cpp
     intelli/gui/style.cpp
+    intelli/gui/ui/commentui.cpp
     intelli/gui/ui/connectionui.cpp
     intelli/gui/ui/guidataui.cpp
     intelli/gui/ui/logicnodeui.cpp
     intelli/gui/ui/graphcategoryui.cpp
     intelli/gui/ui/packageui.cpp
+    intelli/gui/graphics/commentobject.cpp
     intelli/gui/graphics/connectionobject.cpp
-    intelli/gui/graphics/nodeobject.cpp
+    intelli/gui/graphics/graphicsobject.cpp
+    intelli/gui/graphics/interactableobject.cpp
+    intelli/gui/graphics/lineobject.cpp
     intelli/gui/graphics/nodeevalstateobject.cpp
+    intelli/gui/graphics/nodeobject.cpp
     intelli/gui/graphics/popupitem.cpp
     intelli/gui/widgets/abstractnumberinputwidget.cpp
     intelli/gui/widgets/booldisplaywidget.cpp
@@ -233,12 +256,12 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
 )
 
 target_link_libraries(GTlabIntelliGraph
-  PUBLIC
-  Qt5::Core
-  GTlab::Logging
-  GTlab::Gui
-  PRIVATE
-  Qt5::Concurrent
+    PUBLIC
+    Qt5::Core
+    GTlab::Logging
+    GTlab::Gui
+    PRIVATE
+    Qt5::Concurrent
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 
@@ -273,10 +296,9 @@ if (INTELLIGRAPH_ENABLE_EXPERIMENTAL_NODES)
 endif()
 
 target_include_directories(GTlabIntelliGraph PUBLIC
-
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
-     # we install a flat file hierachy, so we include only this folder
-     PUBLIC $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
+    # we install a flat file hierachy, so we include only this folder
+    PUBLIC $<INSTALL_INTERFACE:include>
 )
 
 install (TARGETS GTlabIntelliGraph
@@ -302,8 +324,8 @@ write_basic_package_version_file(
 )
 
 file(GENERATE
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfig.cmake"
-  INPUT  "${PROJECT_SOURCE_DIR}/cmake/GTlabIntelliGraphConfig.in"
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfig.cmake"
+    INPUT  "${PROJECT_SOURCE_DIR}/cmake/GTlabIntelliGraphConfig.in"
 )
 
 install(EXPORT  GTlabIntelliGraph-targets
@@ -311,6 +333,6 @@ install(EXPORT  GTlabIntelliGraph-targets
 )
 
 install (FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfig.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfigVersion.cmake"
-  DESTINATION ${CONFIG_INSTALL_DIR})
+    "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfigVersion.cmake"
+    DESTINATION ${CONFIG_INSTALL_DIR})

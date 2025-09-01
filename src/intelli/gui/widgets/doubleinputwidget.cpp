@@ -9,7 +9,7 @@
 
 #include <intelli/gui/widgets/doubleinputwidget.h>
 #include <intelli/gui/widgets/editablelabel.h>
-#include <intelli/globals.h>
+#include <intelli/utilities.h>
 
 #include <gt_utilities.h>
 #include <gt_lineedit.h>
@@ -71,7 +71,7 @@ DoubleInputWidget::applyRange(QVariant const& valueV,
 
     if (useBounds()) value = gt::clamp(value, min, max);
 
-    int dvalue = map<int>(value, {min, max}, {0, ticks()});
+    int dvalue = utils::map<int>(value, {min, max}, {0, ticks()});
 
     dial()->setValue(dvalue);
     slider()->setValue(dvalue);
@@ -84,7 +84,7 @@ DoubleInputWidget::applyRange(QVariant const& valueV,
 void
 DoubleInputWidget::commitSliderValueChange(int value)
 {
-    double dvalue = map<double>(value, {0, ticks()}, {min(), max()});
+    double dvalue = utils::map<double>(value, {0, ticks()}, {min(), max()});
 
     valueEdit()->setText(QString::number(dvalue));
 }
@@ -121,7 +121,7 @@ DoubleInputWidget::commitValueChange()
     double value = this->value<double>();
     if (useBounds()) value = gt::clamp(value, m_min, m_max);
 
-    int dvalue = map<int>(value, {min(), max()}, {0, ticks()});
+    int dvalue = utils::map<int>(value, {min(), max()}, {0, ticks()});
 
     dial()->setValue(dvalue);
     slider()->setValue(dvalue);

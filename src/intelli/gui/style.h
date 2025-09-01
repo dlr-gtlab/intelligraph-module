@@ -49,7 +49,8 @@ namespace style
 /// enum holding the zvalue of the different graphical objects
 enum class ZValue : int
 {
-    Connection        = -2,
+    Line              = -2,
+    Connection        = -5,
     ConnectionHovered = -1,
     DraftConnection   =  2,
     Node              =  0,
@@ -138,7 +139,7 @@ struct StyleData
         QColor defaultOutline, selectedOutline, hoveredOutline, inactiveOutline;
         /// outline width
         double defaultOutlineWidth = 3.0;
-        double selectedOutlineWidth = 4.0;
+        double selectedOutlineWidth = 5.0;
         double hoveredOutlineWidth = 4.0;
         /// whether to use custom type colors
         bool useCustomTypeColors = true;

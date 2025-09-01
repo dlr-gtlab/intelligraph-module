@@ -23,14 +23,17 @@
 #include "intelli/property/stringselection.h"
 #include "intelli/node/logicoperation.h"
 #include "intelli/node/genericcalculatorexec.h"
-#include "intelli/gui/ui/logicnodeui.h"
+#include "intelli/gui/commentgroup.h"
+#include "intelli/gui/commentdata.h"
+#include "intelli/gui/grapheditor.h"
+#include "intelli/gui/guidata.h"
+#include "intelli/gui/nodeui.h"
+#include "intelli/gui/ui/commentui.h"
 #include "intelli/gui/ui/connectionui.h"
 #include "intelli/gui/ui/graphcategoryui.h"
 #include "intelli/gui/ui/guidataui.h"
+#include "intelli/gui/ui/logicnodeui.h"
 #include "intelli/gui/ui/packageui.h"
-#include "intelli/gui/nodeui.h"
-#include "intelli/gui/grapheditor.h"
-#include "intelli/gui/guidata.h"
 #include "intelli/gui/property_item/stringselection.h"
 
 #include "intelli/calculators/graphexeccalculator.h"
@@ -198,6 +201,12 @@ GtIntelliGraphModule::data()
     list << GT_METADATA(ConnectionGroup);
     list << GT_METADATA(Connection);
 
+    list << GT_METADATA(GuiData);
+    list << GT_METADATA(LocalStateContainer);
+
+    list << GT_METADATA(CommentGroup);
+    list << GT_METADATA(CommentData);
+
     return list;
 }
 
@@ -268,6 +277,11 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(GuiDataUI));
     map.insert(GT_CLASSNAME(LocalStateContainer),
                GT_METADATA(GuiDataUI));
+
+    map.insert(GT_CLASSNAME(CommentGroup),
+               GT_METADATA(CommentUI));
+    map.insert(GT_CLASSNAME(CommentData),
+               GT_METADATA(CommentUI));
 
     map.insert(GT_CLASSNAME(LogicNode),
                GT_METADATA(LogicNodeUI));

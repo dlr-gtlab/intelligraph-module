@@ -11,16 +11,22 @@
 #include "intelli/gui/graphscene.h"
 
 #include <intelli/graph.h>
+#include <intelli/graphutilities.h>
 #include <intelli/connection.h>
 #include <intelli/nodefactory.h>
 #include <intelli/nodedatafactory.h>
+#include <intelli/utilities.h>
 #include <intelli/node/groupinputprovider.h>
 #include <intelli/node/groupoutputprovider.h>
+#include <intelli/gui/commentgroup.h>
+#include <intelli/gui/commentdata.h>
+#include <intelli/gui/guidata.h>
 #include <intelli/gui/nodeui.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/graphscenedata.h>
-#include <intelli/gui/graphics/nodeobject.h>
+#include <intelli/gui/graphics/commentobject.h>
 #include <intelli/gui/graphics/connectionobject.h>
+#include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/popupitem.h>
 #include <intelli/private/utils.h>
 #include <intelli/private/gui_utils.h>
@@ -50,39 +56,23 @@
 #include <QWidgetAction>
 #include <QMenuBar>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QTreeWidget>
 #include <QHeaderView>
 #include <QVarLengthArray>
 
-constexpr QPointF s_connection_distance{5, 5};
-
 using namespace intelli;
 
+/// creates a copy of the object and returns a unique_ptr
 template <typename T>
-inline auto makeCopy(T& obj) {
+inline auto makeCopy(T& obj)
+{
     std::unique_ptr<GtObject> tmp{obj.copy()};
     return gt::unique_qobject_cast<std::remove_const_t<T>>(std::move(tmp));
-};
+}
 
 struct GraphScene::Impl
 {
-
-/// helper struct to collect selected nodes and connections
-struct SelectedItems
-{
-    QVector<NodeGraphicsObject*> nodes;
-    QVector<ConnectionGraphicsObject*> connections;
-
-    bool empty() const { return nodes.empty() && connections.empty(); }
-};
-
-/// enum to filter selection
-enum SelectionFilter
-{
-    NoFilter,
-    NodesOnly,
-    ConnectionsOnly
-};
 
 /**
  * @brief Helper method that checks if a node is user deletable
@@ -90,10 +80,10 @@ enum SelectionFilter
  * @return Whether the object is user deletable
  */
 static bool
-isNotDeletable(NodeGraphicsObject* o)
+isNotDeletable(InteractableGraphicsObject* o)
 {
-    return !(o->node().objectFlags() & GtObject::ObjectFlag::UserDeletable);
-};
+    return (o->deletableFlag() & GraphicsObject::NotDeletable);
+}
 
 /**
  * @brief Helper method that yields whether a node is collapsed
@@ -101,10 +91,10 @@ isNotDeletable(NodeGraphicsObject* o)
  * @return Whether the node is collapsed
  */
 static bool
-isCollapsed(NodeGraphicsObject* o)
+isCollapsed(InteractableGraphicsObject* o)
 {
-    return o->isCollpased();
-};
+    return o->isCollapsed();
+}
 
 /**
  * @brief Negates the result of a functor.
@@ -115,10 +105,10 @@ template <typename Func>
 static auto
 negate(Func func)
 {
-    return [f = std::move(func)](NodeGraphicsObject* o) -> bool {
+    return [f = std::move(func)](auto* o) -> bool {
         return !f(o);
     };
-};
+}
 
 /**
  * @brief Returns a functor that searches for the targeted `nodeId`
@@ -145,49 +135,34 @@ findObjectById(ConnectionId conId)
 }
 
 /**
- * @brief Returns the currently active view
- * @param scene Graph Scene
- * @return Active view (may be null)
+ * @brief Returns a functor that searches for the targeted `comment`
+ * @param nodeId
  */
-static QGraphicsView const*
-activeView(GraphScene const* scene)
+static auto
+findObjectById(CommentData* comment)
 {
-    auto const& views = scene->views();
-    auto iter = std::find_if(views.begin(), views.end(), [](QGraphicsView const* view){
-        return view->hasFocus();
-    });
-    return (iter != views.end()) ? *iter : nullptr;
+    return [uuid = comment->uuid()](CommentEntry const& e){
+        return e.uuid == uuid;
+    };
 }
 
 /**
- * @brief Helper function to find all selected nodes and connections. If a
- * filter was supplied, only Nodes or only Connections are collected.
+ * @brief Find all items of type T in `list`
  * @param scene Scene object (this)
- * @param filter Filter for selection
- * @return Selected items
+ * @return All graphic items of type T in `list`
  */
-static SelectedItems
-findSelectedItems(GraphScene& scene, SelectionFilter filter = NoFilter)
+template<typename T, typename List>
+static QVector<T>
+findItems(GraphScene& scene, List const& list)
 {
-    auto const& selected = scene.selectedItems();
-
-    SelectedItems items;
-    for (auto* item : selected)
+    QVector<T> items;
+    for (auto* item : list)
     {
-        if (filter != ConnectionsOnly)
-        if (auto* node = qgraphicsitem_cast<NodeGraphicsObject*>(item))
+        if (auto* obj = graphics_cast<T>(item))
         {
-            items.nodes << node;
-            continue;
-        }
-        if (filter != NodesOnly)
-        if (auto* con = qgraphicsitem_cast<ConnectionGraphicsObject*>(item))
-        {
-            items.connections << con;
-            continue;
+            items << obj;
         }
     }
-
     return items;
 }
 
@@ -200,17 +175,19 @@ template<typename T>
 static QVector<T>
 findItems(GraphScene& scene)
 {
-    QVector<T> items;
+    return findItems<T>(scene, scene.items());
+}
 
-    auto const& sceneItems = scene.items();
-    for (auto* item : sceneItems)
-    {
-        if (auto* obj = qgraphicsitem_cast<T>(item))
-        {
-            items << obj;
-        }
-    }
-    return items;
+/**
+ * @brief Find all selected items of type T
+ * @param scene Scene object (this)
+ * @return All selected graphic items of type T
+ */
+template<typename T>
+static QVector<T>
+findSelectedItems(GraphScene& scene)
+{
+    return findItems<T>(scene, scene.selectedItems());
 }
 
 static void
@@ -229,31 +206,39 @@ highlightCompatibleNodes(GraphScene& scene,
         con.object->makeInactive(true);
     }
 
-    // find nodes that can potentially recieve connection
+    // find nodes that can potentially recieve a connection
     // -> all nodes that we do not depend on/that do not depend on us
+    QSet<NodeId> dependencies;
+
+    auto const& conModel = scene.graph().connectionModel();
+    auto allNodes = conModel.iterateNodeIds();
+
+    auto accumulate = [&conModel](QSet<NodeId>& storage, auto const& range, PortType type, auto const& lambda) -> void {
+        for (NodeId nodeId : range)
+        {
+            if (storage.contains(nodeId)) continue;
+            storage.insert(nodeId);
+            lambda(storage, conModel.iterateNodes(nodeId, type), type, lambda);
+        }
+    };
+
+    accumulate(dependencies, conModel.iterateNodes(sourceNodeId, PortType::In ), PortType::In , accumulate);
+    accumulate(dependencies, conModel.iterateNodes(sourceNodeId, PortType::Out), PortType::Out, accumulate);
+    dependencies.insert(sourceNodeId);
+
     QVector<NodeId> targets;
-    auto nodeIds = scene.m_graph->nodeIds();
-    auto dependencies = type == PortType::Out ?
-                            scene.m_graph->findDependencies(sourceNodeId) :
-                            scene.m_graph->findDependentNodes(sourceNodeId);
-
-    std::sort(nodeIds.begin(), nodeIds.end());
-    std::sort(dependencies.begin(), dependencies.end());
-
-    std::set_difference(nodeIds.begin(), nodeIds.end(),
+    std::set_difference(allNodes.begin(), allNodes.end(),
                         dependencies.begin(), dependencies.end(),
                         std::back_inserter(targets));
 
-    targets.removeOne(sourceNodeId);
-
-    // frist "unhilight" all nodes
-    for (NodeId nodeId : qAsConst(nodeIds))
+    // "unhighlight" all dependencies and dependent nodes
+    for (NodeId nodeId : qAsConst(dependencies))
     {
         NodeGraphicsObject* target = scene.nodeObject(nodeId);
         assert(target);
         target->highlights().setAsIncompatible();
     }
-    // then highlight all nodes that are compatible
+    // highlight all potential target nodes
     for (NodeId nodeId : qAsConst(targets))
     {
         NodeGraphicsObject* target = scene.nodeObject(nodeId);
@@ -264,6 +249,7 @@ highlightCompatibleNodes(GraphScene& scene,
     // override source port
     NodeGraphicsObject* source = scene.nodeObject(sourceNodeId);
     assert(source);
+    source->highlights().setAsIncompatible();
     source->highlights().setPortAsCompatible(sourcePortId);
 }
 
@@ -297,10 +283,14 @@ instantiateDraftConnection(GraphScene& scene,
                            PortType sourceType,
                            PortId sourcePortId)
 {
-    assert(!scene.m_draftConnection);
     assert(sourcePortId.isValid());
 
     NodeId sourceNodeId = sourceObject.nodeId();
+
+    auto& sourceNode = sourceObject.node();
+
+    auto* sourcePort = sourceNode.port(sourcePortId);
+    assert(sourcePort);
 
     // dummy connection (respective end point is not connected)
     ConnectionId draftConId{
@@ -310,40 +300,28 @@ instantiateDraftConnection(GraphScene& scene,
         invalid<PortId>()
     };
 
-    auto& sourceNode = sourceObject.node();
+    if (sourceType == PortType::In) draftConId.reverse();
 
-    auto* sourcePort = sourceNode.port(sourcePortId);
-    assert(sourcePort);
-
-    // typeId
-    TypeId dummy;
-    TypeId* outType = &sourcePort->typeId;
-    TypeId* inType  = &dummy;
-
-    if (sourceType == PortType::In)
-    {
-        draftConId.reverse();
-        std::swap(outType, inType);
-    }
-
+    assert(draftConId.isDraft());
     assert(draftConId.draftType() == sourceType);
 
-    auto entity = make_unique_qptr<ConnectionGraphicsObject>(draftConId, *outType, *inType);
+    auto entity = convert_to_unique_qptr<DirectDeleter>(
+        ConnectionGraphicsObject::makeDraftConnection(scene, draftConId, sourceObject)
+    );
     entity->setConnectionShape(scene.m_connectionShape);
-    scene.addItem(entity);
 
-    // move respective start point of connection
-    scene.moveConnectionPoint(*entity, sourceType);
     // move respective end point to start point and grab mouse
     entity->setEndPoint(invert(sourceType), entity->endPoint(sourceType));
-    entity->grabMouse();
 
-    scene.m_draftConnection = std::move(entity);
+    connect(&sourceObject, &QObject::destroyed, entity, [c = entity.get()](){ delete c; });
 
     highlightCompatibleNodes(scene, sourceNode, *sourcePort);
 
-    return scene.m_draftConnection.get();
-};
+    connect(entity, &ConnectionGraphicsObject::finalizeDraftConnnection,
+            &scene, &GraphScene::onFinalizeDraftConnection);
+
+    return entity.release();
+}
 
 static void
 makeDraftConnection(GraphScene& scene,
@@ -356,7 +334,6 @@ makeDraftConnection(GraphScene& scene,
         return oldCon->endPoint(type);
     };
 
-    assert(!scene.m_draftConnection);
     assert(conId.isValid());
     assert(conId.inNodeId == object.nodeId());
 
@@ -386,51 +363,38 @@ makeDraftConnection(GraphScene& scene,
     draft->setEndPoint(type, oldEndPoint);
 }
 
-
 /**
- * @brief Updates the connection's end point that the specified port type
- * refers to.
- * @param object Connection object to update
- * @param node Node object that the port belongs to
- * @param type Port type of the end point and target port index
- * @param portIdx Target port index
+ * @brief Collapsed/expands the selected nodes
+ * @param selected Objects that should be collapsed/expanded
+ * @param doCollapse Whether the nodes should be collapsed or expanded
  */
 static void
-moveConnectionPoint(ConnectionGraphicsObject& object,
-                    NodeGraphicsObject& node,
-                    PortType type,
-                    PortIndex portIdx)
+collapseObjects(GraphScene& scene,
+                QVector<InteractableGraphicsObject*> const& selected,
+                bool doCollapse)
 {
-    assert(portIdx != invalid<PortIndex>());
+    if (selected.empty()) return;
 
-    auto const& geometry = node.geometry();
+    auto const& selectedNodes = findItems<NodeGraphicsObject*>(scene, selected);
 
-    QRectF portRect = geometry.portRect(type, portIdx);
-    QPointF nodePos = node.sceneTransform().map(portRect.center());
+    QString caption = QChar{'('} +
+                      (selectedNodes.size() > 1 ?
+                           relativeNodePath(selectedNodes.front()->node()) +
+                               (selectedNodes.size() > 1 ? ", ...":"") :
+                           QString{"..."}) +
+                      QChar{')'};
 
-    QPointF connectionPos = object.sceneTransform().inverted().map(nodePos);
+    auto change = gtApp->makeCommand(
+        &scene.graph(),
+        tr("Object%1 %2collapsed %3")
+            .arg(selected.size() > 1 ? "s":"", doCollapse? "":"un", caption)
+    );
+    Q_UNUSED(change);
 
-    object.setEndPoint(type, connectionPos);
-}
-
-/**
- * @brief Overlaod that accepts a port id
- * @param object Connection object to update
- * @param node Node object that the port belongs to
- * @param type Port type of the end point and target port
- * @param port Target port
- */
-static void
-moveConnectionPoint(ConnectionGraphicsObject& object,
-                    NodeGraphicsObject& node,
-                    PortType type,
-                    PortId port)
-{
-    assert(port != invalid<PortId>());
-
-    PortIndex portIdx = node.node().portIndex(type, port);
-
-    moveConnectionPoint(object, node, type, portIdx);
+    for (InteractableGraphicsObject* o : selected)
+    {
+        o->collapse(doCollapse);
+    }
 }
 
 /**
@@ -443,54 +407,20 @@ moveConnectionPoint(ConnectionGraphicsObject& object,
 static bool
 copySelectionTo(GraphScene& scene, Graph& dummy)
 {
-    auto selected = Impl::findSelectedItems(scene);
-    if (selected.nodes.empty()) return false;
+    auto selectedObjects= Impl::findSelectedItems<InteractableGraphicsObject*>(scene);
+    if (selectedObjects.empty()) return false;
 
-    // remove unqiue nodes
-    auto const isUnique = [](NodeGraphicsObject const* o){
-        return o->node().nodeFlags() & NodeFlag::Unique;
-    };
+    QVector<ObjectUuid> selection;
 
-    selected.nodes.erase(
-        std::remove_if(selected.nodes.begin(),
-                       selected.nodes.end(),
-                       isUnique),
-        selected.nodes.end());
+    std::transform(selectedObjects.begin(),
+                   selectedObjects.end(),
+                   std::back_inserter(selection),
+                   [](InteractableGraphicsObject* object){
+        assert(object);
+        return object->objectUuid();
+    });
 
-    // remove not deletable nodes
-    selected.nodes.erase(
-        std::remove_if(selected.nodes.begin(),
-                       selected.nodes.end(),
-                       isNotDeletable),
-        selected.nodes.end());
-
-    // at least one node should be selected
-    if (selected.nodes.empty()) return false;
-
-    // only duplicate internal connections
-    auto const isExternalConnection = [&selected](ConnectionGraphicsObject const* o){
-        auto con = o->connectionId();
-        return !containsNodeId(con.inNodeId, selected.nodes) ||
-               !containsNodeId(con.outNodeId, selected.nodes);
-    };
-
-    selected.connections.erase(
-        std::remove_if(selected.connections.begin(),
-                       selected.connections.end(),
-                       isExternalConnection),
-        selected.connections.end());
-
-    // append nodes and connections to dummy graph
-    bool success = true;
-    for (auto* o : qAsConst(selected.nodes))
-    {
-        success &= !!dummy.appendNode(makeCopy(o->node()));
-    }
-    for (auto* o : qAsConst(selected.connections))
-    {
-        success &= !!dummy.appendConnection(std::make_unique<Connection>(o->connectionId()));
-    }
-    return success;
+    return utils::copyObjectsToGraph(scene.graph(), selection, dummy);
 }
 
 /**
@@ -503,63 +433,20 @@ copySelectionTo(GraphScene& scene, Graph& dummy)
 static bool
 pasteFrom(GraphScene& scene, Graph& dummy)
 {
-    // regenerate uuids
-    dummy.newUuid(true);
-    dummy.resetGlobalConnectionModel();
+    scene.clearSelection();
 
-    auto& conModel = dummy.connectionModel();
-    if (conModel.empty()) return false;
-
-    auto nodes = dummy.nodes();
-    bool hasConnections = conModel.hasConnections();
-
-    // shift node positions
-    constexpr QPointF offset{50, 50};
-    for (auto& entry : conModel)
-    {
-        Node* node = entry.node;
-        node->setPos(node->pos() + offset);
-    }
-
+    // shift all new objects and make them selected
+    auto scope = utils::connectScoped(&scene, &GraphScene::objectAdded,
+                                      &scene, [](InteractableGraphicsObject* object){
+        object->shiftBy(50, 50);
+        object->commitPosition();
+        object->setSelected(true);
+    });
+    Q_UNUSED(scope);
     auto cmd = gtApp->makeCommand(&scene.graph(), tr("Paste objects"));
     Q_UNUSED(cmd);
 
-    // append objects
-    bool success = dummy.moveNodesAndConnections(nodes, scene.graph());
-    if (!success)
-    {
-        gtWarning() << tr("Pasting selection failed!");
-
-        // restore previous state
-        cmd.finalize();
-        gtApp->undoStack()->undo();
-        return false;
-    }
-
-    // find affected graphics objects and set selection
-    scene.clearSelection();
-
-    auto nodeObjects = Impl::findItems<NodeGraphicsObject*>(scene);
-    for (auto* nodeObj : qAsConst(nodeObjects))
-    {
-        if (containsNodeId(nodeObj->nodeId(), nodes))
-        {
-            nodeObj->setSelected(true);
-        }
-    }
-
-    if (!hasConnections) return true;
-
-    auto connectionObjects = Impl::findItems<ConnectionGraphicsObject*>(scene);
-    for (auto* conObj : qAsConst(connectionObjects))
-    {
-        auto conId = conObj->connectionId();
-        if (containsNodeId(conId.inNodeId, nodes) && containsNodeId(conId.outNodeId, nodes))
-        {
-            conObj->setSelected(true);
-        }
-    }
-    return true;
+    return utils::moveObjectsToGraph(dummy, scene.graph());
 }
 
 }; // struct Impl
@@ -580,13 +467,34 @@ GraphScene::GraphScene(Graph& graph) :
         onConnectionAppended(con);
     }
 
-    connect(m_graph, &Graph::nodeAppended, this, &GraphScene::onNodeAppended, Qt::DirectConnection);
-    connect(m_graph, &Graph::childNodeAboutToBeDeleted, this, &GraphScene::onNodeDeleted, Qt::DirectConnection);
+    // comments
+    CommentGroup* commentGroup = GuiData::accessCommentGroup(*m_graph);
+    if (commentGroup)
+    {
+        auto const& comments = commentGroup->comments();
+        for (auto* comment : comments)
+        {
+            onCommentAppended(comment);
+        }
 
-    connect(m_graph, &Graph::connectionAppended, this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
-    connect(m_graph, &Graph::connectionDeleted, this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
+        connect(commentGroup, &CommentGroup::commentAppended,
+                this, &GraphScene::onCommentAppended, Qt::DirectConnection);
+        connect(commentGroup, &CommentGroup::commentAboutToBeDeleted,
+                this, &GraphScene::onCommentDeleted, Qt::DirectConnection);
+    }
 
-    connect(m_graph, &Graph::graphAboutToBeDeleted, this, &QObject::deleteLater);
+    connect(m_graph, &Graph::nodeAppended,
+            this, &GraphScene::onNodeAppended, Qt::DirectConnection);
+    connect(m_graph, &Graph::childNodeAboutToBeDeleted,
+            this, &GraphScene::onNodeDeleted, Qt::DirectConnection);
+
+    connect(m_graph, &Graph::connectionAppended,
+            this, &GraphScene::onConnectionAppended, Qt::DirectConnection);
+    connect(m_graph, &Graph::connectionDeleted,
+            this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
+
+    connect(m_graph, &Graph::graphAboutToBeDeleted,
+            this, &QObject::deleteLater);
 }
 
 GraphScene::~GraphScene() = default;
@@ -637,10 +545,6 @@ GraphScene::setConnectionShape(ConnectionShape shape)
     if (shape == m_connectionShape) return;
 
     m_connectionShape = shape;
-    if (m_draftConnection)
-    {
-        m_draftConnection->setConnectionShape(shape);
-    }
     for (auto& con : m_connections)
     {
         con.object->setConnectionShape(shape);
@@ -687,14 +591,15 @@ GraphScene::connectionObject(ConnectionId conId) const
     return const_cast<GraphScene*>(this)->connectionObject(conId);
 }
 
-QMenu*
+std::unique_ptr<QMenu>
 GraphScene::createSceneMenu(QPointF scenePos)
 {
 // (adapted)
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
 // SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
-    auto* menu = new QMenu;
+    auto menuPtr = std::make_unique<QMenu>();
+    auto* menu = menuPtr.get();
 
     // Add filterbox to the context menu
     auto* txtBox = new QLineEdit(menu);
@@ -707,12 +612,20 @@ GraphScene::createSceneMenu(QPointF scenePos)
     auto* txtBoxAction = new QWidgetAction(menu);
     txtBoxAction->setDefaultWidget(txtBox);
 
+    txtBox->setMinimumHeight(txtBox->sizeHint().height());
+
+    auto* buttonAction = new QAction(menu);
+    buttonAction->setText(tr("Add Comment"));
+    buttonAction->setIcon(gt::gui::icon::comment());
+
     // 1.
     menu->addAction(txtBoxAction);
+    menu->addAction(buttonAction);
 
     // Add result treeview to the context menu
     QTreeWidget* treeView = new QTreeWidget(menu);
     treeView->header()->close();
+    treeView->setFrameShape(QFrame::NoFrame);
 
     auto* treeViewAction = new QWidgetAction(menu);
     treeViewAction->setDefaultWidget(treeView);
@@ -756,12 +669,14 @@ GraphScene::createSceneMenu(QPointF scenePos)
         auto node = factory.makeNode(item->whatsThis(0));
         if (!node)
         {
-            gtWarning() << tr("Failed to create new node of type %1").arg(item->text(0));
+            gtWarning() << tr("Failed to create new node of type %1")
+                               .arg(item->text(0));
             return;
         }
         node->setPos(scenePos);
 
-        auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'").arg(node->caption()));
+        auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'")
+                                                   .arg(node->caption()));
         Q_UNUSED(cmd);
 
         m_graph->appendNode(std::move(node));
@@ -794,96 +709,140 @@ GraphScene::createSceneMenu(QPointF scenePos)
             ++it;
         }
     });
-
-    return menu;
 // SPDX-SnippetEnd
+
+    connect(buttonAction, &QAction::triggered, menu, [this, menu, scenePos]() {
+        auto* commentGroup = GuiData::accessCommentGroup(graph());
+        if (!commentGroup) return;
+        
+        auto commentPtr = std::make_unique<CommentData>();
+        commentPtr->setPos(scenePos);
+
+        auto cmd = gtApp->makeCommand(m_graph, tr("Append comment '%1'")
+                                                   .arg(commentPtr->objectName()));
+        Q_UNUSED(cmd);
+        
+        CommentData* comment = commentGroup->appendComment(std::move(commentPtr));
+        if (!comment) return;
+
+        // start editing comment
+        auto iter = std::find_if(m_comments.begin(),
+                                 m_comments.end(),
+                                 Impl::findObjectById(comment));
+        if (iter == m_comments.end()) return;
+
+        iter->object->startEditing();
+        menu->close();
+    });
+
+    return menuPtr;
 }
 
 void
 GraphScene::alignObjectsToGrid()
 {
-    for (NodeEntry& entry : m_nodes)
+    auto items = this->selectedItems();
+    if (items.empty())
     {
-        auto& object = entry.object;
-        assert(object);
-        object->setPos(quantize(object->pos(), m_sceneData->gridSize));
-        object->commitPosition();
-        moveConnections(object);
+        items = this->items();
+        if (items.empty()) return;
+    }
+
+    auto cmd = gtApp->makeCommand(m_graph, tr("Align selection to grid"));
+    Q_UNUSED(cmd);
+
+    for (QGraphicsItem* item : qAsConst(items))
+    {
+        if (auto* object = graphics_cast<InteractableGraphicsObject*>(item))
+        {
+            object->alignToGrid();
+        }
     }
 }
 
 void
 GraphScene::deleteSelectedObjects()
 {
-    auto selected = Impl::findSelectedItems(*this);
-    if (selected.empty()) return;
+    /// std::erase_if wrapper
+    static auto const eraseByFlag = [](QList<QGraphicsItem*>& selected,
+                                       GraphicsObject::DeletableFlag flag){
+        return std::partition(selected.begin(),
+                              selected.end(),
+                              [flag](QGraphicsItem* item){
+            auto* obj = graphics_cast<GraphicsObject*>(item);
+            return obj && obj->deletableFlag() != flag;
+        });
+    };
 
-    // remove nodes that are not deletable
-    auto beginErase = std::remove_if(selected.nodes.begin(),
-                                     selected.nodes.end(),
-                                     Impl::isNotDeletable);
+    /// create popus for certain objects to notify that these are not deletable
+    static auto const createPopups = [](auto begin,
+                                        auto end,
+                                        GraphScene* scene,
+                                        QString const& text){
+        PopupItem::clearActivePopups();
 
-    // not all nodes are default deletable
-    int count = std::distance(beginErase, selected.nodes.end());
-    if (count == selected.nodes.size() && !selected.nodes.empty())
-    {
-        if (count == 1)
+        // create popup to notify that certain nodes are not deletable
+        for (QGraphicsItem* item : makeIterable(begin, end))
         {
-            // attempt to find custom delete action
-            Node& node = selected.nodes.front()->node();
+            auto* popup = PopupItem::addPopupItem(*scene, text, std::chrono::seconds{1});
 
-            QKeySequence shortcut = gtApp->getShortCutSequence("delete");
-
-            GtObjectUIAction action = gui_utils::findUIActionByShortCut(node, shortcut);
-            if (action.method())
-            {
-                return action.method()(nullptr, &node);
-            }
-            // node not deletable
-        }
-
-        // create popup to notify that not all nodes are deletable
-        if (QGraphicsView const* view = Impl::activeView(this))
-        {
-            auto* popup = PopupItem::addPopupItem(
-                *this,
-                tr("Selected %1 not deletable!")
-                    .arg(selected.nodes.size() == 1 ? tr("node is") :
-                                                      tr("nodes are")),
-                std::chrono::seconds{1}
-            );
+            constexpr int yoffset = 5;
             // apply cursor position
-            QPointF pos = view->mapToScene(view->mapFromGlobal(QCursor::pos()));
+            QPointF pos = item->pos() + item->boundingRect().center();
+            pos.ry() += 0.5 * item->boundingRect().height() + yoffset;
             pos.rx() -= popup->boundingRect().width() * 0.5;
-            pos.ry() -= popup->boundingRect().height() * 1.5;
             popup->setPos(pos);
         }
+    };
+
+    auto selected = selectedItems();
+
+    // handle non deletable objects
+    auto beginErase = eraseByFlag(selected, GraphicsObject::NotDeletable);
+
+    int count = std::distance(beginErase, selected.end());
+    if (count > 0)
+    {
+        createPopups(beginErase, selected.end(), this,
+                    tr("Selected object is not deletable!"));
+        selected.erase(beginErase, selected.end());
     }
 
-    // remove not deletable nodes
-    selected.nodes.erase(beginErase, selected.nodes.end());
+    // handle non bulk deletable objects
+    beginErase = eraseByFlag(selected, GraphicsObject::NotBulkDeletable);
+
+    count = std::distance(beginErase, selected.end());
+    if (count > 0 && count != selected.size())
+    {
+        createPopups(beginErase, selected.end(), this,
+                    tr("Selected object is not bulk deletable!"));
+        selected.erase(beginErase, selected.end());
+    }
 
     if (selected.empty()) return;
 
-    // default delete selected nodes
-    GtObjectList objects;
-    std::transform(selected.connections.begin(),
-                   selected.connections.end(),
-                   std::back_inserter(objects),
-                   [this](ConnectionGraphicsObject* o){
-        return m_graph->findConnection(o->connectionId());
-    });
-    std::transform(selected.nodes.begin(),
-                   selected.nodes.end(),
-                   std::back_inserter(objects),
-                   [](NodeGraphicsObject* o){
-        return &o->node();
+    // sort selected objects by delete priority (e.g. connections before nodes)
+    std::sort(selected.begin(), selected.end(), [](QGraphicsItem* left,
+                                                   QGraphicsItem* right){
+        auto* l = graphics_cast<GraphicsObject*>(left);
+        auto* r = graphics_cast<GraphicsObject*>(right);
+        return l && r && l->deleteOrdering() < r->deleteOrdering();
     });
 
-    auto modifyCmd = m_graph->modify();
-    Q_UNUSED(modifyCmd);
-
-    gtDataModel->deleteFromModel(objects);
+    // perform deletion
+    auto modification = graph().modify();
+    auto cmd = gtApp->makeCommand(m_graph, tr("Delete graphics object%1 from graph %2")
+                                               .arg(selected.size() == 1 ? "":"s",
+                                                    relativeNodePath(*m_graph)));
+    Q_UNUSED(modification);
+    Q_UNUSED(cmd);
+    for (QGraphicsItem* item : makeIterable(selected))
+    {
+        if (auto* obj = graphics_cast<GraphicsObject*>(item))
+        {
+            obj->deleteObject();
+        }
+    }
 }
 
 void
@@ -928,121 +887,27 @@ GraphScene::pasteObjects()
 void
 GraphScene::keyPressEvent(QKeyEvent* event)
 {
+    // delete functionality should be handled by the view (i.e. `deleteSelectedObjects`)
+    assert(!gtApp->compareKeyEvent(event, gtApp->getShortCutSequence("delete")));
+
     // perform keyevent on node
-    auto selected = Impl::findSelectedItems(*this, Impl::NodesOnly);
+    auto const& selected = Impl::findSelectedItems<NodeGraphicsObject*>(*this);
 
-    if (selected.nodes.size() != 1) return QGraphicsScene::keyPressEvent(event);
+    if (selected.size() != 1) return GtGraphicsScene::keyPressEvent(event);
 
-    NodeGraphicsObject* o = selected.nodes.front();
+    NodeGraphicsObject* o = selected.front();
 
+    assert(o);
     assert(event);
     event->setAccepted(false);
 
     gt::gui::handleObjectKeyEvent(*event, o->node());
 
-    if (!event->isAccepted()) QGraphicsScene::keyPressEvent(event);
+    if (!event->isAccepted()) GtGraphicsScene::keyPressEvent(event);
 }
 
 void
-GraphScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
-{
-    return QGraphicsScene::mousePressEvent(event);
-}
-
-void
-GraphScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
-{
-    if (m_draftConnection)
-    {
-        // snap to nearest possible port
-        ConnectionId conId = m_draftConnection->connectionId();
-        PortType targetType = invert(conId.draftType());
-        bool reverse = conId.inNodeId.isValid();
-        if (reverse) conId.reverse();
-
-        QPointF pos = event->scenePos();
-
-        QRectF rect{pos - s_connection_distance, pos + s_connection_distance};
-
-        auto const& items = this->items(rect);
-        for (auto* item : items)
-        {
-            auto* object = qgraphicsitem_cast<NodeGraphicsObject*>(item);
-            if (!object) continue;
-
-            auto hit = object->geometry().portHit(object->mapFromScene(rect).boundingRect());
-            if (!hit) continue;
-
-            conId.inNodeId = object->nodeId();
-            conId.inPort   = hit.port;
-            assert(conId.isValid());
-
-            if (reverse) conId.reverse();
-
-            if (!m_graph->canAppendConnections(conId)) continue;
-
-            Impl::moveConnectionPoint(*m_draftConnection, *object, hit.type, hit.port);
-            return event->accept();
-        }
-
-        m_draftConnection->setEndPoint(targetType, event->scenePos());
-        return event->accept();
-    }
-
-    return QGraphicsScene::mouseMoveEvent(event);
-}
-
-void
-GraphScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
-{
-    if (m_draftConnection)
-    {
-        Impl::clearHighlights(*this);
-
-        ConnectionId conId = m_draftConnection->connectionId();
-        bool reverse = conId.inNodeId.isValid();
-        if (reverse) conId.reverse();
-
-        // remove draft connection
-        m_draftConnection->ungrabMouse();
-        m_draftConnection.reset();
-
-        QPointF pos = event->scenePos();
-
-        QRectF rect{pos - s_connection_distance, pos + s_connection_distance};
-
-        // find node to connect to
-        auto const& items = this->items(rect);
-        for (auto* item : items)
-        {
-            auto* object = qgraphicsitem_cast<NodeGraphicsObject*>(item);
-            if (!object) continue;
-
-            auto hit = object->geometry().portHit(object->mapFromScene(rect).boundingRect());
-            if (!hit) continue;
-
-            conId.inNodeId = object->nodeId();
-            conId.inPort   = hit.port;
-            assert(conId.isValid());
-
-            if (reverse) conId.reverse();
-
-            if (!m_graph->canAppendConnections(conId)) continue;
-
-            auto cmd = gtApp->makeCommand(m_graph, tr("Append %1").arg(toString(conId)));
-            Q_UNUSED(cmd);
-
-            m_graph->appendConnection(std::make_unique<Connection>(conId));
-            break;
-        }
-        return event->accept();
-    }
-
-    return QGraphicsScene::mouseReleaseEvent(event);
-}
-
-void
-GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF pos)
+GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port)
 {
     using PortType  = PortType;
     using PortIndex = PortIndex;
@@ -1106,7 +971,7 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
 
     menu.addSeparator();
 
-    auto& conModel = m_graph->connectionModel();
+    auto& conModel = graph().connectionModel();
     auto connections = conModel.iterateConnections(node->id(), port);
 
     QAction* deleteAction = menu.addAction(tr("Remove all connections"));
@@ -1117,11 +982,13 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
 
     if (triggered == deleteAction)
     {
+        auto change = graph().modify();
+        Q_UNUSED(change);
+
         QList<GtObject*> objects;
         std::transform(connections.begin(), connections.end(),
-                       std::back_inserter(objects),
-                       [this](ConnectionId conId){
-            return m_graph->findConnection(conId);
+                       std::back_inserter(objects), [this](ConnectionId conId){
+            return graph().findConnection(conId);
         });
         gtDataModel->deleteFromModel(objects);
         return;
@@ -1135,98 +1002,94 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port, QPointF p
 }
 
 void
-GraphScene::onNodeContextMenu(NodeGraphicsObject* object, QPointF pos)
+GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
 {
     assert(object);
-
-    auto* node = &object->node();
 
     if (!object->isSelected()) clearSelection();
     object->setSelected(true);
 
-    // retrieve selected nodes
-    auto selected = Impl::findSelectedItems(*this, Impl::NodesOnly);
-    // selection should not be empty
-    assert(!selected.nodes.empty());
+    auto selected = Impl::findSelectedItems<InteractableGraphicsObject*>(*this);
+    assert(!selected.empty());
 
-    bool allDeletable = std::none_of(selected.nodes.begin(),
-                                     selected.nodes.end(),
-                                     Impl::isNotDeletable);
-
-    bool someCollapsed = std::any_of(selected.nodes.begin(),
-                                     selected.nodes.end(),
-                                     Impl::isCollapsed);
-
-    bool someUncollapsed = std::any_of(selected.nodes.begin(),
-                                       selected.nodes.end(),
-                                       Impl::negate(Impl::isCollapsed));
-
-    Node* selectedNode = &selected.nodes.at(0)->node();
-    assert(selectedNode);
-    Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
+    auto selectedNodes =
+        graphics_cast<NodeGraphicsObject*>(object) ?
+            Impl::findItems<NodeGraphicsObject*>(*this, selected) :
+            QVector<NodeGraphicsObject*>{};
 
     // create menu
     QMenu menu;
 
+    bool someCollapsed = std::any_of(selected.begin(),
+                                     selected.end(),
+                                     Impl::isCollapsed);
+
+    bool someUncollapsed = std::any_of(selected.begin(),
+                                       selected.end(),
+                                       Impl::negate(Impl::isCollapsed));
+
+    QAction* collapseAction = menu.addAction(tr("Collapse selected Objects"));
+    collapseAction->setIcon(gt::gui::icon::triangleUp());
+    collapseAction->setVisible(someUncollapsed);
+
+    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Objects"));
+    uncollapseAction->setIcon(gt::gui::icon::triangleDown());
+    uncollapseAction->setVisible(someCollapsed);
+
+    bool areNodesSelected = !selectedNodes.empty();
+    Node* selectedNode = areNodesSelected ? &selectedNodes.front()->node() : nullptr;
+    Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
+
+    bool allDeletable = std::none_of(selectedNodes.begin(),
+                                     selectedNodes.end(),
+                                     Impl::isNotDeletable);
+
     QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
     ungroupAction->setIcon(gt::gui::icon::stretch());
     ungroupAction->setEnabled(allDeletable);
-    ungroupAction->setVisible(selectedGraphNode && selected.nodes.size() == 1);
+    ungroupAction->setVisible(selectedGraphNode && selectedNodes.size() == 1);
 
     QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
     groupAction->setEnabled(allDeletable);
 
-    QAction* collapseAction = menu.addAction(tr("Collapse selected Nodes"));
-    collapseAction->setIcon(gt::gui::icon::triangleUp());
-    collapseAction->setVisible(someUncollapsed);
-
-    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Nodes"));
-    uncollapseAction->setIcon(gt::gui::icon::triangleDown());
-    uncollapseAction->setVisible(someCollapsed);
-
     menu.addSeparator();
 
-    QAction* deleteAction = menu.addAction(tr("Delete selected Nodes"));
+    QAction* deleteAction = menu.addAction(tr("Delete selected Objects"));
     deleteAction->setIcon(gt::gui::icon::delete_());
     deleteAction->setEnabled(allDeletable);
+    deleteAction->setShortcut(QKeySequence::Delete);
 
     // add custom object menu
-    if (selected.nodes.size() == 1)
+    if (selected.size() == 1)
     {
-        menu.addSeparator();
-        gt::gui::makeObjectContextMenu(menu, *node);
         deleteAction->setVisible(false);
+        selected.front()->setupContextMenu(menu);
     }
 
     QAction* triggered = menu.exec(QCursor::pos());
-
-    if (triggered == groupAction)
+    if (triggered == deleteAction)
     {
-        return groupNodes(selected.nodes);
-    }
-    if (triggered == ungroupAction)
-    {
-        return expandGroupNode(selectedGraphNode);
+        return deleteSelectedObjects();
     }
     if (triggered == collapseAction ||
         triggered == uncollapseAction)
     {
-        return collapseNodes(selected.nodes, triggered == collapseAction);
+        bool doCollapse = (triggered == collapseAction);
+        return Impl::collapseObjects(*this, selected, doCollapse);
     }
-    if (triggered == deleteAction)
+    if (triggered == groupAction)
     {
-        GtObjectList list;
-        std::transform(selected.nodes.begin(), selected.nodes.end(),
-                       std::back_inserter(list), [](NodeGraphicsObject* o) {
-             return &o->node();
-         });
-        return (void)gtDataModel->deleteFromModel(list);
+        return groupSelection();
+    }
+    if (triggered == ungroupAction)
+    {
+        return expandSubgraph(selectedGraphNode);
     }
 }
 
 void
-GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
+GraphScene::groupSelection()
 {
     // get new node name
     GtInputDialog dialog(GtInputDialog::TextInput);
@@ -1243,401 +1106,81 @@ GraphScene::groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects)
         return;
     }
 
-    // preprocess nodes
-    QVector<Node*> selectedNodes;
-    std::transform(selectedNodeObjects.begin(),
-                   selectedNodeObjects.end(),
-                   std::back_inserter(selectedNodes),
-                   [](NodeGraphicsObject* o){ return &o->node(); });
+    auto selectedObjects= Impl::findSelectedItems<InteractableGraphicsObject*>(*this);
+    if (selectedObjects.empty()) return;
 
-    QVector<ConnectionUuid> connectionsIn, connectionsOut;
+    QVector<ObjectUuid> selection;
 
-    auto& conModel = m_graph->connectionModel();
-
-    // separate connections into ingoing and outgoing of the group node
-    for (Node const* node : qAsConst(selectedNodes))
-    {
-        for (ConnectionId conId : conModel.iterateConnections(node->id()))
-        {
-            if (!containsNodeId(conId.inNodeId, selectedNodes))
-            {
-                connectionsOut.push_back(m_graph->connectionUuid(conId));
-            }
-            if (!containsNodeId(conId.outNodeId, selectedNodes))
-            {
-                connectionsIn.push_back(m_graph->connectionUuid(conId));
-            }
-        }
-    }
-
-    // sort in and out going connections to avoid crossing connections
-    auto const sortByEndPoint = [this](ConnectionUuid const& a,
-                                       ConnectionUuid const& b){
-        auto oA = connectionObject(m_graph->connectionId(a));
-        auto oB = connectionObject(m_graph->connectionId(b));
-        assert(oA);
-        assert(oB);
-        return oA->endPoint(PortType::In).y() <
-               oB->endPoint(PortType::In).y();
-    };
-
-    std::sort(connectionsIn.begin(),  connectionsIn.end(),  sortByEndPoint);
-    std::sort(connectionsOut.begin(), connectionsOut.end(), sortByEndPoint);
+    std::transform(selectedObjects.begin(),
+                   selectedObjects.end(),
+                   std::back_inserter(selection),
+                   [](InteractableGraphicsObject* object){
+        assert(object);
+        return object->objectUuid();
+    });
 
     // create undo command
-    auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'").arg(groupNodeName));
-    auto modifyCmd = m_graph->modify();
-    Q_UNUSED(modifyCmd);
+    auto appCmd = gtApp->makeCommand(m_graph, tr("Create group node '%1'")
+                                                  .arg(groupNodeName));
 
     auto restoreCmd = gt::finally([&appCmd](){
         appCmd.finalize();
         gtApp->undoStack()->undo();
     });
 
-    // create group node
-    auto targetGraphPtr = std::make_unique<Graph>();
-    targetGraphPtr->setCaption(groupNodeName);
-
-    // setup input/output provider
-    targetGraphPtr->initInputOutputProviders();
-    auto* inputProvider  = targetGraphPtr->inputProvider();
-    auto* outputProvider = targetGraphPtr->outputProvider();
-
-    if (!inputProvider || !outputProvider)
+    // perform grouping
+    if (utils::groupObjects(graph(), groupNodeName, selection))
     {
-        gtError() << tr("Failed to group nodes! "
-                        "(Invalid input or output provider)");
-        return;
+        restoreCmd.clear();
     }
-
-    // update node positions
-    QPolygonF selectionPoly;
-    std::transform(selectedNodes.begin(), selectedNodes.end(),
-                   std::back_inserter(selectionPoly), [](auto const* node){
-        return node->pos();
-    });
-
-    auto boundingRect = selectionPoly.boundingRect();
-    auto center = boundingRect.center();
-    auto offset = QPointF{boundingRect.width() * 0.5,
-                          boundingRect.height() * 0.5};
-
-    targetGraphPtr->setPos(center);
-    inputProvider->setPos(inputProvider->pos() + center - 2 * offset);
-    outputProvider->setPos(outputProvider->pos() + center);
-
-    for (Node* node : qAsConst(selectedNodes))
-    {
-        node->setPos(node->pos() - offset);
-    }
-
-    // find connections that share the same outgoing node and port
-    auto const extractSharedConnections = [](auto& connections){
-        QVector<ConnectionUuid> shared;
-
-        for (auto begin = connections.begin(); begin != connections.end(); ++begin)
-        {
-            auto iter = std::find_if(std::next(begin, 1), connections.end(),
-                                     [conId = *begin](ConnectionUuid const& other){
-                return conId.outNodeId == other.outNodeId &&
-                       conId.outPort == other.outPort;
-            });
-            if (iter == connections.end()) continue;
-
-            shared.push_back(*iter);
-            connections.erase(iter);
-        }
-
-        return shared;
-    };
-
-    auto connectionsInShared  = extractSharedConnections(connectionsIn);
-    auto connectionsOutShared = extractSharedConnections(connectionsOut);
-
-    // helper function to extract and check typeIds
-    auto const extractTypeIds = [this](auto const& connections){
-        QVector<QString> retval;
-
-        for (ConnectionUuid const& conId : connections)
-        {
-            auto* node = m_graph->findNodeByUuid(conId.inNodeId);
-            assert(node);
-            auto* port = node->port(conId.inPort);
-            assert(port);
-
-            if (!NodeDataFactory::instance().knownClass(port->typeId))
-            {
-                gtError() << tr("Failed to group nodes! "
-                                "(Unkown node datatype '%1', id: %2, port: %3)")
-                                 .arg(port->typeId,
-                                      node->caption(),
-                                      toString(*port));
-                continue;
-            }
-
-            retval.push_back(port->typeId);
-        }
-
-        return retval;
-    };
-
-    // find datatype for input and output provider
-    auto const& dtypeIn  = extractTypeIds(connectionsIn);
-    auto const& dtypeOut = extractTypeIds(connectionsOut);
-
-    if (dtypeIn.size()  != connectionsIn.size() ||
-        dtypeOut.size() != connectionsOut.size()) return;
-
-    // setup input and output ports
-    for (QString const& typeId : dtypeIn ) inputProvider->addPort(typeId);
-    for (QString const& typeId : dtypeOut) outputProvider->addPort(typeId);
-
-    Graph* targetGraph = m_graph->appendNode(std::move(targetGraphPtr));
-    // append node first
-    if (!targetGraph)
-    {
-        gtError() << tr("Failed to group nodes! (Appending group node failed)");
-        return;
-    }
-
-    // move nodes and internal connections
-    if (!m_graph->moveNodesAndConnections(selectedNodes, *targetGraph))
-    {
-        gtError() << tr("Failed to group nodes! (Moving nodes failed)");
-        return;
-    }
-
-    // helper function to create ingoing and outgoing connections
-    auto const makeConnections = [this, targetGraph](ConnectionUuid conUuid,
-                                                     auto* provider,
-                                                     PortIndex index,
-                                                     PortType type,
-                                                     bool addToMainGraph = true,
-                                                     bool addToTargetGrtaph = true) {
-        if (type == PortType::Out) conUuid.reverse();
-
-        // create connection in parent graph
-        if (addToMainGraph)
-        {
-            ConnectionUuid newCon = conUuid;
-            newCon.inNodeId = targetGraph->uuid();
-            newCon.inPort   = targetGraph->portId(type, index);
-            assert(newCon.isValid());
-
-            if (type == PortType::Out) newCon.reverse();
-
-            m_graph->appendConnection(m_graph->connectionId(newCon));
-        }
-        // create connection in subgraph
-        if (addToTargetGrtaph)
-        {
-            conUuid.outNodeId = provider->uuid();
-            conUuid.outPort   = provider->portId(invert(type), index);
-            assert(conUuid .isValid());
-
-            if (type == PortType::Out) conUuid.reverse();
-
-            targetGraph->appendConnection(targetGraph->connectionId(conUuid));
-        }
-    };
-
-    // create connections that share the same node and port
-    auto const makeSharedConnetions = [makeConnections](auto& shared,
-                                                        ConnectionUuid conUuid,
-                                                        auto* provider,
-                                                        PortIndex index,
-                                                        PortType type){
-        bool success = true;
-        while (success)
-        {
-            auto iter = std::find_if(shared.begin(), shared.end(),
-                                     [conUuid](ConnectionUuid const& other){
-                return conUuid.outNodeId == other.outNodeId &&
-                       conUuid.outPort == other.outPort;
-            });
-            if ((success = (iter != shared.end())))
-            {
-                bool installInParent = type == PortType::Out;
-                makeConnections(*iter, provider, index, type, installInParent, !installInParent);
-                shared.erase(iter);
-            }
-        }
-    };
-
-    // make input connections
-    PortIndex index{0};
-    PortType type = PortType::In;
-    for (ConnectionUuid const& conId : qAsConst(connectionsIn))
-    {
-        makeConnections(conId, inputProvider, index, type);
-
-        makeSharedConnetions(connectionsInShared, conId, inputProvider, index, type);
-
-        index++;
-    }
-
-    // make output connections
-    index = PortIndex{0};
-    type  = PortType::Out;
-    for (ConnectionUuid const& conId : qAsConst(connectionsOut))
-    {
-        makeConnections(conId, outputProvider, index, type);
-
-        makeSharedConnetions(connectionsOutShared, conId, outputProvider, index, type);
-
-        index++;
-    }
-
-    restoreCmd.clear();
 }
 
 void
-GraphScene::expandGroupNode(Graph* groupNode)
+GraphScene::expandSubgraph(Graph* groupNode)
 {
     assert(groupNode);
 
     // create undo command
     auto appCmd = gtApp->makeCommand(m_graph, tr("Expand group node '%1'").arg(groupNode->caption()));
-    auto modifyGroupCmd = groupNode->modify();
-    auto modifyCmd = m_graph->modify();
-    Q_UNUSED(modifyCmd);
 
     auto restoreCmd = gt::finally([&appCmd](){
         appCmd.finalize();
         gtApp->undoStack()->undo();
     });
 
-    auto const& conModel = m_graph->connectionModel();
-
-    auto* inputProvider  = groupNode->inputProvider();
-    auto* outputProvider = groupNode->outputProvider();
-    assert(inputProvider);
-    assert(outputProvider);
-
-    // gather input and output connections
-    QVector<ConnectionUuid> expandedInputConnections, expandedOutputConnections;
-
-    // extra scope since group node will be deleted eventually -> avoid dangling
-    // references
+    // perform expansion
+    if (utils::expandSubgraph(std::unique_ptr<Graph>{groupNode}))
     {
-        // "flatten" connections between parent graph and subgraph
-        auto convertConnection =
-            [this, &conModel, groupNode](ConnectionId conId,
-                                         auto& convertedConnections,
-                                         PortType type){
-            ConnectionUuid conUuid = groupNode->connectionUuid(conId);
-
-            bool const isInput = type == PortType::In;
-            if (isInput) conUuid.reverse();
-
-            auto connections = conModel.iterate(groupNode->id(), conUuid.outPort);
-            for (auto const& connection : connections)
-            {
-                NodeId targetNodeId = connection.node;
-                Node* targetNode = m_graph->findNode(targetNodeId);
-                assert(targetNode);
-                conUuid.outNodeId = targetNode->uuid();
-                conUuid.outPort   = connection.port;
-
-                convertedConnections.push_back(isInput ? conUuid.reversed() : conUuid);
-            }
-        };
-
-        auto const& groupConModel = groupNode->connectionModel();
-
-        PortType type = PortType::Out;
-        auto inputCons  = groupConModel.iterateConnections(inputProvider->id(), type);
-        for (ConnectionId conId : inputCons)
-        {
-            convertConnection(conId, expandedInputConnections, type);
-        }
-
-        type = PortType::In;
-        auto outputCons = groupConModel.iterateConnections(outputProvider->id(), type);
-        for (ConnectionId conId : outputCons)
-        {
-            convertConnection(conId, expandedInputConnections, type);
-        }
+        restoreCmd.clear();
     }
-
-    // delete provider nodes
-    if (!groupNode->deleteNode(groupNode->inputNode()->id()) ||
-        !groupNode->deleteNode(groupNode->outputNode()->id()))
-    {
-        gtError() << tr("Expanding group node '%1' failed! "
-                        "(Failed to remove provider nodes)")
-                         .arg(relativeNodePath(*groupNode));
-        return;
-    }
-
-    inputProvider = nullptr;
-    outputProvider = nullptr;
-    auto nodes = groupNode->nodes();
-
-    // update node positions
-    QPolygonF selectionPoly;
-    std::transform(nodes.begin(), nodes.end(),
-                   std::back_inserter(selectionPoly), [](auto const* node){
-        return node->pos();
-    });
-
-    auto boundingRect = selectionPoly.boundingRect();
-    auto center = boundingRect.center();
-    for (Node* node : qAsConst(nodes))
-    {
-        auto offset = (node->pos() - center);
-        node->setPos(groupNode->pos() + offset);
-    }
-
-    // move internal connections
-    if (!groupNode->moveNodesAndConnections(nodes, *m_graph))
-    {
-        gtError() << tr("Expanding group node '%1' failed! "
-                        "(Failed to move internal nodes)")
-                         .arg(relativeNodePath(*groupNode));
-        return;
-    }
-
-    // delete group node
-    modifyGroupCmd.finalize();
-    delete groupNode;
-    groupNode = nullptr;
-
-    // install connections to moved nodes
-    for (auto* connections : {&expandedInputConnections, &expandedOutputConnections})
-    {
-        for (ConnectionUuid const& conUuid : qAsConst(*connections))
-        {
-            m_graph->appendConnection(m_graph->connectionId(conUuid));
-        }
-    }
-
-    restoreCmd.clear();
 }
 
 void
-GraphScene::collapseNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects,
-                          bool doCollapse)
+GraphScene::beginMoveCommand(InteractableGraphicsObject* sender, QPointF diff)
 {
-    if (selectedNodeObjects.empty()) return;
-
-    QString caption =
-        relativeNodePath(selectedNodeObjects.front()->node()) +
-        (selectedNodeObjects.size() > 1 ? ", ...":"");
-
-    auto change = gtApp->makeCommand(
-        &graph(),
-        tr("Node%1 %2collapsed (%3)")
-            .arg(selectedNodeObjects.size() > 1 ? "s":"",
-                 doCollapse? "":"un",
-                 caption)
-    );
-    Q_UNUSED(change);
-
-    for (NodeGraphicsObject* o : selectedNodeObjects)
+    if (!m_objectMoveCmd.isValid())
     {
-        o->collapse(doCollapse);
+        auto const& selection = Impl::findSelectedItems<NodeGraphicsObject const*>(*this);
+
+        QString const txt = selection.empty() ?
+                                tr("Objects moved") :
+                                selection.size() > 1 ?
+                                    tr("Nodes moved") :
+                                    tr("Node '%1' moved")
+                                        .arg(relativeNodePath(selection.at(0)->node()));
+        m_objectMoveCmd = gtApp->startCommand(m_graph, txt);
     }
+}
+
+void
+GraphScene::endMoveCommand(InteractableGraphicsObject* sender)
+{
+    // nodes have not been moved
+    if (!m_objectMoveCmd.isValid()) return;
+
+    // finish command
+    gtApp->endCommand(m_objectMoveCmd);
+    m_objectMoveCmd = {};
 }
 
 void
@@ -1657,25 +1200,26 @@ GraphScene::onNodeAppended(Node* node)
     connect(entity, &NodeGraphicsObject::portContextMenuRequested,
             this, &GraphScene::onPortContextMenu);
     connect(entity, &NodeGraphicsObject::contextMenuRequested,
-            this, &GraphScene::onNodeContextMenu);
+            this, &GraphScene::onObjectContextMenu);
 
-    connect(entity, &NodeGraphicsObject::nodeShifted,
-            this, &GraphScene::onNodeShifted, Qt::DirectConnection);
-    connect(entity, &NodeGraphicsObject::nodeMoved,
-            this, &GraphScene::onNodeMoved, Qt::DirectConnection);
-    connect(entity, &NodeGraphicsObject::nodePositionChanged,
-            this, &GraphScene::onNodePositionChanged, Qt::DirectConnection);
+    connect(entity, &InteractableGraphicsObject::objectShifted,
+            this, &GraphScene::beginMoveCommand, Qt::DirectConnection);
+    connect(entity, &InteractableGraphicsObject::objectMoved,
+            this, &GraphScene::endMoveCommand, Qt::DirectConnection);
+
     connect(entity, &NodeGraphicsObject::nodeDoubleClicked,
             this, &GraphScene::onNodeDoubleClicked, Qt::DirectConnection);
-    connect(entity, &NodeGraphicsObject::nodeGeometryChanged,
-            this, &GraphScene::moveConnections, Qt::DirectConnection);
 
     connect(entity, &NodeGraphicsObject::makeDraftConnection,
             this, &GraphScene::onMakeDraftConnection,
             Qt::DirectConnection);
 
+    auto* ptr = entity.get();
+
     // append to map
     m_nodes.push_back({node->id(), std::move(entity)});
+
+    emit objectAdded(ptr, QPrivateSignal());
 }
 
 void
@@ -1688,55 +1232,10 @@ GraphScene::onNodeDeleted(NodeId nodeId)
         m_nodes.erase(iter);
     }
 }
-
-void
-GraphScene::onNodeShifted(NodeGraphicsObject* sender, QPointF diff)
-{
-    auto const selection = Impl::findSelectedItems(*this, Impl::NodesOnly);
-
-    if (!m_nodeMoveCmd.isValid())
-    {
-        QString const txt = selection.nodes.size() > 1 ?
-                                tr("Nodes moved") :
-                                tr("Node '%1' moved")
-                                    .arg(relativeNodePath(selection.nodes.at(0)->node()));
-        m_nodeMoveCmd = gtApp->startCommand(m_graph, txt);
-    }
-
-    for (auto* o : selection.nodes)
-    {
-        if (sender != o) o->moveBy(diff.x(), diff.y());
-        moveConnections(o);
-    }
-}
-
-void
-GraphScene::onNodeMoved(NodeGraphicsObject* sender)
-{
-    // nodes have not been moved
-    if (!m_nodeMoveCmd.isValid()) return;
-
-    auto const selection = Impl::findSelectedItems(*this, Impl::NodesOnly);
-    // commit position to data model
-    for (auto* o : selection.nodes)
-    {
-        o->commitPosition();
-    }
-
-    // finish command
-    gtApp->endCommand(m_nodeMoveCmd);
-    m_nodeMoveCmd = {};
-}
-
-void
-GraphScene::onNodePositionChanged(NodeGraphicsObject* sender)
-{
-    moveConnections(sender);
-}
-
 void
 GraphScene::onNodeDoubleClicked(NodeGraphicsObject* sender)
 {
+    // TODO: move into NodeGraphicsObject?, see core issue #1315
     assert(sender);
 
     Node& node = sender->node();
@@ -1758,47 +1257,23 @@ GraphScene::onConnectionAppended(Connection* con)
     auto conId = con->connectionId();
 
     // access nodes and ports
-    auto* inNodeEntity  = nodeObject(conId.inNodeId);
-    assert(inNodeEntity);
-    Node* inNode = &inNodeEntity->node();
-    auto* inPort = inNode->port(conId.inPort);
-    assert(inPort);
+    auto* inNode  = nodeObject(conId.inNodeId);
+    assert(inNode);
 
-    auto* outNodeEntity = nodeObject(conId.outNodeId);
-    assert(outNodeEntity);
-    Node* outNode = &outNodeEntity->node();
-    auto* outPort = outNode->port(conId.outPort);
-    assert(outPort);
+    auto* outNode = nodeObject(conId.outNodeId);
+    assert(outNode);
 
-    auto entity = make_unique_qptr<ConnectionGraphicsObject, DirectDeleter>(conId, outPort->typeId, inPort->typeId);
+    auto entity = convert_to_unique_qptr<DirectDeleter>(
+        ConnectionGraphicsObject::makeConnection(*this, *con, *outNode, *inNode)
+    );
     entity->setConnectionShape(m_connectionShape);
-
-    // add to scene
-    addItem(entity);
-    moveConnection(entity);
-
-    // update type ids if port changes to make sure connections stay updated
-    connect(inNode, &Node::portChanged, entity,
-            [entity = entity.get(), inNode](PortId id){
-        if (entity->connectionId().inPort != id) return;
-        auto* port = inNode->port(id);
-        assert(port);
-        entity->setPortTypeId(PortType::In, port->typeId);
-    });
-    connect(outNode, &Node::portChanged, entity,
-            [entity = entity.get(), outNode](PortId id){
-        if (entity->connectionId().outPort != id) return;
-        auto* port = outNode->port(id);
-        assert(port);
-        entity->setPortTypeId(PortType::Out, port->typeId);
-    });
 
     // append to map
     m_connections.push_back({conId, std::move(entity)});
 
     // update in and out node
-    inNodeEntity->update();
-    outNodeEntity->update();
+    inNode->update();
+    outNode->update();
 }
 
 void
@@ -1827,54 +1302,6 @@ GraphScene::onConnectionDeleted(ConnectionId conId)
 }
 
 void
-GraphScene::moveConnection(ConnectionGraphicsObject* object,
-                           NodeGraphicsObject* node)
-{
-    assert(object);
-
-    bool isInNode  = !node || node->nodeId() == object->connectionId().inNodeId;
-    bool isOutNode = !node || !isInNode;
-
-    if (isInNode)
-    {
-        moveConnectionPoint(*object, PortType::In);
-    }
-    if (isOutNode)
-    {
-        moveConnectionPoint(*object, PortType::Out);
-    }
-}
-
-void
-GraphScene::moveConnectionPoint(ConnectionGraphicsObject& object, PortType type)
-{
-    auto const& conId = object.connectionId();
-
-    NodeId nodeId = conId.node(type);
-    assert(nodeId != invalid<NodeId>());
-
-    NodeGraphicsObject* nObject = nodeObject(nodeId);
-    if (!nObject) return;
-
-    Impl::moveConnectionPoint(object, *nObject, type, conId.port(type));
-}
-
-void
-GraphScene::moveConnections(NodeGraphicsObject* object)
-{
-    assert(object);
-
-    auto& conModel = m_graph->connectionModel();
-    for (auto const& conId : conModel.iterateConnections(object->nodeId()))
-    {
-        if (ConnectionGraphicsObject* con = connectionObject(conId))
-        {
-            moveConnection(con, object);
-        }
-    }
-}
-
-void
 GraphScene::onMakeDraftConnection(NodeGraphicsObject* object,
                                   PortType type,
                                   PortId portId)
@@ -1895,4 +1322,55 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object,
 
     // create new connection
     Impl::instantiateDraftConnection(*this, *object, type, portId);
+}
+
+void
+GraphScene::onFinalizeDraftConnection(ConnectionId conId)
+{
+    Impl::clearHighlights(*this);
+
+    if (conId.isDraft() || !graph().canAppendConnections(conId)) return;
+
+    auto cmd = gtApp->makeCommand(&graph(), tr("Append %1").arg(toString(conId)));
+    Q_UNUSED(cmd);
+
+    graph().appendConnection(std::make_unique<Connection>(conId));
+}
+
+void
+GraphScene::onCommentAppended(CommentData* comment)
+{
+    assert(comment);
+
+    auto entity = make_unique_qptr<CommentGraphicsObject, DirectDeleter>(*this, graph(), *comment, sceneData());
+
+    connect(entity, &InteractableGraphicsObject::objectShifted,
+            this, &GraphScene::beginMoveCommand, Qt::DirectConnection);
+    connect(entity, &InteractableGraphicsObject::objectMoved,
+            this, &GraphScene::endMoveCommand, Qt::DirectConnection);
+
+    connect(entity, &CommentGraphicsObject::contextMenuRequested,
+            this, &GraphScene::onObjectContextMenu, Qt::DirectConnection);
+
+    auto* ptr = entity.get();
+
+    m_comments.push_back({comment->uuid(), std::move(entity)});
+
+    emit objectAdded(ptr, QPrivateSignal());
+}
+
+void
+GraphScene::onCommentDeleted(CommentData* comment)
+{
+    auto iter = std::find_if(m_comments.begin(),
+                             m_comments.end(),
+                             Impl::findObjectById(comment));
+    if (iter == m_comments.end())
+    {
+        gtError() << utils::logId(this)
+                  << tr("Failed to remove comment:") << (void*)comment;
+        return;
+    }
+
+    m_comments.erase(iter);
 }

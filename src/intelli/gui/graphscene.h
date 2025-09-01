@@ -24,12 +24,15 @@ class QMenu;
 namespace intelli
 {
 
+class InteractableGraphicsObject;
 class Node;
 class NodeGraphicsObject;
 class Graph;
 class GraphSceneData;
 class Connection;
 class ConnectionGraphicsObject;
+class CommentData;
+class CommentGraphicsObject;
 
 class GraphScene : public GtGraphicsScene
 {
@@ -77,21 +80,39 @@ public:
     ConnectionGraphicsObject* connectionObject(ConnectionId conId);
     ConnectionGraphicsObject const* connectionObject(ConnectionId conId) const;
 
-    QMenu* createSceneMenu(QPointF scenePos);
+    std::unique_ptr<QMenu> createSceneMenu(QPointF scenePos);
 
 public slots:
 
     /**
-     * @brief Alings all nodes to the grid
+     * @brief Alings all objects to the grid. If the scene contains a valid
+     * selection, only the selected objects are aligned otherwise all objects
+     * are aligned. Creates an undo-redo command.
      */
     void alignObjectsToGrid();
 
+    /**
+     * @brief Attempts to delete all selected object. If no objects are
+     * selected, no objects will be deleted. Creates an undo-redo command.
+     */
     void deleteSelectedObjects();
 
+    /**
+     * @brief Duplicates the selection. If no objects are selected, no action is
+     * performed. Creates an undo-redo command.
+     */
     void duplicateSelectedObjects();
 
+    /**
+     * @brief Copies the selection to the clipboard. If no objects are selected,
+     * no action is performed.
+     */
     bool copySelectedObjects();
 
+    /**
+     * @brief Pastes the selection from the clipboard. Creates an undo-redo
+     * command.
+     */
     void pasteObjects();
 
 signals:
@@ -102,15 +123,11 @@ signals:
 
     void snapToGridChanged();
 
+    void objectAdded(InteractableGraphicsObject* object, QPrivateSignal);
+
 protected:
 
     void keyPressEvent(QKeyEvent* event) override;
-
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
-
-    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
-
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
 private:
 
@@ -128,28 +145,33 @@ private:
         unique_qptr<ConnectionGraphicsObject, DirectDeleter> object;
     };
 
+    struct CommentEntry
+    {
+        ObjectUuid uuid;
+        unique_qptr<CommentGraphicsObject, DirectDeleter> object;
+    };
+
     /// graph this scene refers to
     QPointer<Graph> m_graph;
     /// Node objects in this scene
     std::vector<NodeEntry> m_nodes;
     /// Connection objects in this scene
     std::vector<ConnectionEntry> m_connections;
-    /// Draft connection if active
-    unique_qptr<ConnectionGraphicsObject> m_draftConnection;
+    /// Comment objects in this scene
+    std::vector<CommentEntry> m_comments;
     /// Shared scene data
     std::unique_ptr<GraphSceneData> m_sceneData;
     /// Shape style of the connections in this scene
     ConnectionShape m_connectionShape = ConnectionShape::DefaultShape;
-    /// Currently active command when moving nodes
-    GtCommand m_nodeMoveCmd = {};
+    /// Currently active command when moving objects
+    GtCommand m_objectMoveCmd = {};
 
     /**
-     * @brief Groups the selected nodes by moving the into a subgraph.
+     * @brief Groups the selected objects by moving them into a subgraph.
      * Instantiates ingoing and outgoing connections. Nodes and internal
      * connections are preserved.
-     * @param selectedNodeObjects Nodes that should be grouped
      */
-    void groupNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects);
+    void groupSelection();
 
     /**
      * @brief Expands the selected subgraph. Its nodes and internal
@@ -157,47 +179,21 @@ private:
      * Instantiates ingoing and outgoing connections.
      * @param groupNode Subgraph that should be expanded
      */
-    void expandGroupNode(Graph* groupNode);
-
-    /**
-     * @brief Collapsed/expands the selected nodes
-     * @param selectedNodeObjects Nodes that should be collapsed/expanded
-     * @param doCollapse Whether the nodes should be collapsed or expanded
-     */
-    void collapseNodes(QVector<NodeGraphicsObject*> const& selectedNodeObjects,
-                       bool doCollapse);
-
-    /**
-     * @brief Updates the connection's end points. If a node graphics object
-     * is passed in, only this side is updated.
-     * @param object Connection object to update
-     * @param node Node object that has changed (optional)
-     */
-    void moveConnection(ConnectionGraphicsObject* object,
-                        NodeGraphicsObject* node = nullptr);
-
-    /**
-     * @brief Updates the connection's end point that the specified port type
-     * refers to.
-     * @param object Connection object to update
-     * @param type Port type of the end point
-     */
-    void moveConnectionPoint(ConnectionGraphicsObject& object, PortType type);
+    void expandSubgraph(Graph* groupNode);
 
 private slots:
+
+    /// called while an object is being moved by the user, inititates a move
+    /// command if none has been started already
+    void beginMoveCommand(InteractableGraphicsObject* sender, QPointF diff);
+
+    /// called if an object has been moved by the user (moving finished),
+    /// finalizes a move command if one is currently active
+    void endMoveCommand(InteractableGraphicsObject* sender);
 
     void onNodeAppended(Node* node);
 
     void onNodeDeleted(NodeId nodeId);
-
-    /// called while node is being moved by the user
-    void onNodeShifted(NodeGraphicsObject* sender, QPointF diff);
-
-    /// called if node has been moved by the user (moving finished)
-    void onNodeMoved(NodeGraphicsObject* sender);
-
-    /// called if node changed position externally
-    void onNodePositionChanged(NodeGraphicsObject* sender);
 
     void onNodeDoubleClicked(NodeGraphicsObject* sender);
 
@@ -205,15 +201,19 @@ private slots:
 
     void onConnectionDeleted(ConnectionId conId);
 
-    void moveConnections(NodeGraphicsObject* object);
-
     void onMakeDraftConnection(NodeGraphicsObject* object,
                                PortType type,
                                PortId portId);
 
-    void onNodeContextMenu(NodeGraphicsObject* object, QPointF pos);
+    void onFinalizeDraftConnection(ConnectionId conId);
+    
+    void onCommentAppended(CommentData* comment);
+    
+    void onCommentDeleted(CommentData* comment);
 
-    void onPortContextMenu(NodeGraphicsObject* object, PortId portId, QPointF pos);
+    void onPortContextMenu(NodeGraphicsObject* object, PortId portId);
+
+    void onObjectContextMenu(InteractableGraphicsObject* object);
 };
 
 inline GraphScene*
