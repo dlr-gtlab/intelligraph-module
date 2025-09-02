@@ -809,3 +809,26 @@ utils::expandSubgraph(std::unique_ptr<Graph> groupNode)
 
     return true;
 }
+
+Graph*
+utils::duplicateGraph(Graph& source)
+{
+    GtObject* parent = source.parentObject();
+
+    std::unique_ptr<Graph> newGraph = makeCopy(source);
+
+    newGraph->setPos(newGraph->pos() + Position{50, 50});
+
+    if (auto* parentGraph = source.parentGraph())
+    {
+        return parentGraph->appendNode<Graph>(std::move(newGraph));
+    }
+
+    if (!parent->appendChild(newGraph.get()))
+    {
+        return {};
+    }
+
+    newGraph->updateObjectName();
+    return newGraph.release();
+}

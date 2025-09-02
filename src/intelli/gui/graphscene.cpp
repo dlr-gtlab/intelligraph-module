@@ -885,6 +885,16 @@ GraphScene::pasteObjects()
 }
 
 void
+GraphScene::selectAll()
+{
+    auto const& objects = Impl::findItems<GraphicsObject*>(*this);
+    for (GraphicsObject* object : objects)
+    {
+        object->setSelected(true);
+    }
+}
+
+void
 GraphScene::keyPressEvent(QKeyEvent* event)
 {
     // delete functionality should be handled by the view (i.e. `deleteSelectedObjects`)

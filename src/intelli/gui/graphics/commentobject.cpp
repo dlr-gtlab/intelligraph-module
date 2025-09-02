@@ -549,7 +549,6 @@ CommentGraphicsObject::onObjectCollapsed()
     };
 
     setInteractionFlag(DefaultInteractionFlags, false);
-    setInteractionFlag(AllowSelecting, true);
 
     connect(endItem, &QGraphicsObject::xChanged, this, updatePos);
     connect(endItem, &QGraphicsObject::yChanged, this, updatePos);

@@ -9,7 +9,7 @@
 
 #include <intelli/gui/ui/guidataui.h>
 
-#include "gt_icons.h"
+#include <gt_icons.h>
 
 using namespace intelli;
 

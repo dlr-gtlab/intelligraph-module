@@ -368,7 +368,7 @@ ConnectionGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 void
 ConnectionGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (!isDraft()) return GraphicsObject::mouseMoveEvent(event);
+    if (!isDraft()) return GraphicsObject::mouseReleaseEvent(event);
 
     assert(scene());
 

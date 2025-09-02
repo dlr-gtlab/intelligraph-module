@@ -12,6 +12,7 @@
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
 #include "intelli/graph.h"
+#include "intelli/graphutilities.h"
 #include "intelli/node/dummy.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
@@ -43,6 +44,7 @@ using BoolObjectMethod = std::function<bool (GtObject*)>;
 using DeleteAction = std::pair<NodeUI::CustomDeleteFunctor,
                                NodeUI::EnableCustomDeleteFunctor>;
 
+/// NOT operator
 template <typename Functor>
 inline BoolObjectMethod NOT(Functor fA)
 {
@@ -50,8 +52,9 @@ inline BoolObjectMethod NOT(Functor fA)
         return !a(obj);
     };
 }
+/// AND operator
 template <typename Functor>
-inline BoolObjectMethod operator+(BoolObjectMethod fA, Functor fOther)
+inline BoolObjectMethod operator*(BoolObjectMethod fA, Functor fOther)
 {
     return [a = std::move(fA), b = std::move(fOther)](GtObject* obj){
         return a(obj) && b(obj);
@@ -86,62 +89,65 @@ NodeUI::NodeUI(Option option) :
     addSingleAction(tr("Execute once"), executeNode)
         .setIcon(gt::gui::icon::processRun())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("runProcess"), categroy))
-        .setVisibilityMethod(toNode + NOT(toDummy));
+        .setVisibilityMethod(toNode * NOT(toDummy));
 
     addSingleAction(tr("Set inactive"), setActive<false>)
         .setIcon(gt::gui::icon::sleep())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("skipProcess"), categroy))
-        .setVisibilityMethod(toNode + NOT(toDummy) + isActive);
+        .setVisibilityMethod(toNode * NOT(toDummy) * isActive);
 
     addSingleAction(tr("set active"), setActive<true>)
         .setIcon(gt::gui::icon::sleepOff())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("unskipProcess"), categroy))
-        .setVisibilityMethod(toNode + NOT(toDummy) + NOT(isActive));
+        .setVisibilityMethod(toNode * NOT(toDummy) * NOT(isActive));
 
     addSeparator();
 
-#if GT_VERSION >= 0x020100
-    setRegExpHint(tr("It is only allowed to use letters, numbers, '_', '-' "
-                     "and '[ ]' to rename the object and is not allowed to "
-                     "use the name of sibling elements."));
-#endif
-    addSingleAction(tr("Rename Node"), renameNode)
+    addSingleAction(tr("Rename"), renameNode)
         .setIcon(gt::gui::icon::rename())
         .setVisibilityMethod(toNode)
         .setVerificationMethod(canRenameNodeObject)
         .setShortCut(gtApp->getShortCutSequence("rename"));
 
-    addSingleAction(tr("Clear Intelli Graph"), clearNodeGraph)
+    addSeparator();
+
+    addSingleAction(tr("Clear Graph"), clearNodeGraph)
         .setIcon(gt::gui::icon::clear())
         .setVisibilityMethod(toGraph);
 
-    if ((option & NoDefaultPortActions)) return;
-
-    auto const hasOutputPorts = [](GtObject* obj){
-        return !(static_cast<DynamicNode*>(obj)->dynamicNodeOption() &
-                 DynamicNode::DynamicInputOnly);
-    };
-    auto const hasInputPorts = [](GtObject* obj){
-        return !(static_cast<DynamicNode*>(obj)->dynamicNodeOption() &
-                 DynamicNode::DynamicOutputOnly);
-    };
+    addSingleAction(tr("Duplicate Graph"), duplicateGraph)
+        .setIcon(gt::gui::icon::duplicate())
+        .setVisibilityMethod(toGraph)
+        .setShortCut(gtApp->getShortCutSequence("clone"));
 
     addSeparator();
 
-    addSingleAction(tr("Add In Port"), addInPort)
-        .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(toDynamicNode + NOT(toDummy) + hasInputPorts);
+    if (!(option & NoDefaultPortActions))
+    {
+        auto const hasOutputPorts = [](GtObject* obj){
+            return !(static_cast<DynamicNode*>(obj)->dynamicNodeOption() &
+                     DynamicNode::DynamicInputOnly);
+        };
+        auto const hasInputPorts = [](GtObject* obj){
+            return !(static_cast<DynamicNode*>(obj)->dynamicNodeOption() &
+                     DynamicNode::DynamicOutputOnly);
+        };
 
-    addSingleAction(tr("Add Out Port"), addOutPort)
-        .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(toDynamicNode + NOT(toDummy) + hasOutputPorts);
+        addSingleAction(tr("Add In Port"), addInPort)
+            .setIcon(gt::gui::icon::add())
+            .setVisibilityMethod(toDynamicNode * NOT(toDummy) * hasInputPorts);
 
-    /** PORT ACTIONS **/
+        addSingleAction(tr("Add Out Port"), addOutPort)
+            .setIcon(gt::gui::icon::add())
+            .setVisibilityMethod(toDynamicNode * NOT(toDummy) * hasOutputPorts);
 
-    addPortAction(tr("Delete Port"), deleteDynamicPort)
-        .setIcon(gt::gui::icon::delete_())
-        .setVerificationMethod(isDynamicPort)
-        .setVisibilityMethod(isDynamicNode);
+        /** PORT ACTIONS **/
+
+        addPortAction(tr("Delete Port"), deleteDynamicPort)
+            .setIcon(gt::gui::icon::delete_())
+            .setVerificationMethod(isDynamicPort)
+            .setVisibilityMethod(isDynamicNode);
+    }
 
     if (gtApp && gtApp->devMode())
     {
@@ -364,9 +370,16 @@ NodeUI::isDynamicNode(GtObject* obj, PortType, PortIndex)
 }
 
 bool
+NodeUI::isRootGraph(GtObject const* obj)
+{
+    Graph const* graph = toConstGraph(obj);
+    return graph && graph->rootGraph() == graph;
+}
+
+bool
 NodeUI::canRenameNodeObject(GtObject* obj)
 {
-    if (!obj || !(obj->objectFlags() & GtObject::UserRenamable))
+    if (!obj || toDummy(obj))
     {
         return false;
     }
@@ -492,6 +505,22 @@ NodeUI::deleteDummyNode(Node* node)
 }
 
 void
+NodeUI::duplicateGraph(GtObject* obj)
+{
+    Graph* graph = toGraph(obj);
+    if (!graph) return;
+
+    GtObject* parent = graph->parentObject();
+
+    auto cmd = gtApp->makeCommand(parent,
+                                  tr("Duplicate graph '%1'")
+                                      .arg(relativeNodePath(*graph)));
+    Q_UNUSED(cmd);
+
+    utils::duplicateGraph(*graph);
+}
+
+void
 NodeUI::setActive(GtObject* obj, bool state)
 {
     auto* node = toNode(obj);
@@ -499,33 +528,6 @@ NodeUI::setActive(GtObject* obj, bool state)
 
     node->setActive(state);
 }
-
-#if GT_VERSION >= 0x020100
-bool
-NodeUI::hasValidationRegExp(GtObject* obj)
-{
-    return true;
-}
-
-QRegExp
-NodeUI::validatorRegExp(GtObject* obj)
-{
-    assert(obj);
-
-    QRegExp retVal = gt::re::onlyLettersAndNumbersAndSpace();
-
-    if (toGraph(obj))
-    {
-        utils::restrictRegExpWithSiblingsNames<Graph>(*obj, retVal);
-    }
-    else
-    {
-        utils::restrictRegExpWithSiblingsNames<Node>(*obj, retVal);
-    }
-
-    return retVal;
-}
-#endif
 
 QList<PortUIAction> const&
 intelli::NodeUI::portActions() const

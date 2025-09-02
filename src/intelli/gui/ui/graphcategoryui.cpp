@@ -11,17 +11,9 @@
 
 #include "intelli/graph.h"
 #include "intelli/graphcategory.h"
-#include "intelli/private/utils.h"
 #include "intelli/private/gui_utils.h"
-#include "gt_logging.h"
 
-#include "gt_icons.h"
-
-#include <QJsonObject>
-#include <QJsonDocument>
-
-#include <QFileInfo>
-#include <QFile>
+#include <gt_icons.h>
 
 using namespace intelli;
 

@@ -136,24 +136,22 @@ InteractableGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
         m_translationStart = pos();
     }
 
-    if (interactionFlags() & AllowSelecting)
+    // update selection
+    if (!(event->modifiers() & Qt::ControlModifier))
     {
-        // bring this node forward
-        setZValue(style::zValue(style::ZValue::NodeHovered));
+        if (isSelected()) return;
 
-        // update selection
-        if (!isSelected())
-        {
-            if (!(event->modifiers() & Qt::ControlModifier))
-            {
-                QGraphicsScene* scene = this->scene();
-                assert(scene);
-                scene->clearSelection();
-            }
+        QGraphicsScene* scene = this->scene();
+        assert(scene);
+        scene->clearSelection();
 
-            setSelected(true);
-        }
+        setSelected(true);
+        return;
     }
+
+    setSelected(!isSelected());
+
+    if (!isSelected()) m_state = State::Normal;
 }
 
 void

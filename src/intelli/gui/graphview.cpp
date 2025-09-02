@@ -130,7 +130,7 @@ GraphView::GraphView(QWidget* parent) :
     auto* duplicateAction = makeSceneAction(tr("Duplicate Selection"),
                                             &GraphScene::duplicateSelectedObjects);
     duplicateAction->setIcon(gt::gui::icon::duplicate());
-    duplicateAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_D));
+    duplicateAction->setShortcut(gtApp->getShortCutSequence("clone"));
 
     auto* deleteAction = makeSceneAction(tr("Delete Selection"),
                                          &GraphScene::deleteSelectedObjects);
@@ -141,6 +141,11 @@ GraphView::GraphView(QWidget* parent) :
                                                  &GraphScene::clearSelection);
     clearSelectionAction->setIcon(gt::gui::icon::clear());
     clearSelectionAction->setShortcut(Qt::Key_Escape);
+
+    auto* selectAllAction = makeSceneAction(tr("Select All"),
+                                            &GraphScene::selectAll);
+    selectAllAction->setIcon(gt::gui::icon::select());
+    selectAllAction->setShortcut(QKeySequence::SelectAll);
 }
 
 GraphView::~GraphView() = default;

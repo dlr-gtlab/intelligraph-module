@@ -417,9 +417,11 @@ NodeGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
 
     // object will be selected
-    if (!isSelected()) emit gtApp->objectSelected(pimpl->node);
+    bool wasSelected = isSelected();
 
-    return InteractableGraphicsObject::mousePressEvent(event);
+    InteractableGraphicsObject::mousePressEvent(event);
+
+    if (!wasSelected && isSelected()) emit gtApp->objectSelected(pimpl->node);
 }
 
 void

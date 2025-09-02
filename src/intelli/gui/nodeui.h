@@ -129,6 +129,8 @@ public:
     static DynamicNode* toDynamicNode(GtObject* obj);
     static DynamicNode const* toConstDynamicNode(GtObject const* obj);
 
+    static bool isRootGraph(GtObject const* obj);
+
     /**
      * @brief Prompts the user to rename the node
      * @param obj Object to rename
@@ -178,22 +180,6 @@ public:
      */
     QList<PortUIAction> const& portActions() const;
 
-#if GT_VERSION >= 0x020100
-    /**
-     * @brief hasValidationRegExp
-     * @param obj - the underlying object to evaluate
-     * @return true, because element has validator
-     */
-    bool hasValidationRegExp(GtObject* obj) override;
-
-    /**
-     * @brief validatorRegExp
-     * @param obj - the underlying object to evaluate
-     * @return Regexp to accept letters, digits, -, _
-     */
-    QRegExp validatorRegExp(GtObject* obj) override;
-#endif
-
 protected:
 
     /**
@@ -240,6 +226,8 @@ private:
     static void clearNodeGraph(GtObject* obj);
 
     static bool deleteDummyNode(Node* node);
+
+    static void duplicateGraph(GtObject* obj);
 
     /**
      * @brief Checks if node can be renamed (i.e. node should be valid but not unique)
