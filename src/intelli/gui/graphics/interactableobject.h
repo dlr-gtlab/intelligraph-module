@@ -42,8 +42,7 @@ public:
         NoInteractionFlag = 0,
         AllowTranslation  = 1 << 0,
         AllowResizing     = 1 << 1,
-        AllowSelecting    = 1 << 2,
-        DefaultInteractionFlags = AllowTranslation | AllowResizing | AllowSelecting
+        DefaultInteractionFlags = AllowTranslation | AllowResizing
     };
 
     InteractableGraphicsObject(GraphSceneData const& data, QGraphicsItem* parent = nullptr);

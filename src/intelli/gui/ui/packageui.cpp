@@ -13,13 +13,7 @@
 #include "intelli/package.h"
 #include "intelli/private/gui_utils.h"
 
-#include "gt_icons.h"
-
-#include <QJsonObject>
-#include <QJsonDocument>
-
-#include <QFileInfo>
-#include <QFile>
+#include <gt_icons.h>
 
 using namespace intelli;
 
@@ -41,7 +35,7 @@ PackageUI::icon(GtObject* obj) const
 
 void
 PackageUI::addNodeCategory(GtObject* obj)
-{   
+{
     gui_utils::addNamedChild<GraphCategory>(*obj);
 }
 

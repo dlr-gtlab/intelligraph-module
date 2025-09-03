@@ -11,7 +11,7 @@
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
 
-#include "gt_icons.h"
+#include <gt_icons.h>
 
 using namespace intelli;
 

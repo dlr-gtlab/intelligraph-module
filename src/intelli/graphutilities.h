@@ -108,6 +108,14 @@ Graph* groupObjects(Graph& source,
 GT_INTELLI_EXPORT
 bool expandSubgraph(std::unique_ptr<Graph> groupNode);
 
+/**
+ * @brief Duplicates the source graph and inserts the new graph as a sibling
+ * @param source Source graph to duplicate
+ * @return Duplicated graph (may be null if operation failed)
+ */
+GT_INTELLI_EXPORT
+Graph* duplicateGraph(Graph& source);
+
 } // namespace utils
 
 } // namespace intelli

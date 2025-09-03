@@ -115,6 +115,11 @@ public slots:
      */
     void pasteObjects();
 
+    /**
+     * @brief Selects all selectable objects.
+     */
+    void selectAll();
+
 signals:
 
     void graphNodeDoubleClicked(Graph* graph);
