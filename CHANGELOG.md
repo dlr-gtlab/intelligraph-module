@@ -11,12 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nodes can now be collapsed using the node's context menu. Collapsed nodes only consists of the node's header, reducing visual clutter. - #282
 - Comments can now be embedded into a graph scene. Comments may either be standalone or may be linked to nodes using the comment's context menu. Comments support markdown. - #65
 - Shortcut `CTRL+A` can now be used to select all objects in a scene - #292
-- A graph can now be duplicated via the explorer using the context menu or `CTRL+D`. - #291
+- A graph can now be duplicated within the explorer using its context menu or using the shortcut `CTRL+D`. - #291
 
 ### Changed
 - Copying nodes will now always copy connections inbetween the selected nodes, regardless of
   whether the connections were selected or not.
-- `CTRL`-Clicking on a node that is already selected now unselects the node, thus making selections works more intuitively. - #295
+- `CTRL`-Clicking on a node that is already selected now unselects the node, thus making selections behave more intuitively. - #295
 - *Internal:* Moved utility functions from `intelli/globals.h` to `intelli/utilities.h`.
 - *Internal:* Implemented copy, move, and group functions in `intelli/graphutilities.h`.
 - *Internal:* Major refactoring of graph scene and related graphics objects.
