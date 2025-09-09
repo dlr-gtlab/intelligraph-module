@@ -61,13 +61,8 @@ static InteractableGraphicsObject* locateObject(QPointF scenePoint,
 GraphView::GraphView(QWidget* parent) :
     GtGraphicsView(nullptr, parent)
 {
-
     setDragMode(QGraphicsView::ScrollHandDrag);
     setRenderHint(QPainter::Antialiasing);
-
-    auto& style = style::currentStyle().view;
-
-    setBackgroundBrush(style.background);
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -88,8 +83,6 @@ GraphView::GraphView(QWidget* parent) :
     /* GRID */
     auto* grid = new GtGrid(*this);
     setGrid(grid);
-    grid->setHorizontalGridLineColor(style.gridline);
-    grid->setVerticalGridLineColor(style.gridline);
     grid->setShowAxis(false);
     // controls minor and major lines
     grid->setGridHeight(s_major_grid_size);
@@ -146,6 +139,20 @@ GraphView::GraphView(QWidget* parent) :
                                             &GraphScene::selectAll);
     selectAllAction->setIcon(gt::gui::icon::select());
     selectAllAction->setShortcut(QKeySequence::SelectAll);
+
+    /* Style */
+
+    auto const updateStyle = [this, grid](bool isDark){
+        auto& style = style::currentStyle().view;
+
+        setBackgroundBrush(style.background);
+        grid->setHorizontalGridLineColor(style.gridline);
+        grid->setVerticalGridLineColor(style.gridline);
+    };
+
+    gtApp->connect(gtApp, &GtApplication::themeChanged,
+                   this, updateStyle);
+    updateStyle(gtApp->inDarkMode());
 }
 
 GraphView::~GraphView() = default;
