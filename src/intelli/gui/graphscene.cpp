@@ -75,14 +75,14 @@ struct GraphScene::Impl
 {
 
 /**
- * @brief Helper method that checks if a node is user deletable
+ * @brief Helper method that checks if a node is default deletable
  * @param o Object
  * @return Whether the object is user deletable
  */
 static bool
-isNotDeletable(InteractableGraphicsObject* o)
+isDefaultDeletable(InteractableGraphicsObject* o)
 {
-    return (o->deletableFlag() & GraphicsObject::NotDeletable);
+    return (o->deletableFlag() == GraphicsObject::DefaultDeletable);
 }
 
 /**
@@ -1047,9 +1047,9 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
     Node* selectedNode = areNodesSelected ? &selectedNodes.front()->node() : nullptr;
     Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
 
-    bool allDeletable = std::none_of(selectedNodes.begin(),
-                                     selectedNodes.end(),
-                                     Impl::isNotDeletable);
+    bool allDeletable = std::all_of(selectedNodes.begin(),
+                                    selectedNodes.end(),
+                                    Impl::isDefaultDeletable);
 
     QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
     ungroupAction->setIcon(gt::gui::icon::stretch());
@@ -1059,6 +1059,7 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
     QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
     groupAction->setEnabled(allDeletable);
+    groupAction->setVisible(areNodesSelected);
 
     menu.addSeparator();
 
