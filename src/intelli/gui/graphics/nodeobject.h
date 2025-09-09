@@ -213,6 +213,14 @@ public:
         void clear();
     };
 
+public slots:
+
+    /**
+     * @brief Updates the visuals of the node once the underlying node object
+     * has changed.
+     */
+    void refreshVisuals();
+
 protected:
 
     void paint(QPainter* painter,
@@ -293,12 +301,6 @@ private:
     std::unique_ptr<Impl> pimpl;
 
 private slots:
-
-    /**
-     * @brief Updates the visuals of the node once the underlying node object
-     * has changed.
-     */
-    void onNodeChanged();
 
     /**
      * @brief Updates the visuals of the node once the position of the

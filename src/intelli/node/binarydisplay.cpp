@@ -40,25 +40,27 @@ BinaryDisplayNode::BinaryDisplayNode() :
 
         b->setMinimumSize(60, 80);
 
-        wid->setStyleSheet(gtApp->inDarkMode() ?
-            // dark mode
-            R"(QLCDNumber{
-                  background-color: rgb(0, 0, 0);
-                  border: 2px solid rgb(113, 113, 113);
-                  border-width: 2px;
-                  border-radius: 10px;
-                  color: rgb(255, 255, 255);
+        auto const updateStyle = [wid](bool isDark){
+            wid->setStyleSheet(isDark ?
+                // dark mode
+                R"(QLCDNumber{
+                    background-color: rgb(0, 0, 0);
+                    border: 2px solid rgb(113, 113, 113);
+                    border-width: 2px;
+                    border-radius: 10px;
+                    color: rgb(255, 255, 255);
                 }
-            )" :
-            // bright mode
-            R"(QLCDNumber{
-                  background-color: rgb(255, 255, 255);
-                  border: 2px solid rgb(113, 113, 113);
-                  border-width: 2px;
-                  border-radius: 10px;
-                  color: rgb(0, 0, 0);
-                }
-            )");
+                )" :
+                // bright mode
+                R"(QLCDNumber{
+                    background-color: rgb(255, 255, 255);
+                    border: 2px solid rgb(113, 113, 113);
+                    border-width: 2px;
+                    border-radius: 10px;
+                    color: rgb(0, 0, 0);
+                  }
+                )");
+        };
 
         auto updateDisplay = [wid, this](){
             int value = inputValue();
@@ -70,12 +72,15 @@ BinaryDisplayNode::BinaryDisplayNode() :
             wid->setDigitCount(digits);
             wid->setMinimumSize(20 * digits, 20);
         };
+
         connect(this, &Node::evaluated, wid, updateDisplay);
         connect(this, &Node::portInserted, wid, updateDigitCount);
         connect(this, &Node::portDeleted, wid, updateDigitCount);
+        connect(gtApp, &GtApplication::themeChanged, wid, updateStyle);
 
         updateDisplay();
         updateDigitCount();
+        updateStyle(gtApp->inDarkMode());
 
         return b;
     });

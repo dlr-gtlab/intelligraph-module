@@ -24,6 +24,7 @@
 
 #include <gt_application.h>
 #include <gt_guiutilities.h>
+#include <gt_palette.h>
 
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
@@ -110,6 +111,8 @@ struct NodeGraphicsObject::Impl
         QWidget* w = o->pimpl->proxyWidget->widget();
         if (!w) return;
 
+        gt::gui::applyThemeToWidget(w);
+
         QPalette p = w->palette();
         p.setColor(QPalette::Window, o->pimpl->painter->backgroundColor());
         w->setPalette(p);
@@ -160,9 +163,9 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
             Qt::DirectConnection);
 
     connect(&node, &Node::nodeChanged,
-            this, &NodeGraphicsObject::onNodeChanged, Qt::DirectConnection);
+            this, &NodeGraphicsObject::refreshVisuals, Qt::DirectConnection);
     connect(&node, &Node::portChanged,
-            this, &NodeGraphicsObject::onNodeChanged, Qt::DirectConnection);
+            this, &NodeGraphicsObject::refreshVisuals, Qt::DirectConnection);
     connect(&node, &Node::nodePositionChanged,
             this, &NodeGraphicsObject::onNodePositionChanged, Qt::DirectConnection);
 
@@ -492,12 +495,6 @@ NodeGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 {
     auto const& pos = event->pos();
 
-    // if (event->modifiers() & Qt::ControlModifier)
-    // {
-    //     setSelected(true);
-    //     update();
-    // }
-
     event->accept();
     NodeGeometry::PortHit hit = pimpl->geometry->portHit(pos);
 
@@ -535,7 +532,7 @@ NodeGraphicsObject::resize(QSize diff)
 }
 
 void
-NodeGraphicsObject::onNodeChanged()
+NodeGraphicsObject::refreshVisuals()
 {
     auto change = Impl::prepareGeometryChange(this);
     Q_UNUSED(change);
@@ -558,6 +555,7 @@ NodeGraphicsObject::updateChildItems()
     if (pimpl->proxyWidget)
     {
         pimpl->proxyWidget->setPos(pimpl->geometry->widgetPosition());
+        Impl::updateWidgetPalette(this);
     }
 }
 

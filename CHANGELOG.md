@@ -22,7 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - *Internal:* Major refactoring of graph scene and related graphics objects.
 
 ### Fixed
-- fixed a bug where small mouse movements would not cause the widget to resize. - #288
+- Fixed a bug where small mouse movements would not cause the widget to resize. - #288
+- Fixed theme not updating Graph View, Scene, and Nodes correctly. - #301
 
 ## [0.14.0] - 2025-04-04
 *This release is considered ABI compatible with `0.13.0`*

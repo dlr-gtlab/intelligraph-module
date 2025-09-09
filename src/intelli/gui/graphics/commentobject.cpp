@@ -15,8 +15,9 @@
 #include <intelli/private/utils.h>
 
 #include <gt_application.h>
-#include <gt_colors.h>
 #include <gt_icons.h>
+#include <gt_colors.h>
+#include <gt_palette.h>
 #include <gt_guiutilities.h>
 
 #include <QPainter>
@@ -190,7 +191,6 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     m_proxyWidget = new QGraphicsProxyWidget(this);
     m_proxyWidget->setWidget(w);
     m_proxyWidget->setZValue(0);
-
 
     m_overlay = new Overlay(this);
     m_overlay->setZValue(1);
@@ -428,6 +428,13 @@ CommentGraphicsObject::setupContextMenu(QMenu& menu)
 }
 
 void
+CommentGraphicsObject::refreshVisuals()
+{
+    gt::gui::applyThemeToWidget(m_proxyWidget->widget());
+    update();
+}
+
+void
 CommentGraphicsObject::paint(QPainter* painter,
                              QStyleOptionGraphicsItem const* option,
                              QWidget* widget)
@@ -448,10 +455,6 @@ CommentGraphicsObject::resize(QSize diff)
     prepareGeometryChange();
 
     QSize newSize = m_proxyWidget->widget()->size() + diff;
-//    QSize minSize = m_editor->minimumSizeHint();
-
-//    newSize.rwidth()  = std::max(newSize.width(),  minSize.width());
-//    newSize.rheight() = std::max(newSize.height(), minSize.height());
 
     m_proxyWidget->widget()->resize(newSize);
 }

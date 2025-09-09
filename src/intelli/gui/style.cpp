@@ -32,7 +32,7 @@ class ObjectData;
 } // namespace intelli
 
 /// registered styles
-static auto& styles()
+static std::map<QString, StyleData>& styles()
 {
     static std::map<QString, StyleData> styles;
 
@@ -97,10 +97,12 @@ static auto& styles()
     return styles;
 }
 
+/// Returns the active style instance
+/// (style instance is a copy, ::styles can be updated without issues)
 static StyleData& styleInstance()
 {
-    static StyleData& currentStyle = []() -> StyleData& {
-        return (styles().begin()->second);
+    static StyleData currentStyle = [](){
+        return styles().begin()->second;
     }();
     return currentStyle;
 }
@@ -130,7 +132,11 @@ StyleData::ConnectionData::typeColor(TypeId const& typeId) const
 void
 intelli::style::applyStyle(StyleId const& id)
 {
-    if (StyleData const* style = findStyle(id)) styleInstance() = *style;
+    if (StyleData const* style = findStyle(id))
+    {
+        assert(style->id == id);
+        styleInstance() = *style;
+    }
 }
 
 void
@@ -179,8 +185,8 @@ intelli::style::findStyle(DefaultStyle style)
 StyleId const&
 intelli::style::styleId(DefaultStyle theme)
 {
-    static auto bright = QStringLiteral("DefaultBright");
-    static auto dark = QStringLiteral("DefaultDark");
+    static QString const bright = QStringLiteral("DefaultBright");
+    static QString const dark = QStringLiteral("DefaultDark");
 
     switch (theme)
     {
