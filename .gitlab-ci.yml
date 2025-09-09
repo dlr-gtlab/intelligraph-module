@@ -19,7 +19,7 @@ variables:
   # UNSTABLE_BRANCH: unstable_master
 
 include:
-  - project: 'at-twk/gitlab-templates'
+  - project: 'gtlab/public/development-tools/gitlab-templates'
     file: '/ci-templates/.ci-templates-cmake-1.0.yml'
 
 stages:
@@ -115,8 +115,8 @@ testWin_2.0:
 
 testLinux_2.0:
   stage: test
-  tags: ["linux", "docker"]
-  image: at-twk-hal9000.intra.dlr.de:5000/dlr-at/gtlabdev-2_0-buster
+  extends:
+    - .linuxdocker
   needs: ["linuxBuildDebug"]
   before_script:
     # update to latest dev tools
@@ -137,7 +137,7 @@ testLinux_2.0:
   stage: package
   tags: ["docker", "linux"]
   extends: [".run-master-and-tags"]
-  image: debian:buster
+  image: debian:bullseye
   script:
     - cp -r install-$toolchain-dbg/* install-$toolchain
     - mv install-$toolchain gtlab-intelligraph-$toolchain
@@ -170,9 +170,9 @@ package-linux-gtlab_2.0:
 
 check-license:
    stage: codequality
-   tags: ["docker", "linux"]
+   extends:
+    - .linuxdocker
    needs: []
-   image: at-twk-hal9000.intra.dlr.de:5000/dlr-at/buster-dev
    before_script:
     - python3 -m pip install reuse
    script:
