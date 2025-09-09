@@ -223,7 +223,7 @@ private:
      * @brief Clears the intelli graph (i.e. removes all nodes and connections)
      * @param obj Intelli graph to clear
      */
-    static void clearNodeGraph(GtObject* obj);
+    static void clearGraphNode(GtObject* obj);
 
     static bool deleteDummyNode(Node* node);
 

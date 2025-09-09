@@ -74,6 +74,14 @@ CommentGroup::appendComment(std::unique_ptr<CommentData> comment)
 }
 
 void
+CommentGroup::clearComments()
+{
+    qDeleteAll(children());
+
+    assert(pimpl->comments.empty());
+}
+
+void
 CommentGroup::onObjectDataMerged()
 {
     GtObject::onObjectDataMerged();

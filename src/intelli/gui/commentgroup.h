@@ -39,6 +39,11 @@ public:
 
     CommentData* appendComment(std::unique_ptr<CommentData> comment);
 
+    /**
+     * @brief Clears/Removes all comments
+     */
+    void clearComments();
+
 signals:
     
     void commentAppended(CommentData*);
