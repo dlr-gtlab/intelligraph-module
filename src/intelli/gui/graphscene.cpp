@@ -897,9 +897,6 @@ GraphScene::selectAll()
 void
 GraphScene::keyPressEvent(QKeyEvent* event)
 {
-    // delete functionality should be handled by the view (i.e. `deleteSelectedObjects`)
-    assert(!gtApp->compareKeyEvent(event, gtApp->getShortCutSequence("delete")));
-
     // perform keyevent on node
     auto const& selected = Impl::findSelectedItems<NodeGraphicsObject*>(*this);
 

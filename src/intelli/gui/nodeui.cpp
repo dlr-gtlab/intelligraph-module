@@ -18,7 +18,9 @@
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
+#include "intelli/gui/commentgroup.h"
 #include "intelli/gui/grapheditor.h"
+#include "intelli/gui/guidata.h"
 #include "intelli/gui/icons.h"
 #include "intelli/gui/nodeuidata.h"
 #include "intelli/gui/nodegeometry.h"
@@ -111,7 +113,7 @@ NodeUI::NodeUI(Option option) :
 
     addSeparator();
 
-    addSingleAction(tr("Clear Graph"), clearNodeGraph)
+    addSingleAction(tr("Clear Graph"), clearGraphNode)
         .setIcon(gt::gui::icon::clear())
         .setVisibilityMethod(toGraph);
 
@@ -459,7 +461,7 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
 }
 
 void
-NodeUI::clearNodeGraph(GtObject* obj)
+NodeUI::clearGraphNode(GtObject* obj)
 {
     auto graph = toGraph(obj);
     if (!graph) return;
@@ -469,6 +471,11 @@ NodeUI::clearNodeGraph(GtObject* obj)
     Q_UNUSED(cmd);
     
     graph->clearGraph();
+
+    CommentGroup* commentGroup = GuiData::accessCommentGroup(*graph);
+    if (!commentGroup) return;
+
+    commentGroup->clearComments();
 }
 
 bool
