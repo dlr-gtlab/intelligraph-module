@@ -110,7 +110,7 @@ GtIntelliGraphModule::MetaInformation
 GtIntelliGraphModule::metaInformation() const
 {
     MetaInformation m;
-    m.author =    QStringLiteral("M. Bröcker, S. Reitenbach");
+    m.author = QString::fromUtf8(QByteArrayLiteral("M. Bröcker, S. Reitenbach"));
     m.authorContact = QStringLiteral("AT-TWK");
     m.licenseShort = QStringLiteral("BSD-3-Clause");
 

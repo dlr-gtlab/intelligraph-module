@@ -116,6 +116,7 @@ struct NodeGraphicsObject::Impl
         QPalette p = w->palette();
         p.setColor(QPalette::Window, o->pimpl->painter->backgroundColor());
         w->setPalette(p);
+        w->show();
     }
 
 }; // struct Impl;
@@ -143,6 +144,12 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
     setPos(pimpl->node->pos());
 
     embedCentralWidget();
+
+    // update theme
+    connect(gtApp, &GtApplication::themeChanged, this, [this](){
+        Impl::updateWidgetPalette(this);
+        update();
+    });
 
     connect(this, &GraphicsObject::hoveredChanged, this, [this](){
         if (isHovered()) return setZValue(style::zValue(style::ZValue::NodeHovered));
@@ -343,13 +350,15 @@ NodeGraphicsObject::embedCentralWidget()
         pimpl->geometry->setWidget(w.get());
 
         pimpl->proxyWidget = new NodeProxyWidget(this);
+        pimpl->proxyWidget->setContentsMargins(0, 0, 0, 0);
         pimpl->proxyWidget->setWidget(w.release());
         pimpl->proxyWidget->setZValue(style::zValue(style::ZValue::NodeWidget));
 
         Impl::updateWidgetPalette(this);
 
         // update node's size if widget changes size
-        connect(pimpl->proxyWidget, &QGraphicsWidget::geometryChanged, this, [this](){
+        connect(pimpl->proxyWidget, &QGraphicsWidget::geometryChanged,
+                this, [this](){
             if (state() == State::Resizing) return;
 
             if (pimpl->proxyWidget->widget() &&
@@ -555,7 +564,6 @@ NodeGraphicsObject::updateChildItems()
     if (pimpl->proxyWidget)
     {
         pimpl->proxyWidget->setPos(pimpl->geometry->widgetPosition());
-        Impl::updateWidgetPalette(this);
     }
 }
 

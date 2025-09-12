@@ -81,10 +81,6 @@ public:
      */
     void setupContextMenu(QMenu& menu) override;
 
-public slots:
-
-    void refreshVisuals();
-
 protected:
 
     void paint(QPainter *painter,

@@ -11,7 +11,7 @@
 
 #include "intelli/data/double.h"
 
-#include <QLineEdit>
+#include <gt_lineedit.h>
 
 using namespace intelli;
 
@@ -26,12 +26,13 @@ NumberDisplayNode::NumberDisplayNode() :
     setNodeFlag(ResizableHOnly);
 
     registerWidgetFactory([=](){
-        auto w = std::make_unique<QLineEdit>();
+        auto w = std::make_unique<GtLineEdit>();
+
         w->setReadOnly(true);
         w->setMinimumWidth(75);
         w->resize(w->minimumSizeHint());
 
-        auto const updateText = [=, w_ = w.get()](){
+        auto const updateText = [this, in, w_ = w.get()](){
             auto const& data = nodeData<DoubleData>(in);
             w_->setText(QString::number(data ? data->value() : 0));
         };

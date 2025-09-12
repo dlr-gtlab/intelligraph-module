@@ -12,6 +12,7 @@
 #include <intelli/data/string.h>
 #include <intelli/data/bytearray.h>
 
+#include <gt_application.h>
 #include <gt_xmlhighlighter.h>
 #include <gt_pyhighlighter.h>
 #include <gt_jshighlighter.h>
@@ -82,6 +83,8 @@ TextDisplayNode::TextDisplayNode() :
         connect(this, &Node::inputDataRecieved,
                 w, updateText);
         connect(this, qOverload<GtObject*, GtAbstractProperty*>(&Node::dataChanged),
+                w, updateHighlighter);
+        connect(gtApp, &GtApplication::themeChanged,
                 w, updateHighlighter);
 
         updateText();

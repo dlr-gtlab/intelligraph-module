@@ -495,24 +495,6 @@ GraphScene::GraphScene(Graph& graph) :
 
     connect(m_graph, &Graph::graphAboutToBeDeleted,
             this, &QObject::deleteLater);
-
-    auto const updateStyle = [this](){
-        for (NodeEntry& entry : m_nodes)
-        {
-            entry.object->refreshVisuals();
-        }
-        for (ConnectionEntry& entry : m_connections)
-        {
-            entry.object->update();
-        }
-        for (CommentEntry& entry : m_comments)
-        {
-            entry.object->refreshVisuals();
-        }
-    };
-
-    gtApp->connect(gtApp, &GtApplication::themeChanged,
-                   this, updateStyle);
 }
 
 GraphScene::~GraphScene() = default;

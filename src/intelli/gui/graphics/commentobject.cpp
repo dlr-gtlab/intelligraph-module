@@ -196,6 +196,11 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     m_overlay->setZValue(1);
 
     // setup connections
+    connect(gtApp, &GtApplication::themeChanged, this, [this, w](){
+        gt::gui::applyThemeToWidget(w);
+        update();
+    });
+
     connect(this, &GraphicsObject::hoveredChanged, this, [this](){
         if (isHovered()) return setZValue(style::zValue(style::ZValue::NodeHovered));
         if (!isSelected()) return setZValue(style::zValue(style::ZValue::Node));
@@ -425,13 +430,6 @@ CommentGraphicsObject::setupContextMenu(QMenu& menu)
     });
 
     gt::gui::makeObjectContextMenu(menu, commentObject());
-}
-
-void
-CommentGraphicsObject::refreshVisuals()
-{
-    gt::gui::applyThemeToWidget(m_proxyWidget->widget());
-    update();
 }
 
 void
