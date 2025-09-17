@@ -104,7 +104,7 @@ protected:
      * @brief Performs the resize action given the size difference.
      * @param diff Difference in size
      */
-    void resize(QSize diff) override;
+    void resizeBy(QSize diff) override;
 
 private:
 

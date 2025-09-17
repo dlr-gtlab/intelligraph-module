@@ -121,7 +121,8 @@ struct NodeGraphicsObject::Impl
 
 }; // struct Impl;
 
-NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
+NodeGraphicsObject::NodeGraphicsObject(QGraphicsScene& scene,
+                                       GraphSceneData& data,
                                        Node& node,
                                        NodeUI& ui) :
     InteractableGraphicsObject(data, nullptr),
@@ -144,6 +145,8 @@ NodeGraphicsObject::NodeGraphicsObject(GraphSceneData& data,
     setPos(pimpl->node->pos());
 
     embedCentralWidget();
+
+    scene.addItem(this);
 
     // update theme
     connect(gtApp, &GtApplication::themeChanged, this, [this](){
@@ -368,6 +371,21 @@ NodeGraphicsObject::embedCentralWidget()
             }
             Impl::prepareGeometryChange(this).finalize();
         });
+
+        // update size
+        connect(pimpl->node, &Node::nodeSizeChanged,
+                pimpl->proxyWidget, [this](){
+            Node const* node = pimpl->node;
+            QWidget* widget = pimpl->proxyWidget->widget();
+
+            if (widget && node->size() != widget->size() && node->size().isValid())
+            {
+                auto change = Impl::prepareGeometryChange(this);
+                Q_UNUSED(change);
+                widget->resize(node->size());
+                emit objectResized(this);
+            }
+        });
     }
 }
 
@@ -447,6 +465,11 @@ NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     {
         assert(pimpl->proxyWidget);
 
+        auto cmd = gtApp->makeCommand(pimpl->node,
+                                      tr("Node '%1' resized")
+                                          .arg(pimpl->node->caption()));
+        Q_UNUSED(cmd);
+
         QWidget* w = pimpl->proxyWidget->widget();
         pimpl->node->setSize(w->size());
     }
@@ -524,7 +547,7 @@ NodeGraphicsObject::canResize(QPointF localCoord)
 }
 
 void
-NodeGraphicsObject::resize(QSize diff)
+NodeGraphicsObject::resizeBy(QSize diff)
 {
     assert(pimpl->proxyWidget);
     QWidget* w = pimpl->proxyWidget->widget();

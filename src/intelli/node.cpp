@@ -86,10 +86,20 @@ Node::Node(QString const& modelName, GtObject* parent) :
         if (pimpl->isActive) emit triggerNodeEvaluation();
     });
 
-    // position is changed in pairs -> sufficient to subscribe to changes
-    // to y-pos (avoids emitting singal twice)
+    // must subscribe to both properties incase only one changes
+    connect(&pimpl->posX, &GtAbstractProperty::changed, this, [this](){
+        emit nodePositionChanged();
+    });
     connect(&pimpl->posY, &GtAbstractProperty::changed, this, [this](){
         emit nodePositionChanged();
+    });
+
+    // must subscribe to both properties incase only one changes
+    connect(&pimpl->sizeWidth, &GtAbstractProperty::changed, this, [this](){
+        emit nodeSizeChanged();
+    });
+    connect(&pimpl->sizeHeight, &GtAbstractProperty::changed, this, [this](){
+        emit nodeSizeChanged();
     });
 
     connect(this, &Node::portConnected, this, [this](PortId portId){

@@ -134,7 +134,7 @@ protected:
      * @brief Performs the resize action given the size difference.
      * @param diff Difference in size
      */
-    virtual void resize(QSize diff) = 0;
+    virtual void resizeBy(QSize diff) = 0;
 
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
 
@@ -170,6 +170,10 @@ signals:
      */
     void objectCollapsed(InteractableGraphicsObject*, bool isCollapsed);
 
+    /**
+     * @brief Emitted once the object was resized, either programmatically or
+     * by the user. Should be called if "manually" resizing the object.
+     */
     void objectResized(InteractableGraphicsObject*);
 
     /**

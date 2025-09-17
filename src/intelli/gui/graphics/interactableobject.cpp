@@ -167,7 +167,7 @@ InteractableGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         m_translationStart.rx() = diff.x() - std::floor(diff.x());
         m_translationStart.ry() = diff.y() - std::floor(diff.y());
 
-        resize(QSize{(int)floor(diff.x()), (int)floor(diff.y())});
+        resizeBy(QSize{(int)floor(diff.x()), (int)floor(diff.y())});
 
         emit objectResized(this);
         break;

@@ -508,6 +508,12 @@ signals:
     void nodePositionChanged();
 
     /**
+     * @brief Emitted when the node has changed its size. Triggered by
+     * `setSize`.
+     */
+    void nodeSizeChanged();
+
+    /**
      * @brief Emitted just before the node is deleted similar to
      * QObject::destroyed with the difference that one may still access members
      */
