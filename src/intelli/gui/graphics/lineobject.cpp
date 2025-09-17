@@ -42,6 +42,8 @@ LineGraphicsObject::LineGraphicsObject(InteractableGraphicsObject const& start,
                 this, &LineGraphicsObject::updateEndPoint);
         connect(item, &QGraphicsObject::widthChanged,
                 this, &LineGraphicsObject::updateEndPoint);
+        connect(item, &QGraphicsObject::heightChanged,
+                this, &LineGraphicsObject::updateEndPoint);
         connect(item, &InteractableGraphicsObject::objectResized,
                 this, &LineGraphicsObject::updateEndPoints);
     }

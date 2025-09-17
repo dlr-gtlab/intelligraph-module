@@ -109,10 +109,24 @@ CommentData::CommentData(GtObject* parent) :
         emit commentCollapsedChanged(pimpl->collapsed.get());
     });
 
-    // position is changed in pairs -> sufficient to subscribe to changes
-    // to y-pos (avoids emitting singal twice)
+    // must subscribe to both properties incase only one changes
+    connect(&pimpl->posX, &GtAbstractProperty::changed, this, [this](){
+        emit commentPositionChanged();
+    });
     connect(&pimpl->posY, &GtAbstractProperty::changed, this, [this](){
         emit commentPositionChanged();
+    });
+
+    // must subscribe to both properties incase only one changes
+    connect(&pimpl->sizeWidth, &GtAbstractProperty::changed, this, [this](){
+        emit commentSizeChanged();
+    });
+    connect(&pimpl->sizeHeight, &GtAbstractProperty::changed, this, [this](){
+        emit commentSizeChanged();
+    });
+
+    connect(&pimpl->text, &GtAbstractProperty::changed, this, [this](){
+        emit commentChanged();
     });
 
     setObjectName(QStringLiteral("comment_%1")

@@ -1200,9 +1200,9 @@ GraphScene::onNodeAppended(Node* node)
     NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
     if (!ui) ui = &defaultUI;
 
-    auto entity = make_unique_qptr<NodeGraphicsObject, DirectDeleter>(*m_sceneData, *node, *ui);
-    // add to scene
-    addItem(entity);
+    auto entity = make_unique_qptr<NodeGraphicsObject, DirectDeleter>(
+        *this, *m_sceneData, *node, *ui
+    );
 
     // connect signals
     connect(entity, &NodeGraphicsObject::portContextMenuRequested,

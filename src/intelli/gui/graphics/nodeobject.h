@@ -50,12 +50,12 @@ public:
 
     /**
      * @brief constructor
+     * @param scene
      * @param data Graph scene data which holds shared data for all node objects
-     * @param graph Graph to which the node belongs
      * @param node Node that this graphic object represents
      * @param ui Node UI used to access painter and geomtery data
      */
-    NodeGraphicsObject(GraphSceneData& data, Node& node, NodeUI& ui);
+    NodeGraphicsObject(QGraphicsScene& scene, GraphSceneData& data, Node& node, NodeUI& ui);
     ~NodeGraphicsObject();
 
     /**
@@ -256,7 +256,7 @@ protected:
      * @brief Performs the resize action given the size difference.
      * @param diff Difference in size
      */
-    void resize(QSize diff) override;
+    void resizeBy(QSize diff) override;
 
 signals:
 

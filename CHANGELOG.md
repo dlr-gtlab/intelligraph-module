@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Copying nodes will now always copy connections inbetween the selected nodes, regardless of
   whether the connections were selected or not.
 - `CTRL`-Clicking on a node that is already selected now unselects the node, thus making selections behave more intuitively. - #295
+- Resizing a node or comment now creates and undo command. - #290, #306
 - *Internal:* Moved utility functions from `intelli/globals.h` to `intelli/utilities.h`.
 - *Internal:* Implemented copy, move, and group functions in `intelli/graphutilities.h`.
 - *Internal:* Major refactoring of graph scene and related graphics objects.

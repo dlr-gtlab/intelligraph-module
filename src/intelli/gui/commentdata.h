@@ -132,6 +132,12 @@ signals:
     /// Emitted once the position changes (is also triggered by `setPos`)
     void commentPositionChanged();
 
+    /// Emitted once the widget's size changes (is also triggered by `setSize`)
+    void commentSizeChanged();
+
+    /// Emitted once the comment's text changes
+    void commentChanged();
+
     /// Emitted once a new node connection was added
     void nodeConnectionAppended(NodeId nodeId);
 

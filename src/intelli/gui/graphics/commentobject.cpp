@@ -217,9 +217,29 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
         setPos(m_comment->pos());
     }, Qt::DirectConnection);
     
-    connect(m_comment, &CommentData::commentCollapsedChanged, this,
-            [this](bool doCollapse){
+    connect(m_comment, &CommentData::commentCollapsedChanged, this, [this](bool doCollapse){
         setCollapsed(doCollapse);
+    });
+
+    connect(m_comment, &CommentData::commentSizeChanged, m_proxyWidget, [this](){
+        QWidget* widget = m_proxyWidget->widget();
+        assert(widget);
+
+        if (m_comment->size() != widget->size() && m_comment->size().isValid())
+        {
+            prepareGeometryChange();
+            widget->resize(m_comment->size());
+            emit objectResized(this);
+        }
+    });
+
+    connect(m_comment, &CommentData::commentChanged, m_editor, [this](){
+        m_editor->clearFocus();
+        m_editor->setMarkdown(m_comment->text());
+
+        m_editor->setReadOnly(true);
+        m_proxyWidget->unsetCursor();
+        m_overlay->setZValue(1);
     });
 
     // setup object
@@ -227,15 +247,16 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
 
     QSize size = m_comment->size();
     if (size.isValid()) m_proxyWidget->widget()->resize(size);
+    else m_comment->setSize(m_proxyWidget->widget()->size());
+
+    scene.addItem(this);
 
     // setup comment connections
-    scene.addItem(this);
-    
     for (size_t i = 0; i < m_comment->nNodeConnections(); i++)
     {
         onCommentConnectionAppended(m_comment->nodeConnectionAt(i));
     }
-    
+
     connect(m_comment, &CommentData::nodeConnectionAppended,
             this, &CommentGraphicsObject::onCommentConnectionAppended,
             Qt::DirectConnection);
@@ -338,6 +359,11 @@ CommentGraphicsObject::finishEditing()
 {
     if (m_overlay->zValue() < 0)
     {
+        auto cmd = gtApp->makeCommand(m_comment,
+                                      tr("Comment '%1' changed")
+                                          .arg(m_comment->objectName()));
+        Q_UNUSED(cmd);
+
         m_editor->clearFocus();
         m_comment->setText(m_editor->toPlainText());
         m_editor->setMarkdown(m_comment->text());
@@ -390,6 +416,11 @@ CommentGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
     if (isResizing)
     {
+        auto cmd = gtApp->makeCommand(m_comment,
+                                      tr("Comment '%1' resized")
+                                          .arg(m_comment->objectName()));
+        Q_UNUSED(cmd);
+
         QWidget* w = m_proxyWidget->widget();
         m_comment->setSize(w->size());
     }
@@ -448,7 +479,7 @@ CommentGraphicsObject::canResize(QPointF localCoord)
 }
 
 void
-CommentGraphicsObject::resize(QSize diff)
+CommentGraphicsObject::resizeBy(QSize diff)
 {
     prepareGeometryChange();
 
