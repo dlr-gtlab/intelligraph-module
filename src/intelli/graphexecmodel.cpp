@@ -107,18 +107,8 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 
 GraphExecutionModel::~GraphExecutionModel()
 {
-    {
-        QMutexLocker locker{&Impl::s_sync.mutex};
-        Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
-    }
-
-    // reset node interface
-    gt::for_each_key(pimpl->data, [this](NodeUuid const& nodeUuid){
-        Node* node  = graph().findNodeByUuid(nodeUuid);
-        if (!node) return;
-
-        exec::setNodeDataInterface(*node, nullptr);
-    });
+    QMutexLocker locker{&Impl::s_sync.mutex};
+    Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
 }
 
 GraphExecutionModel*

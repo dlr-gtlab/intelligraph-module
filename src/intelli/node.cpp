@@ -228,17 +228,6 @@ Node::nodeEvalMode() const
     return pimpl->evalMode;
 }
 
-NodeEvalState
-Node::nodeEvalState() const
-{
-    auto* model = pimpl->dataInterface;
-    if (!model)
-    {
-        return NodeEvalState::Invalid;
-    }
-    return model->nodeEvalState(this->uuid());
-}
-
 void
 Node::setToolTip(QString const& tooltip)
 {
@@ -375,15 +364,26 @@ Node::removePort(PortId id)
     return true;
 }
 
+NodeEvalState
+Node::nodeEvalState() const
+{
+    NodeDataInterface* model = pimpl->dataInterface;
+    if (!model)
+    {
+        return NodeEvalState::Invalid;
+    }
+    return model->nodeEvalState(this->uuid());
+}
+
 Node::NodeDataPtr
 Node::nodeData(PortId id) const
 {
-    auto* model = pimpl->dataInterface;
+    NodeDataInterface* model = pimpl->dataInterface;
     if (!model)
     {
-        gtWarning().nospace()
-            << objectName() << ": "
-            << tr("Failed to access node data, evaluation model not found!");
+        gtWarning()
+            << utils::logId(*this)
+            << tr("Failed to access node data, data interface not found!");
         return {};
     }
 
@@ -393,12 +393,12 @@ Node::nodeData(PortId id) const
 bool
 Node::setNodeData(PortId id, NodeDataPtr data)
 {
-    auto* model = pimpl->dataInterface;
+    NodeDataInterface* model = pimpl->dataInterface;
     if (!model)
     {
-        gtWarning().nospace()
-            << objectName() << ": "
-            << tr("Failed to set node data, evaluation model not found!");
+        gtWarning()
+            << utils::logId(*this)
+            << tr("Failed to set node data, data interface not found!");
         return false;
     }
 
@@ -474,12 +474,12 @@ Node::eval()
 void
 Node::evalFailed()
 {
-    auto* model = pimpl->dataInterface;
+    NodeDataInterface* model = pimpl->dataInterface;
     if (!model)
     {
-        gtWarning().nospace()
-            << objectName() << ": "
-            << tr("Failed to set node evaluation status, evaluation model not found!");
+        gtWarning()
+            << utils::logId(*this)
+            << tr("Failed to set node evaluation status, data interface not found!");
         return;
     }
 
@@ -504,7 +504,7 @@ Node::registerWidgetFactory(WidgetFactoryNoArgs factory)
 
 /**
  * @brief The INode class. Helper class to access private or protected
- * members of a Node outside the node.
+ * members of a node outside the `Node` class in a controlled manner.
  */
 class intelli::INode
 {
@@ -512,24 +512,30 @@ class intelli::INode
 
 public:
 
-    static void evaluateNode(Node& node)
+    inline static void
+    evaluateNode(Node& node)
     {
         node.eval();
     }
 
     // cppcheck-suppress constParameter
-    static void setNodeDataInterface(Node& node, NodeDataInterface* interface)
+    inline static void
+    setNodeDataInterface(Node& node, NodeDataInterface* interface)
     {
         node.pimpl->dataInterface = interface;
     }
 
     // cppcheck-suppress constParameter
-    static NodeDataInterface* nodeDataInterface(Node& node)
+    GT_NO_DISCARD
+    inline static NodeDataInterface*
+    nodeDataInterface(Node& node)
     {
         return node.pimpl->dataInterface;
     }
 
-    static bool triggerNodeEvaluation(Node& node, NodeDataInterface& interface)
+    GT_NO_DISCARD
+    inline static bool
+    triggerNodeEvaluation(Node& node)
     {
         auto evalMode = node.nodeEvalMode();
         if (evalMode == NodeEvalMode::NoEvaluationRequired) return true;
@@ -537,36 +543,63 @@ public:
         size_t evalFlag = (size_t)node.nodeEvalMode();
         if (evalFlag & IsDetachedMask)
         {
-            return exec::detachedEvaluation(node, interface);
+            return exec::detachedEvaluation(node);
         }
         if (evalFlag & IsBlockingMask)
         {
-            return exec::blockingEvaluation(node, interface);
+            return exec::blockingEvaluation(node);
         }
 
-        gtError().nospace()
-            << node.objectName() << ": "
-            << QObject::tr("Unhandled eval mode! (%1)").arg((size_t)evalFlag);
+        gtError() << utils::logId(node)
+                  << QObject::tr("Unhandled eval mode! (%1)").arg((size_t)evalFlag);
 
         return false;
     }
 };
 
-bool
-intelli::exec::detachedEvaluation(Node& node, NodeDataInterface& model)
+namespace
 {
+
+/// conditionally updates node data interface if model is not null
+GT_NO_DISCARD
+inline static NodeDataInterface*
+updateNodeDataInterface(Node& node, NodeDataInterface* model)
+{
+    if (model)
+    {
+        INode::setNodeDataInterface(node, model);
+        assert(INode::nodeDataInterface(node) == model);
+        return model;
+    }
+
+    model = INode::nodeDataInterface(node);
+    if (!model)
+    {
+        gtError() << utils::logId(node)
+                  << QObject::tr("Failed to evaluate node! (Missing data interface)");
+        return nullptr;
+    }
+    return model;
+}
+
+} // namespace
+
+bool
+intelli::exec::detachedEvaluation(Node& node, NodeDataInterface* model)
+{
+    if (!::updateNodeDataInterface(node, model)) return false;
+
     auto executor = node.findChild<DetachedExecutor*>();
     if (executor && !executor->canEvaluateNode())
     {
-        gtError() << QObject::tr("Node %1 (%2) already has an executor!")
-                         .arg(node.id()).arg(node.uuid());
+        gtError() << utils::logId(node)
+                  << QObject::tr("Failed to evaluate node! (Node is already executing)");
         return false;
     }
 
-    if (!executor) executor = new DetachedExecutor;
-    executor->setParent(&node);
+    if (!executor) executor = new DetachedExecutor(&node);
 
-    if (!executor->evaluateNode(node, model))
+    if (!executor->evaluateNode(node))
     {
         delete executor;
         return false;
@@ -576,9 +609,12 @@ intelli::exec::detachedEvaluation(Node& node, NodeDataInterface& model)
 }
 
 bool
-intelli::exec::blockingEvaluation(Node& node, NodeDataInterface& model)
+intelli::exec::blockingEvaluation(Node& node, NodeDataInterface* model)
 {
-    auto cmd = model.nodeEvaluation(node.uuid());
+    model = ::updateNodeDataInterface(node, model);
+    if (!model) return false;
+
+    auto cmd = model->nodeEvaluation(node.uuid());
     Q_UNUSED(cmd);
 
     // cleanup routine
@@ -589,16 +625,17 @@ intelli::exec::blockingEvaluation(Node& node, NodeDataInterface& model)
 
     emit node.computingStarted();
 
-    INode::setNodeDataInterface(node, &model);
     INode::evaluateNode(node);
 
     return true;
 }
 
 bool
-intelli::exec::triggerNodeEvaluation(Node& node, NodeDataInterface& model)
+intelli::exec::triggerNodeEvaluation(Node& node, NodeDataInterface* model)
 {
-    return INode::triggerNodeEvaluation(node, model);
+    if (!::updateNodeDataInterface(node, model)) return false;
+
+    return INode::triggerNodeEvaluation(node);
 }
 
 void

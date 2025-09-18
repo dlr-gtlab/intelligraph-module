@@ -92,21 +92,56 @@ class NodeDataInterface;
 namespace exec
 {
 
-GT_INTELLI_EXPORT bool blockingEvaluation(Node& node, NodeDataInterface& model);
-
-GT_INTELLI_EXPORT bool detachedEvaluation(Node& node, NodeDataInterface& model);
-
-GT_INTELLI_EXPORT void setNodeDataInterface(Node& node, NodeDataInterface* model);
-
-GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
-
 /**
- * @brief Triggers the evaluation of the node.
+ * @brief Evaluates the node in the main thread (blocking).A valid node
+ * data interface must either be set already or supplied or as an argument.
+ * @param node Node to evaluate asyncronously
+ * @param model Optional node data interface. If none is supplied the registered
+ * node interface ist used (accessed using `nodeDataInterface`).
  * @return success
  */
-GT_INTELLI_EXPORT bool triggerNodeEvaluation(Node& node, NodeDataInterface& model);
+GT_INTELLI_EXPORT bool blockingEvaluation(Node& node, NodeDataInterface* model = nullptr);
 
-}
+/**
+ * @brief Evaluates the node in a separate thread (asyncronously).A valid node
+ * data interface must either be set already or supplied or as an argument.
+ * @param node Node to evaluate asyncronously
+ * @param model Optional node data interface. If none is supplied the registered
+ * node interface ist used (accessed using `nodeDataInterface`).
+ * @return success
+ */
+GT_INTELLI_EXPORT bool detachedEvaluation(Node& node, NodeDataInterface* model = nullptr);
+
+/**
+ * @brief Triggers the evaluation of the node. Choses whether to evaluate the
+ * node asyncronously or blocking according to the node's eval mode. A valid
+ * node data interface must either be set already or supplied or as an argument.
+ * @param node Node to execute
+ * @param model Optional node data interface. If none is supplied the registered
+ * node interface ist used (accessed using `nodeDataInterface`).
+ * @return success
+ */
+GT_INTELLI_EXPORT bool triggerNodeEvaluation(Node& node, NodeDataInterface* model = nullptr);
+
+/**
+ * @brief Registers a new node data interface for the given node.
+ * The node data interface must be set during execution to access input and
+ * output data and to set evaluation states.
+ * @param node Node to access
+ * @param model New node data interface
+ */
+GT_INTELLI_EXPORT void setNodeDataInterface(Node& node, NodeDataInterface* model);
+
+/**
+ * @brief Returns the registered node data interface of the given node.
+ * The node data interface must be set during execution to access input and
+ * output data and to set evaluation states.
+ * @param node Node to access
+ * @return Node data interface (may be null)
+ */
+GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
+
+} // namespace exec
 
 /**
  * @brief Attempts to convert `data` to into the desired type. If
@@ -378,7 +413,7 @@ public:
      * @param caption New caption
      * @return Returns a reference to this node for method chaining
      */
-    Node& setCaption(QString const& caption);
+    Q_INVOKABLE Node& setCaption(QString const& caption);
 
     /**
      * @brief Caption of the node

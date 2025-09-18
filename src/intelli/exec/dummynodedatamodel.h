@@ -28,8 +28,6 @@ public:
 
     explicit DummyNodeDataModel(Node& node);
 
-    ~DummyNodeDataModel();
-
     NodeDataPtrList nodeData(PortType type) const;
 
     NodeDataSet nodeData(NodeUuid const& nodeUuid, PortId portId) const override;

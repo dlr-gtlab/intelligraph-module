@@ -32,8 +32,7 @@ class Node;
  * One exec model is required to evaluate a graph hierarchy. To access node
  * data the uuid is used instead of the node's id.
  */
-class GT_INTELLI_EXPORT GraphExecutionModel : public QObject,
-                                              public NodeDataInterface
+class GT_INTELLI_EXPORT GraphExecutionModel : public NodeDataInterface
 {
     Q_OBJECT
 

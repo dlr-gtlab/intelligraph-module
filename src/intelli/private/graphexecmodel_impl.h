@@ -1410,8 +1410,10 @@ struct GraphExecutionModel::Impl
         model.pimpl->queuedNodes.erase(iter);
         nodeRemovedFromQueue = true;
 
+        assert(exec::nodeDataInterface(*item.node) == &model);
+
         // trigger node evaluation
-        if (!exec::triggerNodeEvaluation(*item.node, model))
+        if (!exec::triggerNodeEvaluation(*item.node))
         {
             gtError() << evaluteNodeError(model.graph())
                       << tr("node execution failed!");

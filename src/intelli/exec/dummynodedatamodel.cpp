@@ -35,12 +35,6 @@ DummyNodeDataModel::DummyNodeDataModel(Node& node) :
     exec::setNodeDataInterface(node, this);
 }
 
-DummyNodeDataModel::~DummyNodeDataModel()
-{
-    assert(m_node);
-    exec::setNodeDataInterface(*m_node, nullptr);
-}
-
 NodeDataPtrList
 DummyNodeDataModel::nodeData(PortType type) const
 {

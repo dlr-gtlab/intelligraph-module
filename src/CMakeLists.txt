@@ -95,6 +95,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/connection.h
     intelli/connectiongroup.h
     intelli/graphcategory.h
+    intelli/graphuservariablesdb.h
     intelli/module.h
     intelli/package.h
     intelli/calculators/graphexeccalculator.h
@@ -164,6 +165,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp
     intelli/graphexecmodel.cpp
+    intelli/graphuservariablesdb.cpp
     intelli/graphutilities.cpp
     intelli/module.cpp
     intelli/node.cpp
