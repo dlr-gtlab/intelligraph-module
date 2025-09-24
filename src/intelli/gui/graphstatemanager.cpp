@@ -139,7 +139,7 @@ GraphStateManager::setupLocalStates(GraphScene* scene)
     if (!localStates) return;
 
     // collapsed state
-    auto onStateChanged = [scene](QString const& nodeUuid, bool isCollapsed){
+    auto onStateChanged = [=](QString const& nodeUuid, bool isCollapsed){
         Graph& graph = scene->graph();
 
         Node* node = graph.findNodeByUuid(nodeUuid);
@@ -154,7 +154,7 @@ GraphStateManager::setupLocalStates(GraphScene* scene)
         }
     };
 
-    auto onNodeAppended = [scene, localStates](Node* node){
+    auto onNodeAppended = [=](Node* node){
         assert(node);
 
         auto object = scene->nodeObject(node->id());
