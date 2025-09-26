@@ -10,6 +10,7 @@
 #include "intelli/exec/detachedexecutor.h"
 
 #include "intelli/node.h"
+#include "intelli/graphuservariables.h"
 #include "intelli/exec/dummynodedatamodel.h"
 #include "intelli/private/utils.h"
 
@@ -293,6 +294,8 @@ DetachedExecutor::evaluateNode(Node& node)
 
     NodeUuid const& nodeUuid = node.uuid();
 
+    QPointer<GraphUserVariables const> userVariables = model->userVariables();
+
     auto run = [nodeUuid,
                 inData  = model->nodeData(nodeUuid, PortType::In),
                 outData = model->nodeData(nodeUuid, PortType::Out),
@@ -300,7 +303,9 @@ DetachedExecutor::evaluateNode(Node& node)
                 signalsToConnect = findSignalsToConnect(node),
                 targetMetaObject = node.metaObject(),
                 targetObject = QPointer<Node>(&node),
-                executor = this]() -> ReturnValue
+                executor = this,
+                userVariables
+                ]() -> ReturnValue
     {
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
@@ -343,6 +348,7 @@ DetachedExecutor::evaluateNode(Node& node)
 
             // set data
             DummyNodeDataModel model{*node};
+            model.setUserVariables(userVariables);
 
             bool success = true;
             success &= model.setNodeData(PortType::In,  inData);

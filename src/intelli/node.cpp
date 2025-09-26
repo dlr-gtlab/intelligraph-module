@@ -240,6 +240,12 @@ Node::tooltip() const
     return pimpl->toolTip;
 }
 
+QString const&
+Node::toolTip() const
+{
+    return pimpl->toolTip;
+}
+
 Node&
 Node::setCaption(QString const& caption)
 {
@@ -463,6 +469,18 @@ Node::isPortConnected(PortId portId) const
 {
     auto* port = this->port(portId);
     return port && port->isConnected();
+}
+
+GraphUserVariables const*
+Node::userVariables() const
+{
+    NodeDataInterface* model = pimpl->dataInterface;
+    if (!model)
+    {
+        return nullptr;
+    }
+
+    return model->userVariables();
 }
 
 void

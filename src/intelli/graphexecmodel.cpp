@@ -9,6 +9,7 @@
 
 #include <intelli/graphexecmodel.h>
 #include <intelli/graph.h>
+#include <intelli/graphuservariables.h>
 #include <intelli/private/graphexecmodel_impl.h>
 #include <intelli/node/groupoutputprovider.h>
 #include <intelli/node/groupinputprovider.h>
@@ -541,6 +542,15 @@ GraphDataModel const&
 GraphExecutionModel::data() const
 {
     return pimpl->data;
+}
+
+GraphUserVariables const*
+GraphExecutionModel::userVariables() const
+{
+    auto const* root = graph().rootGraph();
+    assert(root);
+
+    return root->findDirectChild<GraphUserVariables const*>();
 }
 
 void

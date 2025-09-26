@@ -24,6 +24,7 @@ using NodeDataPtrList = std::vector<std::pair<PortId, NodeDataPtr>>;
  * @brief The NodeDataInterface class.
  * Interface to access and set the data of a node port
  */
+class GraphUserVariables;
 class NodeDataInterface : public QObject
 {
     Q_OBJECT
@@ -46,6 +47,9 @@ public:
      */
     virtual void setNodeEvaluationFailed(NodeUuid const& nodeUuid) {}
 
+    GT_NO_DISCARD Q_INVOKABLE
+    virtual GraphUserVariables const* userVariables() const { return nullptr; }
+
     /// Helper struct to scope the duration of a node evaluation
     struct NodeEvaluationEndedFunctor
     {
@@ -65,6 +69,7 @@ public:
      * @param nodeUuid Node that is being evaluated
      * @return
      */
+    GT_NO_DISCARD
     ScopedEvaluation nodeEvaluation(NodeUuid const& nodeUuid)
     {
         nodeEvaluationStarted(nodeUuid);

@@ -18,7 +18,7 @@
 #include "intelli/nodefactory.h"
 #include "intelli/graph.h"
 #include "intelli/graphcategory.h"
-#include "intelli/graphuservariablesdb.h"
+#include "intelli/graphuservariables.h"
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
 #include "intelli/property/stringselection.h"
@@ -201,8 +201,8 @@ GtIntelliGraphModule::data()
     list << GT_METADATA(GraphCategory);
     list << GT_METADATA(ConnectionGroup);
     list << GT_METADATA(Connection);
-
-    list << GT_METADATA(GraphUserVariablesDB);
+    
+    list << GT_METADATA(GraphUserVariables);
 
     list << GT_METADATA(GuiData);
     list << GT_METADATA(LocalStateContainer);

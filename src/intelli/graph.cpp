@@ -8,6 +8,7 @@
  */
 
 #include "intelli/graph.h"
+#include "intelli/graphuservariables.h"
 #include "intelli/private/graph_impl.h"
 
 #include "intelli/connection.h"
@@ -29,6 +30,9 @@ Graph::Graph() :
     Node("Graph"),
     pimpl(std::make_unique<Impl>())
 {
+    auto* db = new GraphUserVariables(this);
+    db->setDefault(true);
+
     // we create the node connections here in this group object. This way
     // merging mementos has the correct order (first the connections are removed
     // then the nodes)

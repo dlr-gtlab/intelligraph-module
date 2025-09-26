@@ -275,6 +275,9 @@ public:
     GT_NO_DISCARD
     inline GraphDataModel const& data() const;
 
+    GT_NO_DISCARD Q_INVOKABLE
+    GraphUserVariables const* userVariables() const override;
+
 protected:
 
     /**

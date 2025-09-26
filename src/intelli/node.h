@@ -88,6 +88,7 @@ class INode;
 class Node;
 class NodeData;
 class NodeDataInterface;
+class GraphUserVariables;
 
 namespace exec
 {
@@ -375,7 +376,7 @@ public:
      * @brief Returns true if the node (id) is valid
      * @return is valid
      */
-    bool isValid() const;
+    [[deprecated("Use `id().isValid()` instead")]] bool isValid() const;
 
     /**
      * @brief Returns the node flags
@@ -406,14 +407,15 @@ public:
      * @brief Tooltip of the node
      * @return Tooltip
      */
-    QString const& tooltip() const;
+    [[deprecated("use `toolTip` instead")]] QString const& tooltip() const;
+    QString const& toolTip() const;
 
     /**
      * @brief Setter for the caption. Will be saved persistently
      * @param caption New caption
      * @return Returns a reference to this node for method chaining
      */
-    Q_INVOKABLE Node& setCaption(QString const& caption);
+    Node& setCaption(QString const& caption);
 
     /**
      * @brief Caption of the node
@@ -491,6 +493,8 @@ public:
      */
     [[deprecated("Use `PortInfo::isConnected()` instead")]]
     bool isPortConnected(PortId portId) const;
+
+    Q_INVOKABLE GraphUserVariables const* userVariables() const;
 
 signals:
 

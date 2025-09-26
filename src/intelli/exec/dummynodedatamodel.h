@@ -12,6 +12,9 @@
 
 #include <intelli/nodedatainterface.h>
 #include <intelli/graphdatamodel.h>
+#include <intelli/graphuservariables.h>
+
+#include <QPointer>
 
 namespace intelli
 {
@@ -48,10 +51,15 @@ public:
 
     void setNodeEvaluationFailed(NodeUuid const& nodeUuid) override;
 
+    GraphUserVariables const* userVariables() const override { return m_userVariables; }
+
+    void setUserVariables(GraphUserVariables const* userVariables) { m_userVariables = userVariables; }
+
 private:
 
     Node* m_node = nullptr;
     data_model::DataItem m_data;
+    QPointer<GraphUserVariables const> m_userVariables;
     bool m_success = true;
 };
 
