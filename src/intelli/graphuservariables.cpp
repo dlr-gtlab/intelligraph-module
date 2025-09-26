@@ -7,7 +7,7 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include <intelli/graphuservariablesdb.h>
+#include <intelli/graphuservariables.h>
 #include <intelli/private/utils.h>
 
 #include <gt_coreapplication.h>
