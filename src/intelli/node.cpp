@@ -196,7 +196,7 @@ Node::setNodeFlag(NodeFlag flag, bool enable)
     switch (flag)
     {
     case Deprecated:
-        if (tooltip().isEmpty())
+        if (toolTip().isEmpty())
         {
             setToolTip(tr("This node is deprecated and will "
                           "be removed in a future relase."));
@@ -477,7 +477,7 @@ Node::userVariables() const
     NodeDataInterface* model = pimpl->dataInterface;
     if (!model)
     {
-        return nullptr;
+        return findDirectChild<GraphUserVariables const*>();
     }
 
     return model->userVariables();

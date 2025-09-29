@@ -47,7 +47,6 @@ public:
      */
     virtual void setNodeEvaluationFailed(NodeUuid const& nodeUuid) {}
 
-    GT_NO_DISCARD Q_INVOKABLE
     virtual GraphUserVariables const* userVariables() const { return nullptr; }
 
     /// Helper struct to scope the duration of a node evaluation

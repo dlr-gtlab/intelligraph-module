@@ -20,7 +20,13 @@
 namespace intelli
 {
 
-class GraphUserVariables : public GtObject
+/**
+ * @brief The GraphUserVariables class.
+ * Storage class for per-graph global/static user variables. This can be thought
+ * of as Environment Variables for graphs. Only one instance per graph hierarchy
+ * (i.e. the root instance) should hold all variables.
+ */
+class GT_INTELLI_EXPORT GraphUserVariables : public GtObject
 {
     Q_OBJECT
 
@@ -29,24 +35,77 @@ public:
     Q_INVOKABLE GraphUserVariables(GtObject* parent = nullptr);
     ~GraphUserVariables();
 
-    Q_INVOKABLE bool setValue(QString const& key, QVariant const& value);
+    /**
+     * @brief Adds a new entry for `key` and sets its value to `value`. If
+     * an entry for `key` already exsists it will be overwritten.
+     * @param key Key
+     * @param value Value
+     * @return Success
+     */
+    bool setValue(QString const& key, QVariant const& value);
 
-    Q_INVOKABLE bool remove(QString const& key);
+    /**
+     * @brief Removes the entry for `key`.
+     * @param key Key
+     * @return Success. Returns false if key was not found.
+     */
+    bool remove(QString const& key);
 
-    GT_NO_DISCARD GT_INTELLI_EXPORT Q_INVOKABLE
+    /**
+     * @brief Removes all entries
+     */
+    void clear();
+
+    /**
+     * @brief Returns whether an entry for `key` exists.
+     * @param key Key
+     * @return Whether an entry for `key` exists.
+     */
+    GT_NO_DISCARD Q_INVOKABLE
     bool hasValue(QString const& key) const;
 
-    GT_NO_DISCARD GT_INTELLI_EXPORT Q_INVOKABLE
+    /**
+     * @brief Returns the value for the entry `key`.
+     * @param key Key
+     * @return Value (may be null if entry does not exist)
+     */
+    GT_NO_DISCARD Q_INVOKABLE
     QVariant value(QString const& key) const;
 
-    GT_NO_DISCARD GT_INTELLI_EXPORT Q_INVOKABLE
+    /**
+     * @brief Returns all keys of the entries as a stringlist.
+     * @return Keys
+     */
+    GT_NO_DISCARD Q_INVOKABLE
     QStringList keys() const;
 
-    GT_NO_DISCARD GT_INTELLI_EXPORT Q_INVOKABLE
+    /**
+     * @brief Returns the number of entries.
+     * @return Number of entries
+     */
+    GT_NO_DISCARD Q_INVOKABLE
     size_t size() const;
 
-    GT_INTELLI_EXPORT
+    /**
+     * @brief Returns whether this instance has any entries
+     * @return Whether this instance has any entries
+     */
+    GT_NO_DISCARD Q_INVOKABLE
+    bool empty() const;
+
+    /**
+     * @brief Iterates over all entries and calls the function `f` with the
+     * key and value as an argument
+     * @param f Functor
+     */
     void visit(std::function<void(QString const& key, QVariant const& value)> f) const;
+
+    /**
+     * @brief Merges all entries with `target`. The entries are copied to target
+     * and then this object is cleared.
+     * @param target Target
+     */
+    void mergeTo(GraphUserVariables& target);
 
 private:
 

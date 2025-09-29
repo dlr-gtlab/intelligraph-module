@@ -681,6 +681,8 @@ private:
     void appendGlobalConnection(Connection* guard, ConnectionUuid conUuid);
 
     void updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr);
+
+    void mergeUserVariables(Graph& other);
 };
 
 } // namespace intelli

@@ -15,6 +15,7 @@
 
 #include <gt_typetraits.h>
 #include <gt_object.h>
+#include <intelli/graphuservariables.h>
 
 #include <QWidget>
 
@@ -88,7 +89,7 @@ class INode;
 class Node;
 class NodeData;
 class NodeDataInterface;
-class GraphUserVariables;
+//class GraphUserVariables;
 
 namespace exec
 {
@@ -327,7 +328,7 @@ public:
      * @brief Setter for the automatic node evaluation flag
      * @param active Whether to enable automatic node evaluation
      */
-    void setActive(bool active = true);
+    Q_INVOKABLE void setActive(bool active = true);
 
     /**
      * @brief Returns true if automatic node evaluation is active

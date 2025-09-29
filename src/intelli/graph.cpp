@@ -586,6 +586,8 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
 
         // init input output providers of sub graph
         graph->initInputOutputProviders();
+
+        mergeUserVariables(*graph);
     }
 
     // register node in local model
@@ -1218,6 +1220,17 @@ Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const&
     {
         subgraph->updateGlobalConnectionModel(ptr);
     }
+}
+
+void
+Graph::mergeUserVariables(Graph& other)
+{
+    GraphUserVariables* otherUV = other.findDirectChild<GraphUserVariables*>();
+    GraphUserVariables* thisUV = this->findDirectChild<GraphUserVariables*>();
+
+    if (!otherUV || !thisUV) return;
+
+    otherUV->mergeTo(*thisUV);
 }
 
 GtMdiItem*

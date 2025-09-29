@@ -94,13 +94,15 @@ bool checkCompatibility(QVariant const& v)
 bool
 GraphUserVariables::setValue(QString const& key, QVariant const& value)
 {
-    if (!checkCompatibility<
+    if (value.isNull() ||
+        !checkCompatibility<
             bool,
             int,
             unsigned,
             double,
             QString
-            >(value)) {
+            >(value))
+    {
         return false;
     }
 
@@ -124,6 +126,12 @@ GraphUserVariables::remove(QString const& key)
     if (iter == pimpl->variables.end()) return false;
     pimpl->variables.removeEntry(iter);
     return true;
+}
+
+void
+GraphUserVariables::clear()
+{
+    pimpl->variables.clear();
 }
 
 bool
@@ -158,6 +166,12 @@ GraphUserVariables::size() const
     return pimpl->variables.size();
 }
 
+bool
+GraphUserVariables::empty() const
+{
+    return size() == 0;
+}
+
 void
 GraphUserVariables::visit(std::function<void (const QString&, const QVariant&)> f) const
 {
@@ -167,3 +181,18 @@ GraphUserVariables::visit(std::function<void (const QString&, const QVariant&)> 
     }
 }
 
+void
+GraphUserVariables::mergeTo(GraphUserVariables& target)
+{
+    if (empty()) return;
+
+    visit([&target](QString const& key, QVariant const& value){
+        if (target.hasValue(key))
+        {
+            gtWarning() << key << "already exists" << value << "vs" << target.value(key);
+        }
+        target.setValue(key, value);
+    });
+
+    clear();
+}
