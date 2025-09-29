@@ -182,17 +182,22 @@ GraphUserVariables::visit(std::function<void (const QString&, const QVariant&)> 
 }
 
 void
-GraphUserVariables::mergeTo(GraphUserVariables& target)
+GraphUserVariables::mergeWith(GraphUserVariables& other)
 {
     if (empty()) return;
 
-    visit([&target](QString const& key, QVariant const& value){
-        if (target.hasValue(key))
+    other.visit([this](QString const& key, QVariant const& value){
+        if (hasValue(key))
         {
-            gtWarning() << key << "already exists" << value << "vs" << target.value(key);
+            gtWarning().verbose()
+                << QObject::tr("GraphUserVariables: "
+                               "Entry '%1' already exists, overwriting!").arg(key)
+                << gt::log::nospace
+                << "(current: " << this->value(key)
+                << " vs. new "  << value << ")";
         }
-        target.setValue(key, value);
+        setValue(key, value);
     });
 
-    clear();
+    other.clear();
 }

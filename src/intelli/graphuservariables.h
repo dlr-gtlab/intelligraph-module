@@ -101,11 +101,11 @@ public:
     void visit(std::function<void(QString const& key, QVariant const& value)> f) const;
 
     /**
-     * @brief Merges all entries with `target`. The entries are copied to target
-     * and then this object is cleared.
-     * @param target Target
+     * @brief Merges all entries with `other`. The entries are copied from
+     * `other` and then `other` is cleared.
+     * @param other Other
      */
-    void mergeTo(GraphUserVariables& target);
+    void mergeWith(GraphUserVariables& other);
 
 private:
 

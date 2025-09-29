@@ -1230,7 +1230,7 @@ Graph::mergeUserVariables(Graph& other)
 
     if (!otherUV || !thisUV) return;
 
-    otherUV->mergeTo(*thisUV);
+    thisUV->mergeWith(*otherUV);
 }
 
 GtMdiItem*
