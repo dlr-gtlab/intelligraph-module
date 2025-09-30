@@ -129,6 +129,11 @@ public:
     static DynamicNode* toDynamicNode(GtObject* obj);
     static DynamicNode const* toConstDynamicNode(GtObject const* obj);
 
+    /**
+     * @brief Returns whether this object is a root graph
+     * @param obj Object to check
+     * @return is object a root graph
+     */
     static bool isRootGraph(GtObject const* obj);
 
     /**
@@ -235,6 +240,8 @@ private:
      * @return is object renamable
      */
     static bool canRenameNodeObject(GtObject* obj);
+    
+    static void editUserVariables(GtObject* obj);
 
     /**
      * @brief helper method for setting the active flag of a node

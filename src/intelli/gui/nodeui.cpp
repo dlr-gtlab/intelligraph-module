@@ -26,6 +26,7 @@
 #include "intelli/gui/nodegeometry.h"
 #include "intelli/gui/nodepainter.h"
 #include "intelli/gui/graphics/nodeobject.h"
+#include "intelli/gui/widgets/graphuservariablesdialog.h"
 #include "intelli/private/utils.h"
 
 #include <gt_logging.h>
@@ -121,6 +122,10 @@ NodeUI::NodeUI(Option option) :
         .setIcon(gt::gui::icon::duplicate())
         .setVisibilityMethod(toGraph)
         .setShortCut(gtApp->getShortCutSequence("clone"));
+
+    addSingleAction(tr("Edit User Variables..."), editUserVariables)
+        .setIcon(gt::gui::icon::variable())
+        .setVisibilityMethod(isRootGraph);
 
     addSeparator();
 
@@ -355,6 +360,13 @@ NodeUI::toConstDynamicNode(GtObject const* obj)
 }
 
 bool
+NodeUI::isRootGraph(GtObject const* obj)
+{
+    Graph const* graph = toConstGraph(obj);
+    return graph && graph->rootGraph() == graph;
+}
+
+bool
 NodeUI::isDynamicPort(GtObject* obj, PortType type, PortIndex idx)
 {
     if (toDummy(obj)) return false;
@@ -372,13 +384,6 @@ NodeUI::isDynamicNode(GtObject* obj, PortType, PortIndex)
 }
 
 bool
-NodeUI::isRootGraph(GtObject const* obj)
-{
-    Graph const* graph = toConstGraph(obj);
-    return graph && graph->rootGraph() == graph;
-}
-
-bool
 NodeUI::canRenameNodeObject(GtObject* obj)
 {
     if (!obj || toDummy(obj))
@@ -390,6 +395,16 @@ NodeUI::canRenameNodeObject(GtObject* obj)
         return !(node->nodeFlags() & Unique);
     }
     return true;
+}
+
+void
+NodeUI::editUserVariables(GtObject* obj)
+{
+    Graph* graph = toGraph(obj);
+    if (!isRootGraph(graph)) return;
+
+    GraphUserVariablesDialog dialog{*graph};
+    dialog.exec();
 }
 
 void

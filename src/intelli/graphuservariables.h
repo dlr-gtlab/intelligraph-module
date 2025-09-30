@@ -32,7 +32,8 @@ class GT_INTELLI_EXPORT GraphUserVariables : public GtObject
 
 public:
 
-    Q_INVOKABLE GraphUserVariables(GtObject* parent = nullptr);
+    Q_INVOKABLE
+    GraphUserVariables(GtObject* parent = nullptr);
     ~GraphUserVariables();
 
     /**
@@ -42,6 +43,7 @@ public:
      * @param value Value
      * @return Success
      */
+    Q_INVOKABLE
     bool setValue(QString const& key, QVariant const& value);
 
     /**
@@ -49,6 +51,7 @@ public:
      * @param key Key
      * @return Success. Returns false if key was not found.
      */
+    Q_INVOKABLE
     bool remove(QString const& key);
 
     /**
@@ -98,7 +101,8 @@ public:
      * key and value as an argument
      * @param f Functor
      */
-    void visit(std::function<void(QString const& key, QVariant const& value)> f) const;
+    void visit(std::function<void(QString const& key,
+                                  QVariant const& value)> f) const;
 
     /**
      * @brief Merges all entries with `other`. The entries are copied from

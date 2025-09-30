@@ -148,6 +148,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/widgets/doubleinputwidget.h
     intelli/gui/widgets/editablelabel.h
     intelli/gui/widgets/finddirectchildwidget.h
+    intelli/gui/widgets/graphuservariablesdialog.h
     intelli/gui/widgets/intinputwidget.h
     intelli/gui/property_item/stringselection.h
     intelli/private/graph_impl.h
@@ -247,6 +248,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/widgets/doubleinputwidget.cpp
     intelli/gui/widgets/editablelabel.cpp
     intelli/gui/widgets/finddirectchildwidget.cpp
+    intelli/gui/widgets/graphuservariablesdialog.cpp
     intelli/gui/widgets/intinputwidget.cpp
     intelli/gui/property_item/stringselection.cpp
     intelli/property/color.cpp
