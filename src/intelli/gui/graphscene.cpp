@@ -782,7 +782,7 @@ GraphScene::deleteSelectedObjects()
         PopupItem::clearActivePopups();
 
         // create popup to notify that certain nodes are not deletable
-        for (QGraphicsItem* item : makeIterable(begin, end))
+        for (QGraphicsItem* item : utils::makeIterable(begin, end))
         {
             auto* popup = PopupItem::addPopupItem(*scene, text, std::chrono::seconds{1});
 
@@ -836,7 +836,7 @@ GraphScene::deleteSelectedObjects()
                                                     relativeNodePath(*m_graph)));
     Q_UNUSED(modification);
     Q_UNUSED(cmd);
-    for (QGraphicsItem* item : makeIterable(selected))
+    for (QGraphicsItem* item : utils::makeIterable(selected))
     {
         if (auto* obj = graphics_cast<GraphicsObject*>(item))
         {

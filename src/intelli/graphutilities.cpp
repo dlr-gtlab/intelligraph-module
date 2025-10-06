@@ -11,6 +11,7 @@
 
 #include <intelli/graph.h>
 #include <intelli/nodedatafactory.h>
+#include <intelli/utilities.h>
 #include <intelli/node/groupinputprovider.h>
 #include <intelli/node/groupoutputprovider.h>
 #include <intelli/gui/guidata.h>
@@ -187,8 +188,8 @@ copyObjectsToGraph(Graph const& source,
                    connection.inNodeId == nodeUuid;
         });
 
-        for (ConnectionUuid& connection : makeIterable(internalConnections.begin(),
-                                                       affectedCons))
+        for (ConnectionUuid& connection : utils::makeIterable(internalConnections.begin(),
+                                                              affectedCons))
         {
             (connection.outNodeId == sourceNode->uuid() ?
                  connection.outNodeId :

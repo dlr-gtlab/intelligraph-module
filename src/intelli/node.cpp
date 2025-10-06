@@ -110,7 +110,7 @@ Node::Node(QString const& modelName, GtObject* parent) :
     connect(this, &Node::portDisconnected, this, [this](PortId portId){
         auto* port = this->port(portId);
         if (port) port->m_isConnected = false;
-    }, Qt::DirectConnection);
+        }, Qt::DirectConnection);
 }
 
 Node::~Node()
@@ -484,6 +484,13 @@ Node::userVariables() const
 }
 
 void
+Node::nodeEvent(NodeEvent const* event)
+{
+    Q_UNUSED(event);
+    // nothing to do here
+}
+
+void
 Node::eval()
 {
     // nothing to do here
@@ -540,7 +547,16 @@ public:
     inline static void
     setNodeDataInterface(Node& node, NodeDataInterface* interface)
     {
+        bool hadValue = (node.pimpl->dataInterface);
         node.pimpl->dataInterface = interface;
+
+        if (!hadValue)
+        {
+            Node::NodeEvent e{
+                Node::DataInterfaceAvailableEvent
+            };
+            node.nodeEvent(&e);
+        }
     }
 
     // cppcheck-suppress constParameter

@@ -203,6 +203,25 @@ public:
     using WidgetFactoryNoArgs =
         std::function<std::unique_ptr<QWidget>()>;
 
+    /// Enums inidacting of node event
+    enum NodeEventType
+    {
+        UnkownEvent = 0,
+        /// Event is emitted once `nodeDataInterface` yields a valid pointer
+        /// (not emitted if `nodeDataInterface` chnages).
+        /// Can be used to initialize a node.
+        DataInterfaceAvailableEvent
+    };
+
+    /// Base class for node specific events
+    class NodeEvent
+    {
+        NodeEventType m_type = UnkownEvent;
+    public:
+        explicit NodeEvent(NodeEventType type) : m_type(type) {}
+        NodeEventType type() const { return m_type; }
+    };
+
     /// enum for defining whether a port is optional
     enum PortPolicy
     {
@@ -627,6 +646,13 @@ protected:
      * @param parent Parent object
      */
     Node(QString const& modelName, GtObject* parent = nullptr);
+
+    /**
+     * @brief This function invoked when certain events are triggered allowing
+     * the node to react accordingly.
+     * @param event Event type
+     */
+    virtual void nodeEvent(NodeEvent const* event);
 
     /**
      * @brief Main evaluation method to override. Will be called once, the

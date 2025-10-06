@@ -77,7 +77,7 @@ void
 PopupItem::clearActivePopups()
 {
     // reverse iterate to not cause access to dangling iterator
-    for (auto i : makeIterable(s_activeItems))
+    for (auto i : s_activeItems)
     {
         i->hide();
     }

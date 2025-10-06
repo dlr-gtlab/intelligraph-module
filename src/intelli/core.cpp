@@ -42,6 +42,7 @@
 #include "intelli/node/input/intinput.h"
 #include "intelli/node/input/objectinput.h"
 #include "intelli/node/input/stringinput.h"
+#include "intelli/node/input/graphuservariablesinput.h"
 
 #include "intelli/node/booldisplay.h"
 #include "intelli/node/textdisplay.h"
@@ -151,6 +152,7 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(StringInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(ObjectInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(IntInputNode, catInput);
+        GT_INTELLI_REGISTER_NODE(GraphUserVariablesInputNode, catInput);
 
         GT_INTELLI_REGISTER_NODE(StringBuilderNode, catString);
         GT_INTELLI_REGISTER_NODE(StringSelectionNode, catString);

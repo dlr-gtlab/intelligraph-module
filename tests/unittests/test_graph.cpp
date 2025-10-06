@@ -12,6 +12,7 @@
 #include "node/test_dynamic.h"
 
 #include "intelli/connection.h"
+#include "intelli/utilities.h"
 
 #include <gt_objectmemento.h>
 #include <gt_objectmementodiff.h>
@@ -265,7 +266,7 @@ TEST(Graph, connetion_model_reverse_iterator)
 {
     QVector<int> data{1, 2, 3, 4, 5, 6};
 
-    auto iter = makeReverseIterable(data);
+    auto iter = utils::makeReverseIterable(data);
 
     ASSERT_EQ(iter.size(), data.size());
     EXPECT_TRUE(std::equal(iter.begin(), iter.end(),

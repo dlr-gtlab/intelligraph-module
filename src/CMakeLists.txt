@@ -121,6 +121,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/stringbuilder.h
     intelli/node/stringselection.h
     intelli/node/textdisplay.h
+    intelli/node/input/graphuservariablesinput.h
     intelli/node/input/fileinput.h
     intelli/gui/commentgroup.h
     intelli/gui/commentdata.h
@@ -205,6 +206,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/stringbuilder.cpp
     intelli/node/stringselection.cpp
     intelli/node/textdisplay.cpp
+    intelli/node/input/graphuservariablesinput.cpp
     intelli/node/input/boolinput.cpp
     intelli/node/input/doubleinput.cpp
     intelli/node/input/fileinput.cpp

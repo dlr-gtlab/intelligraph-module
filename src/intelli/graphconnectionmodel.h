@@ -169,51 +169,6 @@ inline auto makeProxy(T const& t, Proxy p = {})
     return makeProxy(t.begin(), t.end(), std::move(p));
 }
 
-/**
- * @brief Helper struct that allows the use of for-range based loops and similar
- * constructs
- */
-template <typename T>
-struct iterable
-{
-    T b, e;
-
-    T begin() const { return b; }
-    T end() const { return e; }
-
-    bool empty() const { return begin() == end(); }
-    size_t size() const { return std::distance(begin(), end()); }
-};
-
-/**
- * @brief Helper method that instantiates an iterable object
- */
-template <typename Iterator>
-inline iterable<Iterator> makeIterable(Iterator begin, Iterator end)
-{
-    return {std::move(begin), std::move(end)};
-}
-
-/**
- * @brief Helper method that instantiates an iterable object based on `t`'s
- * begin and end operator.
- */
-template <typename T>
-inline auto makeIterable(T& t)
-{
-    return makeIterable(t.begin(), t.end());
-}
-
-/**
- * @brief Helper method that instantiates an iterable object based on `t`'s
- * reverse begin and end operator.
- */
-template <typename T>
-inline auto makeReverseIterable(T&& t)
-{
-    return makeIterable(t.rbegin(), t.rend());
-}
-
 template <typename NodeId_t>
 struct ConnectionDetail
 {

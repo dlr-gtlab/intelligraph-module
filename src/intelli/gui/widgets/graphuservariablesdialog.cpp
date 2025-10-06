@@ -213,6 +213,8 @@ GraphUserVariablesDialog::saveChanges()
         uv->remove(oldKey);
     }
 
+    emit uv->variablesUpdated();
+
     accept();
 }
 

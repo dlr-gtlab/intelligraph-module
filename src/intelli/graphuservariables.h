@@ -111,6 +111,10 @@ public:
      */
     void mergeWith(GraphUserVariables& other);
 
+signals:
+
+    void variablesUpdated();
+
 private:
 
     struct Impl;
