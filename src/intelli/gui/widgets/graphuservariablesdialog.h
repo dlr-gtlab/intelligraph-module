@@ -14,10 +14,15 @@
 #include <QPointer>
 
 class QListWidget;
+class QCheckBox;
+class QLineEdit;
+class QComboBox;
+class QPushButton;
 
 namespace intelli
 {
 
+class EditableLabel;
 class Graph;
 class GraphUserVariablesDialog : public QDialog
 {
@@ -30,19 +35,61 @@ public:
 
 public slots:
 
+    void open() override;
     /**
      * @brief slot for saving all settings
      */
     void saveChanges();
 
+    bool validate();
+
 private:
 
-    QListWidget* m_listView{};
     QPointer<Graph> m_graph;
+    QListWidget* m_listView{};
+    QPushButton* m_saveButton{};
 
     void load();
 
     void addItem(QString key, QVariant value);
+};
+
+class GraphUserVariableItem : public QWidget
+{
+    Q_OBJECT
+
+public:
+
+    GraphUserVariableItem(QString key, QVariant value, QWidget* parent = nullptr);
+
+    bool isActivated() const;
+
+    QString key() const;
+
+    QVariant value() const;
+
+    bool isValid() const;
+
+    void setIsDuplicateKey(bool isDuplicate);
+
+    void init();
+
+signals:
+
+    void keyChanged();
+
+    void valueChanged();
+
+private:
+
+    QCheckBox* m_enableCheckBox{};
+    EditableLabel* m_keyLabel{};
+    QLineEdit* m_valueEdit{};
+    QComboBox* m_typeComboBox{};
+
+private slots:
+
+    void onValueChanged();
 };
 
 } // namespace intelli
