@@ -347,7 +347,7 @@ public:
      * @brief Setter for the automatic node evaluation flag
      * @param active Whether to enable automatic node evaluation
      */
-    Q_INVOKABLE void setActive(bool active = true);
+    void setActive(bool active = true);
 
     /**
      * @brief Returns true if automatic node evaluation is active

@@ -550,7 +550,7 @@ GraphExecutionModel::userVariables() const
     auto const* root = graph().rootGraph();
     assert(root);
 
-    return root->findDirectChild<GraphUserVariables const*>("__user_variables");
+    return root->findDirectChild<GraphUserVariables const*>();
 }
 
 void

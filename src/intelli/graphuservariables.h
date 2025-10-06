@@ -43,7 +43,6 @@ public:
      * @param value Value
      * @return Success
      */
-    Q_INVOKABLE
     bool setValue(QString const& key, QVariant const& value);
 
     /**
@@ -51,7 +50,6 @@ public:
      * @param key Key
      * @return Success. Returns false if key was not found.
      */
-    Q_INVOKABLE
     bool remove(QString const& key);
 
     /**
