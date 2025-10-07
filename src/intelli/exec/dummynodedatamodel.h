@@ -55,10 +55,15 @@ public:
 
     void setUserVariables(GraphUserVariables const* userVariables) { m_userVariables = userVariables; }
 
+    GtObject* scope() override { return m_scope; }
+
+    void setScope(GtObject* scope) { m_scope = scope; }
+
 private:
 
     Node* m_node = nullptr;
     data_model::DataItem m_data;
+    QPointer<GtObject> m_scope;
     QPointer<GraphUserVariables const> m_userVariables;
     bool m_success = true;
 };

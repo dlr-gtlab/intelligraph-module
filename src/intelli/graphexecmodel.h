@@ -278,6 +278,10 @@ public:
     GT_NO_DISCARD Q_INVOKABLE
     GraphUserVariables const* userVariables() const override;
 
+    GtObject* scope() override;
+
+    void setScope(GtObject* scope);
+
 protected:
 
     /**

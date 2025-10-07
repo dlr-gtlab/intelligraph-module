@@ -105,6 +105,8 @@ struct GraphExecutionModel::Impl
 
     /// assoicated graph
     QPointer<Graph> graph;
+    /// scope object
+    QPointer<GtObject> scope;
     /// data model for all nodes and their ports
     GraphDataModel data;
     /// nodes that should be evaluated

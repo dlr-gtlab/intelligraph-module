@@ -15,16 +15,18 @@
 
 #include <gt_finally.h>
 
+class GtObject;
+
 namespace intelli
 {
 
 using NodeDataPtrList = std::vector<std::pair<PortId, NodeDataPtr>>;
 
+class GraphUserVariables;
 /**
  * @brief The NodeDataInterface class.
  * Interface to access and set the data of a node port
  */
-class GraphUserVariables;
 class NodeDataInterface : public QObject
 {
     Q_OBJECT
@@ -47,7 +49,20 @@ public:
      */
     virtual void setNodeEvaluationFailed(NodeUuid const& nodeUuid) {}
 
+    /**
+     * @brief Returns the user variables object if any exists.
+     * @return User variables object (may be null)
+     */
     virtual GraphUserVariables const* userVariables() const { return nullptr; }
+
+    /**
+     * @brief Returns the scope object used for evalauation. The scope object
+     * is intended to to be used for interfacing with the datamodel.
+     * By default the scope object s the current project, but it may be set to
+     * a sub datatree or an external tree instead.
+     * @return Scope object (may be null).
+     */
+    virtual GtObject* scope() { return nullptr; }
 
     /// Helper struct to scope the duration of a node evaluation
     struct NodeEvaluationEndedFunctor

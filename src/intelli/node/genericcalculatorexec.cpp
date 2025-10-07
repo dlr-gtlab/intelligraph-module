@@ -14,6 +14,7 @@
 #include <intelli/data/bool.h>
 #include <intelli/data/string.h>
 #include <intelli/data/integer.h>
+#include <intelli/nodedatainterface.h>
 
 #include "gt_algorithms.h"
 #include "gt_coreapplication.h"
@@ -323,7 +324,11 @@ GenericCalculatorExecNode::GenericCalculatorExecNode() :
 
         lay->addWidget(edit);
 
-        auto* view = new GtPropertyTreeView(gtApp->currentProject());
+        auto* model = exec::nodeDataInterface(*this);
+        GtObject* scope = model ? model->scope() : gtApp->currentProject();
+        assert(scope);
+
+        auto* view = new GtPropertyTreeView(scope);
         view->setAnimated(false);
         lay->addWidget(view);
 

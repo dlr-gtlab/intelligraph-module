@@ -22,6 +22,7 @@
 #include <gt_logging.h>
 
 #include <gt_application.h>
+#include <gt_project.h>
 #include <gt_icons.h>
 
 #include <QVBoxLayout>
@@ -86,6 +87,7 @@ GraphEditor::setData(GtObject* obj)
                    .arg(relativeNodePath(*graph));
         return;
     }
+    model->setScope(gtApp->currentProject());
     model->reset();
 
     // setup state manager
