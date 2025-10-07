@@ -30,8 +30,10 @@ class GraphUserVariablesDialog : public QDialog
 
 public:
 
-    GraphUserVariablesDialog(Graph& graph);
+    explicit GraphUserVariablesDialog(Graph& graph);
     ~GraphUserVariablesDialog();
+
+    bool validate() const;
 
 public slots:
 
@@ -40,8 +42,6 @@ public slots:
      * @brief slot for saving all settings
      */
     void saveChanges();
-
-    bool validate();
 
 private:
 

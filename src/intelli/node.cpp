@@ -543,7 +543,6 @@ public:
         node.eval();
     }
 
-    // cppcheck-suppress constParameter
     inline static void
     setNodeDataInterface(Node& node, NodeDataInterface* interface)
     {
@@ -559,8 +558,8 @@ public:
         }
     }
 
-    // cppcheck-suppress constParameter
     GT_NO_DISCARD
+    // cppcheck-suppress constParameter
     inline static NodeDataInterface*
     nodeDataInterface(Node& node)
     {

@@ -181,8 +181,6 @@ GraphUserVariablesDialog::saveChanges()
         return;
     }
 
-    assert(validate());
-
     auto* uv = m_graph->findDirectChild<GraphUserVariables*>();
     assert(uv);
 
@@ -219,7 +217,7 @@ GraphUserVariablesDialog::saveChanges()
 }
 
 bool
-GraphUserVariablesDialog::validate()
+GraphUserVariablesDialog::validate() const
 {
     auto const getItemWidget = [this](auto begin, auto iter){
         int idx = std::distance(begin, iter);
@@ -421,6 +419,7 @@ GraphUserVariableItem::value() const
     auto const& types = typeIds();
     if (index < 0 || index > types.size()) return {};
 
+    // cppcheck-supress containerOutOfBounds
     QVariant::Type type = std::get<QVariant::Type>(types.at(index));
     QVariant variant{m_valueEdit->text()};
 
