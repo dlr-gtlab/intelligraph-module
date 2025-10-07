@@ -30,7 +30,9 @@ public:
 
     QString text() const;
 
-    void setText(QString const& text, bool emitSignal = true);
+    void setText(QString text, bool emitSignal = true);
+
+    void setPlaceholderText(QString text);
 
     void setReadOnly(bool value);
     bool readOnly() const;
@@ -55,7 +57,7 @@ public:
     template <typename T>
     inline void setValue(T const& value, bool emitSignal = true)
     {
-        // hack to convert a most `T` to strings
+        // hack to convert most `T` to strings
         return setText(QStringLiteral("%1").arg(value), emitSignal);
     }
 

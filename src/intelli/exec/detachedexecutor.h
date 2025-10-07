@@ -32,10 +32,10 @@ class DetachedExecutor : public QObject
 
 public:
     
-    DetachedExecutor();
+    DetachedExecutor(QObject* parent = nullptr);
     ~DetachedExecutor();
 
-    bool evaluateNode(Node& node, NodeDataInterface& model);
+    bool evaluateNode(Node& node);
 
     bool canEvaluateNode();
 

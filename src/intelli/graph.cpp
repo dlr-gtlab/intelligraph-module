@@ -8,6 +8,7 @@
  */
 
 #include "intelli/graph.h"
+#include "intelli/graphuservariables.h"
 #include "intelli/private/graph_impl.h"
 
 #include "intelli/connection.h"
@@ -29,6 +30,9 @@ Graph::Graph() :
     Node("Graph"),
     pimpl(std::make_unique<Impl>())
 {
+    auto* db = new GraphUserVariables(this);
+    db->setDefault(true);
+
     // we create the node connections here in this group object. This way
     // merging mementos has the correct order (first the connections are removed
     // then the nodes)
@@ -582,6 +586,8 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
 
         // init input output providers of sub graph
         graph->initInputOutputProviders();
+
+        mergeUserVariables(*graph);
     }
 
     // register node in local model
@@ -1214,6 +1220,17 @@ Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const&
     {
         subgraph->updateGlobalConnectionModel(ptr);
     }
+}
+
+void
+Graph::mergeUserVariables(Graph& other)
+{
+    GraphUserVariables* otherUV = other.findDirectChild<GraphUserVariables*>();
+    GraphUserVariables* thisUV = this->findDirectChild<GraphUserVariables*>();
+
+    if (!otherUV || !thisUV) return;
+
+    thisUV->mergeWith(*otherUV);
 }
 
 GtMdiItem*

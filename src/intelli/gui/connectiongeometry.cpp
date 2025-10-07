@@ -93,6 +93,8 @@ ConnectionGeometry::controlPoints(QPointF start, QPointF end, ConnectionShape sh
     }
 
     }
+
+    return {};
 }
 
 

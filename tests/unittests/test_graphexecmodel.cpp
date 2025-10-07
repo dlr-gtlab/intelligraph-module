@@ -796,7 +796,7 @@ TEST(GraphExecutionModel, propagate_invalidation)
     gtDebug() << "Triggering evaluation of node A...";
 
     /// evaluate node A once -> make data valid
-    ASSERT_TRUE(exec::blockingEvaluation(*nodeA, model));
+    ASSERT_TRUE(exec::blockingEvaluation(*nodeA));
 
     {
         EXPECT_TRUE(test::compareNodeEvalState(graph, model, {
@@ -814,7 +814,7 @@ TEST(GraphExecutionModel, propagate_invalidation)
     gtDebug() << "Triggering evaluation of node B...";
 
     /// evaluate node B once -> make data valid
-    ASSERT_TRUE(exec::blockingEvaluation(*nodeB, model));
+    ASSERT_TRUE(exec::blockingEvaluation(*nodeB));
 
     {
         EXPECT_TRUE(test::compareNodeEvalState(graph, model, {
@@ -855,7 +855,7 @@ TEST(GraphExecutionModel, propagate_invalidation)
     gtDebug() << "Triggering evaluation of node B...";
 
     /// evaluate node B once -> make data valid
-    ASSERT_TRUE(exec::blockingEvaluation(*nodeB, model));
+    ASSERT_TRUE(exec::blockingEvaluation(*nodeB));
 
     {
         EXPECT_TRUE(test::compareNodeEvalState(graph, model, {

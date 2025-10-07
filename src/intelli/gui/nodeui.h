@@ -129,6 +129,11 @@ public:
     static DynamicNode* toDynamicNode(GtObject* obj);
     static DynamicNode const* toConstDynamicNode(GtObject const* obj);
 
+    /**
+     * @brief Returns whether this object is a root graph
+     * @param obj Object to check
+     * @return is object a root graph
+     */
     static bool isRootGraph(GtObject const* obj);
 
     /**
@@ -179,6 +184,8 @@ public:
      * @return
      */
     QList<PortUIAction> const& portActions() const;
+
+    static void editUserVariables(GtObject* obj);
 
 protected:
 

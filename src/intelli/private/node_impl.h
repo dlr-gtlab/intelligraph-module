@@ -71,8 +71,8 @@ struct Node::Impl
     std::vector<PortInfo> inPorts, outPorts{};
     /// factory for creating the widget
     WidgetFactory widgetFactory{};
-
-    NodeDataInterface* dataInterface{};
+    /// interface for accessing node data
+    QPointer<NodeDataInterface> dataInterface{};
     /// node flags
     NodeFlags flags{NodeFlag::DefaultNodeFlags};
     /// node eval mode

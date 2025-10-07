@@ -10,6 +10,7 @@
 #include "intelli/exec/detachedexecutor.h"
 
 #include "intelli/node.h"
+#include "intelli/graphuservariables.h"
 #include "intelli/exec/dummynodedatamodel.h"
 #include "intelli/private/utils.h"
 
@@ -128,7 +129,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
         {
             gtWarning()
                 << utils::logId<DetachedExecutor>()
-                << QObject::tr("failed to forward signal from clone to source node!")
+                << QObject::tr("Failed to forward signal from clone to source node!")
                 << gt::brackets(signal);
             return {};
         }
@@ -147,7 +148,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
         {
             gtWarning()
                 << utils::logId<DetachedExecutor>()
-                << QObject::tr("failed to connect signal of clone with source node!")
+                << QObject::tr("Failed to connect signal of clone with source node!")
                 << gt::brackets(signal);
             return {};
         }
@@ -163,7 +164,8 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
 
 //////////////////////////////////////////////////////
 
-DetachedExecutor::DetachedExecutor()
+DetachedExecutor::DetachedExecutor(QObject* parent) :
+    QObject(parent)
 {
     using Watcher = decltype(m_watcher);
 
@@ -189,7 +191,7 @@ DetachedExecutor::onFinished()
     if (!m_node)
     {
         gtError() << utils::logId(this)
-                  << tr("Cannot finish transfer of node data! (Invalid node)");
+                  << tr("Failed to finalize node data transfer! (Invalid node)");
 
         m_destroyed = true;
         return deleteLater();
@@ -216,7 +218,7 @@ DetachedExecutor::onResultReady(int result)
     if (!m_node)
     {
         gtError() << utils::logId(this)
-                  << tr("cannot transfer node data! (Invalid node)");
+                  << tr("Failed to transfer node data! (Invalid node)");
         return;
     }
 
@@ -242,7 +244,7 @@ DetachedExecutor::onResultReady(int result)
     if (!model)
     {
         gtError() << utils::logId(this)
-                  << tr("failed to transfer node data! (Execution model not found)");
+                  << tr("Failed to transfer node data! (Missing data interface)");
         return;
     }
 
@@ -253,7 +255,7 @@ DetachedExecutor::onResultReady(int result)
     if (!model->setNodeData(nodeUuid, PortType::Out, outData))
     {
         gtError() << utils::logId(this)
-                  << tr("failed to transfer node data!");
+                  << tr("Failed to transfer node data!");
     }
 
     finally.finalize();
@@ -262,12 +264,15 @@ DetachedExecutor::onResultReady(int result)
 }
 
 bool
-DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
+DetachedExecutor::evaluateNode(Node& node)
 {
+    NodeDataInterface* model = exec::nodeDataInterface(node);
+    assert(model);
+
     if (!canEvaluateNode())
     {
         gtWarning() << utils::logId(this)
-                    << tr("cannot evaluate node '%1'! (Node is already running)")
+                    << tr("Failed to evaluate node '%1'! (Node is already running)")
                            .arg(node.objectName());
         return false;
     }
@@ -281,7 +286,7 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
     }
 #endif
 
-    model.nodeEvaluationStarted(node.uuid());
+    model->nodeEvaluationStarted(node.uuid());
 
     m_node = &node;
     m_collected = false;
@@ -289,17 +294,18 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
 
     NodeUuid const& nodeUuid = node.uuid();
 
-    auto inData  = model.nodeData(nodeUuid, PortType::In);
-    auto outData = model.nodeData(nodeUuid, PortType::Out);
+    QPointer<GraphUserVariables const> userVariables = model->userVariables();
 
     auto run = [nodeUuid,
-                inData  = model.nodeData(nodeUuid, PortType::In),
-                outData = model.nodeData(nodeUuid, PortType::Out),
+                inData  = model->nodeData(nodeUuid, PortType::In),
+                outData = model->nodeData(nodeUuid, PortType::Out),
                 memento = node.toMemento(),
                 signalsToConnect = findSignalsToConnect(node),
                 targetMetaObject = node.metaObject(),
                 targetObject = QPointer<Node>(&node),
-                executor = this]() -> ReturnValue
+                executor = this,
+                userVariables
+                ]() -> ReturnValue
     {
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
@@ -342,6 +348,7 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
 
             // set data
             DummyNodeDataModel model{*node};
+            model.setUserVariables(userVariables);
 
             bool success = true;
             success &= model.setNodeData(PortType::In,  inData);
@@ -355,7 +362,7 @@ DetachedExecutor::evaluateNode(Node& node, NodeDataInterface& model)
             }
 
             // evaluate node
-            exec::blockingEvaluation(*node, model);
+            exec::blockingEvaluation(*node);
 
             return ReturnValue{model.nodeData(PortType::Out), model.evaluationSuccessful()};
         }

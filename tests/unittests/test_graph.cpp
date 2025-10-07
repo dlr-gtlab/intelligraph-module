@@ -266,7 +266,7 @@ TEST(Graph, connetion_model_reverse_iterator)
 {
     QVector<int> data{1, 2, 3, 4, 5, 6};
 
-    auto iter = makeReverseIterable(data);
+    auto iter = utils::makeReverseIterable(data);
 
     ASSERT_EQ(iter.size(), data.size());
     EXPECT_TRUE(std::equal(iter.begin(), iter.end(),
@@ -548,6 +548,8 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
     
     ASSERT_TRUE(test::buildGraphWithGroup(graph));
 
+    auto& conModel = graph.connectionModel();
+
     EXPECT_EQ(graph.connections().size(), 5);
     EXPECT_EQ(graph.nodes().size(), 5);
 
@@ -565,21 +567,21 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
 
     debug(graph);
 
-    auto const checkConnectionsOfNodeC = [&graph](){
+    auto const checkConnectionsOfNodeC = [&graph, &conModel](){
         gtDebug() << "checking connections of node C...";
 
-        QVector<ConnectionId> const& consIn = graph.findConnections(C_id, PortType::In); // C
+        auto consIn = conModel.iterateConnections(C_id, PortType::In); // C
         ASSERT_EQ(consIn.size(), 2);
 
-        EXPECT_TRUE(consIn.contains(graph.connectionId(A_id, PortIndex(0), C_id, PortIndex(0))));
-        EXPECT_TRUE(consIn.contains(graph.connectionId(B_id, PortIndex(0), C_id, PortIndex(1))));
+        EXPECT_TRUE(utils::contains(consIn, graph.connectionId(A_id, PortIndex(0), C_id, PortIndex(0))));
+        EXPECT_TRUE(utils::contains(consIn, graph.connectionId(B_id, PortIndex(0), C_id, PortIndex(1))));
 
-        QVector<ConnectionId> const& consOut = graph.findConnections(C_id, PortType::Out); // C
+        auto consOut = conModel.iterateConnections(C_id, PortType::Out); // C
         ASSERT_EQ(consOut.size(), 1);
 
-        EXPECT_TRUE(consOut.contains(graph.connectionId(C_id, PortIndex(0), D_id, PortIndex(0))));
+        EXPECT_TRUE(utils::contains(consOut, graph.connectionId(C_id, PortIndex(0), D_id, PortIndex(0))));
 
-        EXPECT_EQ(graph.findConnections(C_id), consIn + consOut);
+        EXPECT_EQ(conModel.iterateConnections(C_id).size(), consIn.size() + consOut.size());
     };
 
     checkConnectionsOfNodeC();
@@ -602,7 +604,7 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
     EXPECT_EQ(graph.findNode(C_id), nullptr);
 
     // Node C does no longer exists -> its connections have been deleted as well
-    EXPECT_EQ(graph.findConnections(C_id).size(), 0);
+    EXPECT_EQ(conModel.iterateConnections(C_id).size(), 0);
     
     debug(graph);
 
@@ -645,7 +647,7 @@ TEST(Graph, restore_nodes_and_connections_on_memento_diff)
     EXPECT_EQ(graph.findNode(C_id), nullptr);
 
     // Node C does no longer exists -> its connections have been deleted as well
-    EXPECT_EQ(graph.findConnections(C_id).size(), 0);
+    EXPECT_EQ(graph.connectionModel().iterateConnections(C_id).size(), 0);
 
     debug(graph);
 }

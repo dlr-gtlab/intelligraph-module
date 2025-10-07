@@ -15,6 +15,7 @@
 
 #include <gt_typetraits.h>
 #include <gt_object.h>
+#include <intelli/graphuservariables.h>
 
 #include <QWidget>
 
@@ -88,25 +89,61 @@ class INode;
 class Node;
 class NodeData;
 class NodeDataInterface;
+//class GraphUserVariables;
 
 namespace exec
 {
 
-GT_INTELLI_EXPORT bool blockingEvaluation(Node& node, NodeDataInterface& model);
-
-GT_INTELLI_EXPORT bool detachedEvaluation(Node& node, NodeDataInterface& model);
-
-GT_INTELLI_EXPORT void setNodeDataInterface(Node& node, NodeDataInterface* model);
-
-GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
-
 /**
- * @brief Triggers the evaluation of the node.
+ * @brief Evaluates the node in the main thread (blocking).A valid node
+ * data interface must either be set already or supplied or as an argument.
+ * @param node Node to evaluate asyncronously
+ * @param model Optional node data interface. If none is supplied the registered
+ * node interface ist used (accessed using `nodeDataInterface`).
  * @return success
  */
-GT_INTELLI_EXPORT bool triggerNodeEvaluation(Node& node, NodeDataInterface& model);
+GT_INTELLI_EXPORT bool blockingEvaluation(Node& node, NodeDataInterface* model = nullptr);
 
-}
+/**
+ * @brief Evaluates the node in a separate thread (asyncronously).A valid node
+ * data interface must either be set already or supplied or as an argument.
+ * @param node Node to evaluate asyncronously
+ * @param model Optional node data interface. If none is supplied the registered
+ * node interface ist used (accessed using `nodeDataInterface`).
+ * @return success
+ */
+GT_INTELLI_EXPORT bool detachedEvaluation(Node& node, NodeDataInterface* model = nullptr);
+
+/**
+ * @brief Triggers the evaluation of the node. Choses whether to evaluate the
+ * node asyncronously or blocking according to the node's eval mode. A valid
+ * node data interface must either be set already or supplied or as an argument.
+ * @param node Node to execute
+ * @param model Optional node data interface. If none is supplied the registered
+ * node interface ist used (accessed using `nodeDataInterface`).
+ * @return success
+ */
+GT_INTELLI_EXPORT bool triggerNodeEvaluation(Node& node, NodeDataInterface* model = nullptr);
+
+/**
+ * @brief Registers a new node data interface for the given node.
+ * The node data interface must be set during execution to access input and
+ * output data and to set evaluation states.
+ * @param node Node to access
+ * @param model New node data interface
+ */
+GT_INTELLI_EXPORT void setNodeDataInterface(Node& node, NodeDataInterface* model);
+
+/**
+ * @brief Returns the registered node data interface of the given node.
+ * The node data interface must be set during execution to access input and
+ * output data and to set evaluation states.
+ * @param node Node to access
+ * @return Node data interface (may be null)
+ */
+GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
+
+} // namespace exec
 
 /**
  * @brief Attempts to convert `data` to into the desired type. If
@@ -165,6 +202,25 @@ public:
         std::function<std::unique_ptr<QWidget>(Node& thisNode)>;
     using WidgetFactoryNoArgs =
         std::function<std::unique_ptr<QWidget>()>;
+
+    /// Enums inidacting of node event
+    enum NodeEventType
+    {
+        UnkownEvent = 0,
+        /// Event is emitted once `nodeDataInterface` yields a valid pointer
+        /// (not emitted if `nodeDataInterface` chnages).
+        /// Can be used to initialize a node.
+        DataInterfaceAvailableEvent
+    };
+
+    /// Base class for node specific events
+    class NodeEvent
+    {
+        NodeEventType m_type = UnkownEvent;
+    public:
+        explicit NodeEvent(NodeEventType type) : m_type(type) {}
+        NodeEventType type() const { return m_type; }
+    };
 
     /// enum for defining whether a port is optional
     enum PortPolicy
@@ -340,7 +396,7 @@ public:
      * @brief Returns true if the node (id) is valid
      * @return is valid
      */
-    bool isValid() const;
+    [[deprecated("Use `id().isValid()` instead")]] bool isValid() const;
 
     /**
      * @brief Returns the node flags
@@ -371,7 +427,8 @@ public:
      * @brief Tooltip of the node
      * @return Tooltip
      */
-    QString const& tooltip() const;
+    [[deprecated("use `toolTip` instead")]] QString const& tooltip() const;
+    QString const& toolTip() const;
 
     /**
      * @brief Setter for the caption. Will be saved persistently
@@ -456,6 +513,8 @@ public:
      */
     [[deprecated("Use `PortInfo::isConnected()` instead")]]
     bool isPortConnected(PortId portId) const;
+
+    Q_INVOKABLE GraphUserVariables const* userVariables() const;
 
 signals:
 
@@ -587,6 +646,13 @@ protected:
      * @param parent Parent object
      */
     Node(QString const& modelName, GtObject* parent = nullptr);
+
+    /**
+     * @brief This function invoked when certain events are triggered allowing
+     * the node to react accordingly.
+     * @param event Event type
+     */
+    virtual void nodeEvent(NodeEvent const* event);
 
     /**
      * @brief Main evaluation method to override. Will be called once, the

@@ -9,6 +9,7 @@
 
 #include <intelli/graphexecmodel.h>
 #include <intelli/graph.h>
+#include <intelli/graphuservariables.h>
 #include <intelli/private/graphexecmodel_impl.h>
 #include <intelli/node/groupoutputprovider.h>
 #include <intelli/node/groupinputprovider.h>
@@ -107,18 +108,8 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 
 GraphExecutionModel::~GraphExecutionModel()
 {
-    {
-        QMutexLocker locker{&Impl::s_sync.mutex};
-        Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
-    }
-
-    // reset node interface
-    gt::for_each_key(pimpl->data, [this](NodeUuid const& nodeUuid){
-        Node* node  = graph().findNodeByUuid(nodeUuid);
-        if (!node) return;
-
-        exec::setNodeDataInterface(*node, nullptr);
-    });
+    QMutexLocker locker{&Impl::s_sync.mutex};
+    Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
 }
 
 GraphExecutionModel*
@@ -551,6 +542,15 @@ GraphDataModel const&
 GraphExecutionModel::data() const
 {
     return pimpl->data;
+}
+
+GraphUserVariables const*
+GraphExecutionModel::userVariables() const
+{
+    auto const* root = graph().rootGraph();
+    assert(root);
+
+    return root->findDirectChild<GraphUserVariables const*>();
 }
 
 void

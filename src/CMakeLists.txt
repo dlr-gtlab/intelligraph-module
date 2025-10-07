@@ -39,6 +39,7 @@ set(PUBLIC_HEADERS
     intelli/graphconnectionmodel.h
     intelli/graphdatamodel.h
     intelli/graphexecmodel.h
+    intelli/graphuservariables.h
     intelli/graphutilities.h
     intelli/memory.h
     intelli/node.h
@@ -120,6 +121,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/stringbuilder.h
     intelli/node/stringselection.h
     intelli/node/textdisplay.h
+    intelli/node/input/graphuservariablesinput.h
     intelli/node/input/fileinput.h
     intelli/gui/commentgroup.h
     intelli/gui/commentdata.h
@@ -147,6 +149,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/widgets/doubleinputwidget.h
     intelli/gui/widgets/editablelabel.h
     intelli/gui/widgets/finddirectchildwidget.h
+    intelli/gui/widgets/graphuservariablesdialog.h
     intelli/gui/widgets/intinputwidget.h
     intelli/gui/property_item/stringselection.h
     intelli/private/graph_impl.h
@@ -164,6 +167,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp
     intelli/graphexecmodel.cpp
+    intelli/graphuservariables.cpp
     intelli/graphutilities.cpp
     intelli/module.cpp
     intelli/node.cpp
@@ -202,6 +206,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/stringbuilder.cpp
     intelli/node/stringselection.cpp
     intelli/node/textdisplay.cpp
+    intelli/node/input/graphuservariablesinput.cpp
     intelli/node/input/boolinput.cpp
     intelli/node/input/doubleinput.cpp
     intelli/node/input/fileinput.cpp
@@ -245,6 +250,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/widgets/doubleinputwidget.cpp
     intelli/gui/widgets/editablelabel.cpp
     intelli/gui/widgets/finddirectchildwidget.cpp
+    intelli/gui/widgets/graphuservariablesdialog.cpp
     intelli/gui/widgets/intinputwidget.cpp
     intelli/gui/property_item/stringselection.cpp
     intelli/property/color.cpp
