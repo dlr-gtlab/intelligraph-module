@@ -417,9 +417,8 @@ GraphUserVariableItem::value() const
     int index = m_typeComboBox->currentIndex();
 
     auto const& types = typeIds();
-    if (index < 0 || index > types.size()) return {};
+    if (index < 0 || index >= types.size()) return {};
 
-    // cppcheck-supress containerOutOfBounds
     QVariant::Type type = std::get<QVariant::Type>(types.at(index));
     QVariant variant{m_valueEdit->text()};
 

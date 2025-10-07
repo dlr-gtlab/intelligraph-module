@@ -559,8 +559,8 @@ public:
     }
 
     GT_NO_DISCARD
-    // cppcheck-suppress constParameter
     inline static NodeDataInterface*
+    // cppcheck-suppress constParameter
     nodeDataInterface(Node& node)
     {
         return node.pimpl->dataInterface;
