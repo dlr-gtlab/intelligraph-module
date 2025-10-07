@@ -309,8 +309,9 @@ GraphUserVariablesDialog::addItem(QString key, QVariant value)
 
     connect(itemWidget, &GraphUserVariableItem::keyChanged, this, updateSaveButton);
     connect(itemWidget, &GraphUserVariableItem::valueChanged, this, updateSaveButton);
-    connect(itemWidget, &QWidget::destroyed, m_listView, [item](){
+    connect(itemWidget, &QWidget::destroyed, m_listView, [item, updateSaveButton](){
         delete item;
+        updateSaveButton();
     });
 
     itemWidget->init();
