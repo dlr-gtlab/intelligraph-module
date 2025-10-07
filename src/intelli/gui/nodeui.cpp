@@ -56,8 +56,6 @@ inline BoolObjectMethod NOT(Functor fA)
         return !a(obj);
     };
 }
-
-
 /// AND operator
 template <typename Functor>
 inline BoolObjectMethod operator*(BoolObjectMethod fA, Functor fOther)
