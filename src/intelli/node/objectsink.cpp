@@ -9,6 +9,7 @@
 #include "objectsink.h"
 
 #include <intelli/data/object.h>
+#include <intelli/nodedatainterface.h>
 
 #include <QPushButton>
 
@@ -20,33 +21,28 @@ using namespace intelli;
 
 ObjectSink::ObjectSink() :
     Node("Object sink"),
-    m_target("target", tr("Target"), tr("Target"), QString(), this,
-               QStringList() << GT_CLASSNAME(GtObject), true),
-    m_in(addInPort({typeId<ObjectData>(), tr("Object")}))
+    m_in(addInPort({typeId<ObjectData>(), tr("Object")})),
+    m_target("target", tr("Target"), tr("Target"), QString{},
+             this, QStringList{ GT_CLASSNAME(GtObject) }, true)
 {
     registerProperty(m_target);
 
     setNodeEvalMode(NodeEvalMode::Blocking);
 
     // registering the widget factory
-    registerWidgetFactory([=](intelli::Node& /*this*/){
+    registerWidgetFactory([=](){
         auto w = std::make_unique<QPushButton>("Export");
 
         w->setEnabled(false);
 
-        connect(this, &Node::inputDataRecieved, this,
-                [=, w_ = w.get()](PortId portId)
-                {
-                    auto data_tmp = nodeData<ObjectData>(portId);
+        connect(this, &Node::inputDataRecieved,
+                this, [this, w_ = w.get()](PortId portId){
+            auto data_tmp = nodeData<ObjectData>(portId);
+            w_->setEnabled(data_tmp != nullptr);
+        });
 
-                    w_->setEnabled(data_tmp != nullptr);
-                }
-                );
-
-        connect(w.get(), &QPushButton::clicked, this,
-                [this](){
-                    doExport();
-                });
+        connect(w.get(), &QPushButton::clicked,
+                this, [this](){ doExport(); });
 
         return w;
     });
@@ -65,11 +61,11 @@ ObjectSink::doExport()
 
     if (targetUUID.isEmpty()) return;
 
-    GtProject* currProj = gtApp->currentProject();
+    auto model = exec::nodeDataInterface(*this);
 
-    if (!currProj) return;
+    if (!model || !model->scope()) return;
 
-    GtObject* target = m_target.linkedObject(currProj);
+    GtObject* target = m_target.linkedObject(model->scope());
 
     if (!target) return;
 

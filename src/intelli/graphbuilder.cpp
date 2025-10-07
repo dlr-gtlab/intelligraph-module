@@ -12,6 +12,7 @@
 #include "intelli/graph.h"
 #include "intelli/connection.h"
 #include "intelli/nodefactory.h"
+#include "intelli/nodedatafactory.h"
 
 #include <gt_utilities.h>
 
@@ -177,12 +178,12 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
     }
 
     // check if port type ids match
-    if (outPort->typeId != inPort->typeId)
+    if (!NodeDataFactory::instance().canConvert(outPort->typeId, inPort->typeId))
     {
         throw std::logic_error{
             buildError() +
-            ", port type ids mismatch! " +
-            gt::squoted(outPort->typeId.toStdString()) + " vs. " +
+            ", cannot convert port types! " +
+            gt::squoted(outPort->typeId.toStdString()) + " to " +
             gt::squoted(inPort->typeId.toStdString()) + " " +
             gt::brackets(pimpl->graph->caption().toStdString())
         };

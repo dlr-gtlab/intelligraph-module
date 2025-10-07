@@ -9,6 +9,7 @@
 
 #include <intelli/node/input/objectinput.h>
 #include <intelli/data/object.h>
+#include <intelli/nodedatainterface.h>
 
 #include <gt_application.h>
 #include <gt_project.h>
@@ -17,20 +18,12 @@
 
 using namespace intelli;
 
-// helper method to fetch the correct root object for retrieve object link
-auto getObject = []() -> GtObject* {
-    if (!gtApp) return nullptr;
-    auto* project = gtApp->currentProject();
-    if (!project) return nullptr;
-    return project;
-};
-
 constexpr bool s_useSuperClass = true;
 
 ObjectInputNode::ObjectInputNode() :
     Node("Object Input"),
     m_object("target", tr("Target"), tr("Target Object"),
-             getObject(), QStringList{GT_CLASSNAME(GtObject)}, s_useSuperClass)
+             this, QStringList{GT_CLASSNAME(GtObject)}, s_useSuperClass)
 {
     registerProperty(m_object);
 
@@ -40,9 +33,11 @@ ObjectInputNode::ObjectInputNode() :
                            .setCaptionVisible(false));
 
     registerWidgetFactory([this]() {
+        auto* model = exec::nodeDataInterface(*this);
+
         auto w = std::make_unique<GtPropertyObjectLinkEditor>();
         w->setObjectLinkProperty(&m_object);
-        w->setScope(gtApp->currentProject());
+        w->setScope(model ? model->scope() : m_object.object());
 
         auto update = [w_ = w.get()](){
             w_->updateText();
@@ -81,6 +76,11 @@ ObjectInputNode::ObjectInputNode() :
 GtObject*
 ObjectInputNode::linkedObject(GtObject* root)
 {
+    if (!root)
+    {
+        auto* model = exec::nodeDataInterface(*this);
+        if (model) root = model->scope();
+    }
     return m_object.linkedObject(root);
 }
 

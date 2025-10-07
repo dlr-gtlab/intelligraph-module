@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shortcut `CTRL+A` can now be used to select all objects in a scene - #292
 - A graph can now be duplicated within the explorer using its context menu or using the shortcut `CTRL+D`. - #291
 - Introduced so-called User Variables which behave like environment variables per graph hierarchy. These can be edited using the `Edit` menu in the graph view. - #294
+- *Internal:* Added support for scope object, that allows executing graphs with a custom source datatree. - #32
 
 ### Changed
 - Copying nodes will now always copy connections inbetween the selected nodes, regardless of
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed a bug where small mouse movements would not cause the widget to resize. - #288
 - Fixed theme not updating Graph View, Scene, and Nodes correctly. - #301
+- *Internal:* `GraphBuilder` now also allows creating connections between ports with different but compatible type ids.
 
 ## [0.14.0] - 2025-04-04
 *This release is considered ABI compatible with `0.13.0`*

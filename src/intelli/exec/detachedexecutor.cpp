@@ -294,6 +294,7 @@ DetachedExecutor::evaluateNode(Node& node)
 
     NodeUuid const& nodeUuid = node.uuid();
 
+    QPointer<GtObject> scope = model->scope();
     QPointer<GraphUserVariables const> userVariables = model->userVariables();
 
     auto run = [nodeUuid,
@@ -304,7 +305,8 @@ DetachedExecutor::evaluateNode(Node& node)
                 targetMetaObject = node.metaObject(),
                 targetObject = QPointer<Node>(&node),
                 executor = this,
-                userVariables
+                userVariables,
+                scope
                 ]() -> ReturnValue
     {
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
@@ -349,6 +351,7 @@ DetachedExecutor::evaluateNode(Node& node)
             // set data
             DummyNodeDataModel model{*node};
             model.setUserVariables(userVariables);
+            model.setScope(scope);
 
             bool success = true;
             success &= model.setNodeData(PortType::In,  inData);

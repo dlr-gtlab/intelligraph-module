@@ -275,8 +275,27 @@ public:
     GT_NO_DISCARD
     inline GraphDataModel const& data() const;
 
-    GT_NO_DISCARD Q_INVOKABLE
+    /**
+     * @brief Returns the user variables object if any exists.
+     * @return User variables object (may be null)
+     */
+    GT_NO_DISCARD
     GraphUserVariables const* userVariables() const override;
+
+    /**
+     * @brief Returns the scope object used for evalauation. The scope object
+     * is intended to to be used for interfacing with the datamodel.
+     * By default the scope object s the current project, but it may be set to
+     * a sub datatree or an external tree instead.
+     * @return Scope object (may be null).
+     */
+    GtObject* scope() override;
+
+    /**
+     * @brief Sets the scope object that should be used for evalauation.
+     * @param Scope object
+     */
+    void setScope(GtObject* scope);
 
 protected:
 

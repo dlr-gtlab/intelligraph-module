@@ -16,6 +16,7 @@
 
 #include <intelli/connection.h>
 
+#include <gt_project.h>
 #include <gt_eventloop.h>
 #include <gt_algorithms.h>
 
@@ -24,6 +25,8 @@ using namespace intelli;
 GraphExecutionModel::GraphExecutionModel(Graph& graph) :
     pimpl(std::make_unique<Impl>(graph))
 {
+    if (gtApp) pimpl->scope = gtApp->currentProject();
+
     if (graph.parentGraph())
     {
         gtError() << utils::logId(this->graph())
@@ -551,6 +554,18 @@ GraphExecutionModel::userVariables() const
     assert(root);
 
     return root->findDirectChild<GraphUserVariables const*>();
+}
+
+GtObject*
+GraphExecutionModel::scope()
+{
+    return pimpl->scope;
+}
+
+void
+GraphExecutionModel::setScope(GtObject* scope)
+{
+    pimpl->scope = scope;
 }
 
 void
