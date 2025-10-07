@@ -19,6 +19,7 @@
 #include "gt_stringproperty.h"
 #include "gt_boolproperty.h"
 #include "gt_exceptions.h"
+#include "gt_version.h"
 
 using namespace intelli;
 
@@ -33,7 +34,7 @@ QString const S_PORT_ID = QStringLiteral("PortId");
 
 struct DynamicNode::Impl
 {
-    explicit Impl(Option opt) : option(opt) {};
+    explicit Impl(size_t opt) : option(opt) {};
 
     /// property container for the in ports
     GtPropertyStructContainer inPorts{"dynamicInPorts", "In Ports"};
@@ -41,11 +42,11 @@ struct DynamicNode::Impl
     GtPropertyStructContainer outPorts{"dynamicOutPorts", "Out Ports"};
 
     /// Node option
-    Option option = DynamicInputAndOutput;
+    size_t option = DynamicInputAndOutput;
 };
 
 DynamicNode::DynamicNode(QString const& modelName,
-                         Option option,
+                         size_t option,
                          GtObject* parent) :
     DynamicNode(modelName, QStringList{}, QStringList{}, option, parent)
 { }
@@ -53,7 +54,7 @@ DynamicNode::DynamicNode(QString const& modelName,
 DynamicNode::DynamicNode(QString const& modelName,
                          QStringList inputWhiteList,
                          QStringList outputWhiteList,
-                         Option option,
+                         size_t option,
                          GtObject* parent) :
     Node(modelName, parent),
     pimpl(std::make_unique<Impl>(option))
@@ -95,8 +96,26 @@ DynamicNode::DynamicNode(QString const& modelName,
         pimpl->inPorts.registerAllowedType(portInfoIn);
         pimpl->outPorts.registerAllowedType(portInfoOut);
 
-        if (pimpl->option != DynamicOutputOnly) registerPropertyStructContainer(pimpl->inPorts);
-        if (pimpl->option != DynamicInputOnly)  registerPropertyStructContainer(pimpl->outPorts);
+        if (pimpl->option & DynamicInput  || pimpl->option & NoUserDynamicInput)
+        {
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
+            if (pimpl->option & NoUserDynamicInput)
+            {
+                pimpl->inPorts.setFlags(GtPropertyStructContainer::Hidden);
+            }
+#endif
+            registerPropertyStructContainer(pimpl->inPorts);
+        }
+        if (pimpl->option & DynamicOutput || pimpl->option & NoUserDynamicOutput)
+        {
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
+            if (pimpl->option & NoUserDynamicOutput)
+            {
+                pimpl->outPorts.setFlags(GtPropertyStructContainer::Hidden);
+            }
+#endif
+            registerPropertyStructContainer(pimpl->outPorts);
+        }
     }
 
     connect(this, &Node::portAboutToBeDeleted,
@@ -119,7 +138,7 @@ DynamicNode::DynamicNode(QString const& modelName,
 
 DynamicNode::~DynamicNode() = default;
 
-DynamicNode::Option
+size_t
 DynamicNode::dynamicNodeOption() const
 {
     return pimpl->option;
