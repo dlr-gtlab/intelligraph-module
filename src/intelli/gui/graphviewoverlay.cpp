@@ -14,6 +14,7 @@
 #include <intelli/gui/graphview.h>
 #include <intelli/gui/graphscene.h>
 #include <intelli/gui/graphsceneselector.h>
+#include <intelli/gui/nodeui.h>
 
 #include <gt_objectuiaction.h>
 #include <gt_icons.h>
@@ -119,14 +120,25 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
 
     gt::gui::addToMenu(resetScaleAction, *m_viewMenu, nullptr);
     gt::gui::addToMenu(centerSceneAction, *m_viewMenu, nullptr);
-    gt::gui::addToMenu(changeConShapeAction, *m_viewMenu, nullptr);
     gt::gui::addToMenu(changeGridAction, *m_viewMenu, nullptr);
+    gt::gui::addToMenu(changeConShapeAction, *m_viewMenu, nullptr);
     gt::gui::addToMenu(makeSeparator(), *m_viewMenu, nullptr);
     gt::gui::addToMenu(printAction, *m_viewMenu, nullptr);
 
     /* EDIT MENU */
-    m_sceneMenu = m_menuBar->addMenu(tr("Scene"));
+    m_sceneMenu = m_menuBar->addMenu(tr("Edit"));
     m_sceneMenu->setEnabled(false);
+
+    auto editUserVarsAction =
+        gt::gui::makeAction(tr("Edit User Variables..."),
+                            [this](auto){
+                GraphScene* scene = m_view->nodeScene();
+                if (scene) NodeUI::editUserVariables(scene->graph().rootGraph());
+            })
+            .setIcon(gt::gui::icon::variable());
+
+    gt::gui::addToMenu(editUserVarsAction, *m_sceneMenu, nullptr);
+    m_sceneMenu->addSeparator();
 
     auto const& viewActions = m_view->actions();
     m_sceneMenu->addActions(viewActions);

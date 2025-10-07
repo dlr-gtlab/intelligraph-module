@@ -136,6 +136,6 @@ GraphUserVariablesInputNode::updatePorts()
     for (QString const& missingKey : qAsConst(keys))
     {
         QVariant const& value = uv->value(missingKey);
-        addOutPort(PortInfo{variantToTypeId(value.type())}.setCaption(missingKey));
+        addOutPort(makePort(variantToTypeId(value.type())).setCaption(missingKey));
     }
 }

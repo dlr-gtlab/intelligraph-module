@@ -185,6 +185,8 @@ public:
      */
     QList<PortUIAction> const& portActions() const;
 
+    static void editUserVariables(GtObject* obj);
+
 protected:
 
     /**
@@ -240,8 +242,6 @@ private:
      * @return is object renamable
      */
     static bool canRenameNodeObject(GtObject* obj);
-    
-    static void editUserVariables(GtObject* obj);
 
     /**
      * @brief helper method for setting the active flag of a node
