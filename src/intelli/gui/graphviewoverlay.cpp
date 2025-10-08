@@ -161,7 +161,7 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
     m_snapToGridBtn->setCheckable(true);
     m_snapToGridBtn->setToolTip(tr("Toggle snap to grid"));
     m_snapToGridBtn->setVisible(m_view->isGridVisible());
-    m_snapToGridBtn->setEnabled(true);
+    m_snapToGridBtn->setEnabled(false);
 
     connect(m_snapToGridBtn, &QPushButton::clicked, this, changeSnapToGrid);
 

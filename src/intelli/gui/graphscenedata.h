@@ -24,7 +24,7 @@ struct GraphSceneData
     /// step size to snap nodes to (assuming that grid's origin is (0,0) )
     int gridSize = 0;
     /// whether nodes should be snaped to the grid when moving
-    bool snapToGrid = false;
+    bool snapToGrid = true;
 };
 
 } // namespace intelli

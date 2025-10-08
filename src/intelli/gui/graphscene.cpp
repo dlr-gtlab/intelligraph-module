@@ -493,6 +493,13 @@ GraphScene::GraphScene(Graph& graph) :
     connect(m_graph, &Graph::connectionDeleted,
             this, &GraphScene::onConnectionDeleted, Qt::DirectConnection);
 
+    // graphics objects must be deleted to not access deleted nodes
+    connect(m_graph, &Graph::graphAboutToBeDeleted,
+            this, [this](){
+        m_comments.clear();
+        m_connections.clear();
+        m_nodes.clear();
+    });
     connect(m_graph, &Graph::graphAboutToBeDeleted,
             this, &QObject::deleteLater);
 }
