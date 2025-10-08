@@ -33,6 +33,12 @@ class ExecFuture
 
 public:
 
+    /**
+     * @brief Constructs an invalid future. This object may not be used for
+     * calling functions such as `wait`, `get` or `then`.
+     */
+    GT_INTELLI_EXPORT explicit ExecFuture();
+
     GT_INTELLI_EXPORT ~ExecFuture();
 
     using milliseconds = std::chrono::milliseconds;
@@ -96,8 +102,17 @@ public:
     GT_INTELLI_EXPORT
     bool detach() const;
 
+    /// Same as `detach`.
     GT_INTELLI_EXPORT
-    bool startedSuccessfully() const { return detach(); }
+    bool startedSuccessfully() const;
+
+    /**
+     * @brief Returns whether the underlying model is null. If its null, this
+     * object is invalid and should not be used.
+     * @return Returns whether the underlying model is null.
+     */
+    GT_INTELLI_EXPORT
+    bool isNull() const;
 
     /**
      * @brief Joins with other futures. Can be used to wait for multiple,

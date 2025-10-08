@@ -78,6 +78,12 @@ ExecFuture::ExecFuture(GraphExecutionModel& model,
     append(std::move(nodeUuid), evalState);
 }
 
+ExecFuture::ExecFuture() :
+    m_model(nullptr)
+{
+
+}
+
 bool
 ExecFuture::wait(milliseconds timeout) const
 {
@@ -196,6 +202,18 @@ ExecFuture::detach() const
     return areNodesEvaluated() || !haveNodesFailed();
 }
 
+bool
+intelli::ExecFuture::startedSuccessfully() const
+{
+    return detach();
+}
+
+bool
+ExecFuture::isNull() const
+{
+    return !!m_model;
+}
+
 ExecFuture&
 ExecFuture::join(ExecFuture const& other)
 {
@@ -304,5 +322,3 @@ ExecFuture::resetTargets() const
         target.evalState = NodeEvalState::Outdated;
     }
 }
-
-

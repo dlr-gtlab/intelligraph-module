@@ -326,6 +326,8 @@ struct NodeDataSet
     operator NodeDataPtr&&() && { return std::move(ptr); }
     operator NodeDataPtr const&() const& { return ptr; }
 
+    operator bool() const { return !!ptr; }
+
     template <typename T>
     [[deprecated("Use `as` instead")]]
     inline auto value() const noexcept { return as<T>(); }
