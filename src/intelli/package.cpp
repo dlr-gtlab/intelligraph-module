@@ -16,6 +16,7 @@
 #include "intelli/graphcategory.h"
 #include "intelli/node/dummy.h"
 #include "intelli/gui/guidata.h"
+#include "intelli/utilities.h"
 
 #include <gt_objectmemento.h>
 #include <gt_objectfactory.h>
@@ -516,6 +517,39 @@ Package::saveMiscData(QDir const& projectDir)
                   << tr("(module dir '%1' could not be created)").arg(MODULE_DIR);
         return false;
     }
+
+#ifndef NDEBUG
+    // check for duplicate UUIDs
+    QMultiMap<ObjectUuid, GtObject*> uuidMap;
+
+    auto accumulate = [&uuidMap](GtObject* o, auto f)->void{
+        uuidMap.insert(o->uuid(), o);
+        for (QObject* q : o->children())
+        {
+            if (auto child = qobject_cast<GtObject*>(q))
+            {
+                f(child, f);
+            }
+        }
+    };
+    accumulate(this, accumulate);
+
+    for (auto const& entry : utils::makeIterable(uuidMap.keyBegin(),
+                                                 uuidMap.keyEnd()))
+    {
+        if (uuidMap.count(entry) == 1) continue;
+
+        gtError() << tr("Duplicate UUIDs in object tree found for '%1':")
+                         .arg(entry);
+
+        auto const& values = uuidMap.values(entry);
+        for (GtObject* object : values)
+        {
+            gtError() << " - " << object->objectPath().replace(";", "/");
+        }
+        return false;
+    }
+#endif
 
     auto const& categories = findDirectChildren<GraphCategory*>();
 
