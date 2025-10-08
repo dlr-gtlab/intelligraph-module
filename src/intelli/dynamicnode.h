@@ -30,26 +30,36 @@ public:
 
     ~DynamicNode();
 
-    /// Option for the node creation
-    enum Option
+    /// Option for the node creation.
+    enum Option : size_t
     {
+        /// no ports can be added dynamically. Ports are not saved persistently.
+        NoDynamicPorts = 0,
+        /// input ports may be added dynamically (output ports may still be
+        /// added, but wont be saved persistently)
+        DynamicInput = 1 << 0,
+        DynamicInputOnly [[deprecated("Use `DynamicOutput` instead")]] = 1 << 2,
+        /// output ports may be added dynamically
+        DynamicOutput = 1 << 1,
+        DynamicOutputOnly [[deprecated("Use `DynamicOutput` instead")]] = 1 << 2,
         /// both inputs and ouput ports can be added dynamically
-        DynamicInputAndOutput = 0,
-        /// only input ports may be added dynamically (output ports may still be
-        /// added, but wont be saved persistently)
-        DynamicInputOnly,
-        /// only output ports may be added dynamically (input ports may still be
-        /// added, but wont be saved persistently)
-        DynamicOutputOnly,
-        /// no ports can be added dynamically
-        NoDynamicPorts
+        DynamicInputAndOutput = DynamicInput | DynamicOutput,
+        /// input ports can only be added programmatically
+        /// (no UI action for adding/deleting port is added by default)
+        NoUserDynamicInput  = 1 << 2,
+        /// output ports can only be added programmatically
+        /// (no UI action for adding/deleting port is added by default)
+        NoUserDynamicOutput = 1 << 3,
+        /// input and output ports may only be added programmatically
+        /// (no UI action for adding/deleting port is added by default)
+        NoUserDynamicInputAndOutput = NoUserDynamicInput | NoUserDynamicOutput
     };
 
     /**
      * @brief Getter for the node option used
      * @return
      */
-    Option dynamicNodeOption() const;
+    size_t dynamicNodeOption() const;
 
     /**
      * @brief Retruns true if a port is considered dynamic (i.e. was added at
@@ -118,13 +128,13 @@ protected:
      * @param parent Parent object
      */
     DynamicNode(QString const& modelName,
-                Option option = {},
+                size_t option = DynamicInputAndOutput,
                 GtObject* parent = nullptr);
 
     DynamicNode(QString const& modelName,
                 QStringList inputWhiteList,
                 QStringList outputWhiteList,
-                Option option = {},
+                size_t option = DynamicInputAndOutput,
                 GtObject* parent = nullptr);
 
     /**

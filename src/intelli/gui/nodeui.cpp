@@ -43,6 +43,7 @@
 using namespace intelli;
 
 using BoolObjectMethod = std::function<bool (GtObject*)>;
+using BoolPortMethod = std::function<bool (Node*, PortType, PortIndex)>;
 
 using DeleteAction = std::pair<NodeUI::CustomDeleteFunctor,
                                NodeUI::EnableCustomDeleteFunctor>;
@@ -61,6 +62,13 @@ inline BoolObjectMethod operator*(BoolObjectMethod fA, Functor fOther)
 {
     return [a = std::move(fA), b = std::move(fOther)](GtObject* obj){
         return a(obj) && b(obj);
+    };
+}
+template <typename Functor>
+inline BoolPortMethod operator*(BoolPortMethod fA, Functor fOther)
+{
+    return [a = std::move(fA), b = std::move(fOther)](Node* obj, PortType type, PortIndex idx){
+        return a(obj, type, idx) && b(obj, type, idx);
     };
 }
 
@@ -131,13 +139,11 @@ NodeUI::NodeUI(Option option) :
 
     if (!(option & NoDefaultPortActions))
     {
-        auto const hasOutputPorts = [](GtObject* obj){
-            return !(static_cast<DynamicNode*>(obj)->dynamicNodeOption() &
-                     DynamicNode::DynamicInputOnly);
+        auto const hasInputPorts = [](GtObject* obj, auto ...){
+            return  (static_cast<DynamicNode*>(obj)->dynamicNodeOption() & DynamicNode::DynamicInput);
         };
-        auto const hasInputPorts = [](GtObject* obj){
-            return !(static_cast<DynamicNode*>(obj)->dynamicNodeOption() &
-                     DynamicNode::DynamicOutputOnly);
+        auto const hasOutputPorts = [](GtObject* obj, auto ...){
+            return  (static_cast<DynamicNode*>(obj)->dynamicNodeOption() & DynamicNode::DynamicOutput);
         };
 
         addSingleAction(tr("Add In Port"), addInPort)
@@ -152,8 +158,13 @@ NodeUI::NodeUI(Option option) :
 
         addPortAction(tr("Delete Port"), deleteDynamicPort)
             .setIcon(gt::gui::icon::delete_())
-            .setVerificationMethod(isDynamicPort)
-            .setVisibilityMethod(isDynamicNode);
+            .setVerificationMethod(BoolPortMethod{isDynamicPort} * isInputPort * hasInputPorts)
+            .setVisibilityMethod(isDynamicNode * hasInputPorts);
+
+        addPortAction(tr("Delete Port"), deleteDynamicPort)
+            .setIcon(gt::gui::icon::delete_())
+            .setVerificationMethod(BoolPortMethod{isDynamicPort} * isOutputPort * hasOutputPorts)
+            .setVisibilityMethod(isDynamicNode * hasOutputPorts);
     }
 
     if (gtApp && gtApp->devMode())
@@ -367,7 +378,19 @@ NodeUI::isRootGraph(GtObject const* obj)
 }
 
 bool
-NodeUI::isDynamicPort(GtObject* obj, PortType type, PortIndex idx)
+NodeUI::isInputPort(Node* node, PortType type, PortIndex index)
+{
+    return node && type == PortType::In && node->ports(type).size() > index;
+}
+
+bool
+NodeUI::isOutputPort(Node* node, PortType type, PortIndex index)
+{
+    return node && type == PortType::Out && node->ports(type).size() > index;
+}
+
+bool
+NodeUI::isDynamicPort(Node* obj, PortType type, PortIndex idx)
 {
     if (toDummy(obj)) return false;
     if (auto* node = toDynamicNode(obj))
@@ -378,7 +401,7 @@ NodeUI::isDynamicPort(GtObject* obj, PortType type, PortIndex idx)
 }
 
 bool
-NodeUI::isDynamicNode(GtObject* obj, PortType, PortIndex)
+NodeUI::isDynamicNode(Node* obj, PortType, PortIndex)
 {
     return toDynamicNode(obj);
 }

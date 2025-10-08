@@ -33,8 +33,7 @@ public:
                           QStringList iwl = {},
                           QStringList owl = {}) :
         DynamicNode(modelName, std::move(iwl), std::move(owl),
-                    providerType == PortType::In ? DynamicOutputOnly :
-                                                   DynamicInputOnly)
+                    providerType == PortType::In ? DynamicOutput : DynamicInput)
     {
         setFlag(UserDeletable, false);
         setNodeFlag(Unique, true);

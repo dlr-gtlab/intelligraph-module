@@ -39,7 +39,7 @@ GraphUserVariables::GraphUserVariables(GtObject* parent) :
 
     setFlag(UserRenamable, false);
     setFlag(UserDeletable, false);
-    setUserHidden(!(gtApp && gtApp->devMode()));
+    setFlag(UserHidden, true);
 
     GtPropertyStructDefinition def{S_TYPE};
     def.defineMember(S_MEMBER, gt::makeVariantProperty());

@@ -170,14 +170,17 @@ public:
      */
     static void deleteDynamicPort(Node* obj, PortType type, PortIndex idx);
 
+    static bool isInputPort(Node* obj, PortType type, PortIndex idx);
+    static bool isOutputPort(Node* obj, PortType type, PortIndex idx);
+
     /**
-     * @brief Similar to `toDynamicNode`. Can be used for validation of a port
-     * action
+     * @brief Similar to `toDynamicNode`. Can be used for validating port
+     * actions
      * @param obj Object to cast
      * @return node object (may be null)
      */
-    static bool isDynamicPort(GtObject* obj, PortType type, PortIndex idx);
-    static bool isDynamicNode(GtObject* obj, PortType, PortIndex);
+    static bool isDynamicPort(Node* obj, PortType type, PortIndex idx);
+    static bool isDynamicNode(Node* obj, PortType type, PortIndex idx);
 
     /**
      * @brief Returns the list of all port actions registered

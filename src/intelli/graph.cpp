@@ -52,16 +52,6 @@ Graph::Graph() :
 Graph::~Graph()
 {
     emit graphAboutToBeDeleted(QPrivateSignal());
-
-    Modification cmd = modify();
-    Q_UNUSED(cmd);
-
-    // remove connections
-    auto& conGroup = this->connectionGroup();
-    delete& conGroup;
-
-    auto const& nodes = this->nodes();
-    qDeleteAll(nodes);
 }
 
 Graph*

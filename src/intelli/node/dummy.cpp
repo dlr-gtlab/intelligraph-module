@@ -17,7 +17,8 @@ using namespace intelli;
 DummyNode::DummyNode() :
     DynamicNode("Dummy Node",
                 QStringList{typeId<InvalidData>()},
-                QStringList{typeId<InvalidData>()}),
+                QStringList{typeId<InvalidData>()},
+                NoUserDynamicInputAndOutput),
     m_object("target", tr("Target"), tr("Target Object"), this, QStringList{})
 {
     setFlag(UserRenamable, false);
