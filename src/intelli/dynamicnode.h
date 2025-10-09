@@ -38,10 +38,10 @@ public:
         /// input ports may be added dynamically (output ports may still be
         /// added, but wont be saved persistently)
         DynamicInput = 1 << 0,
-        DynamicInputOnly [[deprecated("Use `DynamicOutput` instead")]] = 1 << 2,
+        DynamicInputOnly [[deprecated("Use `DynamicInput` or `NoUserDynamicInput` instead")]] = DynamicInput,
         /// output ports may be added dynamically
         DynamicOutput = 1 << 1,
-        DynamicOutputOnly [[deprecated("Use `DynamicOutput` instead")]] = 1 << 2,
+        DynamicOutputOnly [[deprecated("Use `DynamicOutput` or `NoUserDynamicOutput` instead")]] = DynamicOutput,
         /// both inputs and ouput ports can be added dynamically
         DynamicInputAndOutput = DynamicInput | DynamicOutput,
         /// input ports can only be added programmatically

@@ -518,7 +518,6 @@ Package::saveMiscData(QDir const& projectDir)
         return false;
     }
 
-#ifndef NDEBUG
     // check for duplicate UUIDs
     QMultiMap<ObjectUuid, GtObject*> uuidMap;
 
@@ -539,8 +538,10 @@ Package::saveMiscData(QDir const& projectDir)
     {
         if (uuidMap.count(entry) == 1) continue;
 
-        gtError() << tr("Duplicate UUIDs in object tree found for '%1':")
-                         .arg(entry);
+        gtError() << tr("Failed to save package! "
+                        "Object tree contains duplicate UUIDs, "
+                        "which must be resolved!");
+        gtError() << tr("Duplicate UUID '%1', objects:").arg(entry);
 
         auto const& values = uuidMap.values(entry);
         for (GtObject* object : values)
@@ -549,7 +550,6 @@ Package::saveMiscData(QDir const& projectDir)
         }
         return false;
     }
-#endif
 
     auto const& categories = findDirectChildren<GraphCategory*>();
 
