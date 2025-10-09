@@ -72,12 +72,12 @@ public:
 
         if (p->isCollapsed())
         {
-            QRect rect{QPoint{3, 4}, QSize{24, 24}};
+            QRect rect{QPoint{3, 3}, QSize{24, 24}};
+            auto iconbg = gt::gui::getIcon(QStringLiteral(":/intelligraph-icons/comment-filled.svg"));
             auto icon = gt::gui::icon::comment();
-            painter->setBrush(Qt::black);
-            painter->setPen(pen);
-            painter->drawEllipse(boundingRect().center(), 15, 15);
-            gt::gui::colorize(icon, Qt::white).paint(painter, rect);
+            QColor color = gt::gui::color::text();
+            gt::gui::colorize(iconbg, style::invert(color)).paint(painter, rect);
+            gt::gui::colorize(icon, color).paint(painter, rect);
             return;
         }
 
@@ -173,7 +173,7 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     setAcceptHoverEvents(true);
 
     m_editor = new QTextEdit;
-    m_editor->setPlaceholderText(tr("Enter comment..."));
+    m_editor->setPlaceholderText(tr("Double click to edit comment..."));
     m_editor->setFrameShape(QFrame::NoFrame);
     m_editor->setContextMenuPolicy(Qt::NoContextMenu);
     m_editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -199,11 +199,6 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     connect(gtApp, &GtApplication::themeChanged, this, [this, w](){
         gt::gui::applyThemeToWidget(w);
         update();
-    });
-
-    connect(this, &GraphicsObject::hoveredChanged, this, [this](){
-        if (isHovered()) return setZValue(style::zValue(style::ZValue::NodeHovered));
-        if (!isSelected()) return setZValue(style::zValue(style::ZValue::Node));
     });
 
     connect(this, &InteractableGraphicsObject::objectMoved, this, [this](){
@@ -266,6 +261,8 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
             Qt::DirectConnection);
 
     collapse(m_comment->isCollapsed());
+
+    setZValue(style::zValue(style::ZValue::Comment));
 }
 
 CommentGraphicsObject::~CommentGraphicsObject() = default;
@@ -323,6 +320,7 @@ CommentGraphicsObject::startEditing()
     unsetCursor();
     setSelected(true);
 
+    m_editor->setPlaceholderText(tr("Enter comment..."));
     m_editor->setReadOnly(false);
 
     // strip markdown from unnecessary new lines
@@ -369,6 +367,7 @@ CommentGraphicsObject::finishEditing()
         m_editor->setMarkdown(m_comment->text());
     }
 
+    m_editor->setPlaceholderText(tr("Double click to edit comment..."));
     m_editor->setReadOnly(true);
     m_proxyWidget->unsetCursor();
     m_overlay->setZValue(1);
@@ -553,6 +552,7 @@ CommentGraphicsObject::onObjectCollapsed()
         m_anchor = nullptr;
 
         setPos(m_comment->pos());
+        setZValue(style::zValue(isCollapsed() ? style::ZValue::NodeHovered : style::ZValue::Comment));
         setInteractionFlag(DefaultInteractionFlags, true);
 
         for (auto& pair : m_connections)
@@ -580,6 +580,7 @@ CommentGraphicsObject::onObjectCollapsed()
                boundingRect().center());
     };
 
+    setZValue(style::zValue(style::ZValue::NodeHovered) + 1);
     setInteractionFlag(DefaultInteractionFlags, false);
 
     connect(endItem, &QGraphicsObject::xChanged, this, updatePos);

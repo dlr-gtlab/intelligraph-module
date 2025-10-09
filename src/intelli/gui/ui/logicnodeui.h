@@ -60,9 +60,7 @@ public:
     LogicNodePainter(NodeGraphicsObject const& object,
                      NodeGeometry const& geometry);
 
-    void drawBackground(QPainter& painter) const override;
-
-    void drawOutline(QPainter& painter) const override;
+    void drawBackground(QPainter& painter, uint flags = DefaultNodeRenderFlags) const override;
 
     void drawPortCaption(QPainter& painter,
                          PortInfo const& port,

@@ -180,6 +180,18 @@ NodeGraphicsObject::NodeGraphicsObject(QGraphicsScene& scene,
             this, &NodeGraphicsObject::onNodePositionChanged, Qt::DirectConnection);
 
     updateChildItems();
+
+    setupDropShadowEffect(
+        [this](){
+            return boundingRect();
+        },
+        [this](QPainter& painter){
+            pimpl->painter->applyDropShadowConfig(painter);
+            pimpl->painter->drawBackground(painter,
+                                           NodePainter::UsePainterConfig |
+                                           NodePainter::DrawNodeBackground);
+        }
+    );
 }
 
 NodeGraphicsObject::~NodeGraphicsObject() = default;
@@ -370,6 +382,7 @@ NodeGraphicsObject::embedCentralWidget()
                 pimpl->node->setSize(pimpl->proxyWidget->widget()->size());
             }
             Impl::prepareGeometryChange(this).finalize();
+            emit objectResized(this);
         });
 
         // update size

@@ -49,14 +49,16 @@ namespace style
 /// enum holding the zvalue of the different graphical objects
 enum class ZValue : int
 {
-    Line              = -2,
+    Background        = -100,
+    Line              = -15,
+    Comment           = -10,
     Connection        = -5,
     ConnectionHovered = -1,
     DraftConnection   =  2,
     Node              =  0,
     NodeHovered       =  1,
-    NodeWidget        = 10,
     NodeEvalState     =  5,
+    NodeWidget        = 10,
     Popup             = 50,
 };
 
@@ -108,6 +110,9 @@ struct StyleData
         QColor background;
         /// outline colors
         QColor defaultOutline, selectedOutline, hoveredOutline;
+        /// drop shadow
+        QColor dropShadow;
+        QPointF dropShadowOffset{4, 4};
         /// fonts
         QFont headerFont{}, bodyFont{};
         /// outline width
@@ -123,11 +128,8 @@ struct StyleData
         /// size of node icon
         int iconSize = 20;
         /// modifier to apply to all r-g-b components when highlighting
-        /// compatible nodes (while creatimg a draft connection)
+        /// compatible nodes (while creating a draft connection)
         int compatiblityTintModifier = 20;
-
-    private:
-        alignas(8) uint8_t __padding[16];
     } node;
 
     /// style data for connections
