@@ -75,13 +75,20 @@ NodePainter::applyOutlineConfig(QPainter& painter) const
 }
 
 void
+NodePainter::applyDropShadowConfig(QPainter& painter) const
+{
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(style::currentStyle().node.dropShadow);
+}
+
+void
 NodePainter::applyPortConfig(QPainter& painter,
                              PortInfo const& port,
                              PortType type,
                              PortIndex idx,
                              uint flags) const
 {
-    bool isPortIncompatible =  (flags & HighlightPorts) &&
+    bool isPortIncompatible =  (flags & PortHighlightsActive) &&
                               !(flags & PortHighlighted);
 
     auto& style = style::currentStyle();
@@ -151,7 +158,7 @@ NodePainter::customBackgroundColor() const
     if (node.nodeFlags() & NodeFlag::Unique ||
         qobject_cast<Graph const*>(&node))
     {
-        return gt::gui::color::lighten(bg, -20);
+        return style::tint(bg, 20);
     }
     return bg;
 }
@@ -172,17 +179,29 @@ NodePainter::drawBackgroundHelper(QPainter& painter) const
 }
 
 void
-NodePainter::drawBackground(QPainter& painter) const
+NodePainter::drawBackground(QPainter& painter, uint flags) const
 {
-    applyBackgroundConfig(painter);
-    drawBackgroundHelper(painter);
-}
+    if (flags & DrawNodeBackground)
+    {
+        if (!(flags & UsePainterConfig)) applyBackgroundConfig(painter);
 
-void
-NodePainter::drawOutline(QPainter& painter) const
-{
-    applyOutlineConfig(painter);
-    drawBackgroundHelper(painter);
+        drawBackgroundHelper(painter);
+    }
+
+    if (flags & DrawNodeResizeHandle)
+    {
+        if (!object().isCollapsed() && object().hasResizeHandle())
+        {
+            drawResizeHandle(painter, flags);
+        }
+    }
+
+    if (flags & DrawNodeOutline)
+    {
+        if (!(flags & UsePainterConfig)) applyOutlineConfig(painter);
+
+        drawBackgroundHelper(painter);
+    }
 }
 
 void
@@ -203,14 +222,14 @@ NodePainter::drawPorts(QPainter& painter) const
 
             if (!port->visible) continue;
 
-            uint flags = NoPortFlag;
+            uint flags = DefaultPortRenderFlags;
             if (port->isConnected())
             {
                 flags |= PortConnected;
             }
             if (highlights.isActive())
             {
-                flags |= HighlightPorts;
+                flags |= PortHighlightsActive;
 
                 bool highlighted = highlights.isPortCompatible(port->id());
                 if (highlighted) flags |= PortHighlighted;
@@ -239,9 +258,12 @@ NodePainter::drawPort(QPainter& painter,
                       PortIndex idx,
                       uint flags) const
 {
-    applyPortConfig(painter, port, type, idx, flags);
+    if (!(flags & UsePainterConfig))
+    {
+        applyPortConfig(painter, port, type, idx, flags);
+    }
 
-    bool isPortIncompatible =  (flags & HighlightPorts) &&
+    bool isPortIncompatible =  (flags & PortHighlightsActive) &&
                               !(flags & PortHighlighted);
 
     QSizeF offset = QSizeF{1, 1};
@@ -263,12 +285,15 @@ NodePainter::drawPortCaption(QPainter& painter,
 {
     auto& factory = NodeDataFactory::instance();
 
-    painter.setFont(style::currentStyle().node.bodyFont);
+    if (!(flags & UsePainterConfig))
+    {
+        painter.setFont(style::currentStyle().node.bodyFont);
 
-    painter.setBrush(Qt::NoBrush);
-    painter.setPen((flags & PortConnected) ?
-                       gt::gui::color::text() :
-                       gt::gui::color::disabled());
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen((flags & PortConnected) ?
+                           gt::gui::color::text() :
+                           gt::gui::color::disabled());
+    }
 
     auto option = type == PortType::In ? QTextOption{Qt::AlignLeft} :
                                          QTextOption{Qt::AlignRight};
@@ -281,21 +306,44 @@ NodePainter::drawPortCaption(QPainter& painter,
 }
 
 void
-NodePainter::drawResizeHandle(QPainter& painter) const
+NodePainter::drawResizeHandle(QPainter& painter, uint flags) const
 {
-    if (!object().hasResizeHandle()) return;
-
     QRectF rect = geometry().resizeHandleRect();
+
+    auto& style = style::currentStyle().node;
 
     QPolygonF poly;
     poly.append(rect.bottomLeft());
-    poly.append(rect.bottomRight());
+    poly.append(rect.bottomRight() - QPointF{style.roundingRadius, 0});
+    poly.append(rect.bottomRight() - QPointF{0, style.roundingRadius});
     poly.append(rect.topRight());
 
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(gt::gui::color::lighten(
-        style::currentStyle().node.defaultOutline, -30));
+    if (!(flags & UsePainterConfig))
+    {
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(gt::gui::color::lighten(
+            style::currentStyle().node.defaultOutline, -30));
+    }
     painter.drawPolygon(poly);
+}
+
+void
+NodePainter::drawCaption(QPainter& painter, uint flags) const
+{
+    auto& node = this->node();
+
+    if (node.nodeFlags() & NodeFlag::HideCaption) return;
+
+    QRectF rect = geometry().captionRect();
+
+    if (!(flags & UsePainterConfig))
+    {
+        painter.setFont(style::currentStyle().node.headerFont);
+        painter.setBrush(Qt::NoBrush);
+        painter.setPen(gt::gui::color::text());
+    }
+
+    painter.drawText(rect, node.caption(), QTextOption{Qt::AlignHCenter});
 }
 
 void
@@ -310,28 +358,11 @@ NodePainter::drawIcon(QPainter& painter) const
 }
 
 void
-NodePainter::drawCaption(QPainter& painter) const
-{
-    auto& node = this->node();
-
-    if (node.nodeFlags() & NodeFlag::HideCaption) return;
-
-    QRectF rect = geometry().captionRect();
-
-    painter.setFont(style::currentStyle().node.headerFont);
-    painter.setBrush(Qt::NoBrush);
-    painter.setPen(gt::gui::color::text());
-    painter.drawText(rect, node.caption(), QTextOption{Qt::AlignHCenter});
-}
-
-void
 NodePainter::paint(QPainter& painter) const
 {
     bool collapsed = object().isCollapsed();
 
     drawBackground(painter);
-    if (!collapsed) drawResizeHandle(painter);
-    drawOutline(painter);
 
     drawCaption(painter);
     drawIcon(painter);

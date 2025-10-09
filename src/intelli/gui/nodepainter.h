@@ -40,15 +40,42 @@ public:
     using PortData [[deprecated("Use PortInfo")]] = PortInfo;
 
     /// Flags to tell the painter the state of the port
-    enum PortRenderFlag : uint
+    enum RenderFlag : uint
     {
-        NoPortFlag = 0,
+        /// No Render Flag
+        NoPortFlag [[deprecated("use `NoRenderFlag` instead")]] = 0,
+        NoRenderFlag = 0,
+
+        /* General Render Flags */
+
+        /// Whether the current QPainter config should be used as is
+        /// (by default it may be overriden)
+        UsePainterConfig = 1 << 0,
+
+        /* Node Background Specific Render Flags */
+
+        /// Whether the background should be rendered
+        DrawNodeBackground = 1 << 1,
+        /// Whether the outline should be rendered
+        DrawNodeOutline= 1 << 2,
+        /// Whether the resize hanlde should be drawn
+        DrawNodeResizeHandle = 1 << 3,
+
+        DefaultNodeRenderFlags = DrawNodeBackground |
+                                 DrawNodeOutline |
+                                 DrawNodeResizeHandle,
+
+        /* Port Specific Render Flags */
+
         /// Whether the port is connected
-        PortConnected = 1 << 0,
+        PortConnected = 1 << 5,
         /// Whether ports should be highlighted at all
-        HighlightPorts = 1 << 1,
+        PortHighlightsActive = 1 << 6,
+        HighlightPorts [[deprecated("use `PortHighlightsActive` instead")]] = PortHighlightsActive,
         /// Whether the port should be highlighted. Check `HighlightPorts` first
-        PortHighlighted = 1 << 2
+        PortHighlighted = 1 << 7,
+        /// Default render flags for ports
+        DefaultPortRenderFlags = NoRenderFlag
     };
 
     /**
@@ -77,6 +104,13 @@ public:
      * @param painter Painter to configure
      */
     void applyOutlineConfig(QPainter& painter) const;
+
+    /**
+     * @brief Applies pen and brush to the painter to render the drop shadow
+     * effect of the node uniformly.
+     * @param painter Painter to configure
+     */
+    void applyDropShadowConfig(QPainter& painter) const;
 
     /**
      * @brief Applies pen and brush to the painter to render a port based on
@@ -108,17 +142,12 @@ public:
     QIcon displayIcon() const;
 
     /**
-     * @brief Draws the background of the node.
+     * @brief Draws the background and outline of the node. Will also call
+     * `drawResizeHandle`.
      * @param painter Painter to draw with
+     * @param flags Render flags. Ignores port render flags.
      */
-    virtual void drawBackground(QPainter& painter) const;
-
-    /**
-     * @brief Draws the outline of the node. Is repsonsible to highlight the
-     * node when selecting or hovering. Use the predefined painter config.
-     * @param painter Painter to draw with
-     */
-    virtual void drawOutline(QPainter& painter) const;
+    virtual void drawBackground(QPainter& painter, uint flags = DefaultNodeRenderFlags) const;
 
     /**
      * @brief Calls `drawPort` for each port that is visible and
@@ -133,7 +162,8 @@ public:
      * @param port Port info
      * @param type Port type
      * @param idx Port index
-     * @param flags Port flag to draw the port according to it state
+     * @param flags Port flag to draw the port according to it state. Ignores
+     * node render flags by defualt.
      */
     virtual void drawPort(QPainter& painter,
                           PortInfo const& port,
@@ -147,7 +177,8 @@ public:
      * @param port Port info
      * @param type Port type
      * @param idx Port index
-     * @param flags Port flag to draw the port according to it state
+     * @param flags Port flag to draw the port according to it state. Ignores
+     * node render flags by defualt.
      */
     virtual void drawPortCaption(QPainter& painter,
                                  PortInfo const& port,
@@ -158,16 +189,22 @@ public:
     /**
      * @brief Draws the resize handle
      * @param painter Painter to draw with
+     * @param flags Render flags. Ignores port and node render flags.
      */
-    virtual void drawResizeHandle(QPainter& painter) const;
-
-    void drawIcon(QPainter& painter) const;
+    virtual void drawResizeHandle(QPainter& painter, uint flags = NoRenderFlag) const;
 
     /**
      * @brief Draws the caption of the node
      * @param painter Painter to draw with
+     * @param flags Render flags. Ignores port and node render flags.
      */
-    void drawCaption(QPainter& painter) const;
+    void drawCaption(QPainter& painter, uint flags = NoRenderFlag) const;
+
+    /**
+     * @brief Draws the `displayIcon`.
+     * @param painter Painter to draw with
+     */
+    void drawIcon(QPainter& painter) const;
 
     /**
      * @brief Main paint method, used to draw all components in the right

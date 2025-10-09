@@ -61,6 +61,7 @@ static std::map<QString, StyleData>& styles()
         style.node.background = QColor{36, 49, 63};
         style.node.defaultOutline = QColor{63, 73, 86};
         style.node.selectedOutline = QColor{255, 165, 0};
+        style.node.dropShadow = QColor{15, 30, 50};
 
         style.node.headerFont.setBold(true);
 
@@ -81,6 +82,7 @@ static std::map<QString, StyleData>& styles()
         style.view.gridline = QColor{200, 200, 255, 125};
 
         style.node.background = QColor{245, 245, 245};
+        style.node.dropShadow = QColor{240, 240, 240};
         style.node.defaultOutline = QColor{"darkgray"};
         style.node.selectedOutline = QColor{"deepskyblue"};
         style.node.hoveredOutline = style.node.defaultOutline;

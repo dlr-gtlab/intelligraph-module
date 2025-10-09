@@ -18,14 +18,85 @@
 
 #include <cmath>
 
+#include <QPainter>
+
 using namespace intelli;
+
+class DropShadowObject : public QGraphicsObject
+{
+public:
+
+    using GetBoundingRectFunctor = std::function<QRectF()>;
+    using PaintDropShadowFunctor = std::function<void(QPainter&)>;
+
+    DropShadowObject(QGraphicsScene* scene,
+                     InteractableGraphicsObject& parent,
+                     std::function<QRectF()> boundingRectFunctor,
+                     std::function<void(QPainter&)> paintFunctor) :
+        m_boundingRect(boundingRectFunctor),
+        m_paint(paintFunctor)
+    {
+        setFlag(QGraphicsItem::ItemIsFocusable, false);
+        setFlag(QGraphicsItem::ItemIsMovable, false);
+        setFlag(QGraphicsItem::ItemIsSelectable, false);
+
+        setZValue(style::zValue(style::ZValue::Background));
+
+        if (scene) scene->addItem(this);
+
+        auto updateDropShadowPos = [this, p = &parent](){
+            setPos(p->pos() + style::currentStyle().node.dropShadowOffset);
+        };
+        auto updateDropShadowGeometry = [this](){
+            prepareGeometryChange();
+            update();
+        };
+
+        connect(&parent, &InteractableGraphicsObject::objectMoved,
+                this, updateDropShadowPos);
+        connect(&parent, &InteractableGraphicsObject::objectShifted,
+                this, updateDropShadowPos);
+        connect(&parent, &QGraphicsObject::xChanged,
+                this, updateDropShadowPos);
+        connect(&parent, &QGraphicsObject::yChanged,
+                this, updateDropShadowPos);
+        connect(&parent, &InteractableGraphicsObject::objectResized,
+                this, updateDropShadowGeometry);
+        connect(&parent, &QObject::destroyed, this, [this](){
+            delete this;
+        });
+
+        updateDropShadowPos();
+    }
+
+    QRectF boundingRect() const
+    {
+        assert(m_paint);
+        return m_boundingRect();
+    }
+
+    void paint(QPainter* painter,
+               QStyleOptionGraphicsItem const*,
+               QWidget*)
+    {
+        assert(m_paint);
+        m_paint(*painter);
+    }
+
+private:
+
+    GetBoundingRectFunctor m_boundingRect;
+    PaintDropShadowFunctor m_paint;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 
 InteractableGraphicsObject::InteractableGraphicsObject(GraphSceneData const& data,
                                                        QGraphicsItem* parent) :
     GraphicsObject(parent),
     m_sceneData(&data)
 {
-    setZValue(style::zValue(style::ZValue::Node));
+
 }
 
 InteractableGraphicsObject::~InteractableGraphicsObject() = default;
@@ -34,6 +105,15 @@ void
 InteractableGraphicsObject::setInteractionFlag(InteractionFlag flag, bool enable)
 {
     enable ? m_flags |= flag : m_flags &= ~flag;
+}
+
+QGraphicsObject*
+InteractableGraphicsObject::setupDropShadowEffect(std::function<QRectF()> boundingRectFunctor,
+                                                  std::function<void (QPainter&)> paintFunctor)
+{
+    return new DropShadowObject{
+        scene(), *this, boundingRectFunctor, paintFunctor
+    };
 }
 
 void
@@ -120,9 +200,6 @@ InteractableGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     if (canResize(event->pos()))
     {
         if (!(interactionFlags() & AllowResizing)) return;
-
-        // bring this node forward
-        setZValue(style::zValue(style::ZValue::NodeHovered));
 
         m_state = State::Resizing;
         m_translationStart = {0.0, 0.0};

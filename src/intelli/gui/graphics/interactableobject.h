@@ -50,6 +50,9 @@ public:
 
     void setInteractionFlag(InteractionFlag flag, bool enable = true);
 
+    QGraphicsObject* setupDropShadowEffect(std::function<QRectF()> boundingRectFunctor,
+                                           std::function<void(QPainter&)> paintFunctor);
+
     size_t interactionFlags() { return m_flags; }
 
     /**
