@@ -11,6 +11,7 @@
 #include <intelli/gui/graphics/lineobject.h>
 #include "intelli/gui/graphics/nodeobject.h"
 #include <intelli/gui/style.h>
+#include <intelli/utilities.h>
 #include <intelli/gui/commentdata.h>
 #include <intelli/private/utils.h>
 
@@ -25,7 +26,6 @@
 #include <QGraphicsProxyWidget>
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsSceneHoverEvent>
-#include <QRegularExpression>
 #include <QGraphicsScene>
 #include <QMenu>
 #include <QAction>
@@ -62,21 +62,32 @@ public:
 
         bool isSelected = p->isSelected();
         bool isHovered  = p->isHovered();
-        if (auto anchor = graphics_cast<GraphicsObject*>(p->m_anchor.data()))
-        {
-            if (anchor->isHovered()) isHovered = true;
-        }
-        QPen pen;
-        pen.setColor((isSelected)? style.selectedOutline : style.hoveredOutline);
-        pen.setWidthF(isHovered ? style.hoveredOutlineWidth : style.selectedOutlineWidth);
 
         if (p->isCollapsed())
         {
-            QRect rect{QPoint{3, 3}, QSize{24, 24}};
             auto iconbg = gt::gui::getIcon(QStringLiteral(":/intelligraph-icons/comment-filled.svg"));
             auto icon = gt::gui::icon::comment();
+
+            QSize size{24, 24};
+            QSize offset = ((p->boundingRect().size() - size) * 0.5).toSize();
+            QRect rect{QPoint{offset.width(), offset.height()}, size};
+
             QColor color = gt::gui::color::text();
-            gt::gui::colorize(iconbg, style::invert(color)).paint(painter, rect);
+            QColor bgcolor = style::invert(color);
+
+            if (isSelected)
+            {
+                color = style.selectedOutline;
+                if (isHovered) color = style::tint(color, 30);
+            }
+            else if (isHovered)
+            {
+                color = gtApp && gtApp->inDarkMode() ?
+                            Qt::lightGray :
+                            Qt::darkGray;
+            }
+
+            gt::gui::colorize(iconbg, bgcolor).paint(painter, rect);
             gt::gui::colorize(icon, color).paint(painter, rect);
             return;
         }
@@ -93,6 +104,10 @@ public:
         painter->setBrush(gt::gui::color::lighten(
             style::currentStyle().node.defaultOutline, -30));
         painter->drawPolygon(poly);
+
+        QPen pen;
+        pen.setColor((isSelected)? style.selectedOutline : style.hoveredOutline);
+        pen.setWidthF(isHovered ? style.hoveredOutlineWidth : style.selectedOutlineWidth);
 
         // outline
         painter->setPen(pen);
@@ -136,6 +151,11 @@ protected:
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override
     {
         auto* p = static_cast<CommentGraphicsObject*>(parentObject());
+        if (p->isCollapsed())
+        {
+            p->mouseDoubleClickEvent(event);
+            return event->accept();
+        }
         p->startEditing();
         event->accept();
     }
@@ -173,13 +193,10 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     setAcceptHoverEvents(true);
 
     m_editor = new QTextEdit;
-    m_editor->setPlaceholderText(tr("Double click to edit comment..."));
     m_editor->setFrameShape(QFrame::NoFrame);
     m_editor->setContextMenuPolicy(Qt::NoContextMenu);
     m_editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_editor->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_editor->setReadOnly(true);
-    m_editor->setMarkdown(m_comment->text());
     m_editor->setMinimumSize(50, 25);
 
     auto* w = new QWidget();
@@ -193,7 +210,6 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     m_proxyWidget->setZValue(0);
 
     m_overlay = new Overlay(this);
-    m_overlay->setZValue(1);
 
     // setup connections
     connect(gtApp, &GtApplication::themeChanged, this, [this, w](){
@@ -229,12 +245,9 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     });
 
     connect(m_comment, &CommentData::commentChanged, m_editor, [this](){
-        m_editor->clearFocus();
         m_editor->setMarkdown(m_comment->text());
 
-        m_editor->setReadOnly(true);
-        m_proxyWidget->unsetCursor();
-        m_overlay->setZValue(1);
+        setEditing(false);
     });
 
     // setup object
@@ -260,9 +273,11 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
             this, &CommentGraphicsObject::onCommentConnectionRemoved,
             Qt::DirectConnection);
 
-    collapse(m_comment->isCollapsed());
+    m_editor->setMarkdown(m_comment->text());
 
-    setZValue(style::zValue(style::ZValue::Comment));
+    setEditing(false);
+
+    collapse(m_comment->isCollapsed());
 }
 
 CommentGraphicsObject::~CommentGraphicsObject() = default;
@@ -317,60 +332,64 @@ CommentGraphicsObject::widgetSceneBoundingRect() const
 void
 CommentGraphicsObject::startEditing()
 {
-    unsetCursor();
-    setSelected(true);
+    m_editor->setPlainText(m_comment->text());
 
-    m_editor->setPlaceholderText(tr("Enter comment..."));
-    m_editor->setReadOnly(false);
-
-    // strip markdown from unnecessary new lines
-    static QRegularExpression regexp(
-        R"(^\s*?)"         // start of line (inc. spaces)
-        R"((\#|\-|\*).+?)" // group 1: line is a heading or list
-        R"((\n\n))",       // group 2: double spaces
-        QRegularExpression::MultilineOption
-    );
-
-    QString markdown = m_editor->toMarkdown();
-
-    QRegularExpressionMatch match = regexp.match(markdown);
-    while (match.hasMatch())
-    {
-        constexpr int group = 2;
-        int start = match.capturedStart(group);
-        markdown.remove(start, 1);
-        match = regexp.match(markdown, start + 1);
-    }
-
-    m_editor->setPlainText(markdown);
-    m_editor->setFocus();
-
-    auto cursor = m_editor->textCursor();
-    cursor.movePosition(QTextCursor::MoveOperation::End);
-    m_editor->setTextCursor(cursor);
-
-    m_overlay->setZValue(-1);
+    setEditing(true);
 }
 
 void
 CommentGraphicsObject::finishEditing()
 {
-    if (m_overlay->zValue() < 0)
+    if (!isEditing())
     {
-        auto cmd = gtApp->makeCommand(m_comment,
-                                      tr("Comment '%1' changed")
-                                          .arg(m_comment->objectName()));
-        Q_UNUSED(cmd);
-
-        m_editor->clearFocus();
-        m_comment->setText(m_editor->toPlainText());
-        m_editor->setMarkdown(m_comment->text());
+        return setEditing(false);
     }
 
-    m_editor->setPlaceholderText(tr("Double click to edit comment..."));
-    m_editor->setReadOnly(true);
+    auto cmd = gtApp->makeCommand(m_comment,
+                                  tr("Comment '%1' changed")
+                                      .arg(m_comment->objectName()));
+    Q_UNUSED(cmd);
+
+    // calls setEditing(false)
+    m_comment->setText(m_editor->toPlainText());
+
+    assert(!isEditing());
+}
+
+void
+CommentGraphicsObject::setEditing(bool isEditing)
+{
     m_proxyWidget->unsetCursor();
-    m_overlay->setZValue(1);
+
+    m_editor->setPlaceholderText(isEditing ?
+                                     tr("Enter comment...") :
+                                     tr("Double click to edit comment..."));
+    m_editor->setReadOnly(!isEditing);
+
+    isEditing ?
+        m_editor->setFocus() :
+        m_editor->clearFocus();
+
+    m_overlay->setZValue(isEditing ? -1 : 1);
+
+    setZValue(style::zValue(isEditing || isCollapsed() ?
+                                style::ZValue::NodeHovered :
+                                style::ZValue::Comment));
+
+    if (isEditing)
+    {
+        setSelected(true);
+
+        auto cursor = m_editor->textCursor();
+        cursor.movePosition(QTextCursor::MoveOperation::End);
+        m_editor->setTextCursor(cursor);
+    }
+}
+
+bool
+CommentGraphicsObject::isEditing() const
+{
+    return m_overlay->zValue() < 0;
 }
 
 void
@@ -426,6 +445,21 @@ CommentGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 }
 
 void
+CommentGraphicsObject::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
+{
+    if (isCollapsed())
+    {
+        setCollapsed(false);
+        startEditing();
+
+        utils::connectOnce(m_comment, &CommentData::commentChanged, this, [this](){
+            setCollapsed(true);
+            assert(!isEditing());
+        });
+    }
+}
+
+void
 CommentGraphicsObject::setupContextMenu(QMenu& menu)
 {
     QAction* connectAction = menu.addAction(tr("Connect to..."));
@@ -474,7 +508,7 @@ CommentGraphicsObject::paint(QPainter* painter,
 bool
 CommentGraphicsObject::canResize(QPointF localCoord)
 {
-    return !isCollapsed() && resizeHandleRect().contains(localCoord);
+    return resizeHandleRect().contains(localCoord);
 }
 
 void
@@ -552,7 +586,9 @@ CommentGraphicsObject::onObjectCollapsed()
         m_anchor = nullptr;
 
         setPos(m_comment->pos());
-        setZValue(style::zValue(isCollapsed() ? style::ZValue::NodeHovered : style::ZValue::Comment));
+        setZValue(style::zValue(isCollapsed() ?
+                                    style::ZValue::NodeHovered :
+                                    style::ZValue::Comment) + isCollapsed());
         setInteractionFlag(DefaultInteractionFlags, true);
 
         for (auto& pair : m_connections)
@@ -569,15 +605,15 @@ CommentGraphicsObject::onObjectCollapsed()
 
     connection->setVisible(false);
 
-    auto const* endItem = connection->endItem();
+    InteractableGraphicsObject const* endItem = connection->endItem();
     assert(endItem);
 
     m_anchor = endItem;
 
     auto updatePos = [endItem, this]{
         setPos(endItem->pos() +
-               endItem->boundingRect().topRight() -
-               boundingRect().center());
+               endItem->shape().boundingRect().topRight() +
+               QPointF{-boundingRect().width() * 0.7, -boundingRect().height() * 0.3});
     };
 
     setZValue(style::zValue(style::ZValue::NodeHovered) + 1);
@@ -585,15 +621,8 @@ CommentGraphicsObject::onObjectCollapsed()
 
     connect(endItem, &QGraphicsObject::xChanged, this, updatePos);
     connect(endItem, &QGraphicsObject::yChanged, this, updatePos);
+    connect(endItem, &InteractableGraphicsObject::objectResized, this, updatePos);
     updatePos();
-
-    auto graphicsObject = graphics_cast<GraphicsObject*>(endItem);
-    if (!graphicsObject) return;
-
-    // trigger update if hovered state of anchored object changed
-    connect(graphicsObject, &GraphicsObject::hoveredChanged, this, [this]{
-        update();
-    });
 }
 
 void

@@ -116,7 +116,7 @@ struct NodeGraphicsObject::Impl
         QPalette p = w->palette();
         p.setColor(QPalette::Window, o->pimpl->painter->backgroundColor());
         w->setPalette(p);
-        w->show();
+        w->setVisible(!o->isCollapsed());
     }
 
 }; // struct Impl;
@@ -493,7 +493,7 @@ NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
     InteractableGraphicsObject::hoverEnterEvent(event);
 
-    setToolTip(pimpl->node->tooltip());
+    setToolTip(pimpl->node->toolTip());
 }
 
 void
@@ -516,7 +516,7 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
         return setToolTip(toolTip);
     }
 
-    setToolTip(pimpl->node->tooltip());
+    setToolTip(pimpl->node->toolTip());
 }
 
 void
@@ -601,6 +601,7 @@ NodeGraphicsObject::updateChildItems()
     {
         pimpl->proxyWidget->setPos(pimpl->geometry->widgetPosition());
     }
+    emit objectResized(this);
 }
 
 NodeGraphicsObject::Highlights::Highlights(NodeGraphicsObject& object) :

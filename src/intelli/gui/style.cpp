@@ -214,6 +214,19 @@ intelli::style::registeredStyles()
 }
 
 QColor
+style::blend(QColor const& color, QColor const& other, double mult)
+{
+    mult = gt::clamp(mult, 0.0, 1.0);
+
+    return ::tint(
+        color,
+        ((other.red()   - color.red()  ) * mult),
+        ((other.green() - color.green()) * mult),
+        ((other.blue()  - color.blue() ) * mult)
+    );
+}
+
+QColor
 intelli::style::tint(QColor const& color, int r, int g, int b)
 {
     constexpr int MAX = std::numeric_limits<uint8_t>::max();

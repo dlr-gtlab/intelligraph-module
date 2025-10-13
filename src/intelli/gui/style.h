@@ -157,7 +157,7 @@ struct StyleData
 
     private:
         alignas(8) uint8_t __padding[16];
-    } connection ;
+    } connection;
 
 private:
     uint8_t __padding[32];
@@ -206,6 +206,15 @@ GT_INTELLI_EXPORT StyleId const& styleId(DefaultStyle style);
 GT_INTELLI_EXPORT QVector<StyleId> registeredStyles();
 
 /**
+ * @brief Blends `color` and `other`.
+ * @param color Color component A
+ * @param other Color component B
+ * @param mult Weight for how much the color difference affects the end result
+ * @return Blended color between 1 and 2.
+ */
+GT_INTELLI_EXPORT QColor blend(QColor const& colorA, QColor const& colorB, double mult = 0.5);
+
+/**
  * @brief Applies a tint to `color` (additively, regardless of theme).
  * @param color Color to tint
  * @param r Red value
@@ -214,7 +223,6 @@ GT_INTELLI_EXPORT QVector<StyleId> registeredStyles();
  * @return Tinted color
  */
 GT_INTELLI_EXPORT QColor tint(QColor const& color, int r, int g, int b);
-
 /**
  * @brief Applies a tint to `color` using `tint` multiplied with `mult`
  * (additively, regardless of theme).

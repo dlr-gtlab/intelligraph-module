@@ -67,15 +67,10 @@ NumberMathNode::NumberMathNode() :
 void
 NumberMathNode::eval()
 {
+    double a = 0.0, b = 0.0;
+
     auto dataA = nodeData<DoubleData>(m_inA);
     auto dataB = nodeData<DoubleData>(m_inB);
-    if (!dataA && !dataB)
-    {
-        setNodeData(m_out, nullptr);
-        return;
-    }
-
-    double a = 0.0, b = 0.0;
 
     if (dataA) a = dataA->value();
     if (dataB) b = dataB->value();

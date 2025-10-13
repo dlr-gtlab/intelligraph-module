@@ -197,7 +197,7 @@ InteractableGraphicsObject::mousePressEvent(QGraphicsSceneMouseEvent* event)
     event->accept();
 
     // handle resizing
-    if (canResize(event->pos()))
+    if (!isCollapsed() && canResize(event->pos()))
     {
         if (!(interactionFlags() & AllowResizing)) return;
 
@@ -323,7 +323,7 @@ InteractableGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
     QPointF pos = event->pos();
 
     // check for resize handle hit and change cursor
-    if (canResize(pos))
+    if (!isCollapsed() && canResize(pos))
     {
         setCursor(QCursor(Qt::SizeFDiagCursor));
         return;
