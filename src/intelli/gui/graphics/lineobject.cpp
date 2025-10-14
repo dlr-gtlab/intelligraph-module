@@ -98,13 +98,13 @@ LineGraphicsObject::shape() const
     return m_geometry.shape();
 }
 
-GraphicsObject const*
+InteractableGraphicsObject const*
 LineGraphicsObject::startItem() const
 {
     return m_startItem;
 }
 
-GraphicsObject const*
+InteractableGraphicsObject const*
 LineGraphicsObject::endItem() const
 {
     return m_endItem;

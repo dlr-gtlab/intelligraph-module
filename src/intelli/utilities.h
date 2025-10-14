@@ -159,7 +159,7 @@ inline auto ignoreSignal(Sender sender, SignalSender signalSender,
 }
 
 /**
- * @brief Connects a signal to a signal/slot using QObject::connect and returns
+ * @brief Connects a signal/slot to a signal using QObject::connect and returns
  * a scoped object, that deletes the established connection once the object is
  * deleted. Useful for temporary signals.
  * @param sender Sender
@@ -179,6 +179,27 @@ inline auto connectScoped(Sender sender, SignalSender signalSender,
 
     return gt::finally([sender, connection](){
         sender->disconnect(connection);
+    });
+}
+
+/**
+ * @brief Connects a slot-functor to a s signal using QObject::connect.
+ * The slot is triggered only once. The slot argument must be a functor,
+ * function pointers are not supported yet.
+ * @param sender Sender
+ * @param signalSender Signal of sender
+ * @param reciever Reciever (scope)
+ * @param signalReciever Slot functor
+ */
+template<typename Sender, typename SignalSender,
+         typename Reciever, typename SignalReciever>
+inline void connectOnce(Sender sender, SignalSender signalSender,
+                        Reciever reciever, SignalReciever signalReciever)
+{
+    auto* ctx = new QObject{reciever};
+    QObject::connect(sender, signalSender, ctx, [=]() {
+        signalReciever();
+        ctx->deleteLater();
     });
 }
 

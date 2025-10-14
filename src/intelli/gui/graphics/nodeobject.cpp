@@ -116,7 +116,7 @@ struct NodeGraphicsObject::Impl
         QPalette p = w->palette();
         p.setColor(QPalette::Window, o->pimpl->painter->backgroundColor());
         w->setPalette(p);
-        w->show();
+        w->setVisible(!o->isCollapsed());
     }
 
 }; // struct Impl;
@@ -180,6 +180,18 @@ NodeGraphicsObject::NodeGraphicsObject(QGraphicsScene& scene,
             this, &NodeGraphicsObject::onNodePositionChanged, Qt::DirectConnection);
 
     updateChildItems();
+
+    setupDropShadowEffect(
+        [this](){
+            return boundingRect();
+        },
+        [this](QPainter& painter){
+            pimpl->painter->applyDropShadowConfig(painter);
+            pimpl->painter->drawBackground(painter,
+                                           NodePainter::UsePainterConfig |
+                                           NodePainter::DrawNodeBackground);
+        }
+    );
 }
 
 NodeGraphicsObject::~NodeGraphicsObject() = default;
@@ -370,6 +382,7 @@ NodeGraphicsObject::embedCentralWidget()
                 pimpl->node->setSize(pimpl->proxyWidget->widget()->size());
             }
             Impl::prepareGeometryChange(this).finalize();
+            emit objectResized(this);
         });
 
         // update size
@@ -480,7 +493,7 @@ NodeGraphicsObject::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
     InteractableGraphicsObject::hoverEnterEvent(event);
 
-    setToolTip(pimpl->node->tooltip());
+    setToolTip(pimpl->node->toolTip());
 }
 
 void
@@ -503,7 +516,7 @@ NodeGraphicsObject::hoverMoveEvent(QGraphicsSceneHoverEvent* event)
         return setToolTip(toolTip);
     }
 
-    setToolTip(pimpl->node->tooltip());
+    setToolTip(pimpl->node->toolTip());
 }
 
 void
@@ -588,6 +601,7 @@ NodeGraphicsObject::updateChildItems()
     {
         pimpl->proxyWidget->setPos(pimpl->geometry->widgetPosition());
     }
+    emit objectResized(this);
 }
 
 NodeGraphicsObject::Highlights::Highlights(NodeGraphicsObject& object) :

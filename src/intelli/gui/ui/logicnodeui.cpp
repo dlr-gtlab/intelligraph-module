@@ -242,40 +242,39 @@ LogicNodePainter::LogicNodePainter(NodeGraphicsObject const& object,
 }
 
 void
-LogicNodePainter::drawBackground(QPainter& painter) const
+LogicNodePainter::drawBackground(QPainter& painter, uint flags) const
 {
-    if (object().isCollapsed()) return NodePainter::drawBackground(painter);
+    if (object().isCollapsed()) return NodePainter::drawBackground(painter, flags);
 
     auto geo = static_cast<LogicNodeGeometry const*>(&geometry());
 
-    applyBackgroundConfig(painter);
-
-    QPainterPath path(geo->beginCurve());
-    geo->applyLeftCurve(path);
-    geo->applyRightCurve(path);
-    painter.drawPath(path);
-}
-
-void
-LogicNodePainter::drawOutline(QPainter& painter) const
-{
-    if (object().isCollapsed()) return NodePainter::drawOutline(painter);
-
-    auto geo = static_cast<LogicNodeGeometry const*>(&geometry());
-
-    applyOutlineConfig(painter);
-
-    QPainterPath path(geo->beginCurve());
-    geo->applyLeftCurve(path);
-
-    if (static_cast<LogicNode const&>(object().node()).operation() == LogicNode::XOR)
+    if (flags & DrawNodeBackground)
     {
-        auto& style = style::currentStyle().node;
-        painter.drawPath(path.translated(-style.portRadius, 0));
+        if (!(flags & UsePainterConfig)) applyBackgroundConfig(painter);
+
+        QPainterPath path{geo->beginCurve()};
+        geo->applyLeftCurve(path);
+        geo->applyRightCurve(path);
+        painter.drawPath(path);
+
     }
 
-    geo->applyRightCurve(path);
-    painter.drawPath(path);
+    if (flags & DrawNodeOutline)
+    {
+        if (!(flags & UsePainterConfig)) applyOutlineConfig(painter);
+
+        QPainterPath path{geo->beginCurve()};
+        geo->applyLeftCurve(path);
+
+        if (static_cast<LogicNode const&>(object().node()).operation() == LogicNode::XOR)
+        {
+            auto& style = style::currentStyle().node;
+            painter.drawPath(path.translated(-style.portRadius, 0));
+        }
+
+        geo->applyRightCurve(path);
+        painter.drawPath(path);
+    }
 }
 
 void
@@ -301,11 +300,14 @@ LogicNodePainter::drawPort(QPainter& painter,
                            PortIndex idx,
                            uint flags) const
 {
-    bool isCompatible = (flags & HighlightPorts) &&
+    bool isCompatible = (flags & PortHighlightsActive) &&
                         (flags & PortHighlighted);
 
-    applyPortConfig(painter, port, type, idx, flags);
-    painter.setPen(Qt::NoPen);
+    if (!(flags & UsePainterConfig))
+    {
+        applyPortConfig(painter, port, type, idx, flags);
+        painter.setPen(Qt::NoPen);
+    }
 
     QRectF rect = geometry().portRect(type, idx);
     rect.setWidth(rect.width() * 0.5);

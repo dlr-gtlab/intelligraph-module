@@ -91,6 +91,8 @@ protected:
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
+
     /**
      * @brief Whether the object should start resizing.
      * @param localCoord Position of cursor within the graphics object.
@@ -127,6 +129,10 @@ private:
     QTextEdit* m_editor;
 
     QRectF resizeHandleRect() const;
+
+    void setEditing(bool isEditing = true);
+
+    bool isEditing() const;
 
 private slots:
 

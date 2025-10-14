@@ -65,9 +65,9 @@ public:
      */
     QPainterPath shape() const override;
 
-    GraphicsObject const* startItem() const;
+    InteractableGraphicsObject const* startItem() const;
 
-    GraphicsObject const* endItem() const;
+    InteractableGraphicsObject const* endItem() const;
 
     void setEndPoint(PortType type, QGraphicsItem const& object);
 

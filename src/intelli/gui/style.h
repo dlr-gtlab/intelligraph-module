@@ -49,14 +49,16 @@ namespace style
 /// enum holding the zvalue of the different graphical objects
 enum class ZValue : int
 {
-    Line              = -2,
+    Background        = -100,
+    Line              = -15,
+    Comment           = -10,
     Connection        = -5,
     ConnectionHovered = -1,
     DraftConnection   =  2,
     Node              =  0,
     NodeHovered       =  1,
-    NodeWidget        = 10,
     NodeEvalState     =  5,
+    NodeWidget        = 10,
     Popup             = 50,
 };
 
@@ -108,6 +110,9 @@ struct StyleData
         QColor background;
         /// outline colors
         QColor defaultOutline, selectedOutline, hoveredOutline;
+        /// drop shadow
+        QColor dropShadow;
+        QPointF dropShadowOffset{4, 4};
         /// fonts
         QFont headerFont{}, bodyFont{};
         /// outline width
@@ -123,11 +128,8 @@ struct StyleData
         /// size of node icon
         int iconSize = 20;
         /// modifier to apply to all r-g-b components when highlighting
-        /// compatible nodes (while creatimg a draft connection)
+        /// compatible nodes (while creating a draft connection)
         int compatiblityTintModifier = 20;
-
-    private:
-        alignas(8) uint8_t __padding[16];
     } node;
 
     /// style data for connections
@@ -155,7 +157,7 @@ struct StyleData
 
     private:
         alignas(8) uint8_t __padding[16];
-    } connection ;
+    } connection;
 
 private:
     uint8_t __padding[32];
@@ -204,6 +206,15 @@ GT_INTELLI_EXPORT StyleId const& styleId(DefaultStyle style);
 GT_INTELLI_EXPORT QVector<StyleId> registeredStyles();
 
 /**
+ * @brief Blends `color` and `other`.
+ * @param color Color component A
+ * @param other Color component B
+ * @param mult Weight for how much the color difference affects the end result
+ * @return Blended color between 1 and 2.
+ */
+GT_INTELLI_EXPORT QColor blend(QColor const& colorA, QColor const& colorB, double mult = 0.5);
+
+/**
  * @brief Applies a tint to `color` (additively, regardless of theme).
  * @param color Color to tint
  * @param r Red value
@@ -212,7 +223,6 @@ GT_INTELLI_EXPORT QVector<StyleId> registeredStyles();
  * @return Tinted color
  */
 GT_INTELLI_EXPORT QColor tint(QColor const& color, int r, int g, int b);
-
 /**
  * @brief Applies a tint to `color` using `tint` multiplied with `mult`
  * (additively, regardless of theme).
