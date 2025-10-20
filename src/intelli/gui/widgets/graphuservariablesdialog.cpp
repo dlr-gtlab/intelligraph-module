@@ -17,6 +17,7 @@
 #include <gt_colors.h>
 #include <gt_logging.h>
 #include <gt_palette.h>
+#include <gt_application.h>
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -193,6 +194,10 @@ GraphUserVariablesDialog::saveChanges()
             item->value()
         });
     });
+
+    auto cmd = gtApp->makeCommand(m_graph,
+                                  tr("Changed user variables for graph '%1'")
+                                      .arg(m_graph->caption()));
 
     QStringList exisitingKeys = uv->keys();
 
