@@ -103,8 +103,16 @@ GraphEditor::setData(GtObject* obj)
         return;
     }
 
-    setObjectName(tr("IntelliGraph Editor") + QStringLiteral(" - ") + graph->caption());
+    // set title
+    auto const updateObjectName = [this, graph](){
+        setObjectName(tr("IntelliGraph Editor") +
+                      QStringLiteral(" - ") +
+                      graph->caption());
+    };
+    connect(graph, &QObject::objectNameChanged, this, updateObjectName);
+    updateObjectName();
 
+    // destroy if graph is destroyed
     connect(graph, &QObject::destroyed, this, &QObject::deleteLater);
 }
 

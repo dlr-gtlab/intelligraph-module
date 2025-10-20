@@ -33,6 +33,8 @@ protected:
 
     void eval() override;
 
+    void onObjectDataMerged() override;
+
 private:
 
     QPointer<GraphUserVariables const> m_uv;

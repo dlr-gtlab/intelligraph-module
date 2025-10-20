@@ -434,7 +434,7 @@ void
 NodeUI::renameNode(GtObject* obj)
 {
     auto* node = toNode(obj);
-    if (!node) return;
+    if (!node && !canRenameNodeObject(node)) return;
 
     GtInputDialog dialog(GtInputDialog::TextInput);
     dialog.setWindowTitle(tr("Rename Node Object"));
@@ -447,6 +447,11 @@ NodeUI::renameNode(GtObject* obj)
         auto text = dialog.textValue();
         if (!text.isEmpty())
         {
+            auto cmd = gtApp->makeCommand(node,
+                                          QStringLiteral("Renaming node '%1' to '%2'")
+                                              .arg(relativeNodePath(*node), text));
+            Q_UNUSED(cmd);
+
             node->setCaption(text);
         }
     }
@@ -469,14 +474,40 @@ NodeUI::executeNode(GtObject* obj)
     model->evaluateNode(nodeUuid).detach();
 }
 
+namespace
+{
+
+void
+addPort(DynamicNode& node, PortType type)
+{
+    Graph* graph = Graph::accessGraph(node);
+    assert(graph);
+
+    auto cmd = gtApp->makeCommand(graph,
+                                  QStringLiteral("Adding an %1put port to node '%2'")
+                                      .arg(type == PortType::In ? "in" : "out",
+                                           relativeNodePath(node)));
+    Q_UNUSED(cmd);
+
+    // TODO: add option for type id
+
+    auto id = (type == PortType::In) ?
+                  node.addInPort(typeId<DoubleData>()) :
+                  node.addOutPort(typeId<DoubleData>());
+
+    gtInfo().verbose() << QObject::tr("Added dynamic port '%1'")
+                              .arg(toString(*node.port(id)));
+}
+
+} // namespace
+
 void
 NodeUI::addInPort(GtObject* obj)
 {
     auto* node = toDynamicNode(obj);
     if (!node) return;
 
-    auto id = node->addInPort(typeId<DoubleData>());
-    gtInfo().verbose() << tr("Added dynamic in port with id") << id;
+    addPort(*node, PortType::In);
 }
 
 void
@@ -485,8 +516,7 @@ NodeUI::addOutPort(GtObject* obj)
     auto* node = toDynamicNode(obj);
     if (!node) return;
 
-    auto id = node->addOutPort(typeId<DoubleData>());
-    gtInfo().verbose() << tr("Added dynamic out port with id") << id;
+    addPort(*node, PortType::Out);
 }
 
 void
@@ -495,7 +525,20 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
     auto* node = toDynamicNode(obj);
     if (!node) return;
 
-    node->removePort(node->portId(type, idx));
+    PortId portId = node->portId(type, idx);
+    if (!portId.isValid()) return;
+
+    Graph* graph = Graph::accessGraph(*node);
+    assert(graph);
+    Node::PortInfo* port = node->port(portId);
+    assert(port);
+
+    auto cmd = gtApp->makeCommand(graph,
+                                  QStringLiteral("Deleting port '%1' of node '%2'")
+                                      .arg(toString(*port), relativeNodePath(*node)));
+    Q_UNUSED(cmd);
+
+    node->removePort(portId);
 }
 
 void
@@ -570,6 +613,12 @@ NodeUI::setActive(GtObject* obj, bool state)
 {
     auto* node = toNode(obj);
     if (!node) return;
+
+    auto cmd = gtApp->makeCommand(node, (state ?
+                                             tr("Paused node '%1'") :
+                                             tr("Unpaused node '%1"))
+                                                .arg(relativeNodePath(*node)));
+    Q_UNUSED(cmd);
 
     node->setActive(state);
 }

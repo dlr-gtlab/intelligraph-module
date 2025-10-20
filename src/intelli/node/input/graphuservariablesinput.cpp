@@ -57,7 +57,7 @@ NodeDataPtr variantToNodeData(QVariant value)
 } // namespace
 
 GraphUserVariablesInputNode::GraphUserVariablesInputNode() :
-    DynamicNode("Constants", NoUserDynamicOutput)
+    DynamicNode("User Constants", NoUserDynamicOutput)
 {
     setNodeEvalMode(NodeEvalMode::Blocking);
 }
@@ -84,6 +84,14 @@ GraphUserVariablesInputNode::eval()
         if (!uv->hasValue(port.caption)) return evalFailed();
         setNodeData(port.id(), variantToNodeData(uv->value(port.caption)));
     }
+}
+
+void
+GraphUserVariablesInputNode::onObjectDataMerged()
+{
+    DynamicNode::onObjectDataMerged();
+
+    emit triggerNodeEvaluation();
 }
 
 void

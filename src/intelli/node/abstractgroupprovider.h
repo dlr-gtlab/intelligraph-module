@@ -141,19 +141,20 @@ private slots:
         auto* graph = findParent<Graph*>();
         assert(graph);
 
-        bool success = actualType == PortType::Out ?
+        PortId addedPortId = actualType == PortType::Out ?
                            graph->insertInPort( *port, idx) :
                            graph->insertOutPort(*port, idx);
-        assert(success);
+        assert(addedPortId.isValid());
 
+        port = this->port(addedPortId);
         // generate virtual port for connecting parent graph and this provider
-        success = generateVirtualPort(graph, port, idx);
+        bool success = generateVirtualPort(graph, port, idx);
         if (success) onFailure.clear();
     }
 
     bool generateVirtualPort(Graph* graph, PortInfo* port, PortIndex idx)
     {
-        PortInfo virtualPort = PortInfo::customId(virtualPortId(m_nextPortId), *port);
+        PortInfo virtualPort = PortInfo::customId(virtualPortId(port->id()), *port);
         virtualPort.visible = false;
         PortId virtualPortId =
             DynamicNode::insertPort(StaticPort, providerType, virtualPort, idx);
@@ -224,7 +225,16 @@ private slots:
         auto* graph = findParent<Graph*>();
         if (!graph) return;
 
-        graph->removePort(portId(actualType, idx));
+        PortId portId = this->portId(actualType, idx);
+        assert(portId.isValid());
+
+        if (isMainPort(portId))
+        {
+            PortId virtualPortId = this->virtualPortId(portId);
+            removePort(virtualPortId);
+        }
+
+        graph->removePort(portId);
     }
 };
 
