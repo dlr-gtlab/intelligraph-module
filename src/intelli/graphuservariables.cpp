@@ -9,6 +9,7 @@
 
 #include <intelli/graphuservariables.h>
 #include <intelli/private/utils.h>
+#include <intelli/property/uint.h>
 
 #include <gt_coreapplication.h>
 #include <gt_propertystructcontainer.h>
@@ -29,7 +30,8 @@ struct GraphUserVariables::Impl
 };
 
 QString const& S_TYPE   = QStringLiteral("Entry");
-QString const& S_MEMBER = QStringLiteral("value");
+QString const& S_MEMBER_VALUE = QStringLiteral("value");
+QString const& S_MEMBER_ID = QStringLiteral("id");
 
 GraphUserVariables::GraphUserVariables(GtObject* parent) :
     GtObject(parent),
@@ -42,7 +44,10 @@ GraphUserVariables::GraphUserVariables(GtObject* parent) :
     setFlag(UserHidden, true);
 
     GtPropertyStructDefinition def{S_TYPE};
-    def.defineMember(S_MEMBER, gt::makeVariantProperty());
+    // value of key
+    def.defineMember(S_MEMBER_VALUE, gt::makeVariantProperty());
+    // for some applications a numerical "unique" id is needed
+    def.defineMember(S_MEMBER_ID, intelli::makeUIntProperty(0));
 
     pimpl->variables.registerAllowedType(def);
     registerPropertyStructContainer(pimpl->variables);
@@ -106,16 +111,40 @@ GraphUserVariables::setValue(QString const& key, QVariant const& value)
         return false;
     }
 
-    // overwrite value
+    GtPropertyStructInstance* instance = nullptr;
+
     auto iter = pimpl->variables.findEntry(key);
     if (iter != pimpl->variables.end())
     {
-        iter->setMemberVal(S_MEMBER, value);
-        return true;
+        // overwrite value
+        instance = &*iter;
     }
-    // add new value
-    GtPropertyStructInstance& instance = pimpl->variables.newEntry(S_TYPE, key);
-    instance.setMemberVal(S_MEMBER, value);
+    else
+    {
+        // add new value
+        instance = &pimpl->variables.newEntry(S_TYPE, key);
+    }
+
+    // set value
+    instance->setMemberVal(S_MEMBER_VALUE, value);
+
+    // update id (if its invalid)
+    bool ok = true;
+    if (instance->getMemberVal<ID>(S_MEMBER_ID, &ok) == 0 && !ok)
+    {
+        unsigned newId = pimpl->variables.size();
+        for (auto& entry : pimpl->variables)
+        {
+            bool ok = true;
+            auto id = entry.getMemberVal<ID>(S_MEMBER_ID, &ok);
+            if (!ok) id = 0;
+
+            newId = std::max(newId, id + 1);
+        }
+
+        instance->setMemberVal(S_MEMBER_ID, qulonglong{newId});
+    }
+
     return true;
 }
 
@@ -146,7 +175,19 @@ GraphUserVariables::value(QString const& key) const
     auto iter = pimpl->variables.findEntry(key);
     if (iter == pimpl->variables.end()) return {};
 
-    return iter->getMemberValToVariant(S_MEMBER);
+    return iter->getMemberValToVariant(S_MEMBER_VALUE);
+}
+
+GraphUserVariables::ID
+GraphUserVariables::id(QString const& key) const
+{
+    auto iter = pimpl->variables.findEntry(key);
+    if (iter == pimpl->variables.end()) return {};
+
+    bool ok = true;
+    ID value = iter->getMemberVal<ID>(S_MEMBER_ID, &ok);
+
+    return ok ? value : 0;
 }
 
 QStringList
@@ -177,7 +218,7 @@ GraphUserVariables::visit(std::function<void (const QString&, const QVariant&)> 
 {
     for (GtPropertyStructInstance& entry : pimpl->variables)
     {
-        f(entry.ident(), entry.getMemberValToVariant(S_MEMBER));
+        f(entry.ident(), entry.getMemberValToVariant(S_MEMBER_VALUE));
     }
 }
 
@@ -200,4 +241,12 @@ GraphUserVariables::mergeWith(GraphUserVariables& other)
     });
 
     other.clear();
+}
+
+void
+GraphUserVariables::onObjectDataMerged()
+{
+    GtObject::onObjectDataMerged();
+
+    emit variablesUpdated();
 }

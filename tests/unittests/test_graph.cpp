@@ -231,6 +231,25 @@ TEST(Graph, connection_model_iterate_over_connected_nodes_by_port)
     EXPECT_EQ(std::distance(riPort.begin(), riPort.end()), 2);
 }
 
+TEST(Graph, connection_model_iterate_over_all_connections)
+{
+    Graph graph;
+
+    auto& conModel = graph.connectionModel();
+
+    EXPECT_EQ(conModel.iterateConnections().size(), 0);
+    EXPECT_EQ(graph.connections().size(), 0);
+
+    test::buildLinearGraph(graph);
+
+    EXPECT_EQ(conModel.iterateConnections().size(), graph.connections().size());
+
+    graph.deleteConnection(*conModel.iterateConnections().begin());
+
+    EXPECT_EQ(conModel.iterateConnections().size(), graph.connections().size());
+}
+
+
 struct IntProxy
 {
     using value_type = int;

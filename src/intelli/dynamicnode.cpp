@@ -121,6 +121,9 @@ DynamicNode::DynamicNode(QString const& modelName,
     connect(this, &Node::portAboutToBeDeleted,
             this, &DynamicNode::onPortDeleted,
             Qt::UniqueConnection);
+    connect(this, &Node::portChanged,
+            this, &DynamicNode::onPortChanged,
+            Qt::UniqueConnection);
 
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
     {
@@ -295,6 +298,38 @@ DynamicNode::onPortDeleted(PortType type, PortIndex idx)
 }
 
 void
+DynamicNode::onPortChanged(PortId portId)
+{
+    PortType type = portType(portId);
+    assert(type != PortType::NoType);
+
+    PortIndex portIdx = portIndex(type, portId);
+    if (!isDynamicPort(type, portIdx)) return;
+
+    PortInfo* port = this->port(portId);
+
+    GtPropertyStructContainer& dynamicPorts = this->dynamicPorts(type);
+
+    size_t idx = portIdx - offset(type);
+    assert(idx < dynamicPorts.size());
+
+    GtPropertyStructInstance* entry = propertyAt(&dynamicPorts, idx);
+    assert(entry);
+
+    auto ignoreChanged = utils::ignoreSignal(
+        &dynamicPorts, &GtPropertyStructContainer::entryChanged,
+        this, &DynamicNode::onPortEntryChanged
+    );
+    Q_UNUSED(ignoreChanged);
+
+    entry->setMemberVal(S_PORT_ID, portId.value());
+    entry->setMemberVal(S_PORT_TYPE, port->typeId);
+    entry->setMemberVal(S_PORT_CAPTION, port->caption);
+    entry->setMemberVal(S_PORT_CAPTION_VISIBLE, port->captionVisible);
+    entry->setMemberVal(S_PORT_OPTIONAL, port->optional);
+}
+
+void
 DynamicNode::onPortEntryAdded(int idx)
 {
     auto const makeError = [](){
@@ -388,7 +423,8 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
     PortInfo* port = this->port(portId);
     if (!port)
     {
-        gtWarning() << tr("Updating dynamic port entry failed! (Port idx '%1' not found)")
+        gtWarning() << tr("Updating dynamic port entry failed! "
+                          "(Port idx '%1' not found)")
                            .arg(idx);
         return;
     }
@@ -420,6 +456,12 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
         insertPort(type, std::move(updatedPort), idx);
         return;
     }
+
+    auto ignoreChanged = utils::ignoreSignal(
+        this, &Node::portChanged,
+        this, &DynamicNode::onPortChanged
+    );
+    Q_UNUSED(ignoreChanged);
 
     emit portChanged(port->id());
 }

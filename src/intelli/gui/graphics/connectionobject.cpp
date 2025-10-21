@@ -26,11 +26,11 @@ constexpr QPointF s_connection_distance{5, 5};
 using namespace intelli;
 
 ConnectionGraphicsObject::ConnectionGraphicsObject(QGraphicsScene& scene,
-                                                   Connection* object,
+                                                   Graph* graph,
                                                    ConnectionId connection,
                                                    NodeGraphicsObject const* outNodeObj,
                                                    NodeGraphicsObject const* inNodeObj) :
-    m_object(object),
+    m_graph(graph),
     m_outNode(outNodeObj),
     m_inNode(inNodeObj),
     m_connection(connection)
@@ -40,7 +40,7 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(QGraphicsScene& scene,
     setAcceptHoverEvents(true);
 
     // object ptr should be valid if the connection is valid
-    assert((!!m_object) == !isDraft());
+    assert((!!m_graph) == !isDraft());
     // if connection is draft only node should be valid
     assert(((!!m_outNode) ^ (!!m_inNode)) == isDraft());
 
@@ -95,12 +95,13 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(QGraphicsScene& scene,
 
 std::unique_ptr<ConnectionGraphicsObject>
 ConnectionGraphicsObject::makeConnection(QGraphicsScene& scene,
-                                         Connection& object,
+                                         Graph& graph,
+                                         ConnectionId conId,
                                          NodeGraphicsObject const& outNodeObj,
                                          NodeGraphicsObject const& inNodeObj)
 {
     auto obj = new ConnectionGraphicsObject(
-        scene, &object, object.connectionId(), &outNodeObj, &inNodeObj
+        scene, &graph, conId, &outNodeObj, &inNodeObj
     );
     return std::unique_ptr<ConnectionGraphicsObject>{obj};
 }
@@ -126,7 +127,8 @@ bool
 ConnectionGraphicsObject::deleteObject()
 {
     if (isDraft()) return false;
-    delete m_object;
+    assert(m_graph);
+    m_graph->deleteConnection(m_connection);
     return true;
 }
 
@@ -134,19 +136,6 @@ bool
 ConnectionGraphicsObject::isDraft() const
 {
     return connectionId().isDraft();
-}
-
-Connection*
-ConnectionGraphicsObject::connection()
-{
-    assert(m_object && !isDraft());
-    return m_object;
-}
-
-Connection const*
-ConnectionGraphicsObject::connection() const
-{
-    return const_cast<ConnectionGraphicsObject*>(this)->connection();
 }
 
 QRectF
@@ -353,7 +342,7 @@ ConnectionGraphicsObject::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         if (reverse) conId.reverse();
 
         auto* graph = Graph::accessGraph(object->node());
-        if (!graph || !graph->canAppendConnections(conId)) continue;
+        if (!graph || !graph->canAppendConnection(conId)) continue;
 
         QPointF endPoint = calcEndPoint(object, hit.type, hit.port);
         setEndPoint(invert(draftType), endPoint);
@@ -401,7 +390,7 @@ ConnectionGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         if (reverse) conId.reverse();
 
         auto* graph = Graph::accessGraph(object->node());
-        if (!graph || !graph->canAppendConnections(conId)) continue;
+        if (!graph || !graph->canAppendConnection(conId)) continue;
 
         event->accept();
 

@@ -202,7 +202,7 @@ private slots:
 
     void onNodeDoubleClicked(NodeGraphicsObject* sender);
 
-    void onConnectionAppended(Connection* con);
+    void onConnectionAppended(ConnectionId conId);
 
     void onConnectionDeleted(ConnectionId conId);
 

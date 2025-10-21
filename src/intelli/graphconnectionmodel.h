@@ -45,7 +45,14 @@ struct end_iterator<true, Container>
 
 /**
  * @brief Iterator wrapper class that can be used to alter the behavior
- * (e.g. return type) of iterators.
+ * of iterators. Proxy objects can alter the return value of the iterator and
+ * the "next" iterator.
+ *
+ * The proxy object must implement
+ *  - `init(base_iterator)` method
+ *  - `get(base_iterator)` method that returns a reference or value
+ *  - `advance(base_iterator)` method that advances the base iterator to the
+ *  next valid position.
  */
 template <typename Iterator, typename Proxy>
 class proxy_iterator
@@ -114,14 +121,18 @@ struct DefaultProxy
 };
 
 /**
- * @brief Helper struct to instantiate a begin and end iterator over a
- * given range. Adds methods for accessing size and allows reverting iterator
- * directions if its supported
+ * @brief Helper struct to instantiates a begin and end iterator for a
+ * given range and installs the proxy object. Adds methods for accessing the
+ * size of the range and allows reverting iterator directions if its supported
+ * by proxy object.
+ *
+ * The proxy object can alter the return value of the iterator and the "next"
+ * iterator.
  */
 template <typename Iterator, typename Proxy>
-struct iterator_instantiator
+struct proxy_iterable
 {
-    iterator_instantiator(Iterator b_ = {}, Iterator e_ = {}, Proxy p_ = {}) :
+    proxy_iterable(Iterator b_ = {}, Iterator e_ = {}, Proxy p_ = {}) :
         b(std::move(b_)), e(std::move(e_)), p{std::move(p_)}
     {}
 
@@ -135,7 +146,7 @@ struct iterator_instantiator
 
     auto reverse() const {
         using reversed_type = typename Iterator::reversed_type;
-        return iterator_instantiator<reversed_type, Proxy>{
+        return proxy_iterable<reversed_type, Proxy>{
             b.reverse(), e.reverse(), p
         };
     }
@@ -147,6 +158,10 @@ private:
     Proxy p;
 };
 
+template <typename Iterator, typename Proxy>
+using iterator_instantiator [[deprecated("Use `proxy_iterable` instead")]]
+    = proxy_iterable<Iterator, Proxy>;
+
 /**
  * @brief Helper method that instantiates an iterable object and installs a
  * proxy object on the begin and end iterators.
@@ -154,7 +169,7 @@ private:
 template <typename Proxy, typename Iterator>
 inline auto makeProxy(Iterator begin, Iterator end, Proxy p = {})
 {
-    return iterator_instantiator<Iterator, Proxy>{
+    return proxy_iterable<Iterator, Proxy>{
         std::move(begin), std::move(end), std::move(p)
     };
 }
@@ -272,7 +287,7 @@ struct ConnectionData
     /**
      * @brief The base_iterator struct. Defines a basic iterator for
      * `ConnectionData` that takes a strategy object to specialize the iterating
-     * hebavior.
+     * behavior.
      */
     template <typename Strategy, bool Reversed = false>
     struct base_iterator
@@ -521,7 +536,7 @@ struct ConnectionData
     auto iterate(PortType type) const
     {
         auto& p = ports(type);
-        return iterator_instantiator<base_iterator<IterateOneSide>, ConnectionDetailProxy>{
+        return proxy_iterable<base_iterator<IterateOneSide>, ConnectionDetailProxy>{
             { this, p.begin(), p.end(), PortType::In }
         };
     }
@@ -533,7 +548,7 @@ struct ConnectionData
     auto iterate() const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<base_iterator<IterateBothSides>, ConnectionDetailProxy>{
+        return proxy_iterable<base_iterator<IterateBothSides>, ConnectionDetailProxy>{
             { this, p.begin(), p.end(), PortType::In }
         };
     }
@@ -549,7 +564,7 @@ struct ConnectionData
     auto iterate(PortId portId, PortType type) const
     {
         auto& p = ports(type);
-        return iterator_instantiator<base_iterator<IterateByPortOneSide>, ConnectionDetailProxy>{
+        return proxy_iterable<base_iterator<IterateByPortOneSide>, ConnectionDetailProxy>{
             { this, p.begin(), p.end(), type, { portId } }
         };
     }
@@ -564,7 +579,7 @@ struct ConnectionData
     auto iterate(PortId portId) const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<base_iterator<IterateByPortBothSides>, ConnectionDetailProxy>{
+        return proxy_iterable<base_iterator<IterateByPortBothSides>, ConnectionDetailProxy>{
             { this, p.begin(), p.end(), PortType::In, { portId } }
         };
     }
@@ -602,7 +617,7 @@ struct ConnectionData
     auto iterateConnections(PortType type) const
     {
         auto& p = ports(type);
-        return iterator_instantiator<base_iterator<IterateOneSide>, ConnectionIdProxy>{
+        return proxy_iterable<base_iterator<IterateOneSide>, ConnectionIdProxy>{
             { this, p.begin(), p.end(), type }
         };
     }
@@ -615,7 +630,7 @@ struct ConnectionData
     auto iterateConnections() const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<base_iterator<IterateBothSides>, ConnectionIdProxy>{
+        return proxy_iterable<base_iterator<IterateBothSides>, ConnectionIdProxy>{
             { this, p.begin(), p.end(), PortType::In }
         };
     }
@@ -631,7 +646,7 @@ struct ConnectionData
     auto iterateConnections(PortId portId, PortType type) const
     {
         auto& p = ports(type);
-        return iterator_instantiator<base_iterator<IterateByPortOneSide>, ConnectionIdProxy>{
+        return proxy_iterable<base_iterator<IterateByPortOneSide>, ConnectionIdProxy>{
             { this, p.begin(), p.end(), type, { portId } }
         };
     }
@@ -645,7 +660,7 @@ struct ConnectionData
     auto iterateConnections(PortId portId) const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<base_iterator<IterateByPortBothSides>, ConnectionIdProxy>{
+        return proxy_iterable<base_iterator<IterateByPortBothSides>, ConnectionIdProxy>{
             { this, p.begin(), p.end(), PortType::In, IterateByPortBothSides{ portId } }
         };
     }
@@ -681,7 +696,7 @@ struct ConnectionData
     auto iterateNodes(PortType type) const
     {
         auto& p = ports(type);
-        return iterator_instantiator<base_iterator<IterateOneSide>, NodeIdProxy>{
+        return proxy_iterable<base_iterator<IterateOneSide>, NodeIdProxy>{
             { this, p.begin(), p.end(), type }
         };
     }
@@ -694,7 +709,7 @@ struct ConnectionData
     auto iterateNodes() const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<base_iterator<IterateBothSides>, NodeIdProxy>{
+        return proxy_iterable<base_iterator<IterateBothSides>, NodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In }
         };
     }
@@ -711,7 +726,7 @@ struct ConnectionData
     auto iterateNodes(PortId portId, PortType type) const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<base_iterator<IterateByPortOneSide>, NodeIdProxy>{
+        return proxy_iterable<base_iterator<IterateByPortOneSide>, NodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In, { portId } }
         };
     }
@@ -726,7 +741,7 @@ struct ConnectionData
     auto iterateNodes(PortId portId) const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<base_iterator<IterateByPortBothSides>, NodeIdProxy>{
+        return proxy_iterable<base_iterator<IterateByPortBothSides>, NodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In, { portId } }
         };
     }
@@ -773,7 +788,7 @@ struct ConnectionData
     auto iterateUniqueNodes(PortType type) const
     {
         auto& p = ports(type);
-        return iterator_instantiator<base_iterator<IterateOneSide>, UniqueNodeIdProxy>{
+        return proxy_iterable<base_iterator<IterateOneSide>, UniqueNodeIdProxy>{
             { this, p.begin(), p.end(), type }
         };
     }
@@ -786,7 +801,7 @@ struct ConnectionData
     auto iterateUniqueNodes() const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<base_iterator<IterateBothSides>, UniqueNodeIdProxy>{
+        return proxy_iterable<base_iterator<IterateBothSides>, UniqueNodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In }
         };
     }
@@ -804,7 +819,7 @@ struct ConnectionData
     auto iterateUniqueNodes(PortId portId, PortType type) const
     {
         auto& p = ports(type);
-        return iterator_instantiator<base_iterator<IterateByPortOneSide>, UniqueNodeIdProxy>{
+        return proxy_iterable<base_iterator<IterateByPortOneSide>, UniqueNodeIdProxy>{
             { this, p.begin(), p.end(), type, { portId } }
         };
     }
@@ -819,7 +834,7 @@ struct ConnectionData
     auto iterateUniqueNodes(PortId portId) const
     {
         auto& p = ports(PortType::In);
-        return iterator_instantiator<base_iterator<IterateByPortBothSides>, UniqueNodeIdProxy>{
+        return proxy_iterable<base_iterator<IterateByPortBothSides>, UniqueNodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In, { portId } }
         };
     }
@@ -923,7 +938,7 @@ public:
     auto iterateNodeIds() const
     {
         using Iter = decltype(m_data.keyBegin());
-        return iterator_instantiator<Iter, NodeIdProxy>{
+        return proxy_iterable<Iter, NodeIdProxy>{
             m_data.keyBegin(), m_data.keyEnd()
         };
     }
@@ -953,11 +968,11 @@ public:
      */
     auto iterateNodes() const
     {
-        return iterator_instantiator<const_iterator, NodeProxy<Node const>>{begin(), end()};
+        return proxy_iterable<const_iterator, NodeProxy<Node const>>{begin(), end()};
     }
     auto iterateNodes()
     {
-        return iterator_instantiator<iterator, NodeProxy<Node>>{begin(), end()};
+        return proxy_iterable<iterator, NodeProxy<Node>>{begin(), end()};
     }
 
     /**
@@ -995,6 +1010,80 @@ public:
             return R{};
         }
         return iter->iterateConnections(std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Proxy object that iterates over all outgoing connections for each
+     * entry in this connection model and returns the connection id.
+     */
+    struct ModelWideConnectionIdProxy
+    {
+        using value_type = ConnectionId_t<NodeId_t>;
+        using reference  = value_type;
+        using pointer    = value_type;
+
+        /// pointer to model
+        ConnectionModel_t<NodeId_t> const* model{};
+        /// end iterator of model (model.end())
+        const_iterator modelEnd{};
+
+        /// internal iterator type (reused `ConnectionData::iterateConnections`)
+        using ConnectionIdIter = decltype(
+            std::declval<decltype(model)>()
+                ->iterateConnections(NodeId(0), PortType::Out).begin());
+
+        /// iter that iterates over the outgoing connections of an entry
+        ConnectionIdIter connectionsIter{};
+        /// iter that indicates the end of outgoing connections of an entry
+        ConnectionIdIter connectionsEnd{};
+
+        template <typename Iter>
+        void init(Iter& modelIter)
+        {
+            if (modelIter == modelEnd) return;
+
+            // reuse `iterateConnections`
+            auto cons = (*modelIter).iterateConnections(PortType::Out);
+            connectionsIter = cons.begin();
+            connectionsEnd  = cons.end();
+
+            // node may not have any outgoing connections
+            if (connectionsIter == connectionsEnd) advance(modelIter);
+        }
+
+        template <typename Iter>
+        reference get(Iter&) { return *connectionsIter; }
+
+        template <typename Iter>
+        void advance(Iter& modelIter)
+        {
+            if (modelIter == modelEnd) return;
+
+            // iterate over outgoing connections
+            if (connectionsIter != connectionsEnd) ++connectionsIter;
+
+            if (connectionsIter == connectionsEnd)
+            {
+                // finished iterating over outgoing connections for the current
+                // entry -> advance to next entry
+                ++modelIter;
+                return init(modelIter);
+            }
+        }
+    };
+
+    /**
+     * @brief Iterates over all outgoing connections in the connection model.
+     * Since ingoing connections are the same as outgoing connection all
+     * connections are visited.
+     *
+     * Note: The order depends on `begin()` and `end()` and may appear random.
+     */
+    auto iterateConnections() const
+    {
+        return proxy_iterable<const_iterator, ModelWideConnectionIdProxy>{
+            begin(), end(), { this, end() }
+        };
     }
 
     /**

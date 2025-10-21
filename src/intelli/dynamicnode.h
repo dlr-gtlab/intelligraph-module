@@ -186,6 +186,12 @@ private slots:
     void onPortDeleted(PortType type, PortIndex idx);
 
     /**
+     * @brief Updates the property container entry for the changed port
+     * @param portId
+     */
+    void onPortChanged(PortId portId);
+
+    /**
      * @brief Inserts the port described by the property container entry to
      * the node
      * @param idx

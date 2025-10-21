@@ -189,15 +189,13 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
         };
     }
 
-    auto connection = std::make_unique<Connection>();
-    connection->setOutNodeId(from.id());
-    connection->setOutPort(from.portId(PortType::Out, outIdx));
-    connection->setInNodeId(to.id());
-    connection->setInPort(to.portId(PortType::In, inIdx));
+    ConnectionId conId{};
+    conId.outNodeId = from.id();
+    conId.outPort = from.portId(PortType::Out, outIdx);
+    conId.inNodeId = to.id();
+    conId.inPort = to.portId(PortType::In, inIdx);
 
-    auto conId = connection->connectionId();
-
-    if (!pimpl->graph->appendConnection(std::move(connection)))
+    if (!pimpl->graph->appendConnection(conId))
     {
         throw std::logic_error{
             buildError() +
