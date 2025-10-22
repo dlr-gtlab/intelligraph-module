@@ -19,7 +19,6 @@
 #include <intelli/gui/graphscenedata.h>
 #include <intelli/gui/graphics/nodeevalstateobject.h>
 #include <intelli/gui/style.h>
-#include <intelli/private/node_impl.h>
 #include <intelli/nodedatafactory.h>
 
 #include <gt_application.h>
@@ -32,34 +31,9 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsScene>
+#include <QApplication>
 
 using namespace intelli;
-
-// proxy widget to select node when clicking widget
-class NodeGraphicsObject::NodeProxyWidget : public QGraphicsProxyWidget
-{
-public:
-
-    using QGraphicsProxyWidget::QGraphicsProxyWidget;
-
-protected:
-
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) override
-    {
-        if (!isSelected() && !event->modifiers().testFlag(Qt::ControlModifier))
-        {
-            auto* scene = this->scene();
-            assert(scene);
-            scene->clearSelection();
-        }
-
-        assert(parentItem());
-        parentItem()->setSelected(true);
-
-        return QGraphicsProxyWidget::mousePressEvent(event);
-    }
-
-};
 
 struct NodeGraphicsObject::Impl
 {
@@ -68,7 +42,7 @@ struct NodeGraphicsObject::Impl
     /// Associated node
     QPointer<Node> node;
     /// Central widget
-    QPointer<QGraphicsProxyWidget> proxyWidget;
+    QPointer<QGraphicsWidget> centralWidget;
     /// ui data
     std::unique_ptr<NodeUIData> uiData;
     /// Geometry
@@ -106,17 +80,18 @@ struct NodeGraphicsObject::Impl
     updateWidgetPalette(NodeGraphicsObject* o)
     {
         assert(o);
+        assert(o->scene());
+        assert(o->scene()->style());
 
-        if (!o->pimpl->proxyWidget) return;
-        QWidget* w = o->pimpl->proxyWidget->widget();
-        if (!w) return;
+        if (!o->pimpl->centralWidget) return;
+        QGraphicsWidget* w = o->pimpl->centralWidget;
 
-        gt::gui::applyThemeToWidget(w);
+        w->setStyle(qApp->style());
+        w->setPalette(gt::gui::currentTheme());
 
         QPalette p = w->palette();
         p.setColor(QPalette::Window, o->pimpl->painter->backgroundColor());
         w->setPalette(p);
-        w->setVisible(!o->isCollapsed());
     }
 
 }; // struct Impl;
@@ -144,9 +119,9 @@ NodeGraphicsObject::NodeGraphicsObject(QGraphicsScene& scene,
 
     setPos(pimpl->node->pos());
 
-    embedCentralWidget();
-
     scene.addItem(this);
+
+    embedCentralWidget();
 
     // update theme
     connect(gtApp, &GtApplication::themeChanged, this, [this](){
@@ -230,8 +205,7 @@ NodeGraphicsObject::uiData() const
 bool
 NodeGraphicsObject::hasResizeHandle() const
 {
-    return pimpl->node->nodeFlags() & IsResizableMask &&
-           pimpl->proxyWidget && pimpl->proxyWidget->widget();
+    return pimpl->node->nodeFlags() & IsResizableMask && pimpl->centralWidget;
 }
 
 GraphicsObject::DeletableFlag
@@ -276,9 +250,9 @@ NodeGraphicsObject::boundingRect() const
 QRectF
 NodeGraphicsObject::widgetSceneBoundingRect() const
 {
-    if (!pimpl->proxyWidget || !pimpl->proxyWidget->widget()) return {};
+    if (!pimpl->centralWidget || !pimpl->centralWidget) return {};
 
-    return pimpl->proxyWidget->sceneBoundingRect();
+    return pimpl->centralWidget->sceneBoundingRect();
 }
 
 QPainterPath
@@ -291,7 +265,7 @@ NodeGraphicsObject::shape() const
 QGraphicsWidget*
 NodeGraphicsObject::centralWidget()
 {
-    return pimpl->proxyWidget.data();
+    return pimpl->centralWidget.data();
 }
 
 QGraphicsWidget const*
@@ -328,8 +302,8 @@ NodeGraphicsObject::commitPosition()
 void
 NodeGraphicsObject::embedCentralWidget()
 {
-    auto const makeWidget = [this]() -> std::unique_ptr<QWidget> {
-        auto factory = pimpl->node->pimpl->widgetFactory;
+    auto const makeWidget = [this]() -> std::unique_ptr<QGraphicsWidget> {
+        auto factory = uiData().widgetFactory();
         if (!factory) return nullptr;
 
         auto widget = factory(*pimpl->node);
@@ -341,7 +315,7 @@ NodeGraphicsObject::embedCentralWidget()
             // resize only the adequate directions
             if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
             {
-                size.setHeight(widget->minimumSizeHint().height());
+                size.setHeight(widget->size().height());
             }
             widget->resize(size);
         }
@@ -352,10 +326,10 @@ NodeGraphicsObject::embedCentralWidget()
     pimpl->geometry->recomputeGeometry();
 
     // we may have to reembedd the widget
-    if (pimpl->proxyWidget)
+    if (pimpl->centralWidget)
     {
-        pimpl->proxyWidget->deleteLater();
-        pimpl->proxyWidget = nullptr;
+        pimpl->centralWidget->deleteLater();
+        pimpl->centralWidget = nullptr;
     }
 
     if (auto w = makeWidget())
@@ -364,38 +338,62 @@ NodeGraphicsObject::embedCentralWidget()
 
         pimpl->geometry->setWidget(w.get());
 
-        pimpl->proxyWidget = new NodeProxyWidget(this);
-        pimpl->proxyWidget->setContentsMargins(0, 0, 0, 0);
-        pimpl->proxyWidget->setWidget(w.release());
-        pimpl->proxyWidget->setZValue(style::zValue(style::ZValue::NodeWidget));
+        pimpl->centralWidget = w.release();
+        pimpl->centralWidget->setParentItem(this);
+        pimpl->centralWidget->installSceneEventFilter(this);
+        pimpl->centralWidget->setContentsMargins(0, 0, 0, 0);
+        pimpl->centralWidget->setZValue(style::zValue(style::ZValue::NodeWidget));
 
         Impl::updateWidgetPalette(this);
 
         // update node's size if widget changes size
-        connect(pimpl->proxyWidget, &QGraphicsWidget::geometryChanged,
+        connect(pimpl->centralWidget, &QGraphicsWidget::geometryChanged,
                 this, [this](){
             if (state() == State::Resizing) return;
 
-            if (pimpl->proxyWidget->widget() &&
+            if (pimpl->centralWidget &&
                 pimpl->node->nodeFlags() & IsResizableMask)
             {
-                pimpl->node->setSize(pimpl->proxyWidget->widget()->size());
+                QSize size = pimpl->centralWidget->size().toSize();
+                if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
+                {
+                    size.setHeight(0);
+                }
+                pimpl->node->setSize(size);
             }
             Impl::prepareGeometryChange(this).finalize();
             emit objectResized(this);
         });
 
-        // update size
+        // update widget's size if node changes size
         connect(pimpl->node, &Node::nodeSizeChanged,
-                pimpl->proxyWidget, [this](){
-            Node const* node = pimpl->node;
-            QWidget* widget = pimpl->proxyWidget->widget();
+                pimpl->centralWidget, [this](){
+            if (sender() == pimpl->centralWidget) return; // avoid stack overflow
 
-            if (widget && node->size() != widget->size() && node->size().isValid())
+            Node const* node = pimpl->node;
+            auto widget = pimpl->centralWidget;
+
+            QSize size = node->size();
+            if (!size.isValid()) return;
+
+            if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
             {
+                size.setHeight(widget->size().toSize().height());
+            }
+
+            if (size.isValid() &&
+                size != widget->size().toSize())
+            {
+                gtDebug() << node->caption() << node->size() << "vs" << widget->size() << sender();
+
                 auto change = Impl::prepareGeometryChange(this);
                 Q_UNUSED(change);
-                widget->resize(node->size());
+
+                if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
+                {
+                    size.setHeight(widget->size().toSize().height());
+                }
+                widget->resize(size);
                 emit objectResized(this);
             }
         });
@@ -476,15 +474,20 @@ NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
     if (isResizing)
     {
-        assert(pimpl->proxyWidget);
+        assert(pimpl->centralWidget);
 
         auto cmd = gtApp->makeCommand(pimpl->node,
                                       tr("Node '%1' resized")
                                           .arg(pimpl->node->caption()));
         Q_UNUSED(cmd);
 
-        QWidget* w = pimpl->proxyWidget->widget();
-        pimpl->node->setSize(w->size());
+        QGraphicsWidget* w = pimpl->centralWidget;
+        QSize size = w->size().toSize();
+        if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
+        {
+            size.setHeight(0);
+        }
+        pimpl->node->setSize(size);
     }
 }
 
@@ -554,6 +557,29 @@ NodeGraphicsObject::contextMenuEvent(QGraphicsSceneContextMenuEvent* event)
 }
 
 bool
+NodeGraphicsObject::sceneEventFilter(QGraphicsItem* watched, QEvent* event)
+{
+    assert(watched);
+    if (watched != pimpl->centralWidget) return false;
+
+    if (event->type() != QEvent::GraphicsSceneMousePress) return false;
+
+    auto sceneEvent = static_cast<QGraphicsSceneMouseEvent*>(event);
+
+    // update selection if widget is clicked
+    if (!isSelected() && !sceneEvent->modifiers().testFlag(Qt::ControlModifier))
+    {
+        auto* scene = this->scene();
+        assert(scene);
+        scene->clearSelection();
+    }
+
+    setSelected(true);
+
+    return false; // we still want to let the item process the event
+}
+
+bool
 NodeGraphicsObject::canResize(QPointF localCoord)
 {
     return hasResizeHandle() && geometry().resizeHandleRect().contains(localCoord);
@@ -562,14 +588,14 @@ NodeGraphicsObject::canResize(QPointF localCoord)
 void
 NodeGraphicsObject::resizeBy(QSize diff)
 {
-    assert(pimpl->proxyWidget);
-    QWidget* w = pimpl->proxyWidget->widget();
+    assert(pimpl->centralWidget);
+    auto w = pimpl->centralWidget;
     assert(w);
 
     auto change = Impl::prepareGeometryChange(this);
     Q_UNUSED(change);
 
-    QSize oldSize = w->size();
+    QSize oldSize = w->size().toSize();
     oldSize.rwidth()  += diff.width();
     oldSize.rheight() += (pimpl->node->nodeFlags() & ResizableHOnly) ? 0 : diff.height();
 
@@ -597,9 +623,9 @@ void
 NodeGraphicsObject::updateChildItems()
 {
     pimpl->evalStateObject->setPos(pimpl->geometry->evalStateRect().topLeft());
-    if (pimpl->proxyWidget)
+    if (pimpl->centralWidget)
     {
-        pimpl->proxyWidget->setPos(pimpl->geometry->widgetPosition());
+        pimpl->centralWidget->setPos(pimpl->geometry->widgetPosition());
     }
     emit objectResized(this);
 }

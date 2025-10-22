@@ -18,6 +18,8 @@
 
 #include <functional>
 
+class QGraphicsWidget;
+
 namespace intelli
 {
 
@@ -35,6 +37,7 @@ class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
 
 public:
 
+    using WidgetFactoryFunction = std::function<std::unique_ptr<QGraphicsWidget> (Node&)>;
     using CustomDeleteFunctor = std::function<bool (Node*)>;
     using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
 
@@ -95,6 +98,13 @@ public:
      * @return icon
      */
     virtual QIcon displayIcon(Node const& node) const;
+
+    /**
+     * @brief centralWidgetFactory
+     * @param nodeObj
+     * @return
+     */
+    virtual WidgetFactoryFunction centralWidgetFactory(Node const& nodeObj) const;
 
     /**
      * @brief Returns the list of mdi items to open the object with
@@ -183,12 +193,16 @@ public:
     static bool isDynamicNode(Node* obj, PortType type, PortIndex idx);
 
     /**
+     * @brief Opens the Edit-User-Variables-Dialog for the root graph `obj`.
+     * @param obj Object must be root graph.
+     */
+    static void editUserVariables(GtObject* obj);
+
+    /**
      * @brief Returns the list of all port actions registered
      * @return
      */
     QList<PortUIAction> const& portActions() const;
-
-    static void editUserVariables(GtObject* obj);
 
 protected:
 

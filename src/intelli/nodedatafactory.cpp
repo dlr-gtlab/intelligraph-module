@@ -19,6 +19,13 @@ using namespace intelli;
 namespace
 {
 
+/// Struct to store a conversion between two types.
+struct Conversion
+{
+    QString targetTypeId;
+    ConversionFunction convert = nullptr;
+};
+
 inline auto
 findConversion(QMultiHash<TypeId, Conversion> const& hash,
                TypeId const& from,

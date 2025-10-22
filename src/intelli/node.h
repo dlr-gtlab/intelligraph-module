@@ -179,9 +179,9 @@ GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeBaseWidget();
 class GT_INTELLI_EXPORT Node : public GtObject
 {
     Q_OBJECT
-    
+
     friend class INode;
-    friend class NodeGraphicsObject;
+    friend class NodeUI; // temporary, for accessing widget factory
 
 public:
 
@@ -198,9 +198,9 @@ public:
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
-    using WidgetFactory =
+    using WidgetFactory [[deprecated]] =
         std::function<std::unique_ptr<QWidget>(Node& thisNode)>;
-    using WidgetFactoryNoArgs =
+    using WidgetFactoryNoArgs [[deprecated]] =
         std::function<std::unique_ptr<QWidget>()>;
 
     /// Enums inidacting of node event
@@ -673,7 +673,11 @@ protected:
      * intelli graphs.
      * @param factory Widget factory
      */
+    [[deprecated("Reimplement `NodeUI::centralWidgetFactory`. "
+                 "Make use of `QGraphicsProxyWidget` to embed a `QWidget`.")]]
     void registerWidgetFactory(WidgetFactory factory);
+    [[deprecated("Reimplement `NodeUI::centralWidgetFactory`. "
+                 "Make use of `QGraphicsProxyWidget` to embed a `QWidget`.")]]
     void registerWidgetFactory(WidgetFactoryNoArgs factory);
 
     /**

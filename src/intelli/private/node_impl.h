@@ -70,7 +70,7 @@ struct Node::Impl
     /// ports
     std::vector<PortInfo> inPorts, outPorts{};
     /// factory for creating the widget
-    WidgetFactory widgetFactory{};
+    WidgetFactory widgetFactory{} ;
     /// interface for accessing node data
     QPointer<NodeDataInterface> dataInterface{};
     /// node flags

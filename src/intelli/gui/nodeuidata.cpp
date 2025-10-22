@@ -17,7 +17,9 @@ struct NodeUIData::Impl
 {
     QIcon icon;
 
-    CustomDeleteFunction deleteFunction;
+    WidgetFactoryFunction widgetFactory{};
+
+    CustomDeleteFunction deleteFunction{};
 };
 
 NodeUIData::NodeUIData() :
@@ -44,6 +46,18 @@ bool
 NodeUIData::hasDisplayIcon() const
 {
     return !pimpl->icon.isNull();
+}
+
+NodeUIData::WidgetFactoryFunction const&
+NodeUIData::widgetFactory() const
+{
+    return pimpl->widgetFactory;
+}
+
+void
+NodeUIData::seWidgetFactory(WidgetFactoryFunction functor)
+{
+    pimpl->widgetFactory = std::move(functor);
 }
 
 NodeUIData::CustomDeleteFunction const&

@@ -38,8 +38,6 @@ class GT_INTELLI_EXPORT NodeGraphicsObject : public InteractableGraphicsObject
 {
     Q_OBJECT
 
-    class NodeProxyWidget;
-
 public:
 
     class Highlights;
@@ -242,6 +240,8 @@ protected:
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
 
     void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
+
+    bool sceneEventFilter(QGraphicsItem* watched, QEvent *event) override;
 
     /**
      * @brief Whether the object should start resizing.

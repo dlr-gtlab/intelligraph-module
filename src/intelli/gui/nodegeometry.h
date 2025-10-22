@@ -15,6 +15,7 @@
 
 #include <thirdparty/tl/optional.hpp>
 
+#include <QGraphicsWidget>
 #include <QPainterPath>
 #include <QPointer>
 
@@ -259,7 +260,7 @@ protected:
      * @brief Returns the associated widget. May be null.
      * @return Widget
      */
-    QWidget const* centralWidget() const;
+    QGraphicsWidget const* centralWidget() const;
 
     /**
      * @brief Override this method to define a custom collision shape
@@ -297,7 +298,7 @@ private:
     /// Graphic object
     NodeGraphicsObject const* m_object;
     /// Widget
-    QPointer<QWidget const> m_widget;
+    QPointer<QGraphicsWidget const> m_widget;
     /// cache for header rect
     mutable tl::optional<QRectF> m_headerRect;
     /// cache for body rect
@@ -319,7 +320,7 @@ private:
      * @brief Update the widget pointer.
      * @param widget Widget
      */
-    void setWidget(QPointer<QWidget const> widget);
+    void setWidget(QPointer<QGraphicsWidget const> widget);
 };
 
 } // namespace intelli

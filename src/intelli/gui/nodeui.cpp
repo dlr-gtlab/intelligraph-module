@@ -28,6 +28,7 @@
 #include "intelli/gui/graphics/nodeobject.h"
 #include "intelli/gui/widgets/graphuservariablesdialog.h"
 #include "intelli/private/utils.h"
+#include "intelli/private/node_impl.h" // temporary, needed for widget factory
 
 #include <gt_logging.h>
 
@@ -36,6 +37,7 @@
 #include <gt_inputdialog.h>
 #include <gt_application.h>
 
+#include <QGraphicsProxyWidget>
 #include <QMessageBox>
 #include <QFileInfo>
 #include <QFile>
@@ -220,6 +222,7 @@ NodeUI::uiData(Node const& node) const
 {
     auto uiData = std::unique_ptr<NodeUIData>(new NodeUIData{});
     uiData->setDisplayIcon(displayIcon(node));
+    uiData->seWidgetFactory(centralWidgetFactory(node));
     uiData->setCustomDeleteFunction(customDeleteAction(node));
     return uiData;
 }
@@ -285,6 +288,21 @@ NodeUI::displayIcon(Node const& node) const
                                  gt::gui::color::warningText);
     }
     return QIcon{};
+}
+
+NodeUI::WidgetFactoryFunction
+NodeUI::centralWidgetFactory(Node const& nodeObj) const
+{
+    if (!nodeObj.pimpl->widgetFactory) return {};
+
+    return [](Node& node) -> std::unique_ptr<QGraphicsWidget> {
+        std::unique_ptr<QWidget> widget = node.pimpl->widgetFactory(node);
+        if (!widget) return nullptr;
+
+        auto proxyWidget = std::make_unique<QGraphicsProxyWidget>();
+        proxyWidget->setWidget(widget.release());
+        return proxyWidget;
+    };
 }
 
 QStringList
@@ -421,16 +439,6 @@ NodeUI::canRenameNodeObject(GtObject* obj)
 }
 
 void
-NodeUI::editUserVariables(GtObject* obj)
-{
-    Graph* graph = toGraph(obj);
-    if (!isRootGraph(graph)) return;
-
-    GraphUserVariablesDialog dialog{*graph};
-    dialog.exec();
-}
-
-void
 NodeUI::renameNode(GtObject* obj)
 {
     auto* node = toNode(obj);
@@ -539,6 +547,16 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
     Q_UNUSED(cmd);
 
     node->removePort(portId);
+}
+
+void
+NodeUI::editUserVariables(GtObject* obj)
+{
+    Graph* graph = toGraph(obj);
+    if (!isRootGraph(graph)) return;
+
+    GraphUserVariablesDialog dialog{*graph};
+    dialog.exec();
 }
 
 void
