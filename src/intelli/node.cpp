@@ -11,6 +11,7 @@
 
 #include "intelli/nodedatafactory.h"
 #include "intelli/nodedatainterface.h"
+#include "intelli/graphuservariables.h"
 #include "intelli/exec/detachedexecutor.h"
 #include "intelli/private/node_impl.h"
 #include "intelli/private/utils.h"

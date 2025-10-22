@@ -9,6 +9,7 @@
 
 #include "test_helper.h"
 #include <intelli/memory.h>
+#include <intelli/graphuservariables.h>
 
 #include <gt_objectmemento.h>
 #include <gt_objectmementodiff.h>

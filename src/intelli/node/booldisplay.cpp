@@ -10,8 +10,6 @@
 #include <intelli/node/booldisplay.h>
 #include <intelli/data/bool.h>
 
-#include <intelli/gui/widgets/booldisplaywidget.h>
-
 using namespace intelli;
 
 BoolDisplayNode::BoolDisplayNode() :
@@ -26,34 +24,4 @@ BoolDisplayNode::BoolDisplayNode() :
 
     m_in = addInPort(makePort(typeId<BoolData>())
                          .setCaptionVisible(false));
-
-    registerWidgetFactory([this](){
-        using DisplayMode = BoolDisplayWidget::DisplayMode;
-
-        bool success = m_displayMode.registerEnum<DisplayMode>();
-        assert(success);
-
-        auto mode = m_displayMode.getEnum<DisplayMode>();
-
-        auto wPtr = std::make_unique<BoolDisplayWidget>(0, mode);
-        auto* w = wPtr.get();
-        w->setReadOnly(true);
-
-        auto updateWidget = [this, w](){
-            auto const& data = nodeData<BoolData>(m_in);
-            w->setValue(data ? data->value() : false);
-        };
-        auto const updateMode= [this, w]() {
-            w->setDisplayMode(m_displayMode.getEnum<DisplayMode>());
-            nodeChanged();
-        };
-
-        connect(this, &Node::inputDataRecieved, w, updateWidget);
-        connect(&m_displayMode, &GtAbstractProperty::changed, w, updateMode);
-
-        updateWidget();
-        updateMode();
-
-        return wPtr;
-    });
 }

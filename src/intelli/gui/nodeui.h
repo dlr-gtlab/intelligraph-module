@@ -37,10 +37,13 @@ class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
 
 public:
 
+    using GraphicsWidgetPtr = std::unique_ptr<QGraphicsWidget>;
+    using WidgetPtr = std::unique_ptr<QWidget>;
+
     using WidgetFactoryFunction =
-        std::function<std::unique_ptr<QGraphicsWidget> (NodeGraphicsObject&)>;
+        std::function<GraphicsWidgetPtr (NodeGraphicsObject&)>;
     using QWidgetFactoryFunction =
-        std::function<std::unique_ptr<QWidget> (Node&)>;
+        std::function<WidgetPtr (Node&)>;
 
     using CustomDeleteFunctor = std::function<bool (Node*)>;
     using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
@@ -105,13 +108,21 @@ public:
 
     /**
      * @brief Returns the widget factory for the given node object. The factory
-     * recieves an instance of `NodeGraphicsObject` as an argument that should
-     * be used
+     * recieves an instance of `NodeGraphicsObject` as an argument and should
+     * return a `QGraphicsWidget`. If a `QWidget` is needed either use
+     * `QGraphicsProxyWidget` or use `NodeUI::registerCentralWidgetFactory`
+     * instead.
      * @param node Node
      * @return Widget factory
      */
     virtual WidgetFactoryFunction centralWidgetFactory(Node const& node) const;
 
+    /**
+     * @brief Registers the widget factory for the objects of the given
+     * classname.
+     * @param className
+     * @param factory
+     */
     void registerCentralWidgetFactory(QString className, QWidgetFactoryFunction factory);
 
     /**

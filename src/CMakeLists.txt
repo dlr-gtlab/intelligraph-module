@@ -102,6 +102,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/exec/detachedexecutor.h
     intelli/exec/dummynodedatamodel.h
     intelli/node/abstractgroupprovider.h
+    intelli/node/binarydisplay.h intelli/node/binarydisplay.cpp
     intelli/node/booldisplay.h
     intelli/node/dummy.h
     intelli/node/existingdirectorysource.h
@@ -137,8 +138,9 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/connectionui.h
     intelli/gui/ui/guidataui.h
     intelli/gui/ui/graphcategoryui.h
-    intelli/gui/ui/logicnodeui.h
     intelli/gui/ui/packageui.h
+    intelli/gui/ui/node/boolnodeui.h intelli/gui/ui/node/boolnodeui.cpp
+    intelli/gui/ui/node/logicnodeui.h intelli/gui/ui/node/logicnodeui.cpp
     intelli/gui/graphics/commentobject.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/lineobject.h
@@ -234,7 +236,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/commentui.cpp
     intelli/gui/ui/connectionui.cpp
     intelli/gui/ui/guidataui.cpp
-    intelli/gui/ui/logicnodeui.cpp
     intelli/gui/ui/graphcategoryui.cpp
     intelli/gui/ui/packageui.cpp
     intelli/gui/graphics/commentobject.cpp
@@ -258,7 +259,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/stringselection.cpp
     intelli/property/uint.cpp
 
-    intelli/node/binarydisplay.h intelli/node/binarydisplay.cpp
 )
 
 target_link_libraries(GTlabIntelliGraph

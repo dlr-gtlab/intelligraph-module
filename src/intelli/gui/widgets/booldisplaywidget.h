@@ -10,12 +10,12 @@
 #ifndef GT_INTELLI_BOOLDISPLAYWIDGET_H
 #define GT_INTELLI_BOOLDISPLAYWIDGET_H
 
-#include <QWidget>
+#include <QGraphicsWidget>
 
 namespace intelli
 {
 
-class BoolDisplayWidget : public QWidget
+class BoolDisplayWidget : public QGraphicsWidget
 {
     Q_OBJECT
 
@@ -28,10 +28,7 @@ public:
     };
     Q_ENUM(DisplayMode);
 
-    explicit BoolDisplayWidget(QWidget* parent = nullptr) :
-        BoolDisplayWidget(false, DisplayMode::Button, parent)
-    {}
-    explicit BoolDisplayWidget(bool value, DisplayMode mode, QWidget* parent = nullptr);
+    explicit BoolDisplayWidget(bool value = false, DisplayMode mode = DisplayMode::Button);
 
     bool value();
 
@@ -53,11 +50,11 @@ signals:
 
 protected:
 
-    void mousePressEvent(QMouseEvent* event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
 
-    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
-    void paintEvent(QPaintEvent* event) override;
+    void paint(QPainter* painter, QStyleOptionGraphicsItem const*, QWidget*) override;
 
 private:
 

@@ -8,6 +8,7 @@
  */
 
 #include "intelli/node/input/graphuservariablesinput.h"
+#include "intelli/graphuservariables.h"
 #include "intelli/data/bool.h"
 #include "intelli/data/int.h"
 #include "intelli/data/double.h"

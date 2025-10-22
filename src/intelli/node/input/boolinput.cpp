@@ -10,8 +10,6 @@
 #include <intelli/node/input/boolinput.h>
 #include <intelli/data/bool.h>
 
-#include <intelli/gui/widgets/booldisplaywidget.h>
-
 using namespace intelli;
 
 BoolInputNode::BoolInputNode() :
@@ -31,37 +29,6 @@ BoolInputNode::BoolInputNode() :
 
     connect(&m_value, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
-
-    registerWidgetFactory([this]() {
-        using DisplayMode = BoolDisplayWidget::DisplayMode;
-
-        bool success = m_displayMode.registerEnum<DisplayMode>();
-        assert(success);
-
-        auto mode = m_displayMode.getEnum<DisplayMode>();
-
-        auto wPtr = std::make_unique<BoolDisplayWidget>(0, mode);
-        auto* w = wPtr.get();
-
-        auto const updateProp = [this, w]() {
-            if (w->value() != value()) setValue(w->value());
-        };
-        auto const updateWidget = [this, w]() {
-            w->setValue(value());
-        };
-        auto const updateMode= [this, w]() {
-            w->setDisplayMode(m_displayMode.getEnum<DisplayMode>());
-            emit nodeChanged();
-        };
-
-        connect(w, &BoolDisplayWidget::valueChanged, this, updateProp);
-        connect(&m_value, &GtAbstractProperty::changed, w, updateWidget);
-        connect(&m_displayMode, &GtAbstractProperty::changed, w, updateMode);
-
-        updateWidget();
-
-        return wPtr;
-    });
 }
 
 bool

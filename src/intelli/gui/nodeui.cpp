@@ -313,8 +313,8 @@ NodeUI::centralWidgetFactory(Node const& node) const
         proxyWidget->setWidget(widget.release());
 
         /// Update the palette of the widget
-        connect(&object, &NodeGraphicsObject::updateWidgetPalette,
-                w, [o = &object, w](){
+        QObject::connect(&object, &NodeGraphicsObject::updateWidgetPalette,
+                         w, [o = &object, w](){
             gt::gui::applyThemeToWidget(w);
 
             QPalette p = w->palette();

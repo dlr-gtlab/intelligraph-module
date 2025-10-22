@@ -15,7 +15,6 @@
 
 #include <gt_typetraits.h>
 #include <gt_object.h>
-#include <intelli/graphuservariables.h>
 
 #include <QWidget>
 
@@ -89,7 +88,7 @@ class INode;
 class Node;
 class NodeData;
 class NodeDataInterface;
-//class GraphUserVariables;
+class GraphUserVariables;
 
 namespace exec
 {
@@ -174,6 +173,7 @@ std::shared_ptr<T const> convert(NodeDataPtr data)
  * for widgets, that have trouble resizing correctly.
  * @return Widget pointer (never null)
  */
+[[deprecated]]
 GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeBaseWidget();
 
 class GT_INTELLI_EXPORT Node : public GtObject
@@ -677,11 +677,11 @@ protected:
      * intelli graphs.
      * @param factory Widget factory
      */
-    [[deprecated("Reimplement `NodeUI::centralWidgetFactory`. "
-                 "Make use of `QGraphicsProxyWidget` to embed a `QWidget`.")]]
+    [[deprecated("Reimplement `NodeUI::centralWidgetFactory` or use "
+                 "`NodeUI::registerCentralWidgetFactory` instead.")]]
     void registerWidgetFactory(WidgetFactory factory);
-    [[deprecated("Reimplement `NodeUI::centralWidgetFactory`. "
-                 "Make use of `QGraphicsProxyWidget` to embed a `QWidget`.")]]
+    [[deprecated("Reimplement `NodeUI::centralWidgetFactory` or use "
+                 "`NodeUI::registerCentralWidgetFactory` instead.")]]
     void registerWidgetFactory(WidgetFactoryNoArgs factory);
 
     /**
