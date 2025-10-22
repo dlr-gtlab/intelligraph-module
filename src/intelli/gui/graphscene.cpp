@@ -461,10 +461,10 @@ GraphScene::GraphScene(Graph& graph) :
     {
         onNodeAppended(node);
     }
-    auto const& connections = m_graph->connections();
-    for (auto* con : connections)
+    auto const& connections = m_graph->connectionModel().iterateConnections();
+    for (ConnectionId conId : connections)
     {
-        onConnectionAppended(con);
+        onConnectionAppended(conId);
     }
 
     // comments
@@ -1265,11 +1265,9 @@ GraphScene::onNodeDoubleClicked(NodeGraphicsObject* sender)
 }
 
 void
-GraphScene::onConnectionAppended(Connection* con)
+GraphScene::onConnectionAppended(ConnectionId conId)
 {
-    assert(con);
-
-    auto conId = con->connectionId();
+    assert(conId.isValid());
 
     // access nodes and ports
     auto* inNode  = nodeObject(conId.inNodeId);
@@ -1279,7 +1277,7 @@ GraphScene::onConnectionAppended(Connection* con)
     assert(outNode);
 
     auto entity = convert_to_unique_qptr<DirectDeleter>(
-        ConnectionGraphicsObject::makeConnection(*this, *con, *outNode, *inNode)
+        ConnectionGraphicsObject::makeConnection(*this, graph(), conId, *outNode, *inNode)
     );
     entity->setConnectionShape(m_connectionShape);
 
@@ -1344,12 +1342,12 @@ GraphScene::onFinalizeDraftConnection(ConnectionId conId)
 {
     Impl::clearHighlights(*this);
 
-    if (conId.isDraft() || !graph().canAppendConnections(conId)) return;
+    if (conId.isDraft() || !graph().canAppendConnection(conId)) return;
 
     auto cmd = gtApp->makeCommand(&graph(), tr("Append %1").arg(toString(conId)));
     Q_UNUSED(cmd);
 
-    graph().appendConnection(std::make_unique<Connection>(conId));
+    graph().appendConnection(conId);
 }
 
 void

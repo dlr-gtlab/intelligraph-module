@@ -11,13 +11,13 @@
 #define GT_INTELLI_CONNECTIONGRAPHICSOBJECT_H
 
 #include <intelli/memory.h>
-#include <intelli/connection.h>
 #include <intelli/gui/connectiongeometry.h>
 #include <intelli/gui/graphics/graphicsobject.h>
 
 namespace intelli
 {
 
+class Graph;
 class NodeGraphicsObject;
 
 /**
@@ -39,7 +39,8 @@ public:
 
     static std::unique_ptr<ConnectionGraphicsObject>
     makeConnection(QGraphicsScene& scene,
-                   Connection& object,
+                   Graph& graph,
+                   ConnectionId conId,
                    NodeGraphicsObject const& outNodeObj,
                    NodeGraphicsObject const& inNodeObj);
 
@@ -59,14 +60,6 @@ public:
      * @return Is a draft connection.
      */
     bool isDraft() const;
-
-    /**
-     * @brief Returns the associated connection object. May be null if the
-     * connection is a draft connection. Prefer to use `connectionId`.
-     * @return Connection object.
-     */
-    Connection* connection();
-    Connection const* connection() const;
 
     /**
      * @brief Bounding rect of this object
@@ -148,8 +141,8 @@ protected:
 
 private:
 
-    /// Pointer to connection object
-    QPointer<Connection> m_object;
+    /// Pointer to graph object
+    QPointer<Graph> m_graph;
     /// pointers to outNode and inNode i.e. the start and end node
     QPointer<NodeGraphicsObject const> m_outNode, m_inNode;
     /// Connection id
@@ -170,15 +163,14 @@ private:
      * `outNodeObj` or `inNodeObj` must be not null, else both objects must
      * not be null.
      * @param scene Scene this object will be added to
-     * @param object Connection object this object refers to. May be invalid
-     * if the connection is a draft.
+     * @param graph Graph object. May be invalid if the connection is a draft.
      * @param connection ConnectionId to render. May be partially invalid,
      * indicating a draft connection.
      * @param outNodeObj graphics object for the output side
      * @param inNodeObj graphics object for the output side
      */
     explicit ConnectionGraphicsObject(QGraphicsScene& scene,
-                                      Connection* object,
+                                      Graph* graph,
                                       ConnectionId connection,
                                       NodeGraphicsObject const* outNodeObj = {},
                                       NodeGraphicsObject const* inNodeObj = {});

@@ -210,7 +210,8 @@ public:
     QVector<NodeId> nodeIds() const;
     
     /**
-     * @brief Returns a list of all connections in this graph
+     * @brief Returns a list of all connections in this graph. Prefer
+     * `connectionModel().iterateConnections()`.
      * @return Connections
      */
     QList<Connection*> connections();
@@ -220,7 +221,7 @@ public:
      * @brief Returns a list of all connection ids in this graph
      * @return Connection ids
      */
-    [[deprecated]]
+    [[deprecated("Use `connectionModel().iterateConnections()` instead.")]]
     QVector<ConnectionId> connectionIds() const;
     
     /**
@@ -235,7 +236,7 @@ public:
     Node const* findNodeByUuid(NodeUuid const& uuid) const;
 
     /**
-     * @brief Attempts to finde a connection specified by the given connectionId
+     * @brief Attempts to find a connection specified by the given connectionId
      * @param conId Connection id
      * @return connection matched by conId (null if connection was not found)
      */
@@ -356,6 +357,8 @@ public:
      * @param conId Connection to chech
      * @return Can connect
      */
+    bool canAppendConnection(ConnectionId conId);
+    [[deprecated("Use `canAppendConnection` instead")]]
     bool canAppendConnections(ConnectionId conId);
 
     /**
@@ -588,7 +591,7 @@ signals:
      * @brief Emitted once a connection was appended
      * @param Pointer to connection object
      */
-    void connectionAppended(Connection* connection);
+    void connectionAppended(ConnectionId connectionId);
     void globalConnectionAppended(ConnectionUuid connectionUuid);
 
     /**

@@ -533,7 +533,7 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
     Node::PortInfo* port = node->port(portId);
     assert(port);
 
-    auto cmd = gtApp->makeCommand(graph,
+    auto cmd = gtApp->makeCommand(graph->rootGraph(),
                                   QStringLiteral("Deleting port '%1' of node '%2'")
                                       .arg(toString(*port), relativeNodePath(*node)));
     Q_UNUSED(cmd);

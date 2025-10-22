@@ -509,6 +509,12 @@ Graph::connectionUuid(ConnectionId conId) const
 }
 
 bool
+Graph::canAppendConnection(ConnectionId conId)
+{
+    return Impl::canAppendConnection(*this, conId);
+}
+
+bool
 Graph::canAppendConnections(ConnectionId conId)
 {
     return Impl::canAppendConnection(*this, conId);
@@ -638,7 +644,8 @@ Graph::appendConnection(Connection* connection)
     };
 
     // check if connection can be appended
-    if (!Impl::canAppendConnection(*this, conId, makeError, false)) return {};
+    constexpr bool silent = false;
+    if (!Impl::canAppendConnection(*this, conId, makeError, silent)) return {};
 
     // append connection to hierarchy
     if (!connectionGroup().appendChild(connection))
@@ -670,7 +677,7 @@ Graph::appendConnection(Connection* connection)
     appendGlobalConnection(connection, conId, *targetNode->node);
 
     // notify
-    emit connectionAppended(connection);
+    emit connectionAppended(conId);
 
     assert(targetNode->iterateConnections(conId.inPort).size() == 1);
 
@@ -1034,12 +1041,15 @@ Graph::restoreConnection(Connection* connection)
 
     if (!appendConnection(connection))
     {
+        bool success = false;
+
         // attempt to restore dummy connection
         if (DummyNode* inNode = qobject_cast<DummyNode*>(findNode(connection->inNodeId())))
         {
             if (!inNode->port(connection->inPort()))
             {
                 inNode->addInPort(PortInfo::customId(connection->inPort(), typeId<InvalidData>()));
+                success = true;
             }
         }
         if (DummyNode* outNode = qobject_cast<DummyNode*>(findNode(connection->outNodeId())))
@@ -1047,10 +1057,11 @@ Graph::restoreConnection(Connection* connection)
             if (!outNode->port(connection->outPort()))
             {
                 outNode->addOutPort(PortInfo::customId(connection->outPort(), typeId<InvalidData>()));
+                success = true;
             }
         }
 
-        appendConnection(std::move(ptr));
+        if (success) appendConnection(std::move(ptr));
     }
     ptr.release();
 }

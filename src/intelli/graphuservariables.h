@@ -11,6 +11,7 @@
 #define GT_INTELLI_GRAPHUSERVARIABLES_H
 
 #include "intelli/exports.h"
+#include "intelli/globals.h"
 
 #include <gt_platform.h>
 #include <gt_object.h>
@@ -31,6 +32,8 @@ class GT_INTELLI_EXPORT GraphUserVariables : public GtObject
     Q_OBJECT
 
 public:
+
+    using ID = typename PortId::value_type;
 
     Q_INVOKABLE
     GraphUserVariables(GtObject* parent = nullptr);
@@ -74,6 +77,20 @@ public:
     QVariant value(QString const& key) const;
 
     /**
+     * @brief Returns an id for the given key that is unique amongst all of its
+     * entries. This id is mostely intended for nodes that need a somewaht
+     * unqiue, numerical value for identifying keys.
+     *
+     * Note: When deleting an entry and adding a new entry, the ID of these
+     * entries may be the same, however all active entries are guranteed to have
+     * different ids.
+     * @param key Key
+     * @return ID. Invalid ids are zeroed.
+     */
+    GT_NO_DISCARD
+    ID id(QString const& key) const;
+
+    /**
      * @brief Returns all keys of the entries as a stringlist.
      * @return Keys
      */
@@ -108,6 +125,10 @@ public:
      * @param other Other
      */
     void mergeWith(GraphUserVariables& other);
+
+protected:
+
+    void onObjectDataMerged() override;
 
 signals:
 

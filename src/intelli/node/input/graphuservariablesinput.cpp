@@ -13,6 +13,8 @@
 #include "intelli/data/double.h"
 #include "intelli/data/string.h"
 
+#include <gt_utilities.h>
+
 #include <memory.h>
 
 using namespace intelli;
@@ -91,6 +93,8 @@ GraphUserVariablesInputNode::onObjectDataMerged()
 {
     DynamicNode::onObjectDataMerged();
 
+    updatePorts();
+
     emit triggerNodeEvaluation();
 }
 
@@ -117,26 +121,30 @@ GraphUserVariablesInputNode::updatePorts()
             Qt::UniqueConnection);
 
     QStringList keys = uv->keys();
+    QStringList keysCopy = keys;
 
     // remove invalid ports and update existing entries
     std::vector<PortInfo> portsCopy = this->ports(PortType::Out);
     for (PortInfo const& port : portsCopy)
     {
-        if (!uv->hasValue(port.caption))
+        QString const& key = port.caption;
+        PortId portId = PortId::fromValue(uv->id(port.caption));
+
+        if (!keys.contains(key) || portId != port.id())
         {
             bool success = removePort(port.id());
             assert(success);
             continue;
         }
 
-        keys.removeOne(port.caption);
+        keys.removeOne(key);
 
-        QVariant const& value = uv->value(port.caption);
+        QVariant const& value = uv->value(key);
         QString const& typeId = variantToTypeId(value.type());
         if (typeId != port.typeId)
         {
-            this->port(port.id())->typeId = variantToTypeId(value.type());
-            emit portChanged(port.id());
+            this->port(portId)->typeId = variantToTypeId(value.type());
+            emit portChanged(portId);
         }
     }
 
@@ -144,6 +152,16 @@ GraphUserVariablesInputNode::updatePorts()
     for (QString const& missingKey : qAsConst(keys))
     {
         QVariant const& value = uv->value(missingKey);
-        addOutPort(makePort(variantToTypeId(value.type())).setCaption(missingKey));
+
+        PortId portId = PortId::fromValue(uv->id(missingKey));
+        if (portId == 0) portId = invalid<PortId>();
+
+        PortInfo port = PortInfo::customId(portId, variantToTypeId(value.type()));
+
+        int index = keysCopy.indexOf(missingKey);
+        index = gt::clamp(index, -1, (int)ports(PortType::Out).size());
+
+        port.caption = missingKey;
+        insertOutPort(std::move(port), index);
     }
 }
