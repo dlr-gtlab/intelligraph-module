@@ -381,16 +381,20 @@ public:
     Position pos() const;
 
     /**
-     * @brief Sets size property. Does not trigger a resize of the widget
-     * @param pos new position
+     * @brief Sets size property. Emits `nodeSizeChanged` if size changed.
+     * If the flag `NodeFlag::ResizeHOnly` is enabled, only the width is saved.
+     * @param size new size
      */
     void setSize(QSize size);
 
     /**
-     * @brief size
-     * @return
+     * @brief Returns the size of the central widget.
+     * If the flag `NodeFlag::ResizeHOnly` is enabled, only the width is
+     * returned.
+     * @return Size (may be invalid)
      */
     QSize size() const;
+    QSize size(QSize fallback) const;
 
     /**
      * @brief Returns true if the node (id) is valid

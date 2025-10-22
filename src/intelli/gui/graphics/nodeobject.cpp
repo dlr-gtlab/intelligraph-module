@@ -23,7 +23,6 @@
 
 #include <gt_application.h>
 #include <gt_guiutilities.h>
-#include <gt_palette.h>
 
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
@@ -75,25 +74,6 @@ struct NodeGraphicsObject::Impl
         });
     }
 
-    /// Updates the palette of the widget
-    static inline void
-    updateWidgetPalette(NodeGraphicsObject* o)
-    {
-        assert(o);
-        assert(o->scene());
-        assert(o->scene()->style());
-
-        if (!o->pimpl->centralWidget) return;
-        QGraphicsWidget* w = o->pimpl->centralWidget;
-
-        w->setStyle(qApp->style());
-        w->setPalette(gt::gui::currentTheme());
-
-        QPalette p = w->palette();
-        p.setColor(QPalette::Window, o->pimpl->painter->backgroundColor());
-        w->setPalette(p);
-    }
-
 }; // struct Impl;
 
 NodeGraphicsObject::NodeGraphicsObject(QGraphicsScene& scene,
@@ -125,7 +105,7 @@ NodeGraphicsObject::NodeGraphicsObject(QGraphicsScene& scene,
 
     // update theme
     connect(gtApp, &GtApplication::themeChanged, this, [this](){
-        Impl::updateWidgetPalette(this);
+        emit updateWidgetPalette(QPrivateSignal());
         update();
     });
 
@@ -293,6 +273,13 @@ NodeGraphicsObject::geometry() const
     return *pimpl->geometry;
 }
 
+NodePainter const&
+NodeGraphicsObject::painter() const
+{
+    assert(pimpl->painter);
+    return *pimpl->painter;
+}
+
 void
 NodeGraphicsObject::commitPosition()
 {
@@ -306,18 +293,15 @@ NodeGraphicsObject::embedCentralWidget()
         auto factory = uiData().widgetFactory();
         if (!factory) return nullptr;
 
-        auto widget = factory(*pimpl->node);
+        auto widget = factory(*this);
         if (!widget) return nullptr;
 
-        auto size = pimpl->node->size();
-        if (pimpl->node->nodeFlags() & IsResizableMask && size.isValid())
+        auto widgetSize = widget->size().toSize();
+        auto nodeSize = pimpl->node->size(widgetSize);
+        if (pimpl->node->nodeFlags() & IsResizableMask)
         {
-            // resize only the adequate directions
-            if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
-            {
-                size.setHeight(widget->size().height());
-            }
-            widget->resize(size);
+            assert(nodeSize.isValid());
+            widget->resize(nodeSize);
         }
         return widget;
     };
@@ -344,7 +328,7 @@ NodeGraphicsObject::embedCentralWidget()
         pimpl->centralWidget->setContentsMargins(0, 0, 0, 0);
         pimpl->centralWidget->setZValue(style::zValue(style::ZValue::NodeWidget));
 
-        Impl::updateWidgetPalette(this);
+        emit updateWidgetPalette(QPrivateSignal());
 
         // update node's size if widget changes size
         connect(pimpl->centralWidget, &QGraphicsWidget::geometryChanged,
@@ -355,10 +339,6 @@ NodeGraphicsObject::embedCentralWidget()
                 pimpl->node->nodeFlags() & IsResizableMask)
             {
                 QSize size = pimpl->centralWidget->size().toSize();
-                if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
-                {
-                    size.setHeight(0);
-                }
                 pimpl->node->setSize(size);
             }
             Impl::prepareGeometryChange(this).finalize();
@@ -373,27 +353,17 @@ NodeGraphicsObject::embedCentralWidget()
             Node const* node = pimpl->node;
             auto widget = pimpl->centralWidget;
 
-            QSize size = node->size();
-            if (!size.isValid()) return;
+            QSize currentSize = widget->size().toSize();
+            QSize nodeSize = node->size(currentSize);
 
-            if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
+            if (nodeSize != currentSize)
             {
-                size.setHeight(widget->size().toSize().height());
-            }
-
-            if (size.isValid() &&
-                size != widget->size().toSize())
-            {
-                gtDebug() << node->caption() << node->size() << "vs" << widget->size() << sender();
+                assert(nodeSize.isValid());
 
                 auto change = Impl::prepareGeometryChange(this);
                 Q_UNUSED(change);
 
-                if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
-                {
-                    size.setHeight(widget->size().toSize().height());
-                }
-                widget->resize(size);
+                widget->resize(nodeSize);
                 emit objectResized(this);
             }
         });
@@ -483,10 +453,6 @@ NodeGraphicsObject::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
         QGraphicsWidget* w = pimpl->centralWidget;
         QSize size = w->size().toSize();
-        if (pimpl->node->nodeFlags() & NodeFlag::ResizableHOnly)
-        {
-            size.setHeight(0);
-        }
         pimpl->node->setSize(size);
     }
 }
@@ -662,7 +628,7 @@ NodeGraphicsObject::Highlights::setAsIncompatible()
 
     m_compatiblePorts.clear();
 
-    Impl::updateWidgetPalette(m_object);
+    emit m_object->updateWidgetPalette(QPrivateSignal());
 
     m_object->update();
 }
@@ -687,7 +653,10 @@ NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& typeId,
         m_compatiblePorts.append(port.id());
     }
 
-    if (isNodeCompatible()) Impl::updateWidgetPalette(m_object);
+    if (isNodeCompatible())
+    {
+        emit m_object->updateWidgetPalette(QPrivateSignal());
+    }
     m_object->update();
 }
 
@@ -703,7 +672,7 @@ NodeGraphicsObject::Highlights::clear()
     m_isActive = false;
     m_compatiblePorts.clear();
 
-    Impl::updateWidgetPalette(m_object);
+    emit m_object->updateWidgetPalette(QPrivateSignal());
 
     m_object->update();
 }

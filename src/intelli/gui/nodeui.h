@@ -37,7 +37,11 @@ class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
 
 public:
 
-    using WidgetFactoryFunction = std::function<std::unique_ptr<QGraphicsWidget> (Node&)>;
+    using WidgetFactoryFunction =
+        std::function<std::unique_ptr<QGraphicsWidget> (NodeGraphicsObject&)>;
+    using QWidgetFactoryFunction =
+        std::function<std::unique_ptr<QWidget> (Node&)>;
+
     using CustomDeleteFunctor = std::function<bool (Node*)>;
     using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
 
@@ -100,11 +104,15 @@ public:
     virtual QIcon displayIcon(Node const& node) const;
 
     /**
-     * @brief centralWidgetFactory
-     * @param nodeObj
-     * @return
+     * @brief Returns the widget factory for the given node object. The factory
+     * recieves an instance of `NodeGraphicsObject` as an argument that should
+     * be used
+     * @param node Node
+     * @return Widget factory
      */
-    virtual WidgetFactoryFunction centralWidgetFactory(Node const& nodeObj) const;
+    virtual WidgetFactoryFunction centralWidgetFactory(Node const& node) const;
+
+    void registerCentralWidgetFactory(QString className, QWidgetFactoryFunction factory);
 
     /**
      * @brief Returns the list of mdi items to open the object with

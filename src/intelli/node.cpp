@@ -164,6 +164,8 @@ Node::pos() const
 void
 Node::setSize(QSize size)
 {
+    if (nodeFlags() & ResizableHOnly) size.setHeight(0);
+
     if (this->size() != size)
     {
         pimpl->sizeWidth = size.width();
@@ -175,7 +177,20 @@ Node::setSize(QSize size)
 QSize
 Node::size() const
 {
+    if (nodeFlags() & ResizableHOnly) return { pimpl->sizeWidth, 0 };
+
     return { pimpl->sizeWidth, pimpl->sizeHeight };
+}
+
+QSize
+Node::size(QSize fallback) const
+{
+    auto size = this->size();
+
+    if (size.width() <= 0) size.setWidth(fallback.width());
+    if (size.height() <= 0) size.setHeight(fallback.height());
+
+    return size;
 }
 
 void

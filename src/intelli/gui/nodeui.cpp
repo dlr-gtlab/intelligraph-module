@@ -33,6 +33,7 @@
 #include <gt_logging.h>
 
 #include <gt_colors.h>
+#include <gt_palette.h>
 #include <gt_command.h>
 #include <gt_inputdialog.h>
 #include <gt_application.h>
@@ -84,6 +85,8 @@ struct NodeUI::Impl
     QList<PortUIAction> portActions;
 
     QList<DeleteAction> deleteActions;
+
+    QMap<QString, QWidgetFactoryFunction> widgetFactories;
 };
 
 NodeUI::NodeUI(Option option) :
@@ -291,18 +294,42 @@ NodeUI::displayIcon(Node const& node) const
 }
 
 NodeUI::WidgetFactoryFunction
-NodeUI::centralWidgetFactory(Node const& nodeObj) const
+NodeUI::centralWidgetFactory(Node const& node) const
 {
-    if (!nodeObj.pimpl->widgetFactory) return {};
+    auto factory = pimpl->widgetFactories.value(node.metaObject()->className());
 
-    return [](Node& node) -> std::unique_ptr<QGraphicsWidget> {
-        std::unique_ptr<QWidget> widget = node.pimpl->widgetFactory(node);
+    if (!factory)
+    {
+        factory = node.pimpl->widgetFactory;
+        if (!factory) return {};
+    }
+
+    return [factory](NodeGraphicsObject& object) -> std::unique_ptr<QGraphicsWidget> {
+        std::unique_ptr<QWidget> widget = factory(object.node());
         if (!widget) return nullptr;
 
+        auto* w = widget.get();
         auto proxyWidget = std::make_unique<QGraphicsProxyWidget>();
         proxyWidget->setWidget(widget.release());
+
+        /// Update the palette of the widget
+        connect(&object, &NodeGraphicsObject::updateWidgetPalette,
+                w, [o = &object, w](){
+            gt::gui::applyThemeToWidget(w);
+
+            QPalette p = w->palette();
+            p.setColor(QPalette::Window, o->painter().backgroundColor());
+            w->setPalette(p);
+        });
+
         return proxyWidget;
     };
+}
+
+void
+NodeUI::registerCentralWidgetFactory(QString className, QWidgetFactoryFunction factory)
+{
+    pimpl->widgetFactories.insert(className, std::move(factory));
 }
 
 QStringList

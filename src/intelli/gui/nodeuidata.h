@@ -23,6 +23,8 @@ namespace intelli
 
 class Node;
 class NodeUI;
+class NodeGraphicsObject;
+
 class NodeUIData
 {
     friend class NodeUI;
@@ -31,7 +33,7 @@ class NodeUIData
 
 public:
 
-    using WidgetFactoryFunction = std::function<std::unique_ptr<QGraphicsWidget> (Node&)>;
+    using WidgetFactoryFunction = std::function<std::unique_ptr<QGraphicsWidget> (NodeGraphicsObject&)>;
 
     using CustomDeleteFunction = std::function<bool (Node*)>;
 
