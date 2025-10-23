@@ -16,7 +16,7 @@
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
 
-#include <QWidget>
+#include <QGraphicsWidget>
 
 using namespace intelli;
 

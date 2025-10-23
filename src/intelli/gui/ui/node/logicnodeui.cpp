@@ -17,6 +17,7 @@
 #include <gt_application.h>
 
 #include <QPainter>
+#include <QGraphicsWidget>
 #include <QLCDNumber>
 #include <QLayout>
 
@@ -376,24 +377,24 @@ LogicNodeUI::centralWidgetFactory(Node const& node) const
 
         auto const updateStyle = [wid](bool isDark){
             wid->setStyleSheet(isDark ?
-                                   // dark mode
-                                   R"(QLCDNumber{
-                        background-color: rgb(0, 0, 0);
-                        border: 2px solid rgb(113, 113, 113);
-                        border-width: 2px;
-                        border-radius: 10px;
-                        color: rgb(255, 255, 255);
-                    })"
-                                      :
-                                   // bright mode
-                                   R"(QLCDNumber{
-                        background-color: rgb(255, 255, 255);
-                        border: 2px solid rgb(113, 113, 113);
-                        border-width: 2px;
-                        border-radius: 10px;
-                        color: rgb(0, 0, 0);
-                    })"
-                               );
+               // dark mode
+               R"(QLCDNumber{
+                    background-color: rgb(0, 0, 0);
+                    border: 2px solid rgb(113, 113, 113);
+                    border-width: 2px;
+                    border-radius: 10px;
+                    color: rgb(255, 255, 255);
+                })"
+               :
+               // bright mode
+               R"(QLCDNumber{
+                    background-color: rgb(255, 255, 255);
+                    border: 2px solid rgb(113, 113, 113);
+                    border-width: 2px;
+                    border-radius: 10px;
+                    color: rgb(0, 0, 0);
+                })"
+            );
         };
 
         auto updateDisplay = [wid, node](){

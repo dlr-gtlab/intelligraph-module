@@ -299,6 +299,11 @@ signals:
      */
     void portContextMenuRequested(NodeGraphicsObject* object, PortId port);
 
+    /**
+     * @brief Emitted once the widget's palette/styling should be updated,
+     * because the theme changed or the node changed its styling
+     * (e.g. background color)
+     */
     void updateWidgetPalette(QPrivateSignal);
 
 private:

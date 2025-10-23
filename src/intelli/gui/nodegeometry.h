@@ -15,9 +15,10 @@
 
 #include <thirdparty/tl/optional.hpp>
 
-#include <QGraphicsWidget>
 #include <QPainterPath>
 #include <QPointer>
+
+class QGraphicsWidget;
 
 namespace intelli
 {

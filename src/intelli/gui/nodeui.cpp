@@ -311,6 +311,8 @@ std::unique_ptr<QGraphicsWidget>
 NodeUI::convertToGraphicsWidget(std::unique_ptr<QWidget> widget, NodeGraphicsObject& object)
 {
     auto* w = widget.get();
+    if (!w) return {};
+
     auto proxyWidget = std::make_unique<QGraphicsProxyWidget>();
     proxyWidget->setWidget(widget.release());
 
