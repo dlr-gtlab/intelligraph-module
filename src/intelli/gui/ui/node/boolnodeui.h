@@ -22,7 +22,7 @@ class BoolNodeUI : public NodeUI
 public:
     
     Q_INVOKABLE BoolNodeUI();
-
+    
     WidgetFactoryFunction centralWidgetFactory(Node const& node) const override;
 };
 

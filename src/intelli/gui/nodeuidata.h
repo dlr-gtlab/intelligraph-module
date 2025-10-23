@@ -33,7 +33,7 @@ class NodeUIData
 
 public:
 
-    using WidgetFactoryFunction = std::function<std::unique_ptr<QGraphicsWidget> (NodeGraphicsObject&)>;
+    using WidgetFactoryFunction = std::function<std::unique_ptr<QGraphicsWidget> (Node&, NodeGraphicsObject&)>;
 
     using CustomDeleteFunction = std::function<bool (Node*)>;
 
@@ -51,7 +51,7 @@ public:
 
     GT_INTELLI_EXPORT WidgetFactoryFunction const& widgetFactory() const;
 
-    void seWidgetFactory(WidgetFactoryFunction functor);
+    void setWidgetFactory(WidgetFactoryFunction functor);
 
     GT_INTELLI_EXPORT CustomDeleteFunction const& customDeleteFunction() const;
 

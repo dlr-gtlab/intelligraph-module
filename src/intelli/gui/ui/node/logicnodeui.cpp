@@ -331,67 +331,7 @@ LogicNodePainter::drawPort(QPainter& painter,
     }
 }
 
-LogicNodeUI::LogicNodeUI()
-{
-    registerCentralWidgetFactory(
-        GT_CLASSNAME(BinaryDisplayNode),
-        [](Node& object) -> WidgetPtr {
-            auto* node = qobject_cast<BinaryDisplayNode*>(&object);
-
-            auto b = makeBaseWidget();
-            auto* lay = b->layout();
-
-            auto* wid = new QLCDNumber();
-            lay->addWidget(wid);
-
-            b->setMinimumSize(60, 80);
-
-            auto const updateStyle = [wid](bool isDark){
-                wid->setStyleSheet(isDark ?
-                    // dark mode
-                    R"(QLCDNumber{
-                        background-color: rgb(0, 0, 0);
-                        border: 2px solid rgb(113, 113, 113);
-                        border-width: 2px;
-                        border-radius: 10px;
-                        color: rgb(255, 255, 255);
-                    })"
-                    :
-                    // bright mode
-                    R"(QLCDNumber{
-                        background-color: rgb(255, 255, 255);
-                        border: 2px solid rgb(113, 113, 113);
-                        border-width: 2px;
-                        border-radius: 10px;
-                        color: rgb(0, 0, 0);
-                    })"
-                );
-            };
-
-            auto updateDisplay = [wid, node](){
-                int value = node->inputValue();
-                wid->display(value);
-            };
-            auto updateDigitCount = [wid, node](){
-                size_t maxValue = std::pow(2u, node->ports(PortType::In).size());
-                int digits = std::ceil(std::log10(maxValue));
-                wid->setDigitCount(digits);
-                wid->setMinimumSize(20 * digits, 20);
-            };
-
-            QObject::connect(node, &Node::evaluated, wid, updateDisplay);
-            QObject::connect(node, &Node::portInserted, wid, updateDigitCount);
-            QObject::connect(node, &Node::portDeleted, wid, updateDigitCount);
-            QObject::connect(gtApp, &GtApplication::themeChanged, wid, updateStyle);
-
-            updateDisplay();
-            updateDigitCount();
-            updateStyle(gtApp->inDarkMode());
-
-            return b;
-        }
-    );
-}
+LogicNodeUI::LogicNodeUI() = default;
 
 std::unique_ptr<intelli::NodePainter>
 intelli::LogicNodeUI::painter(NodeGraphicsObject const& object,
@@ -415,4 +355,67 @@ LogicNodeUI::geometry(NodeGraphicsObject const& object) const
     }
 
     return std::make_unique<LogicNodeGeometry>(object);
+}
+
+NodeUI::WidgetFactoryFunction
+LogicNodeUI::centralWidgetFactory(Node const& node) const
+{
+    if (!qobject_cast<BinaryDisplayNode const*>(&node)) return {};
+
+    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
+        auto* node = qobject_cast<BinaryDisplayNode*>(&source);
+        if (!node) return nullptr;
+
+        auto b = makeBaseWidget();
+        auto* lay = b->layout();
+
+        auto* wid = new QLCDNumber();
+        lay->addWidget(wid);
+
+        b->setMinimumSize(60, 80);
+
+        auto const updateStyle = [wid](bool isDark){
+            wid->setStyleSheet(isDark ?
+                                   // dark mode
+                                   R"(QLCDNumber{
+                        background-color: rgb(0, 0, 0);
+                        border: 2px solid rgb(113, 113, 113);
+                        border-width: 2px;
+                        border-radius: 10px;
+                        color: rgb(255, 255, 255);
+                    })"
+                                      :
+                                   // bright mode
+                                   R"(QLCDNumber{
+                        background-color: rgb(255, 255, 255);
+                        border: 2px solid rgb(113, 113, 113);
+                        border-width: 2px;
+                        border-radius: 10px;
+                        color: rgb(0, 0, 0);
+                    })"
+                               );
+        };
+
+        auto updateDisplay = [wid, node](){
+            int value = node->inputValue();
+            wid->display(value);
+        };
+        auto updateDigitCount = [wid, node](){
+            size_t maxValue = std::pow(2u, node->ports(PortType::In).size());
+            int digits = std::ceil(std::log10(maxValue));
+            wid->setDigitCount(digits);
+            wid->setMinimumSize(20 * digits, 20);
+        };
+
+        QObject::connect(node, &Node::evaluated, wid, updateDisplay);
+        QObject::connect(node, &Node::portInserted, wid, updateDigitCount);
+        QObject::connect(node, &Node::portDeleted, wid, updateDigitCount);
+        QObject::connect(gtApp, &GtApplication::themeChanged, wid, updateStyle);
+
+        updateDisplay();
+        updateDigitCount();
+        updateStyle(gtApp->inDarkMode());
+
+        return convertToGraphicsWidget(std::move(b), object);
+    };
 }

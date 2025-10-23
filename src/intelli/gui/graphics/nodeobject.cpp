@@ -293,7 +293,7 @@ NodeGraphicsObject::embedCentralWidget()
         auto factory = uiData().widgetFactory();
         if (!factory) return nullptr;
 
-        auto widget = factory(*this);
+        auto widget = factory(node(), *this);
         if (!widget) return nullptr;
 
         auto widgetSize = widget->size().toSize();

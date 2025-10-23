@@ -91,6 +91,8 @@ public:
                                          NodeGeometry const& geometry) const override;
 
     std::unique_ptr<NodeGeometry> geometry(NodeGraphicsObject const& object) const override;
+
+    WidgetFactoryFunction centralWidgetFactory(Node const& node) const override;
 };
 
 } // namespace intelli

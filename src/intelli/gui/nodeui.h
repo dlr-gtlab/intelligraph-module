@@ -14,7 +14,6 @@
 #include <intelli/exports.h>
 
 #include <gt_objectui.h>
-#include <thirdparty/tl/optional.hpp>
 
 #include <functional>
 
@@ -37,13 +36,12 @@ class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
 
 public:
 
-    using GraphicsWidgetPtr = std::unique_ptr<QGraphicsWidget>;
-    using WidgetPtr = std::unique_ptr<QWidget>;
+    using QGraphicsWidgetPtr = std::unique_ptr<QGraphicsWidget>;
 
+    /// central widget factory, see `NodeUI::centralWidgetFactory` for more
+    /// details
     using WidgetFactoryFunction =
-        std::function<GraphicsWidgetPtr (NodeGraphicsObject&)>;
-    using QWidgetFactoryFunction =
-        std::function<WidgetPtr (Node&)>;
+        std::function<std::unique_ptr<QGraphicsWidget> (Node& source, NodeGraphicsObject& object)>;
 
     using CustomDeleteFunctor = std::function<bool (Node*)>;
     using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
@@ -88,6 +86,12 @@ public:
      */
     virtual std::unique_ptr<NodeGeometry> geometry(NodeGraphicsObject const& object) const;
 
+    /**
+     * @brief Returns an ui-data object. This object hold various properties
+     * and is used to customize behavior and rendering.
+     * @param node Node
+     * @return node ui data
+     */
     std::unique_ptr<NodeUIData> uiData(Node const& node) const;
 
     CustomDeleteFunctor customDeleteAction(Node const& node) const;
@@ -108,23 +112,42 @@ public:
 
     /**
      * @brief Returns the widget factory for the given node object. The factory
-     * recieves an instance of `NodeGraphicsObject` as an argument and should
-     * return a `QGraphicsWidget`. If a `QWidget` is needed either use
-     * `QGraphicsProxyWidget` or use `NodeUI::registerCentralWidgetFactory`
-     * instead.
-     * @param node Node
+     * recieves instances of `Node`and `NodeGraphicsObject` as arguments and
+     * should return a `QGraphicsWidget`. If a `QWidget` is needed wrap it using
+     * `NodeUI::convertToGraphicsWidget`.
+     *
+     * Regarding the arguments of the factory:
+     *  - `source` is the node that the widget is designed for. As such, it
+     *  should be used for setting up the widget.
+     *  - `object` is the graphics object the widget will be embedded into.
+     *  The object is alo associated with a node, but this node may be different
+     *  from `source`. This might be case if the widget is embedded into another
+     *  graphics object of a node. The graphics object should many be used for
+     *  accesing the painter or similar settings.
+     * @param node Node object, that determines which factory should be
+     * registered. Should not be used within the factory.
      * @return Widget factory
      */
     virtual WidgetFactoryFunction centralWidgetFactory(Node const& node) const;
 
     /**
-     * @brief Registers the widget factory for the objects of the given
-     * classname.
-     * @param className
-     * @param factory
+     * @brief Converts a QWidget into a QGraphicsWidget. Updates the palette
+     * to match the node's style.
+     * @param widget Widget to convert
+     * @param object Graphics object the widget will be embedded into
+     * @return
      */
-    void registerCentralWidgetFactory(QString className, QWidgetFactoryFunction factory);
+    GT_NO_DISCARD
+    static QGraphicsWidgetPtr convertToGraphicsWidget(std::unique_ptr<QWidget> widget,
+                                                      NodeGraphicsObject& object);
 
+    /**
+     * @brief Creates a base widget that has a simple layout attached.
+     * Can be used for node widgets, that have trouble resizing correctly.
+     * @return Widget pointer (never null)
+     */
+    GT_NO_DISCARD
+    static std::unique_ptr<QWidget> makeBaseWidget();
     /**
      * @brief Returns the list of mdi items to open the object with
      * @param obj Object to open

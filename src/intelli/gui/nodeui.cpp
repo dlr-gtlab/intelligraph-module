@@ -39,6 +39,7 @@
 #include <gt_application.h>
 
 #include <QGraphicsProxyWidget>
+#include <QVBoxLayout>
 #include <QMessageBox>
 #include <QFileInfo>
 #include <QFile>
@@ -85,8 +86,6 @@ struct NodeUI::Impl
     QList<PortUIAction> portActions;
 
     QList<DeleteAction> deleteActions;
-
-    QMap<QString, QWidgetFactoryFunction> widgetFactories;
 };
 
 NodeUI::NodeUI(Option option) :
@@ -225,7 +224,7 @@ NodeUI::uiData(Node const& node) const
 {
     auto uiData = std::unique_ptr<NodeUIData>(new NodeUIData{});
     uiData->setDisplayIcon(displayIcon(node));
-    uiData->seWidgetFactory(centralWidgetFactory(node));
+    uiData->setWidgetFactory(centralWidgetFactory(node));
     uiData->setCustomDeleteFunction(customDeleteAction(node));
     return uiData;
 }
@@ -296,40 +295,44 @@ NodeUI::displayIcon(Node const& node) const
 NodeUI::WidgetFactoryFunction
 NodeUI::centralWidgetFactory(Node const& node) const
 {
-    auto factory = pimpl->widgetFactories.value(node.metaObject()->className());
+    if (!node.pimpl->widgetFactory) return {};
 
-    if (!factory)
-    {
-        factory = node.pimpl->widgetFactory;
-        if (!factory) return {};
-    }
+    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
 
-    return [factory](NodeGraphicsObject& object) -> std::unique_ptr<QGraphicsWidget> {
-        std::unique_ptr<QWidget> widget = factory(object.node());
-        if (!widget) return nullptr;
+        if (!source.pimpl->widgetFactory) return {};
 
-        auto* w = widget.get();
-        auto proxyWidget = std::make_unique<QGraphicsProxyWidget>();
-        proxyWidget->setWidget(widget.release());
+        auto widget = source.pimpl->widgetFactory(source);
 
-        /// Update the palette of the widget
-        QObject::connect(&object, &NodeGraphicsObject::updateWidgetPalette,
-                         w, [o = &object, w](){
-            gt::gui::applyThemeToWidget(w);
-
-            QPalette p = w->palette();
-            p.setColor(QPalette::Window, o->painter().backgroundColor());
-            w->setPalette(p);
-        });
-
-        return proxyWidget;
+        return convertToGraphicsWidget(std::move(widget), object);
     };
 }
 
-void
-NodeUI::registerCentralWidgetFactory(QString className, QWidgetFactoryFunction factory)
+std::unique_ptr<QGraphicsWidget>
+NodeUI::convertToGraphicsWidget(std::unique_ptr<QWidget> widget, NodeGraphicsObject& object)
 {
-    pimpl->widgetFactories.insert(className, std::move(factory));
+    auto* w = widget.get();
+    auto proxyWidget = std::make_unique<QGraphicsProxyWidget>();
+    proxyWidget->setWidget(widget.release());
+
+    /// Update the palette of the widget
+    QObject::connect(&object, &NodeGraphicsObject::updateWidgetPalette, w, [o = &object, w](){
+        gt::gui::applyThemeToWidget(w);
+
+        QPalette p = w->palette();
+        p.setColor(QPalette::Window, o->painter().backgroundColor());
+        w->setPalette(p);
+    });
+
+    return proxyWidget;
+}
+
+std::unique_ptr<QWidget>
+NodeUI::makeBaseWidget()
+{
+    auto base = std::make_unique<QWidget>();
+    auto* layout = new QVBoxLayout(base.get());
+    layout->setContentsMargins(0, 0, 0, 0);
+    return base;
 }
 
 QStringList

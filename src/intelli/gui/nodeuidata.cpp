@@ -55,7 +55,7 @@ NodeUIData::widgetFactory() const
 }
 
 void
-NodeUIData::seWidgetFactory(WidgetFactoryFunction functor)
+NodeUIData::setWidgetFactory(WidgetFactoryFunction functor)
 {
     pimpl->widgetFactory = std::move(functor);
 }
