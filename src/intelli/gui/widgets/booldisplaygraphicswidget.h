@@ -2,20 +2,20 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef GT_INTELLI_BOOLDISPLAYWIDGET_H
-#define GT_INTELLI_BOOLDISPLAYWIDGET_H
+#ifndef GT_INTELLI_BOOLDISPLAYGRAPHICSWIDGET_H
+#define GT_INTELLI_BOOLDISPLAYGRAPHICSWIDGET_H
 
 #include <QGraphicsWidget>
 
 namespace intelli
 {
 
-class BoolDisplayWidget : public QGraphicsWidget
+class BoolDisplayGraphicsWidget : public QGraphicsWidget
 {
     Q_OBJECT
 
@@ -28,7 +28,7 @@ public:
     };
     Q_ENUM(DisplayMode);
 
-    explicit BoolDisplayWidget(bool value = false, DisplayMode mode = DisplayMode::Button);
+    explicit BoolDisplayGraphicsWidget(bool value = false, DisplayMode mode = DisplayMode::Button);
 
     bool value();
 
@@ -67,4 +67,4 @@ private:
 
 } // namespace intelli
 
-#endif // BOOLDISPLAYWIDGET_H
+#endif // GT_INTELLI_BOOLDISPLAYGRAPHICSWIDGET_H

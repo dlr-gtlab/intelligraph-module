@@ -13,7 +13,7 @@
 #include <intelli/node/input/boolinput.h>
 
 #include <intelli/gui/graphics/nodeobject.h>
-#include <intelli/gui/widgets/booldisplaywidget.h>
+#include <intelli/gui/widgets/booldisplaygraphicswidget.h>
 
 using namespace intelli;
 
@@ -28,14 +28,14 @@ BoolNodeUI::centralWidgetFactory(Node const& n) const
             auto* node = qobject_cast<BoolDisplayNode*>(&source);
             if (!node) return nullptr;
 
-            using DisplayMode = BoolDisplayWidget::DisplayMode;
+            using DisplayMode = BoolDisplayGraphicsWidget::DisplayMode;
 
             bool success = node->m_displayMode.registerEnum<DisplayMode>();
             assert(success);
 
             auto mode = node->m_displayMode.getEnum<DisplayMode>();
 
-            auto wPtr = std::make_unique<BoolDisplayWidget>(false, mode);
+            auto wPtr = std::make_unique<BoolDisplayGraphicsWidget>(false, mode);
             auto* w = wPtr.get();
             w->setReadOnly(true);
 
@@ -63,14 +63,14 @@ BoolNodeUI::centralWidgetFactory(Node const& n) const
             auto* node = qobject_cast<BoolInputNode*>(&source);
             if (!node) return nullptr;
 
-            using DisplayMode = BoolDisplayWidget::DisplayMode;
+            using DisplayMode = BoolDisplayGraphicsWidget::DisplayMode;
 
             bool success = node->m_displayMode.registerEnum<DisplayMode>();
             assert(success);
 
             auto mode = node->m_displayMode.getEnum<DisplayMode>();
 
-            auto wPtr = std::make_unique<BoolDisplayWidget>(false, mode);
+            auto wPtr = std::make_unique<BoolDisplayGraphicsWidget>(false, mode);
             auto* w = wPtr.get();
 
             auto const updateProp = [node, w]() {
@@ -84,7 +84,7 @@ BoolNodeUI::centralWidgetFactory(Node const& n) const
                 emit node->nodeChanged();
             };
 
-            QObject::connect(w, &BoolDisplayWidget::valueChanged, node, updateProp);
+            QObject::connect(w, &BoolDisplayGraphicsWidget::valueChanged, node, updateProp);
             QObject::connect(&node->m_value, &GtAbstractProperty::changed, w, updateWidget);
             QObject::connect(&node->m_displayMode, &GtAbstractProperty::changed, w, updateMode);
 

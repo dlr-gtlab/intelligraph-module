@@ -2,12 +2,12 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include <intelli/gui/widgets/booldisplaywidget.h>
+#include <intelli/gui/widgets/booldisplaygraphicswidget.h>
 #include <intelli/gui/style.h>
 
 #include <gt_finally.h>
@@ -22,14 +22,14 @@
 
 using namespace intelli;
 
-BoolDisplayWidget::BoolDisplayWidget(bool value, DisplayMode mode) :
+BoolDisplayGraphicsWidget::BoolDisplayGraphicsWidget(bool value, DisplayMode mode) :
     m_value(value)
 {
     applyDisplayMode(mode);
 }
 
 void
-BoolDisplayWidget::setDisplayMode(DisplayMode mode)
+BoolDisplayGraphicsWidget::setDisplayMode(DisplayMode mode)
 {
     if (m_mode == mode) return;
 
@@ -37,7 +37,7 @@ BoolDisplayWidget::setDisplayMode(DisplayMode mode)
 }
 
 void
-BoolDisplayWidget::applyDisplayMode(DisplayMode mode)
+BoolDisplayGraphicsWidget::applyDisplayMode(DisplayMode mode)
 {
     m_mode = mode;
 
@@ -61,14 +61,14 @@ BoolDisplayWidget::applyDisplayMode(DisplayMode mode)
 }
 
 
-BoolDisplayWidget::DisplayMode
-BoolDisplayWidget::displayMode() const
+BoolDisplayGraphicsWidget::DisplayMode
+BoolDisplayGraphicsWidget::displayMode() const
 {
     return m_mode;
 }
 
 void
-BoolDisplayWidget::setReadOnly(bool readOnly)
+BoolDisplayGraphicsWidget::setReadOnly(bool readOnly)
 {
     if (m_readOnly == readOnly) return;
 
@@ -77,25 +77,25 @@ BoolDisplayWidget::setReadOnly(bool readOnly)
 }
 
 bool
-BoolDisplayWidget::readOnly()
+BoolDisplayGraphicsWidget::readOnly()
 {
     return m_readOnly;
 }
 
 void
-BoolDisplayWidget::toogle()
+BoolDisplayGraphicsWidget::toogle()
 {
     setValue(!value());
 }
 
 bool
-BoolDisplayWidget::value()
+BoolDisplayGraphicsWidget::value()
 {
     return m_value;
 }
 
 void
-BoolDisplayWidget::setValue(bool value)
+BoolDisplayGraphicsWidget::setValue(bool value)
 {
     if (m_value == value) return;
 
@@ -105,7 +105,7 @@ BoolDisplayWidget::setValue(bool value)
 }
 
 void
-BoolDisplayWidget::mousePressEvent(QGraphicsSceneMouseEvent* event)
+BoolDisplayGraphicsWidget::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     if (readOnly()) return;
 
@@ -117,7 +117,7 @@ BoolDisplayWidget::mousePressEvent(QGraphicsSceneMouseEvent* event)
 }
 
 void
-BoolDisplayWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
+BoolDisplayGraphicsWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     auto cleanup = gt::finally([this](){
         m_pressed = false;
@@ -136,7 +136,7 @@ BoolDisplayWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 }
 
 void
-BoolDisplayWidget::paint(QPainter* painter, QStyleOptionGraphicsItem const*, QWidget*)
+BoolDisplayGraphicsWidget::paint(QPainter* painter, QStyleOptionGraphicsItem const*, QWidget*)
 {
     auto rect = boundingRect();
     int width = rect.width();

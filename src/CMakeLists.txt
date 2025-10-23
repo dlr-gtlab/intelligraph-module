@@ -147,7 +147,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphics/nodeevalstateobject.h
     intelli/gui/graphics/popupitem.h
     intelli/gui/widgets/abstractnumberinputwidget.h
-    intelli/gui/widgets/booldisplaywidget.h
+    intelli/gui/widgets/booldisplaygraphicswidget.h intelli/gui/widgets/booldisplaygraphicswidget.cpp
     intelli/gui/widgets/doubleinputwidget.h
     intelli/gui/widgets/editablelabel.h
     intelli/gui/widgets/finddirectchildwidget.h
@@ -247,7 +247,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphics/nodeobject.cpp
     intelli/gui/graphics/popupitem.cpp
     intelli/gui/widgets/abstractnumberinputwidget.cpp
-    intelli/gui/widgets/booldisplaywidget.cpp
     intelli/gui/widgets/doubleinputwidget.cpp
     intelli/gui/widgets/editablelabel.cpp
     intelli/gui/widgets/finddirectchildwidget.cpp
