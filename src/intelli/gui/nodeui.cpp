@@ -317,7 +317,11 @@ NodeUI::convertToGraphicsWidget(std::unique_ptr<QWidget> widget, NodeGraphicsObj
     proxyWidget->setWidget(widget.release());
 
     /// Update the palette of the widget
-    QObject::connect(&object, &NodeGraphicsObject::updateWidgetPalette, w, [o = &object, w](){
+    QObject::connect(&object, &NodeGraphicsObject::updateWidgetPalette,
+                     w, [o = QPointer<NodeGraphicsObject>(&object),
+                         w = QPointer<QWidget>(w)](){
+        assert(o);
+        assert(w);
         gt::gui::applyThemeToWidget(w);
 
         QPalette p = w->palette();
