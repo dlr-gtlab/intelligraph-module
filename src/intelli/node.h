@@ -15,7 +15,6 @@
 
 #include <gt_typetraits.h>
 #include <gt_object.h>
-#include <intelli/graphuservariables.h>
 
 #include <QWidget>
 
@@ -89,7 +88,7 @@ class INode;
 class Node;
 class NodeData;
 class NodeDataInterface;
-//class GraphUserVariables;
+class GraphUserVariables;
 
 namespace exec
 {
@@ -174,14 +173,15 @@ std::shared_ptr<T const> convert(NodeDataPtr data)
  * for widgets, that have trouble resizing correctly.
  * @return Widget pointer (never null)
  */
+[[deprecated("Use `utils::makeWidgetWithLayout` instead.")]]
 GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeBaseWidget();
 
 class GT_INTELLI_EXPORT Node : public GtObject
 {
     Q_OBJECT
-    
+
     friend class INode;
-    friend class NodeGraphicsObject;
+    friend class NodeUI; // temporary, for accessing widget factory
 
 public:
 
@@ -198,9 +198,9 @@ public:
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
-    using WidgetFactory =
+    using WidgetFactory [[deprecated]] =
         std::function<std::unique_ptr<QWidget>(Node& thisNode)>;
-    using WidgetFactoryNoArgs =
+    using WidgetFactoryNoArgs [[deprecated]] =
         std::function<std::unique_ptr<QWidget>()>;
 
     /// Enums inidacting of node event
@@ -381,16 +381,20 @@ public:
     Position pos() const;
 
     /**
-     * @brief Sets size property. Does not trigger a resize of the widget
-     * @param pos new position
+     * @brief Sets size property. Emits `nodeSizeChanged` if size changed.
+     * If the flag `NodeFlag::ResizeHOnly` is enabled, only the width is saved.
+     * @param size new size
      */
     void setSize(QSize size);
 
     /**
-     * @brief size
-     * @return
+     * @brief Returns the size of the central widget.
+     * If the flag `NodeFlag::ResizeHOnly` is enabled, only the width is
+     * returned.
+     * @return Size (may be invalid)
      */
     QSize size() const;
+    QSize size(QSize fallback) const;
 
     /**
      * @brief Returns true if the node (id) is valid
@@ -673,7 +677,11 @@ protected:
      * intelli graphs.
      * @param factory Widget factory
      */
+    [[deprecated("Reimplement `NodeUI::centralWidgetFactory` or use "
+                 "`NodeUI::registerCentralWidgetFactory` instead.")]]
     void registerWidgetFactory(WidgetFactory factory);
+    [[deprecated("Reimplement `NodeUI::centralWidgetFactory` or use "
+                 "`NodeUI::registerCentralWidgetFactory` instead.")]]
     void registerWidgetFactory(WidgetFactoryNoArgs factory);
 
     /**

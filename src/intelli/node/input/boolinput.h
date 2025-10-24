@@ -22,6 +22,8 @@ class GT_INTELLI_EXPORT BoolInputNode : public Node
 {
     Q_OBJECT
 
+    friend class BoolNodeUI;
+
 public:
 
     Q_INVOKABLE BoolInputNode();

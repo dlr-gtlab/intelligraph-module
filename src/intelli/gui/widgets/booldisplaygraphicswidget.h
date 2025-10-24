@@ -2,20 +2,20 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef GT_INTELLI_BOOLDISPLAYWIDGET_H
-#define GT_INTELLI_BOOLDISPLAYWIDGET_H
+#ifndef GT_INTELLI_BOOLDISPLAYGRAPHICSWIDGET_H
+#define GT_INTELLI_BOOLDISPLAYGRAPHICSWIDGET_H
 
-#include <QWidget>
+#include <QGraphicsWidget>
 
 namespace intelli
 {
 
-class BoolDisplayWidget : public QWidget
+class BoolDisplayGraphicsWidget : public QGraphicsWidget
 {
     Q_OBJECT
 
@@ -28,10 +28,7 @@ public:
     };
     Q_ENUM(DisplayMode);
 
-    explicit BoolDisplayWidget(QWidget* parent = nullptr) :
-        BoolDisplayWidget(false, DisplayMode::Button, parent)
-    {}
-    explicit BoolDisplayWidget(bool value, DisplayMode mode, QWidget* parent = nullptr);
+    explicit BoolDisplayGraphicsWidget(bool value = false, DisplayMode mode = DisplayMode::Button);
 
     bool value();
 
@@ -53,11 +50,11 @@ signals:
 
 protected:
 
-    void mousePressEvent(QMouseEvent* event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
 
-    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
-    void paintEvent(QPaintEvent* event) override;
+    void paint(QPainter* painter, QStyleOptionGraphicsItem const*, QWidget*) override;
 
 private:
 
@@ -70,4 +67,4 @@ private:
 
 } // namespace intelli
 
-#endif // BOOLDISPLAYWIDGET_H
+#endif // GT_INTELLI_BOOLDISPLAYGRAPHICSWIDGET_H

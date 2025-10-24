@@ -16,12 +16,15 @@
 #include <functional>
 
 class QIcon;
+class QGraphicsWidget;
 
 namespace intelli
 {
 
 class Node;
 class NodeUI;
+class NodeGraphicsObject;
+
 class NodeUIData
 {
     friend class NodeUI;
@@ -29,6 +32,8 @@ class NodeUIData
     NodeUIData();
 
 public:
+
+    using WidgetFactoryFunction = std::function<std::unique_ptr<QGraphicsWidget> (Node&, NodeGraphicsObject&)>;
 
     using CustomDeleteFunction = std::function<bool (Node*)>;
 
@@ -43,6 +48,10 @@ public:
     GT_INTELLI_EXPORT void setDisplayIcon(QIcon icon);
 
     GT_INTELLI_EXPORT bool hasDisplayIcon() const;
+
+    GT_INTELLI_EXPORT WidgetFactoryFunction const& widgetFactory() const;
+
+    void setWidgetFactory(WidgetFactoryFunction functor);
 
     GT_INTELLI_EXPORT CustomDeleteFunction const& customDeleteFunction() const;
 

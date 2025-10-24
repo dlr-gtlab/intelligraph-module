@@ -2,19 +2,19 @@
  * GTlab IntelliGraph
  *
  *  SPDX-License-Identifier: BSD-3-Clause
- *  SPDX-FileCopyrightText: 2024 German Aerospace Center
+ *  SPDX-FileCopyrightText: 2025 German Aerospace Center
  *
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include <intelli/gui/widgets/booldisplaywidget.h>
+#include <intelli/gui/widgets/booldisplaygraphicswidget.h>
 #include <intelli/gui/style.h>
 
 #include <gt_finally.h>
 #include <gt_colors.h>
 #include <gt_palette.h>
 
-#include <QMouseEvent>
+#include <QGraphicsSceneMouseEvent>
 #include <QPainter>
 #include <QTimer>
 
@@ -22,15 +22,14 @@
 
 using namespace intelli;
 
-BoolDisplayWidget::BoolDisplayWidget(bool value, DisplayMode mode, QWidget* parent) :
-    QWidget(parent),
+BoolDisplayGraphicsWidget::BoolDisplayGraphicsWidget(bool value, DisplayMode mode) :
     m_value(value)
 {
     applyDisplayMode(mode);
 }
 
 void
-BoolDisplayWidget::setDisplayMode(DisplayMode mode)
+BoolDisplayGraphicsWidget::setDisplayMode(DisplayMode mode)
 {
     if (m_mode == mode) return;
 
@@ -38,7 +37,7 @@ BoolDisplayWidget::setDisplayMode(DisplayMode mode)
 }
 
 void
-BoolDisplayWidget::applyDisplayMode(DisplayMode mode)
+BoolDisplayGraphicsWidget::applyDisplayMode(DisplayMode mode)
 {
     m_mode = mode;
 
@@ -58,19 +57,18 @@ BoolDisplayWidget::applyDisplayMode(DisplayMode mode)
     setMinimumSize(size);
     setMaximumSize(size);
 
-    // resize next frame (allows size hint to be calculated correctly)
-    resize(minimumSizeHint());
+    resize(size);
 }
 
 
-BoolDisplayWidget::DisplayMode
-BoolDisplayWidget::displayMode() const
+BoolDisplayGraphicsWidget::DisplayMode
+BoolDisplayGraphicsWidget::displayMode() const
 {
     return m_mode;
 }
 
 void
-BoolDisplayWidget::setReadOnly(bool readOnly)
+BoolDisplayGraphicsWidget::setReadOnly(bool readOnly)
 {
     if (m_readOnly == readOnly) return;
 
@@ -79,25 +77,25 @@ BoolDisplayWidget::setReadOnly(bool readOnly)
 }
 
 bool
-BoolDisplayWidget::readOnly()
+BoolDisplayGraphicsWidget::readOnly()
 {
     return m_readOnly;
 }
 
 void
-BoolDisplayWidget::toogle()
+BoolDisplayGraphicsWidget::toogle()
 {
     setValue(!value());
 }
 
 bool
-BoolDisplayWidget::value()
+BoolDisplayGraphicsWidget::value()
 {
     return m_value;
 }
 
 void
-BoolDisplayWidget::setValue(bool value)
+BoolDisplayGraphicsWidget::setValue(bool value)
 {
     if (m_value == value) return;
 
@@ -107,7 +105,7 @@ BoolDisplayWidget::setValue(bool value)
 }
 
 void
-BoolDisplayWidget::mousePressEvent(QMouseEvent* event)
+BoolDisplayGraphicsWidget::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     if (readOnly()) return;
 
@@ -119,7 +117,7 @@ BoolDisplayWidget::mousePressEvent(QMouseEvent* event)
 }
 
 void
-BoolDisplayWidget::mouseReleaseEvent(QMouseEvent* event)
+BoolDisplayGraphicsWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     auto cleanup = gt::finally([this](){
         m_pressed = false;
@@ -129,7 +127,7 @@ BoolDisplayWidget::mouseReleaseEvent(QMouseEvent* event)
 
     if (readOnly()) return;
 
-    if (!rect().contains(event->localPos().toPoint())) return;
+    if (!rect().contains(event->pos())) return;
 
     if (event->button() == Qt::LeftButton)
     {
@@ -138,21 +136,21 @@ BoolDisplayWidget::mouseReleaseEvent(QMouseEvent* event)
 }
 
 void
-BoolDisplayWidget::paintEvent(QPaintEvent* event)
+BoolDisplayGraphicsWidget::paint(QPainter* painter, QStyleOptionGraphicsItem const*, QWidget*)
 {
-    Q_UNUSED(event);
+    auto rect = boundingRect();
+    int width = rect.width();
+    int height = rect.height();
 
-    QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
-
-    int size = qMin(width(), height());
+    int size = qMin(width, height);
 
     switch (m_mode)
     {
     default:
     case Checkbox:
     {
-        constexpr int penSize = 2;
+        constexpr auto penSize = 1;
+        constexpr auto penSizeCross = 1.5;
 
         QColor fillColor = gt::gui::color::main();
         QColor outlineColor = gt::gui::color::text();
@@ -165,27 +163,27 @@ BoolDisplayWidget::paintEvent(QPaintEvent* event)
         }
 
         QPen pen = outlineColor;
-        pen.setWidth(penSize);
+        pen.setWidthF(penSize);
 
         // draw outline
-        painter.setPen(pen);
-        painter.setBrush(fillColor);
-        painter.drawRect(0, 0, size, size);
+        painter->setPen(pen);
+        painter->setBrush(fillColor);
+        painter->drawRect(0, 0, size, size);
 
         // draw state
         if (value())
         {
-            pen.setWidth(pen.width());
-            painter.setPen(pen);
+            pen.setWidthF(penSizeCross);
+            painter->setPen(pen);
 
-            const int pad = pen.width() * 2;
+            const int pad = 4;
             QPoint topLeft     = {0    + pad, 0    + pad};
             QPoint topRight    = {size - pad, 0    + pad};
             QPoint bottomLeft  = {0    + pad, size - pad};
             QPoint bottomRight = {size - pad, size - pad};
 
-            painter.drawLine(topLeft, bottomRight);
-            painter.drawLine(bottomLeft, topRight);
+            painter->drawLine(topLeft, bottomRight);
+            painter->drawLine(bottomLeft, topRight);
         }
 
         break;
@@ -195,8 +193,8 @@ BoolDisplayWidget::paintEvent(QPaintEvent* event)
         constexpr int penSize = 1;
 
         int circleRadius = std::floor(size * 0.5) - penSize;
-        int x = (width()  - circleRadius) - penSize;
-        int y = (height() - circleRadius) - penSize;
+        int x = (width  - circleRadius) - penSize;
+        int y = (height - circleRadius) - penSize;
 
         QColor fillColor = value() ?
                                Qt::green :
@@ -213,9 +211,9 @@ BoolDisplayWidget::paintEvent(QPaintEvent* event)
         }
 
         // draw outline
-        painter.setPen(pen);
-        painter.setBrush(fillColor);
-        painter.drawEllipse(QPoint{x, y}, circleRadius, circleRadius);
+        painter->setPen(pen);
+        painter->setBrush(fillColor);
+        painter->drawEllipse(QPoint{x, y}, circleRadius, circleRadius);
 
         break;
     }

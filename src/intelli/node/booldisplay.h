@@ -17,9 +17,11 @@
 namespace intelli
 {
 
-class BoolDisplayNode : Node
+class BoolDisplayNode : public Node
 {
     Q_OBJECT
+
+    friend class BoolNodeUI;
 
 public:
 

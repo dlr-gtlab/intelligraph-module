@@ -43,13 +43,6 @@ namespace intelli
 /// Conversion function. The parameter is never null.
 using ConversionFunction = std::function<NodeDataPtr(NodeDataPtr const&)>;
 
-/// Struct to store a conversion between two types.
-struct Conversion
-{
-    QString targetTypeId;
-    ConversionFunction convert = nullptr;
-};
-
 class NodeData;
 class GT_INTELLI_EXPORT NodeDataFactory : public GtAbstractObjectFactory
 {

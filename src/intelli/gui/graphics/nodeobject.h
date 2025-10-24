@@ -38,8 +38,6 @@ class GT_INTELLI_EXPORT NodeGraphicsObject : public InteractableGraphicsObject
 {
     Q_OBJECT
 
-    class NodeProxyWidget;
-
 public:
 
     class Highlights;
@@ -71,10 +69,15 @@ public:
      */
     NodeId nodeId() const;
 
+    /**
+     * @brief Returns the uuid of the node.
+     * @return Object uuid
+     */
     ObjectUuid objectUuid() const override;
 
     /**
-     * @brief Returns the node's ui data object. Used for painting the node.
+     * @brief Returns the node's ui data object. Contains extra settings which
+     * are used for painting the node.
      * @return Ui Data
      */
     NodeUIData const& uiData() const;
@@ -99,7 +102,7 @@ public:
 
     /**
      * @brief Returns the bounding rect of the main widget in scene-coordianates
-     * May return an invalid rect if no widget is available
+     * May return an invalid rect if no widget is available.
      * @return Scene bounding rect of the main widget
      */
     QRectF widgetSceneBoundingRect() const override;
@@ -132,6 +135,13 @@ public:
     NodeGeometry const& geometry() const;
 
     /**
+     * @brief Returns the painter object, denoting how the object should be
+     * painted.
+     * @return Painter
+     */
+    NodePainter const& painter() const;
+
+    /**
      * @brief Commits the position of this object to the associated node
      */
     void commitPosition() override;
@@ -159,7 +169,7 @@ public:
         explicit Highlights(NodeGraphicsObject& object);
 
         NodeGraphicsObject* m_object = nullptr;
-        /// List of highlightes ports
+        /// List of highlighted ports
         /// (used preallocated array as a preliminary optimization)
         QVarLengthArray<PortId, 10> m_compatiblePorts;
         /// Whether ports should be highlighted
@@ -213,14 +223,6 @@ public:
         void clear();
     };
 
-public slots:
-
-    /**
-     * @brief Updates the visuals of the node once the underlying node object
-     * has changed.
-     */
-    void refreshVisuals();
-
 protected:
 
     void paint(QPainter* painter,
@@ -242,6 +244,8 @@ protected:
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
 
     void contextMenuEvent(QGraphicsSceneContextMenuEvent* event) override;
+
+    bool sceneEventFilter(QGraphicsItem* watched, QEvent *event) override;
 
     /**
      * @brief Whether the object should start resizing.
@@ -295,12 +299,25 @@ signals:
      */
     void portContextMenuRequested(NodeGraphicsObject* object, PortId port);
 
+    /**
+     * @brief Emitted once the widget's palette/styling should be updated,
+     * because the theme changed or the node changed its styling
+     * (e.g. background color)
+     */
+    void updateWidgetPalette(QPrivateSignal);
+
 private:
 
     struct Impl;
     std::unique_ptr<Impl> pimpl;
 
 private slots:
+
+    /**
+     * @brief Updates the visuals of the node once the underlying node object
+     * has changed.
+     */
+    void refreshVisuals();
 
     /**
      * @brief Updates the visuals of the node once the position of the

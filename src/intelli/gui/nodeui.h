@@ -14,9 +14,10 @@
 #include <intelli/exports.h>
 
 #include <gt_objectui.h>
-#include <thirdparty/tl/optional.hpp>
 
 #include <functional>
+
+class QGraphicsWidget;
 
 namespace intelli
 {
@@ -34,6 +35,13 @@ class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
     Q_OBJECT
 
 public:
+
+    using QGraphicsWidgetPtr = std::unique_ptr<QGraphicsWidget>;
+
+    /// central widget factory, see `NodeUI::centralWidgetFactory` for more
+    /// details
+    using WidgetFactoryFunction =
+        std::function<std::unique_ptr<QGraphicsWidget> (Node& source, NodeGraphicsObject& object)>;
 
     using CustomDeleteFunctor = std::function<bool (Node*)>;
     using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
@@ -78,6 +86,12 @@ public:
      */
     virtual std::unique_ptr<NodeGeometry> geometry(NodeGraphicsObject const& object) const;
 
+    /**
+     * @brief Returns an ui-data object. This object hold various properties
+     * and is used to customize behavior and rendering.
+     * @param node Node
+     * @return node ui data
+     */
     std::unique_ptr<NodeUIData> uiData(Node const& node) const;
 
     CustomDeleteFunctor customDeleteAction(Node const& node) const;
@@ -95,6 +109,37 @@ public:
      * @return icon
      */
     virtual QIcon displayIcon(Node const& node) const;
+
+    /**
+     * @brief Returns the widget factory for the given node object. The factory
+     * recieves instances of `Node`and `NodeGraphicsObject` as arguments and
+     * should return a `QGraphicsWidget`. If a `QWidget` is needed wrap it using
+     * `NodeUI::convertToGraphicsWidget`.
+     *
+     * Regarding the arguments of the factory:
+     *  - `source` is the node that the widget is designed for. As such, it
+     *  should be used for setting up the widget.
+     *  - `object` is the graphics object the widget will be embedded into.
+     *  The object is alo associated with a node, but this node may be different
+     *  from `source`. This might be case if the widget is embedded into another
+     *  graphics object of a node. The graphics object should many be used for
+     *  accesing the painter or similar settings.
+     * @param node Node object, that determines which factory should be
+     * registered. Should not be used within the factory.
+     * @return Widget factory
+     */
+    virtual WidgetFactoryFunction centralWidgetFactory(Node const& node) const;
+
+    /**
+     * @brief Converts a QWidget into a QGraphicsWidget. Updates the palette
+     * to match the node's style.
+     * @param widget Widget to convert
+     * @param object Graphics object the widget will be embedded into
+     * @return
+     */
+    GT_NO_DISCARD
+    static QGraphicsWidgetPtr convertToGraphicsWidget(std::unique_ptr<QWidget> widget,
+                                                      NodeGraphicsObject& object);
 
     /**
      * @brief Returns the list of mdi items to open the object with
@@ -183,12 +228,16 @@ public:
     static bool isDynamicNode(Node* obj, PortType type, PortIndex idx);
 
     /**
+     * @brief Opens the Edit-User-Variables-Dialog for the root graph `obj`.
+     * @param obj Object must be root graph.
+     */
+    static void editUserVariables(GtObject* obj);
+
+    /**
      * @brief Returns the list of all port actions registered
      * @return
      */
     QList<PortUIAction> const& portActions() const;
-
-    static void editUserVariables(GtObject* obj);
 
 protected:
 

@@ -87,10 +87,12 @@ public:
 
     Q_INVOKABLE LogicNodeUI();
 
-    virtual std::unique_ptr<NodePainter> painter(NodeGraphicsObject const& object,
-                                                 NodeGeometry const& geometry) const;
+    std::unique_ptr<NodePainter> painter(NodeGraphicsObject const& object,
+                                         NodeGeometry const& geometry) const override;
 
-    virtual std::unique_ptr<NodeGeometry> geometry(NodeGraphicsObject const& object) const;
+    std::unique_ptr<NodeGeometry> geometry(NodeGraphicsObject const& object) const override;
+
+    WidgetFactoryFunction centralWidgetFactory(Node const& node) const override;
 };
 
 } // namespace intelli

@@ -21,9 +21,13 @@
 #include "intelli/graphuservariables.h"
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
+#include "intelli/utilities.h"
 #include "intelli/property/stringselection.h"
+#include "intelli/node/binarydisplay.h"
+#include "intelli/node/booldisplay.h"
 #include "intelli/node/logicoperation.h"
 #include "intelli/node/genericcalculatorexec.h"
+#include "intelli/node/input/boolinput.h"
 #include "intelli/gui/commentgroup.h"
 #include "intelli/gui/commentdata.h"
 #include "intelli/gui/grapheditor.h"
@@ -33,8 +37,9 @@
 #include "intelli/gui/ui/connectionui.h"
 #include "intelli/gui/ui/graphcategoryui.h"
 #include "intelli/gui/ui/guidataui.h"
-#include "intelli/gui/ui/logicnodeui.h"
 #include "intelli/gui/ui/packageui.h"
+#include "intelli/gui/ui/node/boolnodeui.h"
+#include "intelli/gui/ui/node/logicnodeui.h"
 #include "intelli/gui/property_item/stringselection.h"
 
 #include "intelli/calculators/graphexeccalculator.h"
@@ -288,9 +293,21 @@ GtIntelliGraphModule::uiItems()
 
     map.insert(GT_CLASSNAME(LogicNode),
                GT_METADATA(LogicNodeUI));
+    map.insert(GT_CLASSNAME(BinaryDisplayNode),
+               GT_METADATA(LogicNodeUI));
+
+    map.insert(GT_CLASSNAME(BoolDisplayNode),
+               GT_METADATA(BoolNodeUI));
+    map.insert(GT_CLASSNAME(BoolInputNode),
+               GT_METADATA(BoolNodeUI));
 
     QStringList registeredNodes = NodeFactory::instance().registeredNodes();
-    registeredNodes.removeOne(GT_CLASSNAME(LogicNode));
+
+    // remove all nodes with custom UI
+    for (QString const& entry : utils::makeIterable(map.keyBegin(), map.keyEnd()))
+    {
+        registeredNodes.removeOne(entry);
+    }
 
     buffer.reserve(registeredNodes.size());
 

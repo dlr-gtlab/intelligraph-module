@@ -16,7 +16,7 @@
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
 
-#include <QWidget>
+#include <QGraphicsWidget>
 
 using namespace intelli;
 
@@ -29,7 +29,7 @@ NodeGeometry::NodeGeometry(NodeGraphicsObject const& object) :
 NodeGeometry::~NodeGeometry() = default;
 
 void
-NodeGeometry::setWidget(QPointer<QWidget const> widget)
+NodeGeometry::setWidget(QPointer<QGraphicsWidget const> widget)
 {
     m_widget = widget;
 }
@@ -306,7 +306,7 @@ NodeGeometry::widgetSize() const
 {
     auto* w = centralWidget();
     if (!w || object().isCollapsed()) return {};
-    return w->size();
+    return w->size().toSize();
 }
 
 QRectF
@@ -474,7 +474,7 @@ NodeGeometry::node() const
     return object().node();
 }
 
-QWidget const*
+QGraphicsWidget const*
 NodeGeometry::centralWidget() const
 {
     return m_widget;

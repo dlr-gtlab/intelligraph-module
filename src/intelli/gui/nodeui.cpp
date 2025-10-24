@@ -28,14 +28,17 @@
 #include "intelli/gui/graphics/nodeobject.h"
 #include "intelli/gui/widgets/graphuservariablesdialog.h"
 #include "intelli/private/utils.h"
+#include "intelli/private/node_impl.h" // temporary, needed for widget factory
 
 #include <gt_logging.h>
 
 #include <gt_colors.h>
+#include <gt_palette.h>
 #include <gt_command.h>
 #include <gt_inputdialog.h>
 #include <gt_application.h>
 
+#include <QGraphicsProxyWidget>
 #include <QMessageBox>
 #include <QFileInfo>
 #include <QFile>
@@ -220,6 +223,7 @@ NodeUI::uiData(Node const& node) const
 {
     auto uiData = std::unique_ptr<NodeUIData>(new NodeUIData{});
     uiData->setDisplayIcon(displayIcon(node));
+    uiData->setWidgetFactory(centralWidgetFactory(node));
     uiData->setCustomDeleteFunction(customDeleteAction(node));
     return uiData;
 }
@@ -285,6 +289,46 @@ NodeUI::displayIcon(Node const& node) const
                                  gt::gui::color::warningText);
     }
     return QIcon{};
+}
+
+NodeUI::WidgetFactoryFunction
+NodeUI::centralWidgetFactory(Node const& node) const
+{
+    if (!node.pimpl->widgetFactory) return {};
+
+    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
+
+        if (!source.pimpl->widgetFactory) return {};
+
+        auto widget = source.pimpl->widgetFactory(source);
+
+        return convertToGraphicsWidget(std::move(widget), object);
+    };
+}
+
+std::unique_ptr<QGraphicsWidget>
+NodeUI::convertToGraphicsWidget(std::unique_ptr<QWidget> widget, NodeGraphicsObject& object)
+{
+    auto* w = widget.get();
+    if (!w) return {};
+
+    auto proxyWidget = std::make_unique<QGraphicsProxyWidget>();
+    proxyWidget->setWidget(widget.release());
+
+    /// Update the palette of the widget
+    QObject::connect(&object, &NodeGraphicsObject::updateWidgetPalette,
+                     w, [o = QPointer<NodeGraphicsObject>(&object),
+                         w = QPointer<QWidget>(w)](){
+        assert(o);
+        assert(w);
+        gt::gui::applyThemeToWidget(w);
+
+        QPalette p = w->palette();
+        p.setColor(QPalette::Window, o->painter().backgroundColor());
+        w->setPalette(p);
+    });
+
+    return proxyWidget;
 }
 
 QStringList
@@ -421,16 +465,6 @@ NodeUI::canRenameNodeObject(GtObject* obj)
 }
 
 void
-NodeUI::editUserVariables(GtObject* obj)
-{
-    Graph* graph = toGraph(obj);
-    if (!isRootGraph(graph)) return;
-
-    GraphUserVariablesDialog dialog{*graph};
-    dialog.exec();
-}
-
-void
 NodeUI::renameNode(GtObject* obj)
 {
     auto* node = toNode(obj);
@@ -539,6 +573,16 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
     Q_UNUSED(cmd);
 
     node->removePort(portId);
+}
+
+void
+NodeUI::editUserVariables(GtObject* obj)
+{
+    Graph* graph = toGraph(obj);
+    if (!isRootGraph(graph)) return;
+
+    GraphUserVariablesDialog dialog{*graph};
+    dialog.exec();
 }
 
 void
