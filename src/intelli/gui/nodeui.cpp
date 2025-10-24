@@ -39,7 +39,6 @@
 #include <gt_application.h>
 
 #include <QGraphicsProxyWidget>
-#include <QVBoxLayout>
 #include <QMessageBox>
 #include <QFileInfo>
 #include <QFile>
@@ -330,15 +329,6 @@ NodeUI::convertToGraphicsWidget(std::unique_ptr<QWidget> widget, NodeGraphicsObj
     });
 
     return proxyWidget;
-}
-
-std::unique_ptr<QWidget>
-NodeUI::makeBaseWidget()
-{
-    auto base = std::make_unique<QWidget>();
-    auto* layout = new QVBoxLayout(base.get());
-    layout->setContentsMargins(0, 0, 0, 0);
-    return base;
 }
 
 QStringList

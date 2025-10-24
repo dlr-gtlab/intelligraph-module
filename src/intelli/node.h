@@ -173,7 +173,7 @@ std::shared_ptr<T const> convert(NodeDataPtr data)
  * for widgets, that have trouble resizing correctly.
  * @return Widget pointer (never null)
  */
-[[deprecated("Use `NodeUI::makeBaseWidget` instead.")]]
+[[deprecated("Use `utils::makeWidgetWithLayout` instead.")]]
 GT_INTELLI_EXPORT std::unique_ptr<QWidget> makeBaseWidget();
 
 class GT_INTELLI_EXPORT Node : public GtObject

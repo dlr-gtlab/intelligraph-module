@@ -10,6 +10,7 @@
 #include <intelli/gui/ui/node/logicnodeui.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/style.h>
+#include <intelli/gui/utilities.h>
 #include <intelli/node/binarydisplay.h>
 #include <intelli/node/logicoperation.h>
 
@@ -367,7 +368,7 @@ LogicNodeUI::centralWidgetFactory(Node const& node) const
         auto* node = qobject_cast<BinaryDisplayNode*>(&source);
         if (!node) return nullptr;
 
-        auto b = makeBaseWidget();
+        auto b = utils::makeWidgetWithLayout();
         auto* lay = b->layout();
 
         auto* wid = new QLCDNumber();

@@ -30,33 +30,6 @@ LogicNode::LogicNode() :
     // out ports
     m_out = addOutPort(typeId<BoolData>());
 
-    /*
-    registerWidgetFactory([=](){
-        auto base = makeBaseWidget();
-        auto w = new QComboBox();
-        base->layout()->addWidget(w);
-        w->addItems(QStringList{"NOT", "AND", "OR", "XOR", "NAND", "NOR"});
-
-        auto const update = [this, w](){
-            w->setCurrentText(toString(m_operation));
-        };
-
-        connect(&m_operation, &GtAbstractProperty::changed, w, update);
-
-        connect(w, &QComboBox::currentTextChanged,
-                this, [this, w](){
-            auto tmp = toLogicOperation(w->currentText());
-            if (tmp == m_operation) return;
-
-            m_operation = tmp;
-        });
-
-        update();
-
-        return base;
-    });
-    */
-
     connect(&m_operation, &GtAbstractProperty::changed, this, [this](){
         if (m_operation == LogicOperation::NOT && port(m_inB))
         {

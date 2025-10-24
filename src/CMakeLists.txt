@@ -71,6 +71,7 @@ set(PUBLIC_HEADERS
     intelli/gui/nodeuidata.h
     intelli/gui/portuiaction.h
     intelli/gui/style.h
+    intelli/gui/utilities.h
     intelli/gui/graphics/graphicsobject.h
     intelli/gui/graphics/interactableobject.h
     intelli/gui/graphics/nodeobject.h
@@ -233,6 +234,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/guidata.cpp
     intelli/gui/icons.cpp
     intelli/gui/style.cpp
+    intelli/gui/utilities.cpp
     intelli/gui/ui/commentui.cpp
     intelli/gui/ui/connectionui.cpp
     intelli/gui/ui/guidataui.cpp

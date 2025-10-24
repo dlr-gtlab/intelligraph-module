@@ -142,13 +142,6 @@ public:
                                                       NodeGraphicsObject& object);
 
     /**
-     * @brief Creates a base widget that has a simple layout attached.
-     * Can be used for node widgets, that have trouble resizing correctly.
-     * @return Widget pointer (never null)
-     */
-    GT_NO_DISCARD
-    static std::unique_ptr<QWidget> makeBaseWidget();
-    /**
      * @brief Returns the list of mdi items to open the object with
      * @param obj Object to open
      * @return Class names of compatible mdi items
