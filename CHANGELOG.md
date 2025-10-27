@@ -4,31 +4,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.15.0] - 2025-10-27
 *This release is not ABI compatible with `0.14.0` and introduces small API changes*
 
 ### Added
-- Nodes can now be collapsed using the node's context menu. Collapsed nodes only consists of the node's header, reducing visual clutter. - #282
+- Nodes can now be collapsed using the node's context menu. Collapsed nodes only consist of the node's header, reducing visual clutter. - #282
 - Comments can now be embedded into a graph scene. Comments may either be standalone or may be linked to nodes using the comment's context menu. Comments support markdown. - #65
 - Shortcut `CTRL+A` can now be used to select all objects in a scene - #292
-- A graph can now be duplicated within the explorer using its context menu or using the shortcut `CTRL+D`. - #291
+- A graph can now be duplicated within the explorer using its context menu or using the shortcut `CTRL+D` in the explorer. - #291
 - Introduced so-called User Variables which behave like environment variables per graph hierarchy. These can be edited using the `Edit` menu in the graph view. - #294
-- Added drop shadow effect to nodes. - #304
-- Added Undo/Redo commands for pausing a node, renaming a node, and adding dynamic ports. Known bug: when deleting dynamic ports, their connections are not restored with an undo yet. - #322, #315
+- Added a simple drop shadow effect to nodes. - #304
+- Added Undo/Redo commands for pausing a node, renaming a node, and adding dynamic ports. Known bug: when deleting dynamic ports, their connections are not restored with an undo yet (#316). - #322, #315
+- Added Undo/Redo commands for resizing a node or comment. - #290, #306
 - *Internal:* Added support for scope object, that allows executing graphs with a custom source datatree. - #32
 
 ### Changed
 - Copying nodes will now always copy connections inbetween the selected nodes, regardless of whether the connections were selected or not. - #289
 - `CTRL`-Clicking on a node that is already selected now unselects the node, thus making selections behave more intuitively. - #295
-- Resizing a node or comment now creates and undo command. - #290, #306
 - *Internal:* Moved utility functions from `intelli/globals.h` to `intelli/utilities.h`. - #289
 - *Internal:* Implemented standardized copy, move, and group functions in `intelli/graphutilities.h`. - #289
-- *Internal:* Major internal refactoring of graph scene and related graphics objects. - #289
 - *Internal:* Node widgets should now be registered via the node's `NodeUI` class. - #89
 
 ### Fixed
 - Fixed a bug where small mouse movements would not cause the widget to resize. - #288
-- Fixed theme not updating Graph View, Scene, and Nodes correctly. - #301
+- Fixed theme not updating graph view, scene, and nodes correctly. - #301
 - Fixed a bug where deleting ports of input/output providers would result in an undefined/unstable internal node state. - #323
 - The graph editor now updates its title when the associated graph changes its object name. - #322
 - *Internal:* `GraphBuilder` now also allows creating connections between ports with different but compatible type ids.
