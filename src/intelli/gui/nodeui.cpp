@@ -596,11 +596,6 @@ NodeUI::clearGraphNode(GtObject* obj)
     Q_UNUSED(cmd);
     
     graph->clearGraph();
-
-    CommentGroup* commentGroup = GuiData::accessCommentGroup(*graph);
-    if (!commentGroup) return;
-
-    commentGroup->clearComments();
 }
 
 bool

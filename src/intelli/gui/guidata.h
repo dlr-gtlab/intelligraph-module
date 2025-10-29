@@ -33,6 +33,8 @@ public:
 
     Q_INVOKABLE GuiData(GtObject* parent = nullptr);
 
+    void clearData();
+
     static LocalStateContainer* accessLocalStates(Graph& graph);
     static LocalStateContainer const* accessLocalStates(Graph const& graph);
 
@@ -65,6 +67,11 @@ public:
      * @return Whether the node is collapsed or expanded
      */
     bool isNodeCollapsed(NodeUuid const& nodeUuid) const;
+
+    /**
+     * @brief Removes all saved states
+     */
+    void clearSavedStates();
 
 signals:
 

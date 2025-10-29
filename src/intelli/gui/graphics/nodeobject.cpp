@@ -136,7 +136,7 @@ NodeGraphicsObject::NodeGraphicsObject(QGraphicsScene& scene,
 
     updateChildItems();
 
-    setupDropShadowEffect(
+    auto* shadow = setupDropShadowEffect(
         [this](){
             return boundingRect();
         },
@@ -147,6 +147,10 @@ NodeGraphicsObject::NodeGraphicsObject(QGraphicsScene& scene,
                                            NodePainter::DrawNodeBackground);
         }
     );
+
+    connect(this, &QGraphicsObject::opacityChanged, shadow, [this, shadow](){
+        shadow->setVisible(!(opacity() < 1.0));
+    });
 }
 
 NodeGraphicsObject::~NodeGraphicsObject() = default;

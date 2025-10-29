@@ -109,6 +109,9 @@ public slots:
      */
     bool copySelectedObjects();
 
+    /// TODO
+    bool cutSelectedObjects();
+
     /**
      * @brief Pastes the selection from the clipboard. Creates an undo-redo
      * command.

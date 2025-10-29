@@ -115,6 +115,11 @@ GraphView::GraphView(QWidget* parent) :
     copyAction->setIcon(gt::gui::icon::copy());
     copyAction->setShortcut(gtApp->getShortCutSequence("copy"));
 
+    auto* cutAction = makeSceneAction(tr("Cut Selection"),
+                                       &GraphScene::cutSelectedObjects);
+    cutAction->setIcon(gt::gui::icon::cut());
+    cutAction->setShortcut(gtApp->getShortCutSequence("cut"));
+
     auto* pasteAction = makeSceneAction(tr("Paste Selection"),
                                         &GraphScene::pasteObjects);
     pasteAction->setIcon(gt::gui::icon::paste());

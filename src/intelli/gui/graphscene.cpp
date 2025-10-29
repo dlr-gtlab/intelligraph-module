@@ -45,31 +45,19 @@
 #include <gt_logging.h>
 
 #include <QMenu>
-#include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QClipboard>
 #include <QApplication>
 #include <QKeyEvent>
-#include <QElapsedTimer>
 #include <QTimer>
 #include <QWidgetAction>
 #include <QMenuBar>
 #include <QLineEdit>
-#include <QPushButton>
 #include <QTreeWidget>
 #include <QHeaderView>
-#include <QVarLengthArray>
 
 using namespace intelli;
-
-/// creates a copy of the object and returns a unique_ptr
-template <typename T>
-inline auto makeCopy(T& obj)
-{
-    std::unique_ptr<GtObject> tmp{obj.copy()};
-    return gt::unique_qobject_cast<std::remove_const_t<T>>(std::move(tmp));
-}
 
 struct GraphScene::Impl
 {
@@ -852,6 +840,23 @@ GraphScene::deleteSelectedObjects()
     }
 }
 
+static struct CutActionData
+{
+    Graph dummy;
+    QVector<QPointer<GraphicsObject>> objects;
+
+    void clear()
+    {
+        dummy.clearGraph();
+        for (auto x : objects)
+        {
+            x->setOpacity(1);
+        }
+        objects.clear();
+    }
+
+} s_cut_data;
+
 void
 GraphScene::duplicateSelectedObjects()
 {
@@ -871,6 +876,42 @@ GraphScene::copySelectedObjects()
 
     QByteArray mementoData = dummy.toMemento().toByteArray();
     QApplication::clipboard()->setText(std::move(mementoData));
+    return true;
+}
+
+bool
+GraphScene::cutSelectedObjects()
+{
+    s_cut_data.clear();
+
+    if (!Impl::copySelectionTo(*this, s_cut_data.dummy)) return false;
+
+    QRectF boundingRect;
+
+    auto const& selectedObjects= Impl::findSelectedItems<GraphicsObject*>(*this);
+    for (auto* x : selectedObjects)
+    {
+        boundingRect.united(x->boundingRect());
+        x->setOpacity(0.5);
+        s_cut_data.objects.push_back(x);
+    }
+
+    PopupItem::clearActivePopups();
+    auto* item = PopupItem::addPopupItem(*this,
+                                         tr("Cutting selected objects..."),
+                                         std::chrono::seconds{2});
+
+    item->setPos(boundingRect.center());
+
+    utils::connectOnce(this, &QGraphicsScene::selectionChanged, this, [this](){
+        gtDebug() << "CLEARING CUT OPERATION";
+
+        PopupItem::clearActivePopups();
+        PopupItem::addPopupItem(*this, tr("Cutting aborted"), std::chrono::seconds{2})->moveBy(0, 20);
+
+        s_cut_data.clear();
+    });
+
     return true;
 }
 
