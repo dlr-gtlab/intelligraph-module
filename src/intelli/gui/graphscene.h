@@ -91,6 +91,8 @@ public slots:
      */
     void alignObjectsToGrid();
 
+    void resetSelection();
+
     /**
      * @brief Attempts to delete all selected object. If no objects are
      * selected, no objects will be deleted. Creates an undo-redo command.
@@ -134,6 +136,9 @@ signals:
     void objectAdded(InteractableGraphicsObject* object, QPrivateSignal);
 
 protected:
+
+    /// prefer `resetSelection`
+    using GtGraphicsScene::clearSelection;
 
     void keyPressEvent(QKeyEvent* event) override;
 

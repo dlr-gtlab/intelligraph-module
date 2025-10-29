@@ -70,7 +70,6 @@ PopupItem::PopupItem(QGraphicsScene& scene, QString const& text, seconds timeout
 
 PopupItem::~PopupItem()
 {
-    gtDebug() << "REMOVED" << this;
     s_activeItems.removeOne(this);
 }
 

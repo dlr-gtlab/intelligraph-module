@@ -89,6 +89,7 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(QGraphicsScene& scene,
         connect(nodeObj, &NodeGraphicsObject::xChanged, this, updateEndPoint);
         connect(nodeObj, &NodeGraphicsObject::yChanged, this, updateEndPoint);
         connect(nodeObj, &NodeGraphicsObject::nodeGeometryChanged, this, updateEndPoint);
+        connect(nodeObj, &NodeGraphicsObject::opacityChanged, this, [this](){ update(); });
         updateEndPoint();
     }
 }
@@ -255,10 +256,15 @@ ConnectionGraphicsObject::paint(QPainter* painter,
         flags
     );
 
-    if (isDraft)
+    if (draftType == PortType::In  || m_outNode->opacity() < 1)
     {
         double const portRadius = style.node.portRadius;
-        p.drawEndPoint(*painter, path, portRadius, invert(draftType));
+        p.drawEndPoint(*painter, path, portRadius, PortType::Out);
+    }
+    if (draftType == PortType::Out || m_inNode->opacity() < 1)
+    {
+        double const portRadius = style.node.portRadius;
+        p.drawEndPoint(*painter, path, portRadius, PortType::In);
     }
 
 #ifdef GT_INTELLI_DEBUG_CONNECTION_GRAPHICS

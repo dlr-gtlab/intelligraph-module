@@ -136,7 +136,7 @@ GraphView::GraphView(QWidget* parent) :
     deleteAction->setShortcut(gtApp->getShortCutSequence("delete"));
 
     auto* clearSelectionAction = makeSceneAction(tr("Clear Selection"),
-                                                 &GraphScene::clearSelection);
+                                                 &GraphScene::resetSelection);
     clearSelectionAction->setIcon(gt::gui::icon::clear());
     clearSelectionAction->setShortcut(Qt::Key_Escape);
 
