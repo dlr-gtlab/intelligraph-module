@@ -33,6 +33,9 @@ public:
 
     Q_INVOKABLE GuiData(GtObject* parent = nullptr);
 
+    /**
+     * @brief Clears all gui-related data for the associated graph
+     */
     void clearData();
 
     static LocalStateContainer* accessLocalStates(Graph& graph);

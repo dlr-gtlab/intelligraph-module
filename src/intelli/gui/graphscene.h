@@ -91,6 +91,9 @@ public slots:
      */
     void alignObjectsToGrid();
 
+    /**
+     * @brief Clears the selection.
+     */
     void resetSelection();
 
     /**
@@ -108,10 +111,17 @@ public slots:
     /**
      * @brief Copies the selection to the clipboard. If no objects are selected,
      * no action is performed.
+     * @return Whether selected objects were copied
      */
     bool copySelectedObjects();
 
-    /// TODO
+    /**
+     * @brief Starts a cutting operation. Cut-objects are made translucent to
+     * emphasize that these objects are being cut. Another call to
+     * `pasteObjects` is necessary to finalize the cut-operation. Performing
+     * other actions aborts the cut-operation.
+     * @return Whether selected objects were cut (began being cut)
+     */
     bool cutSelectedObjects();
 
     /**
