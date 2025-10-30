@@ -73,11 +73,17 @@ PopupItem::~PopupItem()
     s_activeItems.removeOne(this);
 }
 
+PopupItem*
+PopupItem::addPopupItem(QGraphicsScene& scene, QString const& text, seconds timeout)
+{
+    return new PopupItem(scene, text, timeout);
+}
+
 void
 PopupItem::clearActivePopups()
 {
     // reverse iterate to not cause access to dangling iterator
-    for (auto i : s_activeItems)
+    for (auto i : qAsConst(s_activeItems))
     {
         i->hide();
     }

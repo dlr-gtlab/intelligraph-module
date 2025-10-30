@@ -92,6 +92,11 @@ public slots:
     void alignObjectsToGrid();
 
     /**
+     * @brief Clears the selection.
+     */
+    void resetSelection();
+
+    /**
      * @brief Attempts to delete all selected object. If no objects are
      * selected, no objects will be deleted. Creates an undo-redo command.
      */
@@ -106,8 +111,18 @@ public slots:
     /**
      * @brief Copies the selection to the clipboard. If no objects are selected,
      * no action is performed.
+     * @return Whether selected objects were copied
      */
     bool copySelectedObjects();
+
+    /**
+     * @brief Starts a cutting operation. Cut-objects are made translucent to
+     * emphasize that these objects are being cut. Another call to
+     * `pasteObjects` is necessary to finalize the cut-operation. Performing
+     * other actions aborts the cut-operation.
+     * @return Whether selected objects were cut (began being cut)
+     */
+    bool cutSelectedObjects();
 
     /**
      * @brief Pastes the selection from the clipboard. Creates an undo-redo
@@ -131,6 +146,9 @@ signals:
     void objectAdded(InteractableGraphicsObject* object, QPrivateSignal);
 
 protected:
+
+    /// prefer `resetSelection`
+    using GtGraphicsScene::clearSelection;
 
     void keyPressEvent(QKeyEvent* event) override;
 

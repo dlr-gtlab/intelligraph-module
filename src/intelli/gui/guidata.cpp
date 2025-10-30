@@ -31,6 +31,16 @@ GuiData::GuiData(GtObject* parent) :
     if (!gtApp || !gtApp->devMode()) setFlag(UserHidden);
 }
 
+void
+GuiData::clearData()
+{
+    auto states = findDirectChild<LocalStateContainer*>();
+    if (states) states->clearSavedStates();
+
+    auto commentGroup = findDirectChild<CommentGroup*>();
+    if (commentGroup) commentGroup->clearComments();
+}
+
 LocalStateContainer*
 GuiData::accessLocalStates(Graph& graph)
 {
@@ -124,5 +134,11 @@ LocalStateContainer::isNodeCollapsed(NodeUuid const& nodeUuid) const
                         [&nodeUuid](GtPropertyStructInstance const& e){
         return e.ident() == nodeUuid;
     }) != m_collapsed.end();
+}
+
+void
+LocalStateContainer::clearSavedStates()
+{
+    m_collapsed.clear();
 }
 

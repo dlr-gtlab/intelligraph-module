@@ -376,6 +376,9 @@ Graph::graphNodes() const
 void
 Graph::clearGraph()
 {
+    auto* guiData = findDirectChild<GuiData*>();
+    if (guiData) guiData->clearData();
+
     // connections should be removed automatically
     qDeleteAll(nodes());
 }

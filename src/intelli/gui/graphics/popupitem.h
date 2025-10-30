@@ -30,17 +30,13 @@ public:
 
     using seconds = std::chrono::seconds;
 
-    PopupItem(QGraphicsScene& scene, QString const& text, seconds timeout);
-    ~PopupItem();
-
     static PopupItem* addPopupItem(QGraphicsScene& scene,
                                    QString const& text,
-                                   seconds timeout)
-    {
-        return new PopupItem(scene, std::move(text), timeout);
-    }
+                                   seconds timeout);
 
     static void clearActivePopups();
+
+    ~PopupItem();
 
     /**
      * @brief Bounding rect of this object
@@ -55,6 +51,8 @@ protected:
                QWidget* widget = nullptr) override;
 
 private:
+
+    PopupItem(QGraphicsScene& scene, QString const& text, seconds timeout);
 
     /// Timeline for anmation
     QTimeLine m_timeLine;

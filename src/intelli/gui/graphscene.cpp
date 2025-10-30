@@ -34,6 +34,7 @@
 #include <gt_application.h>
 #include <gt_command.h>
 #include <gt_datamodel.h>
+#include <gt_algorithms.h>
 #include <gt_qtutilities.h>
 #include <gt_guiutilities.h>
 #include <gt_icons.h>
@@ -45,31 +46,19 @@
 #include <gt_logging.h>
 
 #include <QMenu>
-#include <QGraphicsView>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QClipboard>
 #include <QApplication>
 #include <QKeyEvent>
-#include <QElapsedTimer>
 #include <QTimer>
 #include <QWidgetAction>
 #include <QMenuBar>
 #include <QLineEdit>
-#include <QPushButton>
 #include <QTreeWidget>
 #include <QHeaderView>
-#include <QVarLengthArray>
 
 using namespace intelli;
-
-/// creates a copy of the object and returns a unique_ptr
-template <typename T>
-inline auto makeCopy(T& obj)
-{
-    std::unique_ptr<GtObject> tmp{obj.copy()};
-    return gt::unique_qobject_cast<std::remove_const_t<T>>(std::move(tmp));
-}
 
 struct GraphScene::Impl
 {
@@ -449,7 +438,106 @@ pasteFrom(GraphScene& scene, Graph& dummy)
     return utils::moveObjectsToGraph(dummy, scene.graph());
 }
 
+/// Helper opject to encompass all data necessary for cutting objects seamlessly.
+struct CutOperation
+{
+    /// Graph from where the objects are cut
+    QPointer<Graph> source;
+    /// Helper graph which holds a copy of the selection
+    /// (similar to how copy, pasting works)
+    std::unique_ptr<Graph> selection;
+    /// List of graphics objects that are cut
+    QVector<QPointer<GraphicsObject>> objects;
+
+    /// instance
+    static CutOperation& instance()
+    {
+        static CutOperation self;
+        return self;
+    }
+
+    /// begins a cut operation
+    bool begin(GraphScene& scene)
+    {
+        clear();
+        selection = std::make_unique<Graph>();
+        source = &scene.graph();
+
+        if (!Impl::copySelectionTo(scene, *Impl::CutOperation::instance().selection))
+        {
+            clear();
+            return false;
+        }
+
+        auto const& selectedObjects= Impl::findSelectedItems<InteractableGraphicsObject*>(scene);
+        for (auto* item : selectedObjects)
+        {
+            // only cut supported objects
+            if (item->deletableFlag() != GraphicsObject::DefaultDeletable) continue;
+            item->setOpacity(0.5);
+            objects.append(item);
+        }
+        return true;
+    }
+
+    /// finalizes a cut operation
+    void apply(GraphScene& scene)
+    {
+        auto cleanup = [this](){ clear(); };
+        Q_UNUSED(cleanup);
+
+        Graph* target = &scene.graph();
+
+        // target graph is same as source graph -> nothing to do here
+        if (target == source) return;
+
+        auto* commonParent = qobject_cast<GtObject*>(
+            gt::find_lowest_ancestor(std::initializer_list<Graph*>{source, target},
+                                     gt::get_parent_object)
+        );
+
+        if (!commonParent)
+        {
+            gtError() << tr("Cutting and pasting objects failed! (Invalid parent)");
+            return;
+        }
+
+        auto cmd = gtApp->makeCommand(commonParent, tr("Cut and paste objects"));
+        Q_UNUSED(cmd);
+
+        // delete cut objects
+        for (auto& item : qAsConst(Impl::CutOperation::instance().objects))
+        {
+            if (item) item->deleteObject();
+        }
+        Impl::CutOperation::instance().objects.clear();
+
+        // paste cut objects
+        Impl::pasteFrom(scene, *Impl::CutOperation::instance().selection);
+    }
+
+    /// clears a cut operation
+    void clear()
+    {
+        for (auto& item : qAsConst(objects))
+        {
+            if(item) item->setOpacity(1);
+        }
+        objects.clear();
+        selection.reset();
+        source = nullptr;
+    }
+
+    /// whether a cut operation is active
+    bool isActive() const
+    {
+        return source && selection && !objects.empty();
+    }
+};
+
 }; // struct Impl
+
+////////////////////////////////////////////////////////////////////////////////
 
 GraphScene::GraphScene(Graph& graph) :
     m_graph(&graph),
@@ -601,6 +689,8 @@ GraphScene::connectionObject(ConnectionId conId) const
 std::unique_ptr<QMenu>
 GraphScene::createSceneMenu(QPointF scenePos)
 {
+    Impl::CutOperation::instance().clear();
+
 // (adapted)
 // SPDX-SnippetBegin
 // SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
@@ -768,11 +858,20 @@ GraphScene::alignObjectsToGrid()
 }
 
 void
+GraphScene::resetSelection()
+{
+    Impl::CutOperation::instance().clear();
+    clearSelection();
+}
+
+void
 GraphScene::deleteSelectedObjects()
 {
+    Impl::CutOperation::instance().clear();
+
     /// std::erase_if wrapper
-    static auto const eraseByFlag = [](QList<QGraphicsItem*>& selected,
-                                       GraphicsObject::DeletableFlag flag){
+    auto const eraseByFlag = [](QList<QGraphicsItem*>& selected,
+                                GraphicsObject::DeletableFlag flag){
         return std::partition(selected.begin(),
                               selected.end(),
                               [flag](QGraphicsItem* item){
@@ -782,10 +881,10 @@ GraphScene::deleteSelectedObjects()
     };
 
     /// create popus for certain objects to notify that these are not deletable
-    static auto const createPopups = [](auto begin,
-                                        auto end,
-                                        GraphScene* scene,
-                                        QString const& text){
+    auto const createPopups = [](auto begin,
+                                 auto end,
+                                 GraphScene* scene,
+                                 QString const& text){
         PopupItem::clearActivePopups();
 
         // create popup to notify that certain nodes are not deletable
@@ -855,6 +954,8 @@ GraphScene::deleteSelectedObjects()
 void
 GraphScene::duplicateSelectedObjects()
 {
+    Impl::CutOperation::instance().clear();
+
     // bypass clipboard
     Graph dummy;
     if (Impl::copySelectionTo(*this, dummy))
@@ -866,6 +967,8 @@ GraphScene::duplicateSelectedObjects()
 bool
 GraphScene::copySelectedObjects()
 {
+    Impl::CutOperation::instance().clear();
+
     Graph dummy;
     if (!Impl::copySelectionTo(*this, dummy)) return false;
 
@@ -874,9 +977,20 @@ GraphScene::copySelectedObjects()
     return true;
 }
 
+bool
+GraphScene::cutSelectedObjects()
+{
+    return Impl::CutOperation::instance().begin(*this);
+}
+
 void
 GraphScene::pasteObjects()
 {
+    if (Impl::CutOperation::instance().isActive())
+    {
+        return Impl::CutOperation::instance().apply(*this);
+    }
+
     // read from clipboard
     auto text = QApplication::clipboard()->text();
     if (text.isEmpty()) return;
@@ -923,6 +1037,8 @@ GraphScene::keyPressEvent(QKeyEvent* event)
 void
 GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port)
 {
+    Impl::CutOperation::instance().clear();
+
     using PortType  = PortType;
     using PortIndex = PortIndex;
 
@@ -1018,6 +1134,8 @@ GraphScene::onPortContextMenu(NodeGraphicsObject* object, PortId port)
 void
 GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
 {
+    Impl::CutOperation::instance().clear();
+
     assert(object);
 
     if (!object->isSelected()) clearSelection();
@@ -1173,6 +1291,7 @@ GraphScene::expandSubgraph(Graph* groupNode)
 void
 GraphScene::beginMoveCommand(InteractableGraphicsObject* sender, QPointF diff)
 {
+    Impl::CutOperation::instance().clear();
     if (!m_objectMoveCmd.isValid())
     {
         auto const& selection = Impl::findSelectedItems<NodeGraphicsObject const*>(*this);
@@ -1258,6 +1377,7 @@ GraphScene::onNodeDoubleClicked(NodeGraphicsObject* sender)
     Graph* graph = qobject_cast<Graph*>(&node);
     if (!graph)
     {
+        Impl::CutOperation::instance().clear();
         return gt::gui::handleObjectDoubleClick(node);
     }
 
@@ -1320,6 +1440,8 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object,
                                   PortId portId)
 {
     assert(object);
+
+    Impl::CutOperation::instance().clear();
 
     if (type == PortType::In)
     {

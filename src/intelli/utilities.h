@@ -194,13 +194,14 @@ inline auto connectScoped(Sender sender, SignalSender signalSender,
 template<typename Sender, typename SignalSender,
          typename Reciever, typename SignalReciever>
 inline void connectOnce(Sender sender, SignalSender signalSender,
-                        Reciever reciever, SignalReciever signalReciever)
+                        Reciever reciever, SignalReciever signalReciever,
+                        Qt::ConnectionType type = Qt::DirectConnection)
 {
     auto* ctx = new QObject{reciever};
     QObject::connect(sender, signalSender, ctx, [=]() {
         signalReciever();
         ctx->deleteLater();
-    });
+    }, type);
 }
 
 } // namespace utils
