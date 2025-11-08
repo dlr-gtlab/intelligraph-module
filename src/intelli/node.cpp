@@ -20,6 +20,7 @@
 #include <gt_coreapplication.h>
 
 #include <QVBoxLayout>
+#include <QRegularExpression>
 
 using namespace intelli;
 

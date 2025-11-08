@@ -24,7 +24,7 @@ BoolNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (qobject_cast<BoolDisplayNode const*>(&n))
     {
-        return [](Node& source, NodeGraphicsObject& /*object*/) -> QGraphicsWidgetPtr {
+        return [this](Node& source, NodeGraphicsObject& /*object*/) -> QGraphicsWidgetPtr {
             auto* node = qobject_cast<BoolDisplayNode*>(&source);
             if (!node) return nullptr;
 
@@ -59,7 +59,7 @@ BoolNodeUI::centralWidgetFactory(Node const& n) const
     }
     if (qobject_cast<BoolInputNode const*>(&n))
     {
-        return [](Node& source, NodeGraphicsObject& /*object*/) -> QGraphicsWidgetPtr {
+        return [this](Node& source, NodeGraphicsObject& /*object*/) -> QGraphicsWidgetPtr {
             auto* node = qobject_cast<BoolInputNode*>(&source);
             if (!node) return nullptr;
 
