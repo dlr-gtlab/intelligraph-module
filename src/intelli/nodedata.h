@@ -65,12 +65,19 @@ public:
 
         QByteArray const& rtypeName = QMetaType(rtypeId).name();
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        auto&& retArg = Q_RETURN_ARG(T, var);
+#else
+        // Use normalized metatype name on Qt 5
+        auto retArg = QReturnArgument<T>(rtypeName, var);
+#endif
+
         auto* helper = const_cast<NodeData*>(this);
 
         if (!QMetaObject::invokeMethod(helper,
                                        methodName.toLatin1(),
                                        Qt::DirectConnection,
-                                       Q_RETURN_ARG(T, var),
+                                       retArg,
                                        std::forward<Args>(args)...))
         {
             gtTraceId("IntelliGraph")
