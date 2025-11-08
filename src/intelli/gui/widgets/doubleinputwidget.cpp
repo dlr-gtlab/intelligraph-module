@@ -16,8 +16,7 @@
 #include <gt_regexp.h>
 #include <gt_logging.h>
 
-#include <QRegExp>
-#include <QRegExpValidator>
+#include <QRegularExpressionValidator>
 #include <QDial>
 #include <QSlider>
 
@@ -30,7 +29,10 @@ DoubleInputWidget::DoubleInputWidget(InputMode mode,
                               new EditableIntegerLabel("", nullptr),
                               parent)
 {
-    valueEdit()->setValidator(new QRegExpValidator(gt::re::forDoubles(), this));
+    static QRegularExpression forDoubles("-?(?:\\d+(\\.\\d*)?|\\.\\d+)"
+                                         "([eE][+-]?\\d+)?");
+
+    valueEdit()->setValidator(new QRegularExpressionValidator(forDoubles, this));
 
     // emulate double slider
     slider()->setMinimum(0);

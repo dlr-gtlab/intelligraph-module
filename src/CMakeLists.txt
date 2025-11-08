@@ -5,6 +5,7 @@
 
 set(CMAKE_DEBUG_POSTFIX -d)
 set(CMAKE_AUTORCC ON)
+
 set(INTELLIGRAPH_VERSION 0.15.0)
 
 option(
@@ -298,12 +299,12 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
 
 target_link_libraries(GTlabIntelliGraph
     PUBLIC
-    Qt5::Core
+    Qt${QT_VERSION_MAJOR}::Core
     GTlab::Logging
     GTlab::Gui
     tloptional # shipped with gtlab
     PRIVATE
-    Qt5::Concurrent
+    Qt${QT_VERSION_MAJOR}::Concurrent
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 
@@ -343,6 +344,8 @@ target_include_directories(GTlabIntelliGraph PUBLIC
     PUBLIC $<INSTALL_INTERFACE:include>
 )
 
+add_library(GTlab::IntelliGraph ALIAS GTlabIntelliGraph)
+
 install (TARGETS GTlabIntelliGraph
     EXPORT GTlabIntelliGraph-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -365,9 +368,10 @@ write_basic_package_version_file(
   COMPATIBILITY AnyNewerVersion
 )
 
-file(GENERATE
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfig.cmake"
-    INPUT  "${PROJECT_SOURCE_DIR}/cmake/GTlabIntelliGraphConfig.in"
+configure_file(
+ "${PROJECT_SOURCE_DIR}/cmake/GTlabIntelliGraphConfig.in"
+ "${CMAKE_CURRENT_BINARY_DIR}/GTlabIntelliGraphConfig.cmake"
+ @ONLY
 )
 
 install(EXPORT  GTlabIntelliGraph-targets

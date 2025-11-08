@@ -29,6 +29,7 @@
 #include <QListWidget>
 #include <QMenu>
 #include <QAction>
+#include <QRegularExpressionValidator>
 
 using namespace intelli;
 
@@ -337,7 +338,8 @@ GraphUserVariableItem::GraphUserVariableItem(QString key,
 
     m_keyLabel = new EditableLabel();
     m_keyLabel->setPlaceholderText(tr("<key>"));
-    m_keyLabel->edit()->setValidator(new QRegExpValidator(QRegExp("(\\w|\\d)*"), this));
+    m_keyLabel->edit()->setValidator(new QRegularExpressionValidator
+                                     (QRegularExpression("(\\w|\\d)*"), this));
 
     m_valueEdit = new QLineEdit();
     m_valueEdit->setPlaceholderText(tr("<value>"));
