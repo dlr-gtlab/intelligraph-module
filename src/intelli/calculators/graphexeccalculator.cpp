@@ -26,7 +26,10 @@
 #include "gt_version.h"
 
 #include <QRegularExpression>
+
+#if GT_VERSION < 0x020100
 #include <QRegExpValidator>
+#endif
 
 using namespace intelli;
 

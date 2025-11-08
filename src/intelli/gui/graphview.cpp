@@ -394,8 +394,31 @@ GraphView::wheelEvent(QWheelEvent* event)
                 wheelEvent.setScreenPos(event->globalPosition().toPoint());
                 wheelEvent.setButtons(event->buttons());
                 wheelEvent.setModifiers(event->modifiers());
-                wheelEvent.setDelta(event->delta());
-                wheelEvent.setOrientation(event->orientation());
+
+                // 1) High-res deltas (pixels)
+                const QPoint pixel = event->pixelDelta();
+                if (!pixel.isNull())
+                    wheelEvent.setPixelDelta(pixel);
+
+                // 2) Legacy/step deltas (in 1/8 degree; 120 ~ one notch)
+                const QPoint angle = event->angleDelta();
+                if (angle.y() != 0) {
+                    wheelEvent.setDelta(angle.y());
+                    wheelEvent.setOrientation(Qt::Vertical);
+                } else if (angle.x() != 0) {
+                    wheelEvent.setDelta(angle.x());
+                    wheelEvent.setOrientation(Qt::Horizontal);
+                } else {
+                    // No movement; you can skip setDelta/orientation or set a default
+                    wheelEvent.setDelta(0);
+                    wheelEvent.setOrientation(Qt::Vertical);
+                }
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+                wheelEvent.setInverted(event->inverted());
+#endif
+
+                wheelEvent.setPhase(event->phase());
                 wheelEvent.setAccepted(false);
                 QCoreApplication::sendEvent(s, &wheelEvent);
                 return;
