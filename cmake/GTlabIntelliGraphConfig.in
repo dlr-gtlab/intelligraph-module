@@ -5,7 +5,7 @@
 #  SPDX-License-Identifier: BSD-3-Clause
 #  SPDX-FileCopyrightText: 2024 German Aerospace Center
 
-find_package(Qt5 COMPONENTS Widgets Core Concurrent Gui)
+find_package(Qt@QT_VERSION_MAJOR@ COMPONENTS Widgets Core Concurrent Gui)
 
 if (NOT TARGET GTlab::Logging)
     find_package(GTlabLogging)

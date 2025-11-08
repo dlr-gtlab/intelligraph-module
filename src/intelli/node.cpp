@@ -19,8 +19,8 @@
 #include <gt_qtutilities.h>
 #include <gt_coreapplication.h>
 
-#include <QRegExpValidator>
 #include <QVBoxLayout>
+#include <QRegularExpression>
 
 using namespace intelli;
 

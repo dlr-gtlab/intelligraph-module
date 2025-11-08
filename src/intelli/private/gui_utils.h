@@ -18,7 +18,7 @@
 #include <gt_regexp.h>
 #include <gt_datamodel.h>
 
-#include <QRegExpValidator>
+#include <QRegularExpressionValidator>
 
 #include "intelli/private/utils.h"
 
@@ -30,13 +30,16 @@ namespace gui_utils
 template <typename T>
 inline void addNamedChild(GtObject& obj)
 {
+    // From gtlab code to allow compat to 2.1 and 2.0
+    static QRegularExpression onlyLettersAndNumbersAndSpace("[A-Za-z0-9\\_\\-\\[\\]\\s\\␣]+");
+
     GtInputDialog dialog{GtInputDialog::TextInput};
     dialog.setWindowTitle(QObject::tr("Name new Object"));
     dialog.setWindowIcon(gt::gui::icon::rename());
     dialog.setLabelText(QObject::tr("Enter a name for the new object."));
 
-    dialog.setTextValidator(new QRegExpValidator{
-        gt::re::onlyLettersAndNumbersAndSpace()
+    dialog.setTextValidator(new QRegularExpressionValidator{
+        onlyLettersAndNumbersAndSpace
     });
 
     if (!dialog.exec()) return;

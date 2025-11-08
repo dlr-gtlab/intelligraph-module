@@ -15,8 +15,8 @@
 #include <gt_lineedit.h>
 #include <gt_logging.h>
 
-#include <QRegExp>
-#include <QRegExpValidator>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
 #include <QDial>
 #include <QSlider>
 
@@ -29,7 +29,7 @@ IntInputWidget::IntInputWidget(InputMode mode,
                               new EditableIntegerLabel("", nullptr),
                               parent)
 {
-    valueEdit()->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+"), this));
+    valueEdit()->setValidator(new QRegularExpressionValidator(QRegularExpression("-?[0-9]+"), this));
 }
 
 int
