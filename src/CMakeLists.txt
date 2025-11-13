@@ -267,6 +267,7 @@ target_link_libraries(GTlabIntelliGraph
     Qt5::Core
     GTlab::Logging
     GTlab::Gui
+    tloptional # shipped with gtlab
     PRIVATE
     Qt5::Concurrent
 )

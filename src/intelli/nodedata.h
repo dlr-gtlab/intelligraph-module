@@ -14,7 +14,7 @@
 
 #include <gt_logging.h>
 #include <gt_object.h>
-#include <thirdparty/tl/optional.hpp>
+#include <tl/optional.hpp>
 
 #include <QMetaMethod>
 
