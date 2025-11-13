@@ -13,7 +13,7 @@
 #include <intelli/globals.h>
 #include <intelli/exports.h>
 
-#include <thirdparty/tl/optional.hpp>
+#include <tl/optional.hpp>
 
 #include <QPainterPath>
 #include <QPointer>
