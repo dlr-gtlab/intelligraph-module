@@ -4,6 +4,7 @@
 #  SPDX-FileCopyrightText: 2024 German Aerospace Center
 
 set(CMAKE_DEBUG_POSTFIX -d)
+set(CMAKE_AUTORCC ON)
 
 set(INTELLIGRAPH_VERSION 0.15.0)
 
@@ -86,7 +87,7 @@ set(PUBLIC_HEADERS
     intelli/property/uint.h
 )
 
-qt5_add_resources (RCC_SOURCES
+set (RCC_SOURCES
     ./resources/icons.qrc
 )
 
@@ -264,12 +265,12 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
 
 target_link_libraries(GTlabIntelliGraph
     PUBLIC
-    Qt5::Core
+    Qt::Core
     GTlab::Logging
     GTlab::Gui
     tloptional # shipped with gtlab
     PRIVATE
-    Qt5::Concurrent
+    Qt::Concurrent
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 

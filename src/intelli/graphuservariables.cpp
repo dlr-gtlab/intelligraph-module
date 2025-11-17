@@ -87,7 +87,7 @@ bool checkCompatibility(QVariant const& v)
         s << gt::log::space << "',"
           << QObject::tr("got: '%1'").arg(toString(v));
 
-        gtWarning() << s.str();
+        gtWarning() << s.str().c_str();
         return false;
     }
 

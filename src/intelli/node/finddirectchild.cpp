@@ -15,7 +15,6 @@
 
 #include <gt_lineedit.h>
 
-#include <QRegExpValidator>
 #include <QRegExp>
 
 using namespace intelli;
