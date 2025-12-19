@@ -14,21 +14,24 @@ option(BUILD_UNITTESTS "Build Unittests" OFF)
 
 include(GNUInstallDirs)
 
-set(Qt5_DIR ${QT_DIR})
+# Try to find DevTools (optionally)
+# set via GTlabDevtools_ROOT=<path/to/devtools>
+find_package(GTlabDevtools QUIET) # optional
 
-include(GTlab)
+if (NOT TARGET GTlab::Core)
+    find_package(GTlab REQUIRED)
+endif()
+
+include(${GTlab_DIR}/GTlab.cmake)
 gtlab_standard_setup()
-enable_gtlab_devtools()
 
+set(Qt5_DIR ${QT_DIR})
 find_package(Qt5 REQUIRED COMPONENTS Widgets Core Concurrent Gui)
 
 if (NOT TARGET GTlab::Logging)
     find_package(GTlabLogging REQUIRED)
 endif()
 
-if (NOT TARGET GTlab::Core)
-    find_package(GTlab REQUIRED)
-endif()
 
 add_subdirectory(src)
 if (BUILD_UNITTESTS)
