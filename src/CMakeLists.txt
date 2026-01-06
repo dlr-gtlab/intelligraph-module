@@ -309,6 +309,8 @@ target_include_directories(GTlabIntelliGraph PUBLIC
     PUBLIC $<INSTALL_INTERFACE:include>
 )
 
+add_library(GTlab::IntelliGraph ALIAS GTlabIntelliGraph)
+
 install (TARGETS GTlabIntelliGraph
     EXPORT GTlabIntelliGraph-targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
