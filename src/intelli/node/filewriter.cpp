@@ -20,7 +20,7 @@ using namespace intelli;
 FileWriterNode::FileWriterNode() :
     Node("File Writer")
 {
-    setNodeEvalMode(NodeEvalMode::Exclusive);
+    setNodeEvalMode(NodeEvalMode::ExclusiveDetached);
 
     m_inFile = addInPort({typeId<FileData>(), tr("file")}, Required);
     m_inData = addInPort({typeId<ByteArrayData>(), tr("data")}, Required);
