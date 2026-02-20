@@ -30,6 +30,7 @@
 #include "intelli/node/textdisplay.h"
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/input/boolinput.h"
+#include "intelli/node/input/fileinput.h"
 #include "intelli/gui/commentgroup.h"
 #include "intelli/gui/commentdata.h"
 #include "intelli/gui/grapheditor.h"
@@ -44,6 +45,7 @@
 #include "intelli/gui/ui/node/logicnodeui.h"
 #include "intelli/gui/ui/node/numberdisplaynodeui.h"
 #include "intelli/gui/ui/node/textdisplaynodeui.h"
+#include "intelli/gui/ui/node/fileinputnodeui.h"
 #include "intelli/gui/property_item/stringselection.h"
 
 #include "intelli/calculators/graphexeccalculator.h"
@@ -308,6 +310,8 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(BoolNodeUI));
     map.insert(GT_CLASSNAME(BoolInputNode),
                GT_METADATA(BoolNodeUI));
+    map.insert(GT_CLASSNAME(FileInputNode),
+               GT_METADATA(FileInputNodeUI));
 
     QStringList registeredNodes = NodeFactory::instance().registeredNodes();
 
