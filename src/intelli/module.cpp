@@ -27,6 +27,7 @@
 #include "intelli/node/booldisplay.h"
 #include "intelli/node/logicoperation.h"
 #include "intelli/node/numberdisplay.h"
+#include "intelli/node/textdisplay.h"
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/input/boolinput.h"
 #include "intelli/gui/commentgroup.h"
@@ -42,6 +43,7 @@
 #include "intelli/gui/ui/node/boolnodeui.h"
 #include "intelli/gui/ui/node/logicnodeui.h"
 #include "intelli/gui/ui/node/numberdisplaynodeui.h"
+#include "intelli/gui/ui/node/textdisplaynodeui.h"
 #include "intelli/gui/property_item/stringselection.h"
 
 #include "intelli/calculators/graphexeccalculator.h"
@@ -299,6 +301,8 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(LogicNodeUI));
     map.insert(GT_CLASSNAME(NumberDisplayNode),
                GT_METADATA(NumberDisplayNodeUI));
+    map.insert(GT_CLASSNAME(TextDisplayNode),
+               GT_METADATA(TextDisplayNodeUI));
 
     map.insert(GT_CLASSNAME(BoolDisplayNode),
                GT_METADATA(BoolNodeUI));
