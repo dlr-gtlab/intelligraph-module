@@ -11,8 +11,6 @@
 
 #include "intelli/data/double.h"
 
-#include <gt_lineedit.h>
-
 using namespace intelli;
 
 
@@ -21,26 +19,17 @@ NumberDisplayNode::NumberDisplayNode() :
 {
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    PortId in = addInPort(makePort(typeId<DoubleData>()).setCaptionVisible(false));
+    addInPort(makePort(typeId<DoubleData>()).setCaptionVisible(false));
 
     setNodeFlag(ResizableHOnly);
-
-    registerWidgetFactory([=](){
-        auto w = std::make_unique<GtLineEdit>();
-
-        w->setReadOnly(true);
-        w->setMinimumWidth(75);
-        w->resize(w->minimumSizeHint());
-
-        auto const updateText = [this, in, w_ = w.get()](){
-            auto const& data = nodeData<DoubleData>(in);
-            w_->setText(QString::number(data ? data->value() : 0));
-        };
-        
-        connect(this, &Node::evaluated, w.get(), updateText);
-        updateText();
-
-        return w;
-    });
 }
 
+double
+NumberDisplayNode::displayValue() const
+{
+    auto const& inPorts = ports(PortType::In);
+    if (inPorts.empty()) return 0;
+
+    auto const& data = nodeData<DoubleData>(inPorts.front().id());
+    return data ? data->value() : 0;
+}

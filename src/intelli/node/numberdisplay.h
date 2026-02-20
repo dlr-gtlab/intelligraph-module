@@ -22,6 +22,8 @@ class NumberDisplayNode : public Node
 public:
 
     Q_INVOKABLE NumberDisplayNode();
+
+    double displayValue() const;
 };
 
 } // namespace intelli
