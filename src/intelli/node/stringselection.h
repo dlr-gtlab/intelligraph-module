@@ -22,6 +22,15 @@ public:
 
     Q_INVOKABLE StringSelectionNode();
 
+    QString selection() const;
+    void setSelection(QString const& selection);
+    QStringList options() const;
+
+signals:
+
+    void selectionChanged(QString const& selection);
+    void optionsChanged(QStringList const& options);
+
 protected:
 
     void eval() override;
