@@ -36,6 +36,17 @@ public:
 
     Q_INVOKABLE FindDirectChildNode();
 
+    QString targetClassName() const;
+    void setTargetClassName(QString const& name);
+    QString targetObjectName() const;
+    void setTargetObjectName(QString const& name);
+    ObjectData const* inputObject() const;
+
+signals:
+
+    void targetClassNameChanged(QString const& name);
+    void targetObjectNameChanged(QString const& name);
+
 protected:
 
     void eval() override;

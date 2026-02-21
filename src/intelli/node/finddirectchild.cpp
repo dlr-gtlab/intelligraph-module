@@ -11,13 +11,6 @@
 
 #include "intelli/data/object.h"
 
-#include "intelli/gui/widgets/finddirectchildwidget.h"
-
-#include <gt_lineedit.h>
-
-#include <QRegExpValidator>
-#include <QRegExp>
-
 using namespace intelli;
 
 FindDirectChildNode::FindDirectChildNode() :
@@ -37,40 +30,47 @@ FindDirectChildNode::FindDirectChildNode() :
     m_in = addInPort(typeId<ObjectData>());
     m_out = addOutPort(makePort(typeId<ObjectData>()).setCaption(tr("child")));
 
-    registerWidgetFactory([this]() {
-        auto w = std::make_unique<FindDirectChildWidget>();
-
-        w->updateNameCompleter(nodeData<ObjectData>(m_in).get());
-        
-        connect(w.get(), &FindDirectChildWidget::updateClass,
-                this, [this](QString const& newClass) {
-            m_targetClassName.setVal(newClass);
-        });
-        connect(&m_targetClassName, SIGNAL(changed()),
-                w.get(), SLOT(updateClassText()));
-        
-        connect(w.get(), &FindDirectChildWidget::updateObjectName,
-                this, [this](QString const& newObjName) {
-            m_targetObjectName.setVal(newObjName);
-        });
-        connect(&m_targetObjectName, SIGNAL(changed()),
-                w.get(), SLOT(updateNameText()));
-
-        connect(this, &Node::inputDataRecieved,
-                w.get(), [this, wid = w.get()]() {
-            wid->updateNameCompleter(nodeData<ObjectData>(m_in).get());
-        });
-
-        w->setClassNameWidget(m_targetClassName.getVal());
-        w->setObjectNameWidget(m_targetObjectName.getVal());
-
-        return w;
-    });
-
     connect(&m_targetClassName, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
     connect(&m_targetObjectName, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
+
+    connect(&m_targetClassName, &GtAbstractProperty::changed,
+            this, [this]() { emit targetClassNameChanged(m_targetClassName.get()); });
+    connect(&m_targetObjectName, &GtAbstractProperty::changed,
+            this, [this]() { emit targetObjectNameChanged(m_targetObjectName.get()); });
+}
+
+QString
+FindDirectChildNode::targetClassName() const
+{
+    return m_targetClassName.get();
+}
+
+void
+FindDirectChildNode::setTargetClassName(QString const& name)
+{
+    if (m_targetClassName.get() == name) return;
+    m_targetClassName.setVal(name);
+}
+
+QString
+FindDirectChildNode::targetObjectName() const
+{
+    return m_targetObjectName.get();
+}
+
+void
+FindDirectChildNode::setTargetObjectName(QString const& name)
+{
+    if (m_targetObjectName.get() == name) return;
+    m_targetObjectName.setVal(name);
+}
+
+ObjectData const*
+FindDirectChildNode::inputObject() const
+{
+    return nodeData<ObjectData>(m_in).get();
 }
 
 void
