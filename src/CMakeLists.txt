@@ -144,6 +144,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/node/fileinputnodeui.h intelli/gui/ui/node/fileinputnodeui.cpp
     intelli/gui/ui/node/logicnodeui.h intelli/gui/ui/node/logicnodeui.cpp
     intelli/gui/ui/node/numberdisplaynodeui.h intelli/gui/ui/node/numberdisplaynodeui.cpp
+    intelli/gui/ui/node/numbermathnodeui.h intelli/gui/ui/node/numbermathnodeui.cpp
     intelli/gui/ui/node/textdisplaynodeui.h intelli/gui/ui/node/textdisplaynodeui.cpp
     intelli/gui/graphics/commentobject.h
     intelli/gui/graphics/connectionobject.h

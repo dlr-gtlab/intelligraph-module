@@ -14,6 +14,8 @@
 
 #include <gt_enumproperty.h>
 
+#include <QMetaType>
+
 namespace intelli
 {
 
@@ -35,6 +37,14 @@ public:
 
     Q_INVOKABLE NumberMathNode();
 
+    MathOperation operation() const;
+    void setOperation(MathOperation op);
+
+signals:
+
+    // Forwarded across threads (DetachedExecutor), so the enum must be a Qt metatype.
+    void operationChanged(MathOperation op);
+
 protected:
 
     void eval() override;
@@ -53,5 +63,8 @@ private:
 };
 
 } // namespace intelli
+
+// Required for queued connections of NumberMathNode::operationChanged.
+Q_DECLARE_METATYPE(intelli::NumberMathNode::MathOperation)
 
 #endif // GT_INTELLI_NUMBERMATHNODE_H

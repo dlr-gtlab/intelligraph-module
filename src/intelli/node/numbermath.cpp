@@ -11,8 +11,23 @@
 
 #include "intelli/data/double.h"
 
-#include <QComboBox>
-#include <QLayout>
+#include <QMetaType>
+
+namespace
+{
+static const int meta_math_operation = [](){
+    // DetachedExecutor connects signals by signature strings that can vary.
+    // Register common spellings to keep queued connections valid.
+    qRegisterMetaType<intelli::NumberMathNode::MathOperation>(
+        "MathOperation");
+    qRegisterMetaType<intelli::NumberMathNode::MathOperation>(
+        "NumberMathNode::MathOperation");
+    return qRegisterMetaType<intelli::NumberMathNode::MathOperation>(
+        "intelli::NumberMathNode::MathOperation");
+}();
+} // namespace
+
+
 
 using namespace intelli;
 
@@ -32,36 +47,27 @@ NumberMathNode::NumberMathNode() :
         QStringLiteral("result") // custom port caption
     });
 
-    registerWidgetFactory([=](){
-        auto base = makeBaseWidget();
-        auto w = new QComboBox();
-        base->layout()->addWidget(w);
-        w->addItems(QStringList{"+", "-", "*", "/", "pow"});
-
-        auto const update = [this, w](){
-            w->setCurrentText(toString(m_operation));
-        };
-
-        connect(&m_operation, &GtAbstractProperty::changed, w, update);
-
-        connect(w, &QComboBox::currentTextChanged,
-                this, [this, w](){
-            auto tmp = toMathOperation(w->currentText());
-            if (tmp == m_operation) return;
-
-            m_operation = tmp;
-            updatePortCaptions();
-        });
-
-        update();
-
-        return base;
-    });
-
     updatePortCaptions();
 
     connect(&m_operation, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
+    connect(&m_operation, &GtAbstractProperty::changed,
+            this, [this]() { emit operationChanged(m_operation); });
+}
+
+NumberMathNode::MathOperation
+NumberMathNode::operation() const
+{
+    return m_operation;
+}
+
+void
+NumberMathNode::setOperation(MathOperation op)
+{
+    if (m_operation == op) return;
+
+    m_operation = op;
+    updatePortCaptions();
 }
 
 void
