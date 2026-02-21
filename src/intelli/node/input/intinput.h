@@ -42,6 +42,14 @@ public:
     bool useBounds() const;
     void setUseBounds(bool value);
 
+    int inputModeValue() const;
+    void setInputModeValue(int value);
+
+signals:
+
+    void rangeChanged();
+    void inputModeChanged();
+
 protected:
 
     void eval() override;

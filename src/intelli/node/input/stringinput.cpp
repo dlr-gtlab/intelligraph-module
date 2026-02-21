@@ -10,8 +10,6 @@
 #include <intelli/node/input/stringinput.h>
 #include <intelli/data/string.h>
 
-#include <gt_lineedit.h>
-
 using namespace intelli;
 
 StringInputNode::StringInputNode() :
@@ -28,29 +26,9 @@ StringInputNode::StringInputNode() :
 
     connect(&m_value, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
+    connect(&m_value, &GtAbstractProperty::changed,
+            this, [this]() { emit valueChanged(m_value.get()); });
 
-    registerWidgetFactory([this]() {
-        auto w = std::make_unique<GtLineEdit>();
-        w->setPlaceholderText(QStringLiteral("String"));
-        w->setMinimumWidth(50);
-
-        w->resize(100, w->sizeHint().height());
-
-        auto const updateProp = [this, w_ = w.get()](){
-            if(value() != w_->text()) setValue(w_->text());
-        };
-        auto const updateText = [this, w_ = w.get()](){
-            if (w_->text() != value()) w_->setText(value());
-        };
-
-        connect(w.get(), &GtLineEdit::focusOut, this, updateProp);
-        connect(w.get(), &GtLineEdit::clearFocusOut, this, updateProp);
-        connect(&m_value, &GtAbstractProperty::changed, w.get(), updateText);
-
-        updateText();
-
-        return w;
-    });
 }
 
 QString const&
@@ -62,6 +40,7 @@ StringInputNode::value() const
 void
 StringInputNode::setValue(QString value)
 {
+    if (m_value.get() == value) return;
     m_value = std::move(value);
 }
 

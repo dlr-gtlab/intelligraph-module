@@ -29,6 +29,10 @@ public:
 
     void setValue(QString value);
 
+signals:
+
+    void valueChanged(QString const& value);
+
 protected:
 
     void eval() override;

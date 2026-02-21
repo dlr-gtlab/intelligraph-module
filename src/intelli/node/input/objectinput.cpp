@@ -11,11 +11,6 @@
 #include <intelli/data/object.h>
 #include <intelli/nodedatainterface.h>
 
-#include <gt_application.h>
-#include <gt_project.h>
-
-#include <gt_propertyobjectlinkeditor.h>
-
 using namespace intelli;
 
 constexpr bool s_useSuperClass = true;
@@ -31,24 +26,6 @@ ObjectInputNode::ObjectInputNode() :
 
     m_out = addOutPort(makePort(typeId<ObjectData>())
                            .setCaptionVisible(false));
-
-    registerWidgetFactory([this]() {
-        auto* model = exec::nodeDataInterface(*this);
-
-        auto w = std::make_unique<GtPropertyObjectLinkEditor>();
-        w->setObjectLinkProperty(&m_object);
-        w->setScope(model ? model->scope() : m_object.object());
-
-        auto update = [w_ = w.get()](){
-            w_->updateText();
-        };
-
-        connect(this, &Node::evaluated, w.get(), update);
-
-        update();
-
-        return w;
-    });
 
     connect(&m_object, &GtAbstractProperty::changed,
             this, &ObjectInputNode::triggerNodeEvaluation);
@@ -73,6 +50,18 @@ ObjectInputNode::ObjectInputNode() :
     });
 }
 
+GtObjectLinkProperty&
+ObjectInputNode::objectProperty()
+{
+    return m_object;
+}
+
+GtObjectLinkProperty const&
+ObjectInputNode::objectProperty() const
+{
+    return m_object;
+}
+
 GtObject*
 ObjectInputNode::linkedObject(GtObject* root)
 {
@@ -94,6 +83,7 @@ ObjectInputNode::linkedObject(GtObject const* root) const
 void
 ObjectInputNode::setValue(QString const& uuid)
 {
+    if (m_object.getVal() == uuid) return;
     m_object.setVal(uuid);
 }
 

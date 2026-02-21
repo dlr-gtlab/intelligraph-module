@@ -12,6 +12,8 @@
 
 #include <intelli/gui/widgets/doubleinputwidget.h>
 
+#include <QString>
+
 using namespace intelli;
 
 DoubleInputNode::DoubleInputNode() :
@@ -37,80 +39,46 @@ DoubleInputNode::DoubleInputNode() :
     setNodeFlag(Resizable);
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    registerWidgetFactory([this]() {
+    bool success = m_inputMode.registerEnum<DoubleInputWidget::InputMode>();
+    assert(success);
+
+    auto updateResizability = [this]() {
         using InputMode = DoubleInputWidget::InputMode;
+        switch (static_cast<InputMode>(inputModeValue()))
+        {
+        case InputMode::SliderH:
+        case InputMode::LineEditBound:
+        case InputMode::LineEditUnbound:
+            setNodeFlag(ResizableHOnly, true);
+            break;
+        default:
+            setNodeFlag(ResizableHOnly, false);
+            break;
+        }
+    };
 
-        bool success = m_inputMode.registerEnum<InputMode>();
-        assert(success);
-
-        auto mode = m_inputMode.getEnum<InputMode>();
-
-        auto w = new DoubleInputWidget(mode);
-
-        auto onRangeChanged = [this, w](){
-            w->setRange(value(), lowerBound(), upperBound());
-            emit nodeChanged();
-            emit triggerNodeEvaluation();
-        };
-
-        auto onMinChanged = [=](){
-            double newVal = w->min();
-            if (lowerBound() != newVal) setLowerBound(newVal);
-        };
-
-        auto onMaxChanged = [=](){
-            double newVal = w->max();
-            if (upperBound() != newVal) setUpperBound(newVal);
-        };
-
-        auto onValueChanged = [=](){
-            double newVal = w->value();
-            if (value() != newVal)
-            {
-                setValue(newVal);
+    connect(&m_value, &GtDoubleProperty::changed,
+            this, [this]() { emit rangeChanged(); });
+    connect(&m_min, &GtDoubleProperty::changed,
+            this, [this]() {
+                emit rangeChanged();
+                emit nodeChanged();
                 emit triggerNodeEvaluation();
-            }
-        };
+            });
+    connect(&m_max, &GtDoubleProperty::changed,
+            this, [this]() {
+                emit rangeChanged();
+                emit nodeChanged();
+                emit triggerNodeEvaluation();
+            });
+    connect(&m_inputMode, &GtAbstractProperty::changed,
+            this, [this, updateResizability]() {
+                updateResizability();
+                emit inputModeChanged();
+                emit nodeChanged();
+            });
 
-        auto const updateMode= [this, w]() {
-            w->setInputMode(m_inputMode.getEnum<InputMode>());
-
-            setUseBounds(w->useBounds());
-
-            switch (w->inputMode())
-            {
-            case InputMode::SliderH:
-            case InputMode::LineEditBound:
-            case InputMode::LineEditUnbound:
-                setNodeFlag(ResizableHOnly, true);
-                break;
-            default:
-                setNodeFlag(ResizableHOnly, false);
-                break;
-            }
-
-            emit nodeChanged();
-        };
-
-        connect(w, &DoubleInputWidget::valueComitted,
-                this, onValueChanged);
-        connect(w, &DoubleInputWidget::minChanged,
-                this, onMinChanged);
-        connect(w, &DoubleInputWidget::maxChanged,
-                this, onMaxChanged);
-
-        connect(&m_min, &GtDoubleProperty::changed,
-                w, onRangeChanged);
-        connect(&m_max, &GtDoubleProperty::changed,
-                w, onRangeChanged);
-        connect(&m_inputMode, &GtAbstractProperty::changed,
-                w, updateMode);
-
-        onRangeChanged();
-        updateMode();
-
-        return std::unique_ptr<QWidget>(w);
-    });
+    updateResizability();
 }
 
 double
@@ -166,9 +134,26 @@ DoubleInputNode::setUseBounds(bool value)
     if (m_useBounds != value) m_useBounds = value;
 }
 
+int
+DoubleInputNode::inputModeValue() const
+{
+    if (!m_inputMode.isInitialized()) return 0;
+    return m_inputMode.getMetaEnum().keyToValue(m_inputMode.getVal().toUtf8());
+}
+
+void
+DoubleInputNode::setInputModeValue(int value)
+{
+    if (!m_inputMode.isInitialized()) return;
+    const char* key = m_inputMode.getMetaEnum().valueToKey(value);
+    if (!key) return;
+    if (m_inputMode.getVal() == QLatin1String(key)) return;
+    bool success = true;
+    m_inputMode.setVal(key, &success);
+}
+
 void
 DoubleInputNode::eval()
 {
     setNodeData(m_out, std::make_shared<DoubleData>(value()));
 }
-

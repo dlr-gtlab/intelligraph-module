@@ -35,7 +35,11 @@
 #include "intelli/node/textdisplay.h"
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/input/boolinput.h"
+#include "intelli/node/input/doubleinput.h"
 #include "intelli/node/input/fileinput.h"
+#include "intelli/node/input/intinput.h"
+#include "intelli/node/input/objectinput.h"
+#include "intelli/node/input/stringinput.h"
 #include "intelli/gui/commentgroup.h"
 #include "intelli/gui/commentdata.h"
 #include "intelli/gui/grapheditor.h"
@@ -56,6 +60,10 @@
 #include "intelli/gui/ui/node/stringselectionnodeui.h"
 #include "intelli/gui/ui/node/textdisplaynodeui.h"
 #include "intelli/gui/ui/node/fileinputnodeui.h"
+#include "intelli/gui/ui/node/doubleinputnodeui.h"
+#include "intelli/gui/ui/node/intinputnodeui.h"
+#include "intelli/gui/ui/node/objectinputnodeui.h"
+#include "intelli/gui/ui/node/stringinputnodeui.h"
 #include "intelli/gui/property_item/stringselection.h"
 
 #include "intelli/calculators/graphexeccalculator.h"
@@ -324,6 +332,14 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(BoolNodeUI));
     map.insert(GT_CLASSNAME(FileInputNode),
                GT_METADATA(FileInputNodeUI));
+    map.insert(GT_CLASSNAME(ObjectInputNode),
+               GT_METADATA(ObjectInputNodeUI));
+    map.insert(GT_CLASSNAME(StringInputNode),
+               GT_METADATA(StringInputNodeUI));
+    map.insert(GT_CLASSNAME(DoubleInputNode),
+               GT_METADATA(DoubleInputNodeUI));
+    map.insert(GT_CLASSNAME(IntInputNode),
+               GT_METADATA(IntInputNodeUI));
     map.insert(GT_CLASSNAME(ExistingDirectorySourceNode),
                GT_METADATA(ExistingDirectorySourceNodeUI));
     map.insert(GT_CLASSNAME(ObjectSink),
