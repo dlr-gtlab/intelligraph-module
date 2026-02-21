@@ -11,10 +11,6 @@
 
 #include <intelli/data/string.h>
 
-#include <gt_lineedit.h>
-
-#include <QLayout>
-
 using namespace intelli;
 
 StringBuilderNode::StringBuilderNode() :
@@ -31,35 +27,23 @@ StringBuilderNode::StringBuilderNode() :
     m_inB = addInPort({typeId<StringData>(), tr("%2")});
     m_out = addOutPort({typeId<StringData>(), tr("new_str")});
 
-    registerWidgetFactory([this]() {
-        auto b = makeBaseWidget();
-        auto w = new GtLineEdit();
-        w->setPlaceholderText(QStringLiteral("%1/%2"));
-        w->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        w->setMinimumWidth(50);
-
-        b->layout()->addWidget(w);
-
-        auto const updateProp = [this, w](){
-            QString const& text = w->text();
-            if(m_pattern != text) m_pattern.setVal(text);
-        };
-        auto const updateText = [this, w = w](){
-            QString const& text = m_pattern.get();
-            if (w->text() != text) w->setText(text);
-        };
-
-        connect(w, &GtLineEdit::focusOut, this, updateProp);
-        connect(w, &GtLineEdit::clearFocusOut, this, updateProp);
-        connect(&m_pattern, &GtAbstractProperty::changed, w, updateText);
-
-        updateText();
-
-        return b;
-    });
-
     connect(&m_pattern, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
+    connect(&m_pattern, &GtAbstractProperty::changed,
+            this, [this]() { emit patternChanged(m_pattern.get()); });
+}
+
+QString
+StringBuilderNode::pattern() const
+{
+    return m_pattern.get();
+}
+
+void
+StringBuilderNode::setPattern(QString const& pattern)
+{
+    if (m_pattern.get() == pattern) return;
+    m_pattern.setVal(pattern);
 }
 
 void
