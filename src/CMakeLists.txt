@@ -140,22 +140,22 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/guidataui.h
     intelli/gui/ui/graphcategoryui.h
     intelli/gui/ui/packageui.h
-    intelli/gui/ui/node/boolnodeui.h intelli/gui/ui/node/boolnodeui.cpp
-    intelli/gui/ui/node/doubleinputnodeui.h intelli/gui/ui/node/doubleinputnodeui.cpp
+    intelli/gui/ui/node/boolnodeui.h
+    intelli/gui/ui/node/doubleinputnodeui.h
+    intelli/gui/ui/node/existingdirectorysourcenodeui.h
+    intelli/gui/ui/node/fileinputnodeui.h
+    intelli/gui/ui/node/intinputnodeui.h
+    intelli/gui/ui/node/logicnodeui.h
+    intelli/gui/ui/node/numberdisplaynodeui.h
+    intelli/gui/ui/node/numbermathnodeui.h
+    intelli/gui/ui/node/objectinputnodeui.h
+    intelli/gui/ui/node/objectsinknodeui.h
+    intelli/gui/ui/node/sleepynodeui.h
+    intelli/gui/ui/node/stringbuildernodeui.h
+    intelli/gui/ui/node/stringinputnodeui.h
+    intelli/gui/ui/node/stringselectionnodeui.h
+    intelli/gui/ui/node/textdisplaynodeui.h
     intelli/gui/ui/node/numberinputnodeui_utils.h
-    intelli/gui/ui/node/existingdirectorysourcenodeui.h intelli/gui/ui/node/existingdirectorysourcenodeui.cpp
-    intelli/gui/ui/node/fileinputnodeui.h intelli/gui/ui/node/fileinputnodeui.cpp
-    intelli/gui/ui/node/intinputnodeui.h intelli/gui/ui/node/intinputnodeui.cpp
-    intelli/gui/ui/node/logicnodeui.h intelli/gui/ui/node/logicnodeui.cpp
-    intelli/gui/ui/node/numberdisplaynodeui.h intelli/gui/ui/node/numberdisplaynodeui.cpp
-    intelli/gui/ui/node/numbermathnodeui.h intelli/gui/ui/node/numbermathnodeui.cpp
-    intelli/gui/ui/node/objectinputnodeui.h intelli/gui/ui/node/objectinputnodeui.cpp
-    intelli/gui/ui/node/objectsinknodeui.h intelli/gui/ui/node/objectsinknodeui.cpp
-    intelli/gui/ui/node/stringbuildernodeui.h intelli/gui/ui/node/stringbuildernodeui.cpp
-    intelli/gui/ui/node/stringinputnodeui.h intelli/gui/ui/node/stringinputnodeui.cpp
-    intelli/gui/ui/node/stringselectionnodeui.h intelli/gui/ui/node/stringselectionnodeui.cpp
-    intelli/gui/ui/node/sleepynodeui.h intelli/gui/ui/node/sleepynodeui.cpp
-    intelli/gui/ui/node/textdisplaynodeui.h intelli/gui/ui/node/textdisplaynodeui.cpp
     intelli/node/input/numberinputnode_utils.h
     intelli/gui/graphics/commentobject.h
     intelli/gui/graphics/connectionobject.h
@@ -255,6 +255,21 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/guidataui.cpp
     intelli/gui/ui/graphcategoryui.cpp
     intelli/gui/ui/packageui.cpp
+    intelli/gui/ui/node/boolnodeui.cpp
+    intelli/gui/ui/node/doubleinputnodeui.cpp
+    intelli/gui/ui/node/existingdirectorysourcenodeui.cpp
+    intelli/gui/ui/node/fileinputnodeui.cpp
+    intelli/gui/ui/node/intinputnodeui.cpp
+    intelli/gui/ui/node/logicnodeui.cpp
+    intelli/gui/ui/node/numberdisplaynodeui.cpp
+    intelli/gui/ui/node/numbermathnodeui.cpp
+    intelli/gui/ui/node/objectinputnodeui.cpp
+    intelli/gui/ui/node/objectsinknodeui.cpp
+    intelli/gui/ui/node/sleepynodeui.cpp
+    intelli/gui/ui/node/stringbuildernodeui.cpp
+    intelli/gui/ui/node/stringinputnodeui.cpp
+    intelli/gui/ui/node/stringselectionnodeui.cpp
+    intelli/gui/ui/node/textdisplaynodeui.cpp
     intelli/gui/graphics/commentobject.cpp
     intelli/gui/graphics/connectionobject.cpp
     intelli/gui/graphics/graphicsobject.cpp
