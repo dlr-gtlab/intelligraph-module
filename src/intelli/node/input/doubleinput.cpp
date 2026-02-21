@@ -11,8 +11,7 @@
 #include <intelli/data/double.h>
 
 #include <intelli/gui/widgets/doubleinputwidget.h>
-
-#include <QString>
+#include <intelli/node/input/numberinputnode_utils.h>
 
 using namespace intelli;
 
@@ -39,46 +38,13 @@ DoubleInputNode::DoubleInputNode() :
     setNodeFlag(Resizable);
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    bool success = m_inputMode.registerEnum<DoubleInputWidget::InputMode>();
-    assert(success);
-
-    auto updateResizability = [this]() {
-        using InputMode = DoubleInputWidget::InputMode;
-        switch (static_cast<InputMode>(inputModeValue()))
-        {
-        case InputMode::SliderH:
-        case InputMode::LineEditBound:
-        case InputMode::LineEditUnbound:
-            setNodeFlag(ResizableHOnly, true);
-            break;
-        default:
-            setNodeFlag(ResizableHOnly, false);
-            break;
-        }
-    };
-
-    connect(&m_value, &GtDoubleProperty::changed,
-            this, [this]() { emit rangeChanged(); });
-    connect(&m_min, &GtDoubleProperty::changed,
-            this, [this]() {
-                emit rangeChanged();
-                emit nodeChanged();
-                emit triggerNodeEvaluation();
-            });
-    connect(&m_max, &GtDoubleProperty::changed,
-            this, [this]() {
-                emit rangeChanged();
-                emit nodeChanged();
-                emit triggerNodeEvaluation();
-            });
-    connect(&m_inputMode, &GtAbstractProperty::changed,
-            this, [this, updateResizability]() {
-                updateResizability();
-                emit inputModeChanged();
-                emit nodeChanged();
-            });
-
-    updateResizability();
+    detail::setupNumberInputNode<DoubleInputNode,
+                                 GtDoubleProperty,
+                                 GtDoubleProperty,
+                                 MetaEnumProperty,
+                                 DoubleInputWidget::InputMode>(
+        this, m_value, m_min, m_max, m_inputMode,
+        [this](bool enable) { setNodeFlag(ResizableHOnly, enable); });
 }
 
 double
@@ -137,19 +103,13 @@ DoubleInputNode::setUseBounds(bool value)
 int
 DoubleInputNode::inputModeValue() const
 {
-    if (!m_inputMode.isInitialized()) return 0;
-    return m_inputMode.getMetaEnum().keyToValue(m_inputMode.getVal().toUtf8());
+    return detail::inputModeValue(m_inputMode);
 }
 
 void
 DoubleInputNode::setInputModeValue(int value)
 {
-    if (!m_inputMode.isInitialized()) return;
-    const char* key = m_inputMode.getMetaEnum().valueToKey(value);
-    if (!key) return;
-    if (m_inputMode.getVal() == QLatin1String(key)) return;
-    bool success = true;
-    m_inputMode.setVal(key, &success);
+    detail::setInputModeValue(m_inputMode, value);
 }
 
 void

@@ -11,8 +11,7 @@
 #include <intelli/data/int.h>
 
 #include <intelli/gui/widgets/intinputwidget.h>
-
-#include <QString>
+#include <intelli/node/input/numberinputnode_utils.h>
 
 using namespace intelli;
 
@@ -39,46 +38,13 @@ IntInputNode::IntInputNode() :
     setNodeFlag(Resizable);
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    bool success = m_inputMode.registerEnum<IntInputWidget::InputMode>();
-    assert(success);
-
-    auto updateResizability = [this]() {
-        using InputMode = IntInputWidget::InputMode;
-        switch (static_cast<InputMode>(inputModeValue()))
-        {
-        case InputMode::SliderH:
-        case InputMode::LineEditBound:
-        case InputMode::LineEditUnbound:
-            setNodeFlag(ResizableHOnly, true);
-            break;
-        default:
-            setNodeFlag(ResizableHOnly, false);
-            break;
-        }
-    };
-
-    connect(&m_value, &GtIntProperty::changed,
-            this, [this]() { emit rangeChanged(); });
-    connect(&m_min, &GtIntProperty::changed,
-            this, [this]() {
-                emit rangeChanged();
-                emit nodeChanged();
-                emit triggerNodeEvaluation();
-            });
-    connect(&m_max, &GtIntProperty::changed,
-            this, [this]() {
-                emit rangeChanged();
-                emit nodeChanged();
-                emit triggerNodeEvaluation();
-            });
-    connect(&m_inputMode, &GtAbstractProperty::changed,
-            this, [this, updateResizability]() {
-                updateResizability();
-                emit inputModeChanged();
-                emit nodeChanged();
-            });
-
-    updateResizability();
+    detail::setupNumberInputNode<IntInputNode,
+                                 GtIntProperty,
+                                 GtIntProperty,
+                                 MetaEnumProperty,
+                                 IntInputWidget::InputMode>(
+        this, m_value, m_min, m_max, m_inputMode,
+        [this](bool enable) { setNodeFlag(ResizableHOnly, enable); });
 }
 
 int
@@ -137,19 +103,13 @@ IntInputNode::setUseBounds(bool value)
 int
 IntInputNode::inputModeValue() const
 {
-    if (!m_inputMode.isInitialized()) return 0;
-    return m_inputMode.getMetaEnum().keyToValue(m_inputMode.getVal().toUtf8());
+    return detail::inputModeValue(m_inputMode);
 }
 
 void
 IntInputNode::setInputModeValue(int value)
 {
-    if (!m_inputMode.isInitialized()) return;
-    const char* key = m_inputMode.getMetaEnum().valueToKey(value);
-    if (!key) return;
-    if (m_inputMode.getVal() == QLatin1String(key)) return;
-    bool success = true;
-    m_inputMode.setVal(key, &success);
+    detail::setInputModeValue(m_inputMode, value);
 }
 
 void
