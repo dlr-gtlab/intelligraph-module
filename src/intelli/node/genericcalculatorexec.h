@@ -26,6 +26,17 @@ public:
 
     Q_INVOKABLE GenericCalculatorExecNode();
 
+    QString className() const;
+    void setClassName(QString const& className);
+    static QStringList classIdents();
+    static QString classNameFromIdent(QString const& ident);
+    static QString identFromClassName(QString const& className);
+
+    /// returns the current child object
+    GtObject* currentObject();
+
+    void syncConnectedPorts();
+
     /**
      * @brief Static member function that allows other modules to append class
      * names of calculators to the internal whitelist. Only whitelisted
@@ -43,7 +54,11 @@ private slots:
 
     void updateCurrentObject();
 
+public slots:
+
     void onCurrentObjectDataChanged();
+
+private slots:
 
     void onPortConnected(PortId portId);
 
@@ -53,6 +68,7 @@ signals:
 
     /// signals that the current object/calculator changed
     void currentObjectChanged();
+    void classNameChanged(QString const& className);
 
 private:
 
@@ -67,9 +83,6 @@ private:
     QHash<PortId, QString> m_calcInPorts;
     /// dynamic output ports for the output data of the calculator
     QHash<PortId, QString> m_calcOutPorts;
-
-    /// returns the current child objet
-    GtObject* currentObject();
 
     /// init the input ports based on the properties
     void initPorts();

@@ -27,6 +27,7 @@
 #include "intelli/node/booldisplay.h"
 #include "intelli/node/existingdirectorysource.h"
 #include "intelli/node/finddirectchild.h"
+#include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/logicoperation.h"
 #include "intelli/node/numberdisplay.h"
 #include "intelli/node/numbermath.h"
@@ -55,6 +56,7 @@
 #include "intelli/gui/ui/node/boolnodeui.h"
 #include "intelli/gui/ui/node/existingdirectorysourcenodeui.h"
 #include "intelli/gui/ui/node/finddirectchildnodeui.h"
+#include "intelli/gui/ui/node/genericcalculatorexecnodeui.h"
 #include "intelli/gui/ui/node/logicnodeui.h"
 #include "intelli/gui/ui/node/numberdisplaynodeui.h"
 #include "intelli/gui/ui/node/numbermathnodeui.h"
@@ -348,6 +350,8 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(ExistingDirectorySourceNodeUI));
     map.insert(GT_CLASSNAME(FindDirectChildNode),
                GT_METADATA(FindDirectChildNodeUI));
+    map.insert(GT_CLASSNAME(GenericCalculatorExecNode),
+               GT_METADATA(GenericCalculatorExecNodeUI));
     map.insert(GT_CLASSNAME(ObjectSink),
                GT_METADATA(ObjectSinkNodeUI));
     map.insert(GT_CLASSNAME(StringBuilderNode),

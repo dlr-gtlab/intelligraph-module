@@ -312,76 +312,56 @@ GenericCalculatorExecNode::GenericCalculatorExecNode() :
     connect(this, &Node::portDisconnected, this,
             &GenericCalculatorExecNode::onPortDisconnected);
 
-     registerWidgetFactory([this]() {
-        auto w = std::make_unique<QWidget>();
-        auto* lay = new QVBoxLayout;
-        w->setLayout(lay);
-        lay->setContentsMargins(0, 0, 0, 0);
-
-        auto* edit = new QComboBox;
-        edit->addItems(Impl::classIndents());
-        edit->setStyleSheet(gt::gui::stylesheet::comboBox());
-
-        lay->addWidget(edit);
-
-        auto* model = exec::nodeDataInterface(*this);
-        GtObject* scope = model ? model->scope() : gtApp->currentProject();
-        assert(scope);
-
-        auto* view = new GtPropertyTreeView(scope);
-        view->setAnimated(false);
-        lay->addWidget(view);
-
-        auto updateView = [view, this](){
-            view->setObject(nullptr);
-
-            auto obj = this->currentObject();
-            if (obj)
-            {
-                view->setObject(obj);
-                // collapse first category
-                view->collapse(view->model()->index(0, 0, view->rootIndex()));
-
-                connect(obj, qOverload<GtObject*, GtAbstractProperty*>(&GtObject::dataChanged),
-                        this, &GenericCalculatorExecNode::onCurrentObjectDataChanged,
-                        Qt::UniqueConnection);
-            }
-        };
-
-        auto const updateClass = [this, edit](){
-            m_className = Impl::identToClassName(edit->currentText());
-        };
-        auto const updateClassText = [this, edit](){
-            edit->setCurrentText(Impl::classNameToIdent(m_className));
-        };
-
-        connect(edit, &QComboBox::currentTextChanged,
-                this, updateClass);
-        connect(&m_className, &GtAbstractProperty::changed,
-                edit, updateClassText);
-        connect(this, &GenericCalculatorExecNode::currentObjectChanged,
-                view, updateView);
-
-        /// iterate over ports to remove already connected ones at start
-        for (auto* ports : {&m_calcInPorts, &m_calcOutPorts})
-        {
-            gt::for_each_key(ports->begin(), ports->end(),
-                             [this](PortId portId){
-                if (nodeData<NodeData const>(portId))
-                {
-                    onPortConnected(portId);
-                }
-            });
-        }
-
-        m_className.get().isEmpty() ? updateClass() : updateClassText();
-        updateView();
-
-        return w;
-    });
-
     connect(&m_className, &GtAbstractProperty::changed,
             this, &GenericCalculatorExecNode::updateCurrentObject);
+    connect(&m_className, &GtAbstractProperty::changed,
+            this, [this]() { emit classNameChanged(m_className.get()); });
+}
+
+QString
+GenericCalculatorExecNode::className() const
+{
+    return m_className.get();
+}
+
+void
+GenericCalculatorExecNode::setClassName(QString const& className)
+{
+    if (m_className.get() == className) return;
+    m_className.setVal(className);
+}
+
+QStringList
+GenericCalculatorExecNode::classIdents()
+{
+    return Impl::classIndents();
+}
+
+QString
+GenericCalculatorExecNode::classNameFromIdent(QString const& ident)
+{
+    return Impl::identToClassName(ident);
+}
+
+QString
+GenericCalculatorExecNode::identFromClassName(QString const& className)
+{
+    return Impl::classNameToIdent(className);
+}
+
+void
+GenericCalculatorExecNode::syncConnectedPorts()
+{
+    for (auto* ports : {&m_calcInPorts, &m_calcOutPorts})
+    {
+        gt::for_each_key(ports->begin(), ports->end(),
+                         [this](PortId portId){
+            if (nodeData<NodeData const>(portId))
+            {
+                onPortConnected(portId);
+            }
+        });
+    }
 }
 
 void

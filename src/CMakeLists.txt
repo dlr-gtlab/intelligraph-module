@@ -145,6 +145,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/node/existingdirectorysourcenodeui.h
     intelli/gui/ui/node/finddirectchildnodeui.h
     intelli/gui/ui/node/fileinputnodeui.h
+    intelli/gui/ui/node/genericcalculatorexecnodeui.h
     intelli/gui/ui/node/intinputnodeui.h
     intelli/gui/ui/node/logicnodeui.h
     intelli/gui/ui/node/numberdisplaynodeui.h
@@ -261,6 +262,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/node/existingdirectorysourcenodeui.cpp
     intelli/gui/ui/node/finddirectchildnodeui.cpp
     intelli/gui/ui/node/fileinputnodeui.cpp
+    intelli/gui/ui/node/genericcalculatorexecnodeui.cpp
     intelli/gui/ui/node/intinputnodeui.cpp
     intelli/gui/ui/node/logicnodeui.cpp
     intelli/gui/ui/node/numberdisplaynodeui.cpp
