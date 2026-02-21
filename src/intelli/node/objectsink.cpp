@@ -11,8 +11,6 @@
 #include <intelli/data/object.h>
 #include <intelli/nodedatainterface.h>
 
-#include <QPushButton>
-
 #include "gt_application.h"
 #include "gt_datamodel.h"
 #include "gt_project.h"
@@ -29,23 +27,32 @@ ObjectSink::ObjectSink() :
 
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    // registering the widget factory
-    registerWidgetFactory([=](){
-        auto w = std::make_unique<QPushButton>("Export");
+    auto const updateExportEnabled = [this]() {
+        bool enabled = nodeData<ObjectData>(m_in) != nullptr;
+        if (m_canExport == enabled) return;
+        m_canExport = enabled;
+        emit exportEnabledChanged(enabled);
+    };
 
-        w->setEnabled(false);
-
-        connect(this, &Node::inputDataRecieved,
-                this, [this, w_ = w.get()](PortId portId){
-            auto data_tmp = nodeData<ObjectData>(portId);
-            w_->setEnabled(data_tmp != nullptr);
-        });
-
-        connect(w.get(), &QPushButton::clicked,
-                this, [this](){ doExport(); });
-
-        return w;
+    connect(this, &Node::inputDataRecieved,
+            this, [this, updateExportEnabled](PortId portId){
+        if (portId != m_in) return;
+        updateExportEnabled();
     });
+
+    updateExportEnabled();
+}
+
+bool
+ObjectSink::canExport() const
+{
+    return m_canExport;
+}
+
+void
+ObjectSink::exportObject()
+{
+    doExport();
 }
 
 void

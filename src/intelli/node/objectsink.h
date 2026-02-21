@@ -25,10 +25,19 @@ class ObjectSink : public Node
 public:
     Q_INVOKABLE ObjectSink();
 
+    bool canExport() const;
+
+public slots:
+    void exportObject();
+
+signals:
+    void exportEnabledChanged(bool enabled);
+
 private:
     PortId m_in;
 
     GtObjectLinkProperty m_target;
+    bool m_canExport{false};
 
 private slots:
     void doExport();

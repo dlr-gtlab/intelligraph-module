@@ -29,6 +29,7 @@
 #include "intelli/node/logicoperation.h"
 #include "intelli/node/numberdisplay.h"
 #include "intelli/node/numbermath.h"
+#include "intelli/node/objectsink.h"
 #include "intelli/node/textdisplay.h"
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/input/boolinput.h"
@@ -48,6 +49,7 @@
 #include "intelli/gui/ui/node/logicnodeui.h"
 #include "intelli/gui/ui/node/numberdisplaynodeui.h"
 #include "intelli/gui/ui/node/numbermathnodeui.h"
+#include "intelli/gui/ui/node/objectsinknodeui.h"
 #include "intelli/gui/ui/node/textdisplaynodeui.h"
 #include "intelli/gui/ui/node/fileinputnodeui.h"
 #include "intelli/gui/property_item/stringselection.h"
@@ -320,6 +322,8 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(FileInputNodeUI));
     map.insert(GT_CLASSNAME(ExistingDirectorySourceNode),
                GT_METADATA(ExistingDirectorySourceNodeUI));
+    map.insert(GT_CLASSNAME(ObjectSink),
+               GT_METADATA(ObjectSinkNodeUI));
 
     QStringList registeredNodes = NodeFactory::instance().registeredNodes();
 
