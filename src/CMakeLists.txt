@@ -154,6 +154,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/node/stringbuildernodeui.h intelli/gui/ui/node/stringbuildernodeui.cpp
     intelli/gui/ui/node/stringinputnodeui.h intelli/gui/ui/node/stringinputnodeui.cpp
     intelli/gui/ui/node/stringselectionnodeui.h intelli/gui/ui/node/stringselectionnodeui.cpp
+    intelli/gui/ui/node/sleepynodeui.h intelli/gui/ui/node/sleepynodeui.cpp
     intelli/gui/ui/node/textdisplaynodeui.h intelli/gui/ui/node/textdisplaynodeui.cpp
     intelli/node/input/numberinputnode_utils.h
     intelli/gui/graphics/commentobject.h

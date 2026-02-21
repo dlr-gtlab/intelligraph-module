@@ -32,6 +32,7 @@
 #include "intelli/node/objectsink.h"
 #include "intelli/node/stringbuilder.h"
 #include "intelli/node/stringselection.h"
+#include "intelli/node/sleepy.h"
 #include "intelli/node/textdisplay.h"
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/input/boolinput.h"
@@ -58,6 +59,7 @@
 #include "intelli/gui/ui/node/objectsinknodeui.h"
 #include "intelli/gui/ui/node/stringbuildernodeui.h"
 #include "intelli/gui/ui/node/stringselectionnodeui.h"
+#include "intelli/gui/ui/node/sleepynodeui.h"
 #include "intelli/gui/ui/node/textdisplaynodeui.h"
 #include "intelli/gui/ui/node/fileinputnodeui.h"
 #include "intelli/gui/ui/node/doubleinputnodeui.h"
@@ -348,6 +350,8 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(StringBuilderNodeUI));
     map.insert(GT_CLASSNAME(StringSelectionNode),
                GT_METADATA(StringSelectionNodeUI));
+    map.insert(GT_CLASSNAME(SleepyNode),
+               GT_METADATA(SleepyNodeUI));
 
     QStringList registeredNodes = NodeFactory::instance().registeredNodes();
 
