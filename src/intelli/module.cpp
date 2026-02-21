@@ -25,6 +25,7 @@
 #include "intelli/property/stringselection.h"
 #include "intelli/node/binarydisplay.h"
 #include "intelli/node/booldisplay.h"
+#include "intelli/node/existingdirectorysource.h"
 #include "intelli/node/logicoperation.h"
 #include "intelli/node/numberdisplay.h"
 #include "intelli/node/numbermath.h"
@@ -43,6 +44,7 @@
 #include "intelli/gui/ui/guidataui.h"
 #include "intelli/gui/ui/packageui.h"
 #include "intelli/gui/ui/node/boolnodeui.h"
+#include "intelli/gui/ui/node/existingdirectorysourcenodeui.h"
 #include "intelli/gui/ui/node/logicnodeui.h"
 #include "intelli/gui/ui/node/numberdisplaynodeui.h"
 #include "intelli/gui/ui/node/numbermathnodeui.h"
@@ -316,6 +318,8 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(BoolNodeUI));
     map.insert(GT_CLASSNAME(FileInputNode),
                GT_METADATA(FileInputNodeUI));
+    map.insert(GT_CLASSNAME(ExistingDirectorySourceNode),
+               GT_METADATA(ExistingDirectorySourceNodeUI));
 
     QStringList registeredNodes = NodeFactory::instance().registeredNodes();
 
