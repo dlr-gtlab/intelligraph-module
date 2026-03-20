@@ -30,7 +30,6 @@ SleepyNode::SleepyNode() :
     m_in  = addInPort(typeId<DoubleData>(), Required);
     m_out = addOutPort(typeId<DoubleData>());
 
-    // Widget creation moved to NodeUI.
 }
 
 bool
