@@ -8,7 +8,7 @@
  */
 #pragma once
 
-#include <intelli/DynamicNode.h>
+#include <intelli/dynamicnode.h>
 
 #include <gt_enumproperty.h>
 #include <gt_boolproperty.h>
