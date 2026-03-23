@@ -9,7 +9,7 @@
 #pragma once
 
 
-#include <intelli/DynamicNode.h>
+#include <intelli/dynamicnode.h>
 #include <intelli/gui/widgets/markdownwindow.h>
 
 #include <QDialog>
