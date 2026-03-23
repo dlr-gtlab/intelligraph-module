@@ -9,7 +9,7 @@
 
 #include <intelli/gui/graphics/commentobject.h>
 #include <intelli/gui/graphics/lineobject.h>
-#include "intelli/gui/graphics/nodeobject.h"
+#include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/style.h>
 #include <intelli/utilities.h>
 #include <intelli/gui/commentdata.h>
@@ -20,6 +20,7 @@
 #include <gt_colors.h>
 #include <gt_palette.h>
 #include <gt_guiutilities.h>
+#include <gt_coreapplication.h>
 
 #include <QPainter>
 #include <QTextEdit>
@@ -30,6 +31,7 @@
 #include <QMenu>
 #include <QAction>
 #include <QVBoxLayout>
+#include <QColorDialog>
 
 using namespace intelli;
 
@@ -75,6 +77,7 @@ public:
             QColor color = gt::gui::color::text();
             QColor bgcolor = style::invert(color);
 
+
             if (isSelected)
             {
                 color = style.selectedOutline;
@@ -86,6 +89,7 @@ public:
                             Qt::lightGray :
                             Qt::darkGray;
             }
+
 
             gt::gui::colorize(iconbg, bgcolor).paint(painter, rect);
             gt::gui::colorize(icon, color).paint(painter, rect);
@@ -185,7 +189,9 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
                                              GraphSceneData const& data) :
     InteractableGraphicsObject(data, nullptr),
     m_graph(&graph),
-    m_comment(&comment)
+    m_comment(&comment),
+    m_color(comment.Color()),
+    m_bgcolor(comment.bgColor())
 {
     setFlag(GraphicsItemFlag::ItemIsSelectable, true);
     setFlag(GraphicsItemFlag::ItemContainsChildrenInShape, true);
@@ -199,11 +205,25 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     m_editor->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_editor->setMinimumSize(50, 25);
 
+    m_editor->setAutoFillBackground(false);
+
+    QString style = QString(
+                        "QTextEdit {"
+                        " color: %1;"
+                        " background-color: %2;"
+                        "}"
+                        ).arg(comment.Color(),comment.bgColor());
+    m_editor->setStyleSheet(style);
+
     auto* w = new QWidget();
     auto* lay = new QVBoxLayout(w);
     lay->setContentsMargins(0, 0, 0, 0);
     lay->addWidget(m_editor);
     w->setLayout(lay);
+
+    w->setAttribute(Qt::WA_TranslucentBackground);
+    w->setAutoFillBackground(false);
+    w->setStyleSheet("background: transparent;");
 
     m_proxyWidget = new QGraphicsProxyWidget(this);
     m_proxyWidget->setWidget(w);
@@ -245,10 +265,19 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     });
 
     connect(m_comment, &CommentData::commentChanged, m_editor, [this](){
+        QSignalBlocker _(this);
         m_editor->setMarkdown(m_comment->text());
-
+        m_color = m_comment->Color();
+        m_bgcolor = m_comment->bgColor();
+        onColorChanged();
         setEditing(false);
     });
+
+    connect(this, &CommentGraphicsObject::colorChanged, this, [this](){
+        auto _ = gtApp->makeCommand(m_comment, tr("Change Comment Color"));
+        m_comment->setColor(m_color,m_bgcolor);
+    }, Qt::DirectConnection);
+
 
     // setup object
     setPos(m_comment->pos());
@@ -392,6 +421,37 @@ CommentGraphicsObject::isEditing() const
     return m_overlay->zValue() < 0;
 }
 
+void CommentGraphicsObject::selectColor()
+{
+
+    QColor color = QColorDialog::getColor(m_bgcolor, nullptr, "Select Background Color", QColorDialog::ShowAlphaChannel);
+
+
+    if (!color.isValid())
+        return;
+
+    QColor colorText = QColorDialog::getColor(m_color, nullptr, "Select Text Color");
+
+    if (!colorText.isValid())
+        return;
+
+    m_color = colorText.name();
+    m_bgcolor = color.name(QColor::HexArgb);
+    emit colorChanged();
+}
+
+void CommentGraphicsObject::onColorChanged()
+{
+    QString style = QString(
+                        "QTextEdit {"
+                        " color: %1;"
+                        " background-color: %2;"
+                        "}"
+                        ).arg(m_color,m_bgcolor);
+
+    m_editor->setStyleSheet(style);
+}
+
 void
 CommentGraphicsObject::commitPosition()
 {
@@ -462,6 +522,13 @@ CommentGraphicsObject::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 void
 CommentGraphicsObject::setupContextMenu(QMenu& menu)
 {
+    QAction* changeColor = menu.addAction(tr("Change color"));
+    changeColor->setVisible(!isCollapsed());
+
+    connect(changeColor, &QAction::triggered, this, [this](){
+        selectColor();
+    });
+
     QAction* connectAction = menu.addAction(tr("Connect to..."));
     connectAction->setIcon(gt::gui::icon::chain());
     connectAction->setVisible(!isCollapsed());

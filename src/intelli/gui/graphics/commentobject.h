@@ -13,6 +13,7 @@
 #include <intelli/globals.h>
 #include <intelli/memory.h>
 #include <intelli/gui/graphics/interactableobject.h>
+#include <intelli/gui/commentdata.h>
 
 #include <unordered_map>
 
@@ -80,6 +81,9 @@ public:
      * @param menu Menu
      */
     void setupContextMenu(QMenu& menu) override;
+signals:
+
+    void colorChanged();
 
 protected:
 
@@ -133,6 +137,13 @@ private:
     void setEditing(bool isEditing = true);
 
     bool isEditing() const;
+
+    void selectColor();
+
+    void onColorChanged();
+
+    QString m_color;
+    QString m_bgcolor;
 
 private slots:
 
