@@ -12,6 +12,7 @@
 
 #include <intelli/globals.h>
 #include <intelli/exports.h>
+#include <gt_stringproperty.h>
 
 #include <gt_object.h>
 
@@ -120,6 +121,12 @@ public:
      */
     NodeId nodeConnectionAt(size_t idx) const;
 
+    void setColor(QString color,QString bgcolor);
+
+    QString Color();
+
+    QString bgColor();
+
 signals:
 
     /// Emitted once the comment is about to be deleted. Its data can still be
@@ -143,6 +150,8 @@ signals:
 
     /// Emitted once a node connection was removed.
     void nodeConnectionRemoved(NodeId nodeId);
+
+    void colorChanged();
 
 protected:
 

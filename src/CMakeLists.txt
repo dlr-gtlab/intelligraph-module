@@ -262,6 +262,15 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
 
 )
 
+target_sources(GTlabIntelliGraph
+  PRIVATE
+    intelli/node/agent.h intelli/node/agent.cpp
+
+    intelli/gui/widgets/agentwidget.h intelli/gui/widgets/agentwidget.cpp
+    intelli/node/ragdata.h intelli/node/ragdata.cpp
+    intelli/gui/widgets/markdownwindow.h intelli/gui/widgets/markdownwindow.cpp
+)
+
 target_link_libraries(GTlabIntelliGraph
     PUBLIC
     Qt5::Core
