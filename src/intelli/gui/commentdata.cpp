@@ -307,13 +307,13 @@ CommentData::setColor(QString color,QString bgcolor)
 
 
 QString
-CommentData::Color()
+CommentData::Color() const
 {
     return pimpl->colorText;
 }
 
 QString
-CommentData::bgColor()
+CommentData::bgColor() const
 {
     return pimpl->bgcolor;
 }

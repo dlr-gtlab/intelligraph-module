@@ -121,11 +121,23 @@ public:
      */
     NodeId nodeConnectionAt(size_t idx) const;
 
+    /**
+     * @brief Sets the color of the comment text and background.
+     * @param color Text color, bgcolor Background color.
+     */
     void setColor(QString color,QString bgcolor);
 
-    QString Color();
+    /**
+     * @brief Returns the current color of the comment text
+     * @return text color string
+     */
+    QString Color() const;
 
-    QString bgColor();
+    /**
+     * @brief Returns the current color of the comment background
+     * @return background color string
+     */
+    QString bgColor() const;
 
 signals:
 
@@ -151,6 +163,7 @@ signals:
     /// Emitted once a node connection was removed.
     void nodeConnectionRemoved(NodeId nodeId);
 
+    /// Emitted once a comment color is changed.
     void colorChanged();
 
 protected:
