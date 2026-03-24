@@ -17,6 +17,7 @@
 #include <gt_stringproperty.h>
 #include <gt_propertystructcontainer.h>
 
+
 #include <gt_coreapplication.h>
 
 #include <QSize>
@@ -61,6 +62,13 @@ struct CommentData::Impl
     GtPropertyStructContainer connections{
         "connections", tr("Connected Objects")
     };
+    //
+    GtStringProperty colorText{
+        "colortext", QObject::tr("Text Color"), QObject::tr("Color of the comment text")
+    };
+    GtStringProperty bgcolor{
+        "backgroundtext", QObject::tr("Background Color"), QObject::tr("Color of the background")
+    };
 
     /// TODO: remove me once core issue #1366 is merged
     QVector<NodeId> connectionsData;
@@ -82,6 +90,8 @@ CommentData::CommentData(GtObject* parent) :
     registerProperty(pimpl->sizeHeight);
     registerProperty(pimpl->collapsed);
     registerProperty(pimpl->text);
+    registerProperty(pimpl->colorText);
+    registerProperty(pimpl->bgcolor);
 
     // presence of struct indicates that the node is collapsed
     GtPropertyStructDefinition structType{S_CONNECTION_DATA_TYPE_ID};
@@ -129,6 +139,14 @@ CommentData::CommentData(GtObject* parent) :
         emit commentChanged();
     });
 
+    connect(&pimpl->bgcolor, &GtAbstractProperty::changed, this, [this](){
+        emit commentChanged();
+    });
+
+    connect(&pimpl->colorText, &GtAbstractProperty::changed, this, [this](){
+        emit commentChanged();
+    });
+
     setObjectName(QStringLiteral("comment_%1")
                       .arg(uuid().remove("{").remove("-").mid(0, 8)));
 
@@ -153,6 +171,7 @@ CommentData::CommentData(GtObject* parent) :
         emit nodeConnectionRemoved(nodeId);
         ASSERT_EQ_SIZE();
     }, Qt::DirectConnection);
+
 }
 
 CommentData::~CommentData()
@@ -273,6 +292,30 @@ CommentData::nodeConnectionAt(size_t idx) const
     bool ok = true;
     NodeId nodeId = NodeId::fromValue(pimpl->connections.at(idx).ident().toUInt(&ok));
     return ok ? nodeId : invalid<NodeId>();
+}
+
+void
+CommentData::setColor(QString color,QString bgcolor)
+{
+    {
+        QSignalBlocker _(this);
+        pimpl->colorText=color;
+        pimpl->bgcolor=bgcolor;
+    }
+    emit commentChanged();
+}
+
+
+QString
+CommentData::Color() const
+{
+    return pimpl->colorText;
+}
+
+QString
+CommentData::bgColor() const
+{
+    return pimpl->bgcolor;
 }
 
 void
