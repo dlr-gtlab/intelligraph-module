@@ -46,8 +46,6 @@
 
 #include "intelli/node/booldisplay.h"
 #include "intelli/node/textdisplay.h"
-#include "intelli/node/agent.h"
-#include "intelli/node/ragdata.h"
 
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/filereader.h"
@@ -137,8 +135,6 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(LogicNode, catLogic);
 
         GT_INTELLI_REGISTER_NODE(TextDisplayNode, catDisplay);
-        GT_INTELLI_REGISTER_NODE(AgentNode, catDisplay);
-        GT_INTELLI_REGISTER_NODE(RagDataNode, catDisplay);
 
         GT_INTELLI_REGISTER_NODE(ObjectMementoNode, catObject);
         GT_INTELLI_REGISTER_NODE(FindDirectChildNode, catObject);

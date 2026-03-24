@@ -1,4 +1,0 @@
-ifndef AGENTWIDGET_H
-#define AGENTWIDGET_H
-
-#endif // AGENTWIDGET_H
