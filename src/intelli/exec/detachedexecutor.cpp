@@ -179,19 +179,13 @@ DetachedExecutor::DetachedExecutor(QObject* parent) :
 
 DetachedExecutor::~DetachedExecutor()
 {
-    if (m_watcher.isRunning())
-    {
-        m_watcher.waitForFinished();
-    }
+    waitForFinished();
 }
 
 void
 DetachedExecutor::waitForFinished()
 {
-    if (m_watcher.isRunning())
-    {
-        m_watcher.waitForFinished();
-    }
+    if (m_watcher.isRunning()) m_watcher.waitForFinished();
 }
 
 bool
@@ -282,10 +276,7 @@ DetachedExecutor::evaluateNode(Node& node)
     NodeDataInterface* model = exec::nodeDataInterface(node);
     assert(model);
 
-    if (model->isShuttingDown())
-    {
-        return false;
-    }
+    if (model->isShuttingDown()) return false;
 
     if (!canEvaluateNode())
     {

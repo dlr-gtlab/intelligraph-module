@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed sporadic crashes, while shutting down a detached executor - #352
+
 ### Added
 
 ### Changed
