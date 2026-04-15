@@ -38,10 +38,12 @@ public:
     bool evaluateNode(Node& node);
 
     bool canEvaluateNode();
+    void waitForFinished();
 
 private:
     
     QPointer<Node> m_node;
+    QPointer<NodeDataInterface> m_model;
     
     struct ReturnValue
     {
