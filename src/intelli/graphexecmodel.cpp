@@ -10,6 +10,7 @@
 #include <intelli/graphexecmodel.h>
 #include <intelli/graph.h>
 #include <intelli/graphuservariables.h>
+#include <intelli/exec/detachedexecutor.h>
 #include <intelli/private/graphexecmodel_impl.h>
 #include <intelli/node/groupoutputprovider.h>
 #include <intelli/node/groupinputprovider.h>
@@ -111,8 +112,32 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 
 GraphExecutionModel::~GraphExecutionModel()
 {
+    m_isShuttingDown = true;
+
+    // Make any still-running detached executors observe a null data interface
+    // instead of a dangling execution model pointer.
+    beginReset();
+
+    if (pimpl->graph)
+    {
+        auto const nodes = pimpl->graph->nodes();
+        for (auto* node : nodes)
+        {
+            if (auto* executor = node->findChild<DetachedExecutor*>())
+            {
+                executor->waitForFinished();
+            }
+        }
+    }
+
     QMutexLocker locker{&Impl::s_sync.mutex};
     Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
+}
+
+bool
+GraphExecutionModel::isShuttingDown() const
+{
+    return m_isShuttingDown.load();
 }
 
 GraphExecutionModel*
@@ -217,7 +242,10 @@ GraphExecutionModel::resetTargetNodes()
 void
 GraphExecutionModel::beginReset()
 {
-    assert(pimpl->graph);
+    if (!pimpl->graph)
+    {
+        return;
+    }
 
     pimpl->autoEvaluatingGraphs.clear();
 
@@ -311,12 +339,15 @@ GraphExecutionModel::nodeEvalState(NodeUuid const& nodeUuid) const
 bool
 GraphExecutionModel::isGraphEvaluated() const
 {
+    if (isShuttingDown()) return false;
     return isGraphEvaluated(graph());
 }
 
 bool
 GraphExecutionModel::isGraphEvaluated(Graph const& graph) const
 {
+    if (isShuttingDown()) return false;
+
     auto const& nodes = graph.nodes();
     return std::all_of(nodes.begin(), nodes.end(),
                        [this](Node const* node){
@@ -327,6 +358,8 @@ GraphExecutionModel::isGraphEvaluated(Graph const& graph) const
 bool
 GraphExecutionModel::isNodeEvaluated(NodeUuid const& nodeUuid) const
 {
+    if (isShuttingDown()) return false;
+
     auto iter = pimpl->data.find(nodeUuid);
     return iter != pimpl->data.end() && iter->state == NodeEvalState::Valid;
 }
@@ -334,18 +367,22 @@ GraphExecutionModel::isNodeEvaluated(NodeUuid const& nodeUuid) const
 bool
 GraphExecutionModel::isEvaluating() const
 {
+    if (isShuttingDown()) return false;
     return !pimpl->evaluatingNodes.empty() || pimpl->isEvaluatingQueue;
 }
 
 bool
 GraphExecutionModel::isAutoEvaluatingGraph() const
 {
+    if (isShuttingDown()) return false;
     return isAutoEvaluatingGraph(this->graph());
 }
 
 bool
 GraphExecutionModel::isAutoEvaluatingGraph(Graph const& graph) const
 {
+    if (isShuttingDown()) return false;
+
     return std::find(pimpl->autoEvaluatingGraphs.begin(),
                      pimpl->autoEvaluatingGraphs.end(),
                      graph.uuid()) != pimpl->autoEvaluatingGraphs.end();
@@ -354,12 +391,15 @@ GraphExecutionModel::isAutoEvaluatingGraph(Graph const& graph) const
 bool
 GraphExecutionModel::autoEvaluateGraph()
 {
+    if (isShuttingDown()) return false;
     return autoEvaluateGraph(this->graph());
 }
 
 bool
 GraphExecutionModel::autoEvaluateGraph(Graph& graph)
 {
+    if (isShuttingDown()) return false;
+
     assert(Impl::containsGraph(*this, graph));
 
     return Impl::autoEvaluateGraph(*this, graph);
@@ -368,30 +408,36 @@ GraphExecutionModel::autoEvaluateGraph(Graph& graph)
 ExecFuture
 GraphExecutionModel::evaluateGraph()
 {
+    if (isShuttingDown()) return ExecFuture{};
     return evaluateGraph(this->graph());
 }
 
 ExecFuture
 GraphExecutionModel::evaluateGraph(Graph& graph)
 {
+    if (isShuttingDown()) return ExecFuture{};
     return Impl::evaluateGraph(*this, graph);
 }
 
 ExecFuture
 GraphExecutionModel::evaluateNode(NodeUuid const& nodeUuid)
 {
+    if (isShuttingDown()) return ExecFuture{};
     return Impl::evaluateNode(*this, nodeUuid);
 }
 
 void
 GraphExecutionModel::stopAutoEvaluatingGraph()
 {
+    if (isShuttingDown()) return;
     return stopAutoEvaluatingGraph(this->graph());
 }
 
 void
 GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
 {
+    if (isShuttingDown()) return;
+
     assert(Impl::containsGraph(*this, graph));
 
     utils::erase(pimpl->autoEvaluatingGraphs, graph.uuid());
@@ -407,6 +453,7 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
 bool
 GraphExecutionModel::invalidateNode(NodeUuid const& nodeUuid)
 {
+    if (isShuttingDown()) return false;
     return Impl::invalidateNode(*this, nodeUuid);
 }
 
@@ -438,6 +485,8 @@ NodeDataSet
 GraphExecutionModel::nodeData(NodeUuid const& nodeUuid,
                               PortId portId) const
 {
+    if (isShuttingDown()) return {};
+
     auto item = Impl::findPortData(*this, nodeUuid, portId, getNodeDataError);
     if (!item) return {};
 
@@ -449,6 +498,8 @@ GraphExecutionModel::nodeData(const NodeUuid& nodeUuid,
                               PortType type,
                               PortIndex portIdx) const
 {
+    if (isShuttingDown()) return {};
+
     auto item = Impl::findPortData(*this, nodeUuid, type, portIdx, getNodeDataError);
     if (!item) return {};
 
@@ -459,6 +510,8 @@ NodeDataPtrList
 GraphExecutionModel::nodeData(NodeUuid const& nodeUuid,
                               PortType type) const
 {
+    if (isShuttingDown()) return {};
+
     auto* node = graph().findNodeByUuid(nodeUuid);
     if (!node) return {};
 
@@ -506,6 +559,7 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
                                  PortId portId,
                                  NodeDataSet data)
 {
+    if (isShuttingDown()) return false;
     return Impl::setNodeData(*this, nodeUuid, portId, std::move(data));
 }
 
@@ -515,6 +569,8 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
                                  PortIndex portIdx,
                                  NodeDataSet data)
 {
+    if (isShuttingDown()) return false;
+
     auto item = Impl::findPortData(*this, nodeUuid, type, portIdx, setNodeDataError);
     if (!item) return false;
 
@@ -526,6 +582,8 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
                                  PortType type,
                                  NodeDataPtrList const& data)
 {
+    if (isShuttingDown()) return false;
+
     auto item = Impl::findData(*this, nodeUuid, setNodeDataError);
     if (!item) return false;
 
@@ -571,6 +629,8 @@ GraphExecutionModel::setScope(GtObject* scope)
 void
 GraphExecutionModel::nodeEvaluationStarted(NodeUuid const& nodeUuid)
 {
+    if (isShuttingDown()) return;
+
     auto item = Impl::findData(*this, nodeUuid);
     if (!item)
     {
@@ -595,6 +655,8 @@ GraphExecutionModel::nodeEvaluationStarted(NodeUuid const& nodeUuid)
 void
 GraphExecutionModel::nodeEvaluationFinished(NodeUuid const& nodeUuid)
 {
+    if (isShuttingDown()) return;
+
     utils::erase(pimpl->evaluatingNodes, nodeUuid);
 
     // update synchronization entity
@@ -606,6 +668,8 @@ GraphExecutionModel::nodeEvaluationFinished(NodeUuid const& nodeUuid)
 void
 GraphExecutionModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
 {
+    if (isShuttingDown()) return;
+
     auto item = Impl::findData(*this, nodeUuid);
     if (!item)
     {
@@ -623,6 +687,8 @@ GraphExecutionModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
 void
 GraphExecutionModel::onNodeEvaluated(NodeUuid const& nodeUuid)
 {
+    if (isShuttingDown()) return;
+
     auto item = Impl::findData(*this, nodeUuid);
     if (!item)
     {

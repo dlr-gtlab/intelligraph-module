@@ -15,6 +15,7 @@
 #include <intelli/nodedatainterface.h>
 
 #include <QPointer>
+#include <atomic>
 
 namespace intelli
 {
@@ -66,6 +67,8 @@ public:
     Graph& graph();
     GT_NO_DISCARD
     Graph const& graph() const;
+
+    bool isShuttingDown() const override;
 
     /**
      * @brief Resets the model, including all data and evaluation states.
@@ -362,6 +365,7 @@ private:
     // helper struct to "hide" implementation details
     struct Impl;
     std::unique_ptr<Impl> pimpl;
+    std::atomic_bool m_isShuttingDown{false};
 
     void beginReset();
 
