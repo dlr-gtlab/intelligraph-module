@@ -11,8 +11,6 @@
 #include "intelli/data/string.h"
 #include "intelli/data/stringlist.h"
 
-#include <QComboBox>
-
 using namespace intelli;
 
 StringSelectionNode::StringSelectionNode() :
@@ -27,42 +25,59 @@ StringSelectionNode::StringSelectionNode() :
 
     setNodeFlag(ResizableHOnly, true);
     
-    registerWidgetFactory([this]() {
-        auto w = std::make_unique<QComboBox>();
-
+    auto const updateOptions = [this]() {
         QStringList given;
-
         if (auto list = nodeData<StringListData>(m_in))
         {
             given = list->value();
         }
+        emit optionsChanged(given);
 
-        w->addItems(given);
+        if (given.isEmpty())
+        {
+            setSelection(QString{});
+            return;
+        }
 
-        m_selection = given.isEmpty() ? QString{} : given.first();
+        if (!given.contains(m_selection))
+        {
+            setSelection(given.first());
+        }
+    };
 
-        connect(w.get(), &QComboBox::currentTextChanged,
-                this, [this](QString const& newObjName) {
-                    this->m_selection = newObjName;
-                    emit triggerNodeEvaluation();
-                });
+    connect(this, &Node::inputDataRecieved,
+            this, [this, updateOptions](PortId portId)
+            {
+                if (portId != m_in) return;
+                updateOptions();
+            });
 
-        connect(this, &Node::inputDataRecieved,
-                w.get(), [this, wid = w.get()]()
-                {
-                    wid->clear();
-                    QStringList given;
-                    auto list = nodeData<StringListData>(m_in);
-                    if (list)
-                    {
-                        given = list->value();
-                    }
-                    wid->addItems(given);
-                    emit triggerNodeEvaluation();
-                });
+    updateOptions();
+}
 
-        return w;
-    });
+QString
+StringSelectionNode::selection() const
+{
+    return m_selection.get();
+}
+
+void
+StringSelectionNode::setSelection(QString const& selection)
+{
+    if (m_selection.get() == selection) return;
+    m_selection = selection;
+    emit selectionChanged(m_selection.get());
+    emit triggerNodeEvaluation();
+}
+
+QStringList
+StringSelectionNode::options() const
+{
+    if (auto list = nodeData<StringListData>(m_in))
+    {
+        return list->value();
+    }
+    return {};
 }
 
 void

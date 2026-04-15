@@ -24,6 +24,8 @@ public:
 
     Q_INVOKABLE SleepyNode();
 
+    bool hasInputData() const;
+
 signals:
 
     void timePassed(int progress);

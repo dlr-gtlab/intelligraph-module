@@ -536,9 +536,9 @@ Node::registerWidgetFactory(WidgetFactory factory)
 void
 Node::registerWidgetFactory(WidgetFactoryNoArgs factory)
 {
-    registerWidgetFactory([f = std::move(factory)](Node&){
+    pimpl->widgetFactory = [f = std::move(factory)](Node&){
         return f();
-    });
+    };
 }
 
 //////////////////////////////////////////////////////

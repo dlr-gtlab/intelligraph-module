@@ -11,7 +11,7 @@
 #include "intelli/data/string.h"
 #include "intelli/nodedata.h"
 
-#include <gt_propertyfilechoosereditor.h>
+#include <gt_abstractproperty.h>
 
 using namespace intelli;
 
@@ -28,14 +28,23 @@ ExistingDirectorySourceNode::ExistingDirectorySourceNode():
 
     connect(&m_value, &GtAbstractProperty::changed,
             this, &Node::triggerNodeEvaluation);
+    connect(&m_value, &GtAbstractProperty::changed,
+            this, [this]() { emit directoryChanged(m_value.get()); });
 
-    registerWidgetFactory([=](){
-        auto w = std::make_unique<GtPropertyFileChooserEditor>();
-        w->setMinimumWidth(120);
-        w->setFileChooserProperty(&m_value);
+    emit directoryChanged(m_value.get());
+}
 
-        return w;
-    });
+QString
+ExistingDirectorySourceNode::directory() const
+{
+    return m_value.get();
+}
+
+void
+ExistingDirectorySourceNode::setDirectory(QString const& path)
+{
+    if (m_value.get() == path) return;
+    m_value.setVal(path);
 }
 
 void

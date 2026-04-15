@@ -25,6 +25,13 @@ public:
 
     Q_INVOKABLE StringBuilderNode();
 
+    QString pattern() const;
+    void setPattern(QString const& pattern);
+
+signals:
+
+    void patternChanged(QString const& pattern);
+
 protected:
 
     void eval() override;

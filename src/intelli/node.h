@@ -198,9 +198,9 @@ public:
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
-    using WidgetFactory [[deprecated]] =
+    using WidgetFactory =
         std::function<std::unique_ptr<QWidget>(Node& thisNode)>;
-    using WidgetFactoryNoArgs [[deprecated]] =
+    using WidgetFactoryNoArgs =
         std::function<std::unique_ptr<QWidget>()>;
 
     /// Enums inidacting of node event

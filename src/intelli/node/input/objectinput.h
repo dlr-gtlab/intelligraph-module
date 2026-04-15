@@ -25,6 +25,9 @@ public:
 
     Q_INVOKABLE ObjectInputNode();
 
+    GtObjectLinkProperty& objectProperty();
+    GtObjectLinkProperty const& objectProperty() const;
+
     /**
      * @brief linkedObject
      * @return

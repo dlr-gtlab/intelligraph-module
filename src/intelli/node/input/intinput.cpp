@@ -11,6 +11,7 @@
 #include <intelli/data/int.h>
 
 #include <intelli/gui/widgets/intinputwidget.h>
+#include <intelli/node/input/numberinputnode_utils.h>
 
 using namespace intelli;
 
@@ -37,80 +38,13 @@ IntInputNode::IntInputNode() :
     setNodeFlag(Resizable);
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    registerWidgetFactory([this]() {
-        using InputMode = IntInputWidget::InputMode;
-
-        bool success = m_inputMode.registerEnum<InputMode>();
-        assert(success);
-
-        auto mode = m_inputMode.getEnum<InputMode>();
-        
-        auto* w = new IntInputWidget(mode);
-
-        auto onRangeChanged = [this, w](){
-            w->setRange(value(), lowerBound(), upperBound());
-            emit nodeChanged();
-            emit triggerNodeEvaluation();
-        };
-
-        auto onMinChanged = [=](){
-            int newVal = w->min();
-            if (lowerBound() != newVal) setLowerBound(newVal);
-        };
-
-        auto onMaxChanged = [=](){
-            int newVal = w->max();
-            if (upperBound() != newVal) setUpperBound(newVal);
-        };
-
-        auto onValueChanged = [=](){
-            int newVal = w->value();
-            if (value() != newVal)
-            {
-                setValue(newVal);
-                emit triggerNodeEvaluation();
-            }
-        };
-
-        auto const updateMode= [this, w]() {
-            w->setInputMode(m_inputMode.getEnum<InputMode>());
-
-            setUseBounds(w->useBounds());
-
-            switch (w->inputMode())
-            {
-            case InputMode::SliderH:
-            case InputMode::LineEditBound:
-            case InputMode::LineEditUnbound:
-                setNodeFlag(ResizableHOnly, true);
-                break;
-            default:
-                setNodeFlag(ResizableHOnly, false);
-                break;
-            }
-
-            emit nodeChanged();
-        };
-        
-        connect(w, &IntInputWidget::valueComitted,
-                this, onValueChanged);
-        connect(w, &IntInputWidget::minChanged,
-                this, onMinChanged);
-        connect(w, &IntInputWidget::maxChanged,
-                this, onMaxChanged);
-
-        connect(&m_min, &GtIntProperty::changed,
-                w, onRangeChanged);
-        connect(&m_max, &GtIntProperty::changed,
-                w, onRangeChanged);
-        connect(&m_inputMode, &GtAbstractProperty::changed,
-                w, updateMode);
-
-        onRangeChanged();
-        updateMode();
-
-        return std::unique_ptr<QWidget>(w);
-    });
+    detail::setupNumberInputNode<IntInputNode,
+                                 GtIntProperty,
+                                 GtIntProperty,
+                                 MetaEnumProperty,
+                                 IntInputWidget::InputMode>(
+        this, m_value, m_min, m_max, m_inputMode,
+        [this](bool enable) { setNodeFlag(ResizableHOnly, enable); });
 }
 
 int
@@ -164,6 +98,18 @@ IntInputNode::setUseBounds(bool value)
 {
     // cppcheck-suppress duplicateConditionalAssign
     if (m_useBounds != value) m_useBounds = value;
+}
+
+int
+IntInputNode::inputModeValue() const
+{
+    return detail::inputModeValue(m_inputMode);
+}
+
+void
+IntInputNode::setInputModeValue(int value)
+{
+    detail::setInputModeValue(m_inputMode, value);
 }
 
 void

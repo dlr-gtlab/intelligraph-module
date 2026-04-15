@@ -14,6 +14,8 @@
 
 #include <gt_enumproperty.h>
 
+class QString;
+
 namespace intelli
 {
 
@@ -34,6 +36,9 @@ public:
     Q_ENUM(TextType);
 
     Q_INVOKABLE TextDisplayNode();
+
+    QString displayText() const;
+    TextType textType() const;
 
 private:
 

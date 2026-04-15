@@ -22,6 +22,15 @@ class ExistingDirectorySourceNode : public Node
 public:
     Q_INVOKABLE ExistingDirectorySourceNode();
 
+    QString directory() const;
+    void setDirectory(QString const& path);
+
+signals:
+
+    void directoryChanged(QString const& path);
+
+protected:
+
     void eval() override;
 
 private:

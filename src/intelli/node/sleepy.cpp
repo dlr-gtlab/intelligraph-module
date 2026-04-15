@@ -30,28 +30,12 @@ SleepyNode::SleepyNode() :
     m_in  = addInPort(typeId<DoubleData>(), Required);
     m_out = addOutPort(typeId<DoubleData>());
 
-    registerWidgetFactory([this](){
-        auto w = std::make_unique<QLabel>();
+}
 
-        auto reset = [w_ = w.get(), this](){
-            if (nodeData<DoubleData>(m_in))
-                w_->setPixmap(gt::gui::icon::check().pixmap(20, 20));
-            else
-                w_->setPixmap(gt::gui::icon::cross().pixmap(20, 20));
-        };
-
-        auto update = [w_ = w.get()](int progress){
-            w_->setPixmap(progress != 100 ?
-                gt::gui::icon::processRunningIcon(progress).pixmap(20, 20) :
-                gt::gui::icon::check().pixmap(20, 20));
-        };
-        connect(this, &SleepyNode::timePassed, w.get(), update);
-        connect(this, &Node::inputDataRecieved, w.get(), reset);
-
-        reset();
-
-        return w;
-    });
+bool
+SleepyNode::hasInputData() const
+{
+    return nodeData<DoubleData>(m_in) != nullptr;
 }
 
 void

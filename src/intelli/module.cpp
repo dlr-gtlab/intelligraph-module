@@ -25,9 +25,24 @@
 #include "intelli/property/stringselection.h"
 #include "intelli/node/binarydisplay.h"
 #include "intelli/node/booldisplay.h"
+#include "intelli/node/existingdirectorysource.h"
+#include "intelli/node/finddirectchild.h"
+#include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/logicoperation.h"
+#include "intelli/node/numberdisplay.h"
+#include "intelli/node/numbermath.h"
+#include "intelli/node/objectsink.h"
+#include "intelli/node/stringbuilder.h"
+#include "intelli/node/stringselection.h"
+#include "intelli/node/sleepy.h"
+#include "intelli/node/textdisplay.h"
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/input/boolinput.h"
+#include "intelli/node/input/doubleinput.h"
+#include "intelli/node/input/fileinput.h"
+#include "intelli/node/input/intinput.h"
+#include "intelli/node/input/objectinput.h"
+#include "intelli/node/input/stringinput.h"
 #include "intelli/gui/commentgroup.h"
 #include "intelli/gui/commentdata.h"
 #include "intelli/gui/grapheditor.h"
@@ -39,7 +54,22 @@
 #include "intelli/gui/ui/guidataui.h"
 #include "intelli/gui/ui/packageui.h"
 #include "intelli/gui/ui/node/boolnodeui.h"
+#include "intelli/gui/ui/node/existingdirectorysourcenodeui.h"
+#include "intelli/gui/ui/node/finddirectchildnodeui.h"
+#include "intelli/gui/ui/node/genericcalculatorexecnodeui.h"
 #include "intelli/gui/ui/node/logicnodeui.h"
+#include "intelli/gui/ui/node/numberdisplaynodeui.h"
+#include "intelli/gui/ui/node/numbermathnodeui.h"
+#include "intelli/gui/ui/node/objectsinknodeui.h"
+#include "intelli/gui/ui/node/stringbuildernodeui.h"
+#include "intelli/gui/ui/node/stringselectionnodeui.h"
+#include "intelli/gui/ui/node/sleepynodeui.h"
+#include "intelli/gui/ui/node/textdisplaynodeui.h"
+#include "intelli/gui/ui/node/fileinputnodeui.h"
+#include "intelli/gui/ui/node/doubleinputnodeui.h"
+#include "intelli/gui/ui/node/intinputnodeui.h"
+#include "intelli/gui/ui/node/objectinputnodeui.h"
+#include "intelli/gui/ui/node/stringinputnodeui.h"
 #include "intelli/gui/property_item/stringselection.h"
 
 #include "intelli/calculators/graphexeccalculator.h"
@@ -295,11 +325,41 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(LogicNodeUI));
     map.insert(GT_CLASSNAME(BinaryDisplayNode),
                GT_METADATA(LogicNodeUI));
+    map.insert(GT_CLASSNAME(NumberDisplayNode),
+               GT_METADATA(NumberDisplayNodeUI));
+    map.insert(GT_CLASSNAME(NumberMathNode),
+               GT_METADATA(NumberMathNodeUI));
+    map.insert(GT_CLASSNAME(TextDisplayNode),
+               GT_METADATA(TextDisplayNodeUI));
 
     map.insert(GT_CLASSNAME(BoolDisplayNode),
                GT_METADATA(BoolNodeUI));
     map.insert(GT_CLASSNAME(BoolInputNode),
                GT_METADATA(BoolNodeUI));
+    map.insert(GT_CLASSNAME(FileInputNode),
+               GT_METADATA(FileInputNodeUI));
+    map.insert(GT_CLASSNAME(ObjectInputNode),
+               GT_METADATA(ObjectInputNodeUI));
+    map.insert(GT_CLASSNAME(StringInputNode),
+               GT_METADATA(StringInputNodeUI));
+    map.insert(GT_CLASSNAME(DoubleInputNode),
+               GT_METADATA(DoubleInputNodeUI));
+    map.insert(GT_CLASSNAME(IntInputNode),
+               GT_METADATA(IntInputNodeUI));
+    map.insert(GT_CLASSNAME(ExistingDirectorySourceNode),
+               GT_METADATA(ExistingDirectorySourceNodeUI));
+    map.insert(GT_CLASSNAME(FindDirectChildNode),
+               GT_METADATA(FindDirectChildNodeUI));
+    map.insert(GT_CLASSNAME(GenericCalculatorExecNode),
+               GT_METADATA(GenericCalculatorExecNodeUI));
+    map.insert(GT_CLASSNAME(ObjectSink),
+               GT_METADATA(ObjectSinkNodeUI));
+    map.insert(GT_CLASSNAME(StringBuilderNode),
+               GT_METADATA(StringBuilderNodeUI));
+    map.insert(GT_CLASSNAME(StringSelectionNode),
+               GT_METADATA(StringSelectionNodeUI));
+    map.insert(GT_CLASSNAME(SleepyNode),
+               GT_METADATA(SleepyNodeUI));
 
     QStringList registeredNodes = NodeFactory::instance().registeredNodes();
 
