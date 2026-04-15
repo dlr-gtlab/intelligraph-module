@@ -242,10 +242,7 @@ GraphExecutionModel::resetTargetNodes()
 void
 GraphExecutionModel::beginReset()
 {
-    if (!pimpl->graph)
-    {
-        return;
-    }
+    if (!pimpl->graph) return;
 
     pimpl->autoEvaluatingGraphs.clear();
 
