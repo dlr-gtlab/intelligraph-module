@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed sporadic crashes, while shutting down a detached executor - #352
+
 ### Added
 - Selected nodes can now be "cut" using the corresponding shortcut (usually `Ctrl+X`). Cut-nodes are "greyed-out", similar to how cutting works for files and folders. Once the selection is pasted, the cut-objects are deleted. - #283
 - Comments background color and text color can now be changed using a dialog window accessible from the context menu

@@ -64,6 +64,13 @@ public:
      */
     virtual GtObject* scope() { return nullptr; }
 
+    /**
+     * @brief Returns whether the model is shutting down and should no longer
+     * receive detached callbacks.
+     * @return Whether the model is shutting down.
+     */
+    virtual bool isShuttingDown() const { return false; }
+
     /// Helper struct to scope the duration of a node evaluation
     struct NodeEvaluationEndedFunctor
     {
