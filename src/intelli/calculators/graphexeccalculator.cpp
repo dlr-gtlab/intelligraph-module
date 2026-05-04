@@ -16,6 +16,7 @@
 #include <intelli/node/input/intinput.h>
 #include <intelli/node/input/doubleinput.h>
 #include <intelli/node/input/stringinput.h>
+#include <intelli/node/input/objectinput.h>
 
 #include "gt_regexp.h"
 #include "gt_structproperty.h"
@@ -53,6 +54,13 @@ GraphExecCalculator::GraphExecCalculator() :
         return stringProp;
     };
 
+
+    auto makeObjectLinkProperty = [](const QString& id)
+    {
+        return new GtObjectLinkProperty(id, id, "", "", nullptr,  QStringList{GT_CLASSNAME(GtObject) }, true);
+    };
+
+
     GtPropertyStructDefinition doubleNodes("Double Node");
     doubleNodes.defineMember("NodeName", makeStringWithEmptySpace);
     doubleNodes.defineMember("Value", gt::makeDoubleProperty(0));
@@ -72,6 +80,13 @@ GraphExecCalculator::GraphExecCalculator() :
     stringNodes.defineMember("NodeName", makeStringWithEmptySpace);
     stringNodes.defineMember("Value", gt::makeStringProperty(0));
     m_numberNodeContainer.registerAllowedType(stringNodes);
+
+
+    GtPropertyStructDefinition objectNodes("Object Node");
+    objectNodes.defineMember("NodeName", makeStringWithEmptySpace);
+    objectNodes.defineMember("Value", makeObjectLinkProperty);
+    m_numberNodeContainer.registerAllowedType(objectNodes);
+
 
     registerPropertyStructContainer(m_numberNodeContainer);
 }
@@ -134,6 +149,18 @@ GraphExecCalculator::run()
         {
             QString val = prop.getMemberVal<QString>("Value");
             auto* n = graph->findDirectChild<StringInputNode*>(name);
+
+            if (n)
+            {
+                n->setValue(val);
+                found = true;
+                gtTrace() << tr("Set node '%1' to '%2'").arg(name, val);
+            }
+        }
+        else if(prop.typeName() == "Object Node")
+        {
+            QString val = prop.getMemberVal<QString>("Value");
+            auto* n = graph->findDirectChild<ObjectInputNode*>(name);
 
             if (n)
             {
