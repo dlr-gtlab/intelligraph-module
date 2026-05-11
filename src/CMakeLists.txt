@@ -4,7 +4,7 @@
 #  SPDX-FileCopyrightText: 2024 German Aerospace Center
 
 set(CMAKE_DEBUG_POSTFIX -d)
-
+set(CMAKE_AUTORCC ON)
 set(INTELLIGRAPH_VERSION 0.15.0)
 
 option(
@@ -86,8 +86,8 @@ set(PUBLIC_HEADERS
     intelli/property/uint.h
 )
 
-qt5_add_resources (RCC_SOURCES
-    ./resources/icons.qrc
+set (RCC_SOURCES
+    resources/intelligraph_icons.qrc
 )
 
 add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
