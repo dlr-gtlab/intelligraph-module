@@ -177,7 +177,16 @@ DetachedExecutor::DetachedExecutor(QObject* parent) :
             this, &DetachedExecutor::onResultReady);
 }
 
-DetachedExecutor::~DetachedExecutor() = default;
+DetachedExecutor::~DetachedExecutor()
+{
+    waitForFinished();
+}
+
+void
+DetachedExecutor::waitForFinished()
+{
+    if (m_watcher.isRunning()) m_watcher.waitForFinished();
+}
 
 bool
 DetachedExecutor::canEvaluateNode()
@@ -240,11 +249,9 @@ DetachedExecutor::onResultReady(int result)
 
     m_collected = true;
 
-    auto* model = exec::nodeDataInterface(*m_node);
-    if (!model)
+    auto* model = m_model.data();
+    if (!model || model->isShuttingDown())
     {
-        gtError() << utils::logId(this)
-                  << tr("Failed to transfer node data! (Missing data interface)");
         return;
     }
 
@@ -269,6 +276,8 @@ DetachedExecutor::evaluateNode(Node& node)
     NodeDataInterface* model = exec::nodeDataInterface(node);
     assert(model);
 
+    if (model->isShuttingDown()) return false;
+
     if (!canEvaluateNode())
     {
         gtWarning() << utils::logId(this)
@@ -289,6 +298,7 @@ DetachedExecutor::evaluateNode(Node& node)
     model->nodeEvaluationStarted(node.uuid());
 
     m_node = &node;
+    m_model = model;
     m_collected = false;
     emit m_node->computingStarted();
 
