@@ -37,6 +37,8 @@ ObjectSink::ObjectSink() :
 void
 ObjectSink::nodeEvent(NodeEvent const* e)
 {
+    Node::nodeEvent(e);
+
     if (e->type() == NodeEventType::DataInterfaceAvailableEvent)
     {
         updateExportEnabled();
