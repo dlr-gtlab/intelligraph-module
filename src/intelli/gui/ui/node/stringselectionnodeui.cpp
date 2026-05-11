@@ -9,6 +9,7 @@
 
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/node/stringselection.h>
+#include <intelli/nodedatainterface.h>
 
 #include <QComboBox>
 #include <QGraphicsWidget>
@@ -50,7 +51,10 @@ StringSelectionNodeUI::centralWidgetFactory(Node const& n) const
             node->setSelection(text);
         });
 
-        updateOptions(node->options());
+        if (exec::nodeDataInterface(*node))
+        {
+            updateOptions(node->options());
+        }
         updateSelection(node->selection());
 
         return convertToGraphicsWidget(std::move(w), object);

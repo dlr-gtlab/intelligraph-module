@@ -24,35 +24,13 @@ StringSelectionNode::StringSelectionNode() :
     m_selection.hide();
 
     setNodeFlag(ResizableHOnly, true);
-    
-    auto const updateOptions = [this]() {
-        QStringList given;
-        if (auto list = nodeData<StringListData>(m_in))
-        {
-            given = list->value();
-        }
-        emit optionsChanged(given);
-
-        if (given.isEmpty())
-        {
-            setSelection(QString{});
-            return;
-        }
-
-        if (!given.contains(m_selection))
-        {
-            setSelection(given.first());
-        }
-    };
 
     connect(this, &Node::inputDataRecieved,
-            this, [this, updateOptions](PortId portId)
+            this, [this](PortId portId)
             {
                 if (portId != m_in) return;
                 updateOptions();
             });
-
-    updateOptions();
 }
 
 QString
@@ -62,12 +40,15 @@ StringSelectionNode::selection() const
 }
 
 void
-StringSelectionNode::setSelection(QString const& selection)
+StringSelectionNode::setSelection(QString const& selection, bool triggerEvaluation)
 {
     if (m_selection.get() == selection) return;
     m_selection = selection;
     emit selectionChanged(m_selection.get());
-    emit triggerNodeEvaluation();
+    if (triggerEvaluation)
+    {
+        emit triggerNodeEvaluation();
+    }
 }
 
 QStringList
@@ -81,6 +62,28 @@ StringSelectionNode::options() const
 }
 
 void
+StringSelectionNode::updateOptions(bool triggerEvaluation)
+{
+    QStringList given;
+    if (auto list = nodeData<StringListData>(m_in))
+    {
+        given = list->value();
+    }
+    emit optionsChanged(given);
+
+    if (given.isEmpty())
+    {
+        setSelection(QString{}, triggerEvaluation);
+        return;
+    }
+
+    if (!given.contains(m_selection))
+    {
+        setSelection(given.first(), triggerEvaluation);
+    }
+}
+
+void
 StringSelectionNode::eval()
 {
     auto list = nodeData<StringListData>(m_in);
@@ -91,6 +94,11 @@ StringSelectionNode::eval()
     }
 
     QStringList listValues = list->value();
+    if (listValues.isEmpty())
+    {
+        setNodeData(m_out, nullptr);
+        return;
+    }
 
     if (listValues.contains(m_selection))
     {
