@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+ - Fixed duplicate node creation on linux system - #350
 
 ## [0.15.0] - 2025-10-27
 *This release is not ABI compatible with `0.14.0` and introduces small API changes*

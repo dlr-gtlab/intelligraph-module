@@ -780,8 +780,11 @@ GraphScene::createSceneMenu(QPointF scenePos)
 
         menu->close();
     };
+
+    // `itemActivated` may also fire for a single click depending on the Qt
+    // platform style (notably on some Linux / remote desktop setups). Using
+    // `itemClicked` alone keeps node creation single-shot.
     connect(treeView, &QTreeWidget::itemClicked, menu, onClicked);
-    connect(treeView, &QTreeWidget::itemActivated, menu, onClicked);
 
     //Setup filtering
     connect(txtBox, &QLineEdit::textChanged, treeView, [treeView](QString const& text) {
