@@ -70,6 +70,8 @@ GraphUserVariablesInputNode::~GraphUserVariablesInputNode() = default;
 void
 GraphUserVariablesInputNode::nodeEvent(NodeEvent const* e)
 {
+    Node::nodeEvent(e);
+
     if (e->type() == NodeEventType::DataInterfaceAvailableEvent)
     {
         return updatePorts();

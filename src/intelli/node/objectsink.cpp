@@ -27,20 +27,31 @@ ObjectSink::ObjectSink() :
 
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    auto const updateExportEnabled = [this]() {
-        bool enabled = nodeData<ObjectData>(m_in) != nullptr;
-        if (m_canExport == enabled) return;
-        m_canExport = enabled;
-        emit exportEnabledChanged(enabled);
-    };
-
     connect(this, &Node::inputDataRecieved,
-            this, [this, updateExportEnabled](PortId portId){
+            this, [this](PortId portId){
         if (portId != m_in) return;
         updateExportEnabled();
     });
+}
 
-    updateExportEnabled();
+void
+ObjectSink::nodeEvent(NodeEvent const* e)
+{
+    Node::nodeEvent(e);
+
+    if (e->type() == NodeEventType::DataInterfaceAvailableEvent)
+    {
+        updateExportEnabled();
+    }
+}
+
+void
+ObjectSink::updateExportEnabled()
+{
+    bool enabled = nodeData<ObjectData>(m_in) != nullptr;
+    if (m_canExport == enabled) return;
+    m_canExport = enabled;
+    emit exportEnabledChanged(enabled);
 }
 
 bool

@@ -33,11 +33,16 @@ public slots:
 signals:
     void exportEnabledChanged(bool enabled);
 
+protected:
+    void nodeEvent(NodeEvent const* e) override;
+
 private:
     PortId m_in;
 
     GtObjectLinkProperty m_target;
     bool m_canExport{false};
+
+    void updateExportEnabled();
 
 private slots:
     void doExport();

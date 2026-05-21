@@ -23,7 +23,7 @@ public:
     Q_INVOKABLE StringSelectionNode();
 
     QString selection() const;
-    void setSelection(QString const& selection);
+    void setSelection(QString const& selection, bool triggerEvaluation = true);
     QStringList options() const;
 
 signals:
@@ -36,6 +36,7 @@ protected:
     void eval() override;
 
 private:
+    void updateOptions(bool triggerEvaluation = true);
 
     /// ports for parent objet input and child object output
     PortId m_in, m_out;
