@@ -23,6 +23,100 @@
 
 using namespace intelli;
 
+FileInputNodeWidget::FileInputNodeWidget(FileInputNode& node, QWidget* parent) :
+    QWidget(parent)
+{
+    m_node = &node;
+
+    auto* lay = new QVBoxLayout(this);
+    lay->setContentsMargins(0, 0, 0, 0);
+    lay->setSpacing(0);
+
+    m_editor = new GtPropertyFileChooserEditor(this);
+    lay->addWidget(m_editor);
+
+    m_editor->setMinimumWidth(150);
+
+    m_fileProp = new GtOpenFileNameProperty("ui_file",
+                                            QObject::tr("File"),
+                                            QObject::tr("File Path"),
+                                            QStringList{});
+    m_fileProp->setParent(m_editor);
+    m_fileProp->setVal(m_node->selectedFile());
+    m_editor->setFileChooserProperty(m_fileProp);
+
+    QObject::connect(m_node, &FileInputNode::fileNameInputConnectionChanged,
+                     this, &FileInputNodeWidget::updateWidgetVisibility);
+    QObject::connect(m_node, &FileInputNode::selectedFileChanged,
+                     this, &FileInputNodeWidget::syncPropertyFromNode);
+    QObject::connect(m_fileProp, &GtAbstractProperty::changed,
+                     this, &FileInputNodeWidget::syncNodeFromProperty);
+
+    updateWidgetVisibility(m_node->isFileNameInputConnected());
+    updateSelectButton();
+}
+
+NodeUI::QGraphicsWidgetPtr
+FileInputNodeWidget::create(Node& source, NodeGraphicsObject& object)
+{
+    auto* node = qobject_cast<FileInputNode*>(&source);
+    if (!node) return nullptr;
+
+    auto w = std::make_unique<FileInputNodeWidget>(*node);
+    return NodeUI::convertToGraphicsWidget(std::move(w), object);
+}
+
+void
+FileInputNodeWidget::updateWidgetVisibility(bool connected)
+{
+    m_editor->setVisible(!connected);
+    setMinimumWidth(connected ? 10 : m_editor->minimumWidth());
+    adjustSize();
+}
+
+void
+FileInputNodeWidget::syncPropertyFromNode(QString const& path)
+{
+    if (m_fileProp->get() == path) return;
+    m_fileProp->setVal(path);
+}
+
+void
+FileInputNodeWidget::syncNodeFromProperty()
+{
+    m_node->setSelectedFile(m_fileProp->get());
+}
+
+void
+FileInputNodeWidget::chooseFile()
+{
+    QWidget* dialogParent = QApplication::activeWindow();
+    if (!dialogParent) dialogParent = this;
+
+    auto const fileName = GtFileDialog::getOpenFileName(
+        dialogParent,
+        QObject::tr("Choose File"),
+        m_node->dialogDirectory());
+    if (fileName.isEmpty()) return;
+
+    m_fileProp->setVal(fileName);
+}
+
+void
+FileInputNodeWidget::updateSelectButton()
+{
+    auto const& btns = m_editor->findChildren<QPushButton*>();
+    if (btns.empty()) return;
+
+    // In GtPropertyFileChooserEditor, the select button is added last.
+    QPushButton* btn = btns.last();
+    if (!btn) return;
+
+    btn->disconnect();
+    QObject::connect(btn, &QPushButton::clicked,
+                     this, &FileInputNodeWidget::chooseFile);
+}
+
 FileInputNodeUI::FileInputNodeUI() = default;
 
 NodeUI::WidgetFactoryFunction
@@ -30,67 +124,5 @@ FileInputNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<FileInputNode const*>(&n)) return {};
 
-    return [this](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
-        auto* node = qobject_cast<FileInputNode*>(&source);
-        if (!node) return nullptr;
-
-        auto b = utils::makeWidgetWithLayout();
-        auto* lay = b->layout();
-
-        auto* w = new GtPropertyFileChooserEditor();
-        lay->addWidget(w);
-
-        w->setMinimumWidth(150);
-
-        auto* fileProp = new GtOpenFileNameProperty("ui_file",
-                                                    QObject::tr("File"),
-                                                    QObject::tr("File Path"),
-                                                    QStringList{});
-        fileProp->setParent(w);
-        fileProp->setVal(node->selectedFile());
-        w->setFileChooserProperty(fileProp);
-
-        auto const updateWidget = [w, b_ = b.get()](bool connected) {
-            w->setVisible(!connected);
-            b_->setMinimumWidth(connected ? 10 : w->minimumWidth());
-            b_->resize(b_->minimumSize());
-        };
-
-        QObject::connect(node, &FileInputNode::fileNameInputConnectionChanged, w, updateWidget);
-        QObject::connect(node, &FileInputNode::selectedFileChanged, w, [fileProp](QString const& path) {
-            if (fileProp->get() == path) return;
-            fileProp->setVal(path);
-        });
-        QObject::connect(fileProp, &GtAbstractProperty::changed, w, [node, fileProp]() {
-            node->setSelectedFile(fileProp->get());
-        });
-        updateWidget(node->isFileNameInputConnected());
-
-        auto const& btns = w->findChildren<QPushButton*>();
-        if (!btns.empty())
-        {
-            // Override the editor's select-button handler so we can choose
-            // a stable top-level parent for the dialog in the graphics scene.
-            // In GtPropertyFileChooserEditor, the select button is added last.
-            QPushButton* btn = btns.last();
-
-            if (btn)
-            {
-                btn->disconnect();
-                QObject::connect(btn, &QPushButton::clicked, w, [node, w, fileProp]() {
-                    QWidget* dialogParent = QApplication::activeWindow();
-                    if (!dialogParent) dialogParent = w;
-
-                    auto const fileName = GtFileDialog::getOpenFileName(dialogParent,
-                                                                        QObject::tr("Choose File"),
-                                                                        node->dialogDirectory());
-                    if (fileName.isEmpty()) return;
-
-                    fileProp->setVal(fileName);
-                });
-            }
-        }
-
-        return convertToGraphicsWidget(std::move(b), object);
-    };
+    return &FileInputNodeWidget::create;
 }
