@@ -364,7 +364,7 @@ LogicNodeUI::centralWidgetFactory(Node const& node) const
 {
     if (!qobject_cast<BinaryDisplayNode const*>(&node)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
+    return [this](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
         auto* node = qobject_cast<BinaryDisplayNode*>(&source);
         if (!node) return nullptr;
 

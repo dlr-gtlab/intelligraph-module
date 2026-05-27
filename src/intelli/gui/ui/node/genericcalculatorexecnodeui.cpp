@@ -29,7 +29,7 @@ GenericCalculatorExecNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<GenericCalculatorExecNode const*>(&n)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
+    return [this](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
         auto* node = qobject_cast<GenericCalculatorExecNode*>(&source);
         if (!node) return nullptr;
 
@@ -51,7 +51,7 @@ GenericCalculatorExecNodeUI::centralWidgetFactory(Node const& n) const
         view->setAnimated(false);
         lay->addWidget(view);
 
-        auto updateView = [view, node](){
+        auto updateView = [this, view, node](){
             view->setObject(nullptr);
 
             auto obj = node->currentObject();

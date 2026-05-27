@@ -24,7 +24,7 @@ NumberMathNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<NumberMathNode const*>(&n)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
+    return [this](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
         auto* node = qobject_cast<NumberMathNode*>(&source);
         if (!node) return nullptr;
 

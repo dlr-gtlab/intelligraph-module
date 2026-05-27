@@ -24,7 +24,7 @@ ObjectInputNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<ObjectInputNode const*>(&n)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
+    return [this](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
         auto* node = qobject_cast<ObjectInputNode*>(&source);
         if (!node) return nullptr;
 

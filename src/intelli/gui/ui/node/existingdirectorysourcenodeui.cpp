@@ -28,7 +28,7 @@ ExistingDirectorySourceNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<ExistingDirectorySourceNode const*>(&n)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
+    return [this](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
         auto* node = qobject_cast<ExistingDirectorySourceNode*>(&source);
         if (!node) return nullptr;
 
