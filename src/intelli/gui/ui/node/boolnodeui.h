@@ -57,7 +57,7 @@ private slots:
 
 private:
 
-    BoolInputNode* m_node = nullptr;
+    BoolInputNode* m_node{nullptr};
 };
 
 class BoolNodeUI : public NodeUI
