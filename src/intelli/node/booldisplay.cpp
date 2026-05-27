@@ -9,6 +9,9 @@
 
 #include <intelli/node/booldisplay.h>
 #include <intelli/data/bool.h>
+#include <intelli/gui/widgets/booldisplaygraphicswidget.h>
+
+#include <cassert>
 
 using namespace intelli;
 
@@ -18,6 +21,9 @@ BoolDisplayNode::BoolDisplayNode() :
                   tr("Display Mode"),
                   tr("Display Mode"))
 {
+    using DisplayMode = BoolDisplayGraphicsWidget::DisplayMode;
+
+    m_displayMode.registerEnum<DisplayMode>();
     registerProperty(m_displayMode);
 
     setNodeEvalMode(NodeEvalMode::Blocking);
