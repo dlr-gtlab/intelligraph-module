@@ -23,7 +23,10 @@ BoolDisplayNode::BoolDisplayNode() :
 {
     using DisplayMode = BoolDisplayGraphicsWidget::DisplayMode;
 
-    m_displayMode.registerEnum<DisplayMode>();
+    bool success = m_displayMode.registerEnum<DisplayMode>();
+    assert(success);
+    Q_UNUSED(success);
+
     registerProperty(m_displayMode);
 
     setNodeEvalMode(NodeEvalMode::Blocking);
