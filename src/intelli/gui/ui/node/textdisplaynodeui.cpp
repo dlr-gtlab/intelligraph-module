@@ -8,7 +8,6 @@
 #include <intelli/gui/ui/node/textdisplaynodeui.h>
 
 #include <intelli/gui/graphics/nodeobject.h>
-#include <intelli/gui/utilities.h>
 #include <intelli/node/textdisplay.h>
 
 #include <gt_application.h>
@@ -18,13 +17,82 @@
 #include <gt_xmlhighlighter.h>
 
 #include <QGraphicsWidget>
-#include <QLayout>
 #include <QSyntaxHighlighter>
 #include <QTextDocument>
+#include <QVBoxLayout>
 
 #include <cassert>
 
 using namespace intelli;
+
+TextDisplayNodeWidget::TextDisplayNodeWidget(TextDisplayNode& node, QWidget* parent) :
+    QWidget(parent)
+{
+    m_node = &node;
+
+    auto* lay = new QVBoxLayout(this);
+    lay->setContentsMargins(0, 0, 0, 0);
+
+    m_editor = new GtCodeEditor(this);
+    lay->addWidget(m_editor);
+
+    m_editor->setMinimumSize(125, 25);
+    m_editor->resize(400, 200);
+    m_editor->setReadOnly(true);
+
+    QObject::connect(m_node, &Node::inputDataRecieved,
+                     this, &TextDisplayNodeWidget::updateTextFromNode);
+    QObject::connect(m_node,
+                     qOverload<GtObject*, GtAbstractProperty*>(&Node::dataChanged),
+                     this,
+                     &TextDisplayNodeWidget::updateHighlighterFromNode);
+    QObject::connect(gtApp, &GtApplication::themeChanged,
+                     this, &TextDisplayNodeWidget::updateHighlighterFromNode);
+
+    updateTextFromNode();
+    updateHighlighterFromNode();
+}
+
+NodeUI::QGraphicsWidgetPtr
+TextDisplayNodeWidget::create(Node& source, NodeGraphicsObject& object)
+{
+    auto* node = qobject_cast<TextDisplayNode*>(&source);
+    if (!node) return nullptr;
+
+    auto w = std::make_unique<TextDisplayNodeWidget>(*node);
+    return NodeUI::convertToGraphicsWidget(std::move(w), object);
+}
+
+void
+TextDisplayNodeWidget::updateTextFromNode()
+{
+    m_editor->setPlainText(m_node->displayText());
+}
+
+void
+TextDisplayNodeWidget::updateHighlighterFromNode()
+{
+    auto* document = m_editor->document();
+    assert(document);
+
+    auto* highlighter = document->findChild<QSyntaxHighlighter*>();
+    if (highlighter) highlighter->deleteLater();
+
+    switch (m_node->textType())
+    {
+    case TextDisplayNode::TextType::PlainText:
+        break;
+    case TextDisplayNode::TextType::Xml:
+        new GtXmlHighlighter(document);
+        break;
+    case TextDisplayNode::TextType::Python:
+        new GtPyHighlighter(document);
+        break;
+    case TextDisplayNode::TextType::JavaScript:
+        new GtJsHighlighter(document);
+        break;
+    }
+}
 
 TextDisplayNodeUI::TextDisplayNodeUI() = default;
 
@@ -33,57 +101,5 @@ TextDisplayNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<TextDisplayNode const*>(&n)) return {};
 
-    return [this](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
-        auto* node = qobject_cast<TextDisplayNode*>(&source);
-        if (!node) return nullptr;
-
-        auto b = utils::makeWidgetWithLayout();
-        auto* lay = b->layout();
-
-        auto* w = new GtCodeEditor();
-        lay->addWidget(w);
-
-        w->setMinimumSize(125, 25);
-        w->resize(400, 200);
-        w->setReadOnly(true);
-
-        auto const updateHighlighter = [node, w]() {
-            auto* document = w->document();
-            assert(document);
-
-            auto* highlighter = document->findChild<QSyntaxHighlighter*>();
-            if (highlighter) highlighter->deleteLater();
-
-            switch (node->textType())
-            {
-            case TextDisplayNode::TextType::PlainText:
-                break;
-            case TextDisplayNode::TextType::Xml:
-                new GtXmlHighlighter(document);
-                break;
-            case TextDisplayNode::TextType::Python:
-                new GtPyHighlighter(document);
-                break;
-            case TextDisplayNode::TextType::JavaScript:
-                new GtJsHighlighter(document);
-                break;
-            }
-        };
-
-        auto const updateText = [node, w]() {
-            w->setPlainText(node->displayText());
-        };
-
-        QObject::connect(node, &Node::inputDataRecieved, w, updateText);
-        QObject::connect(node,
-                         qOverload<GtObject*, GtAbstractProperty*>(&Node::dataChanged),
-                         w,
-                         updateHighlighter);
-        QObject::connect(gtApp, &GtApplication::themeChanged, w, updateHighlighter);
-
-        updateText();
-        updateHighlighter();
-
-        return convertToGraphicsWidget(std::move(b), object);
-    };
+    return &TextDisplayNodeWidget::create;
 }
