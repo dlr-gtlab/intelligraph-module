@@ -17,7 +17,7 @@
 #include <QLineEdit>
 #include <QMouseEvent>
 #include <QKeyEvent>
-#include <QRegExpValidator>
+#include <QRegularExpressionValidator>
 
 using namespace intelli;
 
@@ -147,11 +147,14 @@ EditableLabel::onTextEdited()
 EditableIntegerLabel::EditableIntegerLabel(QString const& text, QWidget* parent) :
     EditableNumberLabel<int>(text, parent)
 {
-    edit()->setValidator(new QRegExpValidator(QRegExp("-?[0-9]+"), this));
+    edit()->setValidator(new QRegularExpressionValidator(QRegularExpression("-?[0-9]+"), this));
 }
 
 EditableDoubleLabel::EditableDoubleLabel(QString const& text, QWidget* parent) :
     EditableNumberLabel<double>(text, parent)
 {
-    edit()->setValidator(new QRegExpValidator(gt::re::forDoubles(), this));
+    static QRegularExpression forDoubles("-?(?:\\d+(\\.\\d*)?|\\.\\d+)"
+                                              "([eE][+-]?\\d+)?");
+
+    edit()->setValidator(new QRegularExpressionValidator(forDoubles, this));
 }

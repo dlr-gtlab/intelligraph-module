@@ -22,16 +22,13 @@ if (NOT TARGET GTlab::Core)
     find_package(GTlab REQUIRED)
 endif()
 
-include(${GTlab_DIR}/GTlab.cmake)
-gtlab_standard_setup()
+require_qt(REQUIRED COMPONENTS Widgets Core Concurrent Gui)
 
-set(Qt5_DIR ${QT_DIR})
-find_package(Qt5 REQUIRED COMPONENTS Widgets Core Concurrent Gui)
+gtlab_standard_setup()
 
 if (NOT TARGET GTlab::Logging)
     find_package(GTlabLogging REQUIRED)
 endif()
-
 
 add_subdirectory(src)
 if (BUILD_UNITTESTS)
