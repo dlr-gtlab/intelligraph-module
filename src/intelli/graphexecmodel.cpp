@@ -1009,7 +1009,7 @@ GraphExecutionModel::onGraphDeleted()
         gtError()
             << utils::logId(this->graph())
             << utils::logId(*this)
-            << tr("A graph node has been delted, "
+            << tr("A graph node has been deleted, "
                   "but its object was not found!");
         return;
     }

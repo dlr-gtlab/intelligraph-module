@@ -49,6 +49,7 @@ set(PUBLIC_HEADERS
     intelli/nodedatainterface.h
     intelli/nodefactory.h
     intelli/span.h
+    intelli/taskflowdatamodel.h
     intelli/utilities.h
     intelli/view.h
     intelli/data/bool.h
@@ -196,6 +197,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/nodedatafactory.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp
+    intelli/taskflowdatamodel.cpp
     intelli/calculators/graphexeccalculator.cpp
     intelli/exec/detachedexecutor.cpp
     intelli/exec/dummynodedatamodel.cpp
@@ -294,7 +296,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/property/metaenum.cpp
     intelli/property/stringselection.cpp
     intelli/property/uint.cpp
-
 )
 
 target_link_libraries(GTlabIntelliGraph
@@ -305,6 +306,7 @@ target_link_libraries(GTlabIntelliGraph
     tloptional # shipped with gtlab
     PRIVATE
     Qt${QT_VERSION_MAJOR}::Concurrent
+    Taskflow
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 

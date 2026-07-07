@@ -638,15 +638,16 @@ intelli::exec::detachedEvaluation(Node& node, NodeDataInterface* model)
 {
     if (!::updateNodeDataInterface(node, model)) return false;
 
-    auto executor = node.findChild<DetachedExecutor*>();
-    if (executor && !executor->canEvaluateNode())
-    {
-        gtError() << utils::logId(node)
-                  << QObject::tr("Failed to evaluate node! (Node is already executing)");
-        return false;
-    }
+//    auto executor = node.findChild<DetachedExecutor*>();
+//    if (executor && !executor->canEvaluateNode())
+//    {
+//        gtError() << utils::logId(node)
+//                  << QObject::tr("Failed to evaluate node! (Node is already executing)");
+//        return false;
+//    }
 
-    if (!executor) executor = new DetachedExecutor(&node);
+//    if (!executor) executor = new DetachedExecutor(&node);
+    auto executor = new DetachedExecutor();
 
     if (!executor->evaluateNode(node))
     {

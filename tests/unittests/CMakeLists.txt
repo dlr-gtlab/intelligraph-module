@@ -29,6 +29,7 @@ add_executable(IntelliGraphUnitTests
     test_nodedata.cpp
     test_portinfo.cpp
     test_strongtypes.cpp
+    test_taskflow.cpp
 
     data/test_nodedata.h data/test_nodedata.cpp
 
@@ -40,6 +41,7 @@ target_link_libraries(IntelliGraphUnitTests PRIVATE
     gtest
     GTlabIntelliGraph
     Qt${QT_VERSION_MAJOR}::Concurrent
+    Taskflow
 )
 target_compile_definitions(IntelliGraphUnitTests PRIVATE
     GT_LOG_USE_QT_BINDINGS # enable Qt operator<< for logging

@@ -883,7 +883,7 @@ GraphScene::deleteSelectedObjects()
         });
     };
 
-    /// create popus for certain objects to notify that these are not deletable
+    /// create pop-ups for certain objects to notify that these are not deletable
     auto const createPopups = [](auto begin,
                                  auto end,
                                  GraphScene* scene,
