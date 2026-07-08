@@ -858,6 +858,70 @@ relativeNodePath(Node const& node)
     return root->caption() + (node.objectPath().remove(root->objectPath())).replace(';', '/');
 }
 
+class RunContext
+{
+public:
+    NodeDataPtr nodeData(PortId portId) const
+    {
+        return m_map[portId];
+    }
+
+    QString const& caption() const
+    {
+        return m_caption;
+    }
+
+    // TODO: How to notify GUI?
+
+    /**
+     * @brief Overload that casts the node data of the specified port to the
+     * desired type. Performs a conversion if necessary.
+     * @param id Port id (output or input)
+     * @return Port data
+     */
+    template <typename T,
+             std::enable_if_t<!std::is_pointer<T>::value, bool> = true>
+    std::shared_ptr<T const> nodeData(PortId id) const
+    {
+        return convert<T>(this->nodeData(id));
+    }
+
+    QHash<PortId, NodeDataPtr> m_map;
+    QString m_caption;
+};
+
+class RunResult
+{
+public:
+    static RunResult fail()
+    {
+        RunResult result;
+        result.success = false;
+        return result;
+    }
+
+    void setOutputData(PortId portId, NodeDataPtr data)
+    {
+        m_map[portId] = data;
+    }
+
+    QHash<PortId, NodeDataPtr> m_map;
+    bool success = true;
+};
+
+class GT_INTELLI_EXPORT NodeV2 : public Node
+{
+    Q_OBJECT
+public:
+
+    using Runner = std::function<RunResult(RunContext)>;
+
+    NodeV2(QString const& modelName, GtObject* parent = nullptr);
+    ~NodeV2() override;
+
+    virtual Runner createRunner() const;
+};
+
 } // namespace intelli
 
 namespace gt

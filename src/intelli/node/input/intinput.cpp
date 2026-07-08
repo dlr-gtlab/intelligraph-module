@@ -16,7 +16,7 @@
 using namespace intelli;
 
 IntInputNode::IntInputNode() :
-    Node(tr("Int Input")),
+    NodeV2(tr("Int Input")),
     m_value("value", tr("Value"), tr("Current value"), 0),
     m_min("min", tr("Min."), tr("Minimum value"), 0),
     m_max("max", tr("Max."), tr("Maxiumum value"), 100),
@@ -110,6 +110,16 @@ void
 IntInputNode::setInputModeValue(int value)
 {
     detail::setInputModeValue(m_inputMode, value);
+}
+
+NodeV2::Runner
+IntInputNode::createRunner() const
+{
+    return [out = m_out, value = value()](RunContext context){
+        RunResult result;
+        result.setOutputData(out, std::make_shared<IntData>(value));
+        return result;
+    };
 }
 
 void

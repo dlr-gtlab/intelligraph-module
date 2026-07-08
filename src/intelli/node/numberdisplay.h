@@ -15,7 +15,7 @@
 namespace intelli
 {
 
-class NumberDisplayNode : public Node
+class NumberDisplayNode : public NodeV2
 {
     Q_OBJECT
 

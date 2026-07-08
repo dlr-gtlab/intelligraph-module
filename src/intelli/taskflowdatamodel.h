@@ -12,6 +12,7 @@
 
 #include <memory>
 #include <intelli/nodedatainterface.h>
+#include <intelli/node.h>
 
 namespace intelli
 {
@@ -38,6 +39,9 @@ public:
 
     GT_NO_DISCARD
     Graph const& graph() const;
+
+    RunContext createRunContext(NodeUuid const& nodeUuid);
+    void mergeRunResults(NodeUuid const& nodeUuid, RunResult const& results);
 
     /**
      * @brief Node-id based overload to access the data of a node.

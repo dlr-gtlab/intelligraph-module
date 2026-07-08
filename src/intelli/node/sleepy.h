@@ -16,7 +16,7 @@
 namespace intelli
 {
 
-class GT_INTELLI_TEST_EXPORT SleepyNode : public Node
+class GT_INTELLI_TEST_EXPORT SleepyNode : public NodeV2
 {
     Q_OBJECT
 
@@ -25,6 +25,8 @@ public:
     Q_INVOKABLE SleepyNode();
 
     bool hasInputData() const;
+
+    Runner createRunner() const override;
 
 signals:
 

@@ -699,3 +699,17 @@ intelli::exec::nodeDataInterface(Node& node)
 {
     return INode::nodeDataInterface(node);
 }
+
+NodeV2::NodeV2(QString const& name, GtObject* parent) :
+    Node(name, parent)
+{
+
+}
+
+NodeV2::~NodeV2() = default;
+
+NodeV2::Runner
+NodeV2::createRunner() const
+{
+    return [](RunContext){ return RunResult{}; };
+}

@@ -19,7 +19,7 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT IntInputNode : public Node
+class GT_INTELLI_EXPORT IntInputNode : public NodeV2
 {
     Q_OBJECT
 
@@ -44,6 +44,8 @@ public:
 
     int inputModeValue() const;
     void setInputModeValue(int value);
+
+    Runner createRunner() const override;
 
 signals:
 

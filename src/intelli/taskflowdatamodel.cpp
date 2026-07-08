@@ -11,11 +11,14 @@
 #include "intelli/graph.h"
 #include "intelli/graphuservariables.h"
 #include "intelli/private/utils.h"
+#include "intelli/utilities.h"
 
 #include <gt_coreapplication.h>
 #include <gt_project.h>
 
 #include <QPointer>
+#include <QMutex>
+#include <QMutexLocker>
 
 using namespace intelli;
 
@@ -29,16 +32,85 @@ struct PortDataItem
 
 struct TaskFlowDataModel::Impl
 {
+    Impl(Graph& g) : graph(&g) {}
+
     QPointer<Graph> graph;
     QPointer<GtObject> scope = {};
 
     QHash<NodeUuid, QVector<PortDataItem>> data = {};
 
+    QMutex mutex{};
+
     bool silent = false;
+
+    NodeDataSet nodeData(NodeUuid const& nodeUuid, PortId portId) const
+    {
+        auto nodeEntry = data.constFind(nodeUuid);
+        if (nodeEntry == data.constEnd())
+        {
+            if (!silent)
+                gtError() << tr("failed to find data for node '%1'!")
+                                 .arg(nodeUuid);
+            return {};
+        }
+
+        auto portEntry = std::find_if(nodeEntry->cbegin(), nodeEntry->cend(),
+                                      [portId](PortDataItem const& item){
+            return item.portId == portId;
+        });
+        if (portEntry == nodeEntry->cend())
+        {
+            if (!silent)
+                gtError() << tr("failed to find data for port '%2' of node '%1'!")
+                                 .arg(nodeUuid)
+                                 .arg(portId);
+            return {};
+        }
+
+        if (!silent)
+            gtDebug()
+                << tr("Accessing node data of '%1', data: %2")
+                       .arg(nodeUuid, toString(portEntry->data.ptr));
+
+        return portEntry->data;
+    }
+
+    bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet dset)
+    {
+        auto nodeEntry = data.find(nodeUuid);
+        if (nodeEntry == data.end())
+        {
+            if (!silent)
+                gtError() << tr("failed to set data for node '%1'!")
+                                 .arg(nodeUuid);
+            return false;
+        }
+
+        auto portEntry = std::find_if(nodeEntry->begin(), nodeEntry->end(),
+                                      [portId](PortDataItem const& item){
+            return item.portId == portId;
+        });
+        if (portEntry == nodeEntry->end())
+        {
+            if (!silent)
+                gtError() << tr("failed to set data for port '%2' of node '%1'!")
+                                 .arg(nodeUuid)
+                                 .arg(portId);
+            return false;
+        }
+
+        if (!silent)
+            gtDebug()
+                << tr("Setting node data for '%1', data: %2")
+                       .arg(nodeUuid, toString(dset.ptr));
+
+        portEntry->data = std::move(dset);
+        return true;
+    }
 };
 
 TaskFlowDataModel::TaskFlowDataModel(Graph& graph) :
-    pimpl(std::make_unique<Impl>(Impl{&graph}))
+    pimpl(std::make_unique<Impl>(graph))
 {
     setParent(&graph);
 
@@ -66,7 +138,8 @@ TaskFlowDataModel::setSilent(bool value)
 void
 TaskFlowDataModel::reset()
 {
-    if (!isSilent()) gtDebug()
+    if (!isSilent())
+        gtDebug()
             << tr("Resetting the data model of '%1'")
                    .arg(relativeNodePath(graph()));
 
@@ -96,52 +169,158 @@ TaskFlowDataModel::graph() const
     return *pimpl->graph;
 }
 
+RunContext
+TaskFlowDataModel::createRunContext(NodeUuid const& nodeUuid)
+{
+    if (!isSilent())
+        gtDebug() << tr("Creating run context for node '%1'...")
+                         .arg(nodeUuid);
+
+    QMutexLocker locker{&pimpl->mutex};
+
+    // TODO: graph may be changed during this function!
+
+    auto& conModel = graph().globalConnectionModel();
+
+    auto entry = conModel.find(nodeUuid);
+    assert(entry != conModel.end());
+
+    Node* node = entry->node;
+    assert(node);
+
+    RunContext context;
+    context.m_caption = node->caption();
+
+    for (PortType type : { PortType::In/*, PortType::Out*/ })
+    {
+        for (auto const& connection : entry->iterate(type))
+        {
+            // TODO: data may be changed by other thread -> fine grained locking needed
+            context.m_map[connection.sourcePort] = nodeData(connection.node, connection.port).ptr;
+        }
+    }
+
+    if (!isSilent())
+        gtDebug() << tr("Context created for node '%1'!")
+                         .arg(nodeUuid);
+
+    return context;
+}
+
+void
+TaskFlowDataModel::mergeRunResults(NodeUuid const& nodeUuid,
+                                   RunResult const& results)
+{
+    if (!isSilent())
+        gtDebug() << tr("Merging run results of node '%1'...")
+                         .arg(nodeUuid);
+
+    QMutexLocker locker{&pimpl->mutex};
+
+    for (auto entry : utils::makeIterable(results.m_map.keyValueBegin(), results.m_map.constKeyValueEnd()))
+    {
+        if (results.success)
+        {
+            setNodeData(nodeUuid, entry.first, NodeDataSet{entry.second});
+        }
+        else
+        {
+            setNodeData(nodeUuid, entry.first, NodeDataSet{});
+        }
+    }
+
+    if (!isSilent())
+        gtDebug() << tr("Results merged for node '%1'!")
+                         .arg(nodeUuid);
+}
+
 NodeDataSet
 TaskFlowDataModel::nodeData(Graph const& graph,
                             NodeId nodeId,
                             PortId portId) const
 {
-    Node const* node = graph.findNode(nodeId);
-    if (!node)
+    auto& conModel = graph.connectionModel();
+    auto entry = conModel.find(nodeId);
+    if (entry == conModel.end())
     {
-        if (!isSilent()) gtError() << tr("failed to find data for node '%1' in graph '%2'!")
-                             .arg(nodeId)
-                             .arg(relativeNodePath(graph));
+        if (!isSilent())
+            gtError() << tr("failed to access data, node '%1' not found in graph '%2'!")
+                             .arg(nodeId).arg(relativeNodePath(graph));
         return {};
     }
 
-    return nodeData(node->uuid(), portId);
+    Node const* node = entry->node;
+    if (!node)
+    {
+        if (!isSilent())
+            gtError() << tr("failed to access data, invalid node '%1' in graph '%2'!")
+                             .arg(nodeId).arg(relativeNodePath(graph));
+        return {};
+    }
+
+    if (node->portType(portId) == PortType::In)
+    {
+        for (auto& connection : entry->iterate())
+        {
+            if (connection.sourcePort != portId) continue;
+
+            node = conModel.node(connection.node);
+            if (!node) break;
+
+            return pimpl->nodeData(node->uuid(), connection.port);
+        }
+
+        if (!isSilent())
+            gtError() << tr("failed to access data for node '%1' in graph '%2', port %3 not found!")
+                             .arg(nodeId)
+                             .arg(relativeNodePath(graph))
+                             .arg(portId);
+        return {};
+    }
+
+    return pimpl->nodeData(node->uuid(), portId);
 }
 
 NodeDataSet
 TaskFlowDataModel::nodeData(NodeUuid const& nodeUuid,
                             PortId portId) const
 {
-    auto nodeEntry = pimpl->data.constFind(nodeUuid);
-    if (nodeEntry == pimpl->data.constEnd())
+    auto& conModel = graph().globalConnectionModel();
+    auto entry = conModel.find(nodeUuid);
+    if (entry == conModel.end())
     {
-        if (!isSilent()) gtError() << tr("failed to find data for node '%1'!")
-                             .arg(nodeUuid);
+        if (!isSilent())
+            gtError() << tr("failed to access data, node '%1' not found in graph '%2'!")
+                             .arg(nodeUuid, relativeNodePath(graph()));
         return {};
     }
 
-    auto portEntry = std::find_if(nodeEntry->cbegin(), nodeEntry->cend(),
-                                  [portId](PortDataItem const& item){
-        return item.portId == portId;
-    });
-    if (portEntry == nodeEntry->cend())
+    Node const* node = entry->node;
+    if (!node)
     {
-        if (!isSilent()) gtError() << tr("failed to find data for port '%2' of node '%1'!")
-                             .arg(nodeUuid)
+        if (!isSilent())
+            gtError() << tr("failed to access data, invalid node '%1' in graph '%2'!")
+                             .arg(nodeUuid, relativeNodePath(graph()));
+        return {};
+    }
+
+    if (node->portType(portId) == PortType::In)
+    {
+        for (auto& connection : entry->iterate())
+        {
+            if (connection.sourcePort != portId) continue;
+
+            return pimpl->nodeData(connection.node, connection.port);
+        }
+
+        if (!isSilent())
+            gtError() << tr("failed to access data for node '%1' in graph '%2', port %3 not found!")
+                             .arg(nodeUuid, relativeNodePath(graph()))
                              .arg(portId);
         return {};
     }
 
-    if (!isSilent()) gtDebug()
-            << tr("Accessing node data of '%1', data: %2")
-                   .arg(nodeUuid, toString(portEntry->data.ptr));
-
-    return portEntry->data;
+    return pimpl->nodeData(node->uuid(), portId);
 }
 
 NodeDataSet
@@ -149,10 +328,21 @@ TaskFlowDataModel::nodeData(NodeUuid const& nodeUuid,
                             PortType type,
                             PortIndex portIdx) const
 {
-    Node const* node = graph().findNodeByUuid(nodeUuid);
+    auto& conModel = graph().globalConnectionModel();
+    auto entry = conModel.find(nodeUuid);
+    if (entry == conModel.end())
+    {
+        if (!isSilent())
+            gtError() << tr("failed to access data, node '%1' not found in graph '%2'!")
+                             .arg(nodeUuid, relativeNodePath(graph()));
+        return {};
+    }
+
+    Node const* node = entry->node;
     if (!node)
     {
-        if (!isSilent()) gtError() << tr("failed to find data for node '%1' in graph '%2'!")
+        if (!isSilent())
+            gtError() << tr("failed to access data, invalid node '%1' in graph '%2'!")
                              .arg(nodeUuid, relativeNodePath(graph()));
         return {};
     }
@@ -160,24 +350,46 @@ TaskFlowDataModel::nodeData(NodeUuid const& nodeUuid,
     PortId portId = node->portId(type, portIdx);
     if (!portId.isValid())
     {
-        if (!isSilent()) gtError() << tr("failed to find data for node '%1': invalid port %2 (%3)!")
+        if (!isSilent())
+            gtError() << tr("failed to access data for node '%1': invalid port %2 (%3)!")
                              .arg(nodeUuid)
                              .arg(portIdx)
                              .arg(toString(type));
         return {};
     }
 
-    return nodeData(node->uuid(), portId);
+    if (type == PortType::In)
+    {
+        for (auto& connection : entry->iterate())
+        {
+            if (connection.sourcePort != portId) continue;
+
+            return pimpl->nodeData(connection.node, connection.port);
+        }
+
+        if (!isSilent())
+            gtError() << tr("failed to access data for node '%1', port %2 (%3) not found!")
+                             .arg(nodeUuid)
+                             .arg(portIdx)
+                             .arg(toString(type));
+        return {};
+    }
+
+    return pimpl->nodeData(node->uuid(), portId);
 }
 
 NodeDataPtrList
 TaskFlowDataModel::nodeData(NodeUuid const& nodeUuid,
                             PortType type) const
 {
+    assert(false); // TODO: function not needed
+    assert(type == PortType::Out);
+
     auto* node = graph().findNodeByUuid(nodeUuid);
     if (!node)
     {
-        if (!isSilent()) gtError() << tr("failed to find data for node '%1' in graph '%2'!")
+        if (!isSilent())
+            gtError() << tr("failed to find data for node '%1' in graph '%2'!")
                              .arg(nodeUuid, relativeNodePath(graph()));
         return {};
     }
@@ -200,16 +412,26 @@ TaskFlowDataModel::setNodeData(Graph const& graph,
                                PortId portId,
                                NodeDataSet data)
 {
-    Node const* node = graph.findNode(nodeId);
-    if (!node)
+    auto& conModel = graph.connectionModel();
+    auto entry = conModel.find(nodeId);
+    if (entry == conModel.end())
     {
-        if (!isSilent()) gtError() << tr("failed to set data for node '%1' in graph '%2'!")
-                             .arg(nodeId)
-                             .arg(relativeNodePath(graph));
-        return {};
+        if (!isSilent())
+            gtError() << tr("failed to set data, node '%1' not found in graph '%2'!")
+                             .arg(nodeId).arg(relativeNodePath(graph));
+        return false;
     }
 
-    return setNodeData(node->uuid(), portId, std::move(data));
+    Node const* node = entry->node;
+    if (!node)
+    {
+        if (!isSilent())
+            gtError() << tr("failed to set data, invalid node '%1' in graph '%2'!")
+                             .arg(nodeId).arg(relativeNodePath(graph));
+        return false;
+    }
+
+    return pimpl->setNodeData(node->uuid(), portId, std::move(data));
 }
 
 bool
@@ -217,32 +439,7 @@ TaskFlowDataModel::setNodeData(NodeUuid const& nodeUuid,
                                PortId portId,
                                NodeDataSet data)
 {
-    auto nodeEntry = pimpl->data.find(nodeUuid);
-    if (nodeEntry == pimpl->data.end())
-    {
-        if (!isSilent()) gtError() << tr("failed to set data for node '%1'!")
-                             .arg(nodeUuid);
-        return false;
-    }
-
-    auto portEntry = std::find_if(nodeEntry->begin(), nodeEntry->end(),
-                                  [portId](PortDataItem const& item){
-                                      return item.portId == portId;
-                                  });
-    if (portEntry == nodeEntry->end())
-    {
-        if (!isSilent()) gtError() << tr("failed to set data for port '%2' of node '%1'!")
-                             .arg(nodeUuid)
-                             .arg(portId);
-        return false;
-    }
-
-    if (!isSilent()) gtDebug()
-            << tr("Setting node data for '%1', data: %2")
-                   .arg(nodeUuid, toString(data.ptr));
-
-    portEntry->data = std::move(data);
-    return true;
+    return pimpl->setNodeData(nodeUuid, portId, std::move(data));
 }
 
 bool
@@ -251,25 +448,37 @@ TaskFlowDataModel::setNodeData(NodeUuid const& nodeUuid,
                                PortIndex portIdx,
                                NodeDataSet data)
 {
-    Node const* node = graph().findNodeByUuid(nodeUuid);
+    auto& conModel = graph().globalConnectionModel();
+    auto entry = conModel.find(nodeUuid);
+    if (entry == conModel.end())
+    {
+        if (!isSilent())
+            gtError() << tr("failed to set data, node '%1' not found in graph '%2'!")
+                             .arg(nodeUuid, relativeNodePath(graph()));
+        return false;
+    }
+
+    Node const* node = entry->node;
     if (!node)
     {
-        if (!isSilent()) gtError() << tr("failed to set data for node '%1' in graph '%2'!")
+        if (!isSilent())
+            gtError() << tr("failed to set data, invalid node '%1' in graph '%2'!")
                              .arg(nodeUuid, relativeNodePath(graph()));
-        return {};
+        return false;
     }
 
     PortId portId = node->portId(type, portIdx);
     if (!portId.isValid())
     {
-        if (!isSilent()) gtError() << tr("failed to set data for node '%1': invalid port %2 (%3)!")
+        if (!isSilent())
+            gtError() << tr("failed to set data for node '%1': invalid port %2 (%3)!")
                              .arg(nodeUuid)
                              .arg(portIdx)
                              .arg(toString(type));
-        return {};
+        return false;
     }
 
-    return setNodeData(node->uuid(), portId, std::move(data));
+    return pimpl->setNodeData(node->uuid(), portId, std::move(data));
 }
 
 bool
@@ -277,10 +486,13 @@ TaskFlowDataModel::setNodeData(NodeUuid const& nodeUuid,
                                PortType type,
                                NodeDataPtrList const& data)
 {
+    assert(false); // TODO: function not needed
+    assert(type == PortType::Out);
+
     for (auto const& entry : data)
     {
         PortId portId = entry.first;
-        if (!setNodeData(nodeUuid, portId, std::move(entry.second)))
+        if (!pimpl->setNodeData(nodeUuid, portId, std::move(entry.second)))
         {
             if (!isSilent()) gtError() << tr("failed to set data for port '%2' of node '%1'!")
                                  .arg(nodeUuid)
@@ -314,10 +526,13 @@ TaskFlowDataModel::nodeEvaluationFinished(NodeUuid const& nodeUuid)
 void
 TaskFlowDataModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
 {
+    // TODO, needed?
+
     auto nodeEntry = pimpl->data.find(nodeUuid);
     if (nodeEntry == pimpl->data.end())
     {
-        if (!isSilent()) gtError() << tr("failed to invalidate node '%1'!")
+        if (!isSilent())
+            gtError() << tr("failed to invalidate node '%1'!")
                              .arg(nodeUuid);
         return;
     }
@@ -329,7 +544,8 @@ TaskFlowDataModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
     });
     if (!alreadyProcessed) return;
 
-    if (!isSilent()) gtDebug()
+    if (!isSilent())
+        gtDebug()
             << tr("Marking the data of the node '%1' as invalid")
                    .arg(nodeUuid);
 
@@ -364,7 +580,8 @@ TaskFlowDataModel::scope()
 void
 TaskFlowDataModel::setScope(GtObject& scope)
 {
-    if (!isSilent()) gtDebug()
+    if (!isSilent())
+        gtDebug()
             << tr("Setting the scope of the data model of '%1' to '%2'")
                    .arg(relativeNodePath(graph()), toString(&scope));
 
@@ -419,7 +636,7 @@ TaskFlowDataModel::onNodeAppended(Node* node)
     }
 
     QVector<PortDataItem> portData;
-    for (auto& portType : { PortType::In, PortType::Out })
+    for (auto& portType : { /*PortType::In, */PortType::Out })
     {
         for (auto& port : node->ports(portType))
         {
@@ -431,7 +648,8 @@ TaskFlowDataModel::onNodeAppended(Node* node)
             portData.push_back(PortDataItem{ port.id(), NodeDataSet{} });
         }
     }
-    if (!isSilent()) gtDebug()
+    if (!isSilent())
+        gtDebug()
             << tr("Updated data model: added node '%1' (%2), data size: %3")
                    .arg(relativeNodePath(*node), node->uuid())
                    .arg(portData.size());
@@ -465,7 +683,8 @@ TaskFlowDataModel::onNodeDeleted(Graph* graph, NodeId nodeId)
         return;
     }
 
-    if (!isSilent()) gtDebug()
+    if (!isSilent())
+        gtDebug()
             << tr("Updated data model: deleted node '%1' (%2)")
                    .arg(relativeNodePath(*node), node->uuid());
 }
@@ -473,6 +692,8 @@ TaskFlowDataModel::onNodeDeleted(Graph* graph, NodeId nodeId)
 void
 TaskFlowDataModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx)
 {
+    if (type == PortType::In) return;
+
     auto* graph = qobject_cast<Graph*>(sender());
     if (!graph)
     {
@@ -520,7 +741,8 @@ TaskFlowDataModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex id
         return;
     }
 
-    if (!isSilent()) gtDebug()
+    if (!isSilent())
+        gtDebug()
             << tr("Updated data model: added port '%3' to node '%1' (%2)")
                    .arg(relativeNodePath(*node), node->uuid(), toString(*node->port(portId)));
 
@@ -530,6 +752,8 @@ TaskFlowDataModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex id
 void
 TaskFlowDataModel::onNodePortDeleted(NodeId nodeId, PortType type, PortIndex idx)
 {
+    if (type == PortType::In) return;
+
     auto* graph = qobject_cast<Graph*>(sender());
     if (!graph)
     {
@@ -594,7 +818,8 @@ TaskFlowDataModel::onNodePortDeleted(NodeId nodeId, PortType type, PortIndex idx
         return;
     }
 
-    if (!isSilent()) gtDebug()
+    if (!isSilent())
+        gtDebug()
             << tr("Updated data model: removed port '%3' from node '%1' (%2)")
                    .arg(relativeNodePath(*node), node->uuid(), toString(*node->port(portId)));
 }
@@ -626,7 +851,8 @@ TaskFlowDataModel::onGraphDeleted()
     assert(graph);
     graph->disconnect(this);
 
-    if (!isSilent()) gtDebug()
+    if (!isSilent())
+        gtDebug()
             << tr("Updating the data model: removing graph '%1' (%2)")
                    .arg(relativeNodePath(*graph), graph->uuid());
 
@@ -636,7 +862,8 @@ TaskFlowDataModel::onGraphDeleted()
         onNodeDeleted(graph, node->id());
     }
 
-    if (!isSilent()) gtDebug()
+    if (!isSilent())
+        gtDebug()
             << tr("Updated the data model: removed graph '%1' (%2)")
                    .arg(relativeNodePath(*graph), graph->uuid());
 }

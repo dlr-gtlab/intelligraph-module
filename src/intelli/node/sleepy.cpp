@@ -22,7 +22,7 @@ using namespace intelli;
 
 
 SleepyNode::SleepyNode() :
-    Node("Sleeping Node"),
+    NodeV2("Sleeping Node"),
     m_timer("timer", tr("Timer"), tr("Timer"), 5)
 {
     registerProperty(m_timer);
@@ -36,6 +36,37 @@ bool
 SleepyNode::hasInputData() const
 {
     return nodeData<DoubleData>(m_in) != nullptr;
+}
+
+NodeV2::Runner
+SleepyNode::createRunner() const
+{
+    return [out = m_out, in = m_in, time = m_timer.value<int>()](RunContext context){
+
+        constexpr int intervalMs = 500;
+
+        auto data = context.nodeData(in);
+
+        size_t updates = time * 1000 / intervalMs;
+
+//        emit timePassed(0);
+
+        for (size_t i = 0; i < updates; ++i)
+        {
+            GtEventLoop eventloop(intervalMs);
+            eventloop.exec();
+            gtTrace().verbose()
+                << gt::quoted(context.caption(), "", ":")
+                << "Sending update" << i << "of" << updates;
+//            emit timePassed((int)((i / (double)updates) * 100));
+        }
+
+//        emit timePassed(100);
+
+        RunResult result;
+        result.setOutputData(out, std::move(data));
+        return result;
+    };
 }
 
 void

@@ -15,7 +15,7 @@ using namespace intelli;
 
 
 NumberDisplayNode::NumberDisplayNode() :
-    Node("Number Display")
+    NodeV2("Number Display")
 {
     setNodeEvalMode(NodeEvalMode::Blocking);
 

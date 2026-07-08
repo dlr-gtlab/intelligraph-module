@@ -19,7 +19,7 @@
 namespace intelli
 {
 
-class NumberMathNode : public Node
+class NumberMathNode : public NodeV2
 {
     Q_OBJECT
 
@@ -39,6 +39,8 @@ public:
 
     MathOperation operation() const;
     void setOperation(MathOperation op);
+
+    Runner createRunner() const override;
 
 signals:
 

@@ -16,7 +16,7 @@
 using namespace intelli;
 
 DoubleInputNode::DoubleInputNode() :
-    Node(tr("Double Input")),
+    NodeV2(tr("Double Input")),
     m_value("value", tr("Value"), tr("Current value"), GtUnit::None, 0),
     m_min("min", tr("Min."), tr("Minimum value"), GtUnit::None, 0),
     m_max("max", tr("Max."), tr("Maxiumum value"), GtUnit::None, 100),
@@ -110,6 +110,16 @@ void
 DoubleInputNode::setInputModeValue(int value)
 {
     detail::setInputModeValue(m_inputMode, value);
+}
+
+NodeV2::Runner
+DoubleInputNode::createRunner() const
+{
+    return [out = m_out, value = value()](RunContext context){
+        RunResult result;
+        result.setOutputData(out, std::make_shared<DoubleData>(value));
+        return result;
+    };
 }
 
 void

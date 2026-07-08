@@ -32,7 +32,7 @@ static const int meta_math_operation = [](){
 using namespace intelli;
 
 NumberMathNode::NumberMathNode() :
-    Node("Math Node"),
+    NodeV2("Math Node"),
     m_operation("operation", tr("Math Operation"), tr("Math Operation"), MathOperation::Plus)
 {
     registerProperty(m_operation);
@@ -68,6 +68,54 @@ NumberMathNode::setOperation(MathOperation op)
 
     m_operation = op;
     updatePortCaptions();
+}
+
+NodeV2::Runner
+NumberMathNode::createRunner() const
+{
+    return [out = m_out,
+            inA = m_inA,
+            inB = m_inB,
+            operation = m_operation.getVal()](RunContext context){
+        double a = 0.0, b = 0.0;
+
+        auto dataA = context.nodeData<DoubleData>(inA);
+        auto dataB = context.nodeData<DoubleData>(inB);
+
+        if (dataA) a = dataA->value();
+        if (dataB) b = dataB->value();
+
+        double c = 0.0;
+
+        switch (operation)
+        {
+        case MathOperation::Minus:
+            c = a - b;
+            break;
+        case MathOperation::Divide:
+            if (b == 0.0)
+            {
+                gtWarning().verbose().nospace()
+                    << __FUNCTION__ << ": " << tr("Cannot divide by 0!");
+                return RunResult::fail();
+            }
+            c = a / b;
+            break;
+        case MathOperation::Multiply:
+            c = a * b;
+            break;
+        case MathOperation::Power:
+            c = std::pow(a, b);
+            break;
+        case MathOperation::Plus:
+            c = a + b;
+            break;
+        }
+
+        RunResult result;
+        result.setOutputData(out, std::make_shared<DoubleData>(c));
+        return result;
+    };
 }
 
 void
