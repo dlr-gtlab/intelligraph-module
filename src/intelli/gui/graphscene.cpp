@@ -24,6 +24,7 @@
 #include <intelli/gui/nodeui.h>
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/gui/graphscenedata.h>
+#include <intelli/gui/graphselectionaction.h>
 #include <intelli/gui/graphics/commentobject.h>
 #include <intelli/gui/graphics/connectionobject.h>
 #include <intelli/gui/graphics/nodeobject.h>
@@ -1147,6 +1148,15 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
     auto selected = Impl::findSelectedItems<InteractableGraphicsObject*>(*this);
     assert(!selected.empty());
 
+    QVector<ObjectUuid> selection;
+    std::transform(selected.begin(),
+                   selected.end(),
+                   std::back_inserter(selection),
+                   [](InteractableGraphicsObject* selectedObject){
+        assert(selectedObject);
+        return selectedObject->objectUuid();
+    });
+
     auto selectedNodes =
         graphics_cast<NodeGraphicsObject*>(object) ?
             Impl::findItems<NodeGraphicsObject*>(*this, selected) :
@@ -1189,6 +1199,35 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
     groupAction->setEnabled(allDeletable);
     groupAction->setVisible(areNodesSelected);
 
+    QVector<QAction*> registeredMenuActions;
+    QVector<GraphSelectionAction> registeredGraphActions;
+    for (GraphSelectionAction const& action : graphSelectionActions())
+    {
+        if (action.text.isEmpty() || !action.trigger)
+        {
+            continue;
+        }
+
+        if (action.isVisible && !action.isVisible(graph(), selection))
+        {
+            continue;
+        }
+
+        QAction* menuAction = menu.addAction(action.text);
+        if (!action.icon.isNull())
+        {
+            menuAction->setIcon(action.icon);
+        }
+
+        if (action.isEnabled)
+        {
+            menuAction->setEnabled(action.isEnabled(graph(), selection));
+        }
+
+        registeredMenuActions.push_back(menuAction);
+        registeredGraphActions.push_back(action);
+    }
+
     menu.addSeparator();
 
     QAction* deleteAction = menu.addAction(tr("Delete selected Objects"));
@@ -1217,6 +1256,15 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
     if (triggered == groupAction)
     {
         return groupSelection();
+    }
+    for (int i = 0; i < registeredMenuActions.size(); ++i)
+    {
+        if (triggered == registeredMenuActions.at(i))
+        {
+            registeredGraphActions.at(i).trigger(graph(), selection,
+                                                menu.parentWidget());
+            return;
+        }
     }
     if (triggered == ungroupAction)
     {

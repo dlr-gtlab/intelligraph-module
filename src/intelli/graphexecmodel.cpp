@@ -23,6 +23,18 @@
 
 using namespace intelli;
 
+namespace
+{
+
+bool
+hasOwnGraphEndpoint(GraphExecutionModel& model, ConnectionUuid const& conUuid)
+{
+    NodeUuid const& graphUuid = model.graph().uuid();
+    return conUuid.outNodeId == graphUuid || conUuid.inNodeId == graphUuid;
+}
+
+} // namespace
+
 GraphExecutionModel::GraphExecutionModel(Graph& graph) :
     pimpl(std::make_unique<Impl>(graph))
 {
@@ -944,6 +956,11 @@ GraphExecutionModel::onConnectionAppended(ConnectionUuid conUuid)
 {
     assert(conUuid.isValid());
 
+    if (hasOwnGraphEndpoint(*this, conUuid))
+    {
+        return;
+    }
+
     auto const makeError = [](Graph const& graph){
         return utils::logId(graph) + QChar{' '} +
                utils::logId<GraphExecutionModel>() + QChar{' '} +
@@ -976,6 +993,11 @@ void
 GraphExecutionModel::onConnectionDeleted(ConnectionUuid conUuid)
 {
     assert(conUuid.isValid());
+
+    if (hasOwnGraphEndpoint(*this, conUuid))
+    {
+        return;
+    }
 
     auto const makeError = [](Graph const& graph){
         return utils::logId(graph) + QChar{' '} +

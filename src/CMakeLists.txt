@@ -66,6 +66,7 @@ set(PUBLIC_HEADERS
     intelli/gui/connectionpainter.h
     intelli/gui/icons.h
     intelli/gui/graphscenedata.h
+    intelli/gui/graphselectionaction.h
     intelli/gui/nodegeometry.h
     intelli/gui/nodepainter.h
     intelli/gui/nodeui.h
@@ -246,6 +247,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphscene.cpp
     intelli/gui/graphscenemanager.cpp
     intelli/gui/graphsceneselector.cpp
+    intelli/gui/graphselectionaction.cpp
     intelli/gui/graphstatemanager.cpp
     intelli/gui/graphview.cpp
     intelli/gui/graphviewoverlay.cpp
