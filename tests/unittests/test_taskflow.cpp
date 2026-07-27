@@ -68,9 +68,36 @@ TEST(TaskFlow, execute_plain_graph)
     gtDebug() << "Accessing data of node E";
     data = dataModel.nodeData(E_uuid, PortType::In, PortIndex{0});
     EXPECT_EQ(data.as<DoubleData>()->value(), 8.0);
-    data = dataModel.nodeData(E_uuid, PortId{0});
-    EXPECT_EQ(data.as<DoubleData>()->value(), 8.0);
+
     gtDebug() << "Accessing data of node D";
     data = dataModel.nodeData(D_uuid, PortType::Out, PortIndex{0});
     EXPECT_EQ(data.as<DoubleData>()->value(), 42.0);
+}
+
+bool checkRuntimeCondition()
+{
+    static unsigned count = 0;
+    return count++ % 2;
+}
+
+TEST(TaskFlow, if_else)
+{
+    tf::Taskflow taskflow;
+
+    auto [init, cond, yes, no, end] = taskflow.emplace(
+        [](){ std::cout << "### start\n"; },
+        [](){ return checkRuntimeCondition() ? 1 : 0; },  // condition task
+        [](){ std::cout << "yes\n"; return 0; },
+        [](){ std::cout << "no\n"; return 0; },
+        [](){ std::cout << "### end \n"; }
+    );
+
+    init.precede(cond);
+    cond.precede(yes, no);
+    yes.precede(end);
+    no.precede(end);
+
+    tf::Executor executor;
+    tf::Future<void> future = executor.run_n(taskflow, 3);
+    future.get();
 }

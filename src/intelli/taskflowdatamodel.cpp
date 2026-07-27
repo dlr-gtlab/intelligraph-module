@@ -178,7 +178,7 @@ TaskFlowDataModel::createRunContext(NodeUuid const& nodeUuid)
 
     QMutexLocker locker{&pimpl->mutex};
 
-    // TODO: graph may be changed during this function!
+    // TODO: graph may change during this function!
 
     auto& conModel = graph().globalConnectionModel();
 
