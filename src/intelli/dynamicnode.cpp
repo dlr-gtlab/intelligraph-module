@@ -20,6 +20,7 @@
 #include "gt_boolproperty.h"
 #include "gt_exceptions.h"
 #include "gt_version.h"
+#include "intelli/data/int.h"
 
 using namespace intelli;
 
@@ -332,13 +333,19 @@ DynamicNode::onPortChanged(PortId portId)
 void
 DynamicNode::onPortEntryAdded(int idx)
 {
+    gtDebug() << "port entry added" << idx;
     auto const makeError = [](){
         return tr("Adding dynamic port entry failed!");
     };
 
     GtPropertyStructContainer* dynamicPorts = toDynamicPorts(sender());
     GtPropertyStructInstance* entry = propertyAt(dynamicPorts, idx);
-    if (!entry) return;
+    if (!entry)
+    {
+        gtWarning() << makeError()
+                    << tr("(No dynamic port found at index '%1')").arg(idx);
+        return;
+    }
 
     PortType type = toPortType(*dynamicPorts);
 
@@ -409,6 +416,7 @@ DynamicNode::onPortEntryAdded(int idx)
 void
 DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
 {
+    gtDebug() << "port entry changed" << idx;
     GtPropertyStructContainer* dynamicPorts = toDynamicPorts(sender());
     if (!dynamicPorts) return;
 
@@ -469,6 +477,7 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
 void
 DynamicNode::onPortEntryRemoved(int idx)
 {
+    gtDebug() << "port entry removed" << idx;
     GtPropertyStructContainer* dynamicPorts = toDynamicPorts(sender());
     if (!dynamicPorts) return;
 

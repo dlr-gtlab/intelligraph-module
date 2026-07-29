@@ -412,7 +412,13 @@ struct Graph::Impl
             }
 
             auto* root = graph->rootGraph();
+            assert(root);
             assert(root && root->pimpl->global.get() == graph->pimpl->global.get());
+            if (root->pimpl->global.get() != graph->pimpl->global.get())
+            {
+                gtError() << root << ":" << root->pimpl->global.get() << "vs"
+                          << graph << ":" << graph->pimpl->global.get();
+            }
 
             auto change = graph->modify();
             Q_UNUSED(change);

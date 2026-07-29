@@ -25,6 +25,8 @@ public:
 
 protected:
 
+    GroupOutputProvider(QString const& modelName);
+
     void eval() override;
 };
 

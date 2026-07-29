@@ -527,7 +527,7 @@ public:
     /**
      * @brief initializes the input and output of this graph
      */
-    void initInputOutputProviders();
+    virtual void initInputOutputProviders();
 
     /**
      * @brief Resets the global connection model. This might be necessary
@@ -645,6 +645,9 @@ signals:
     void childNodeDeleted(NodeId nodeId);
 
 protected:
+
+    /// protected constructor
+    Graph(QString const& modelName);
 
     void eval() override;
 

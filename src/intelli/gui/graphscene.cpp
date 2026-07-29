@@ -1184,7 +1184,7 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
 
     bool areNodesSelected = !selectedNodes.empty();
     Node* selectedNode = areNodesSelected ? &selectedNodes.front()->node() : nullptr;
-    Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
+    Graph* selectedGraphNode = qobject_cast<Graph*>(selectedNode);
 
     bool allDeletable = std::all_of(selectedNodes.begin(),
                                     selectedNodes.end(),

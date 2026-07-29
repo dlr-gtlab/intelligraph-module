@@ -26,8 +26,9 @@
 
 using namespace intelli;
 
-Graph::Graph() :
-    Node("Graph"),
+
+Graph::Graph(const QString& modelName) :
+    Node(modelName),
     pimpl(std::make_unique<Impl>())
 {
     auto* db = new GraphUserVariables(this);
@@ -48,6 +49,10 @@ Graph::Graph() :
         restoreConnections();
     });
 }
+
+Graph::Graph() :
+    Graph(QStringLiteral("Graph"))
+{ }
 
 Graph::~Graph()
 {
@@ -735,8 +740,19 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionUuid conUuid)
 
     auto globalTargetNode = pimpl->global->find(conUuid.inNodeId);
     auto globalSourceNode = pimpl->global->find(conUuid.outNodeId);
-    assert(globalTargetNode != pimpl->global->end());
-    assert(globalSourceNode != pimpl->global->end());
+
+    if (globalTargetNode == pimpl->global->end())
+    {
+        gtError() << tr("Failed to append connection, target node not found! "
+                        "(Connection: %1)").arg(conUuid.inNodeId);
+        return;
+    }
+    if (globalSourceNode == pimpl->global->end())
+    {
+        gtError() << tr("Failed to append connection, source node not found! "
+                        "(Connection: %1)").arg(conUuid.outNodeId);
+        return;
+    }
 
     auto inConnection  = ConnectionDetail<NodeUuid>::fromConnection(conUuid.reversed());
     auto outConnection = ConnectionDetail<NodeUuid>::fromConnection(conUuid);
@@ -999,6 +1015,8 @@ Graph::onObjectDataMerged()
 void
 Graph::restoreNode(Node* node)
 {
+    gtDebug() << __FUNCTION__ << "BEGIN" << this << node;
+    assert(node);
     if (findNode(node->id()))
     {
 #ifndef NDEBUG
@@ -1007,6 +1025,7 @@ Graph::restoreNode(Node* node)
             assert(subgraph->pimpl->global == pimpl->global);
         }
 #endif
+        gtDebug() << __FUNCTION__ << "END-1" << this;
         return;
     }
 
@@ -1014,11 +1033,13 @@ Graph::restoreNode(Node* node)
     static_cast<QObject*>(node)->setParent(nullptr);
 
     appendNode(std::move(ptr));
+    gtDebug() << __FUNCTION__ << "END-2" << this;
 }
 
 void
 Graph::restoreConnection(Connection* connection)
 {
+    gtDebug() << __FUNCTION__ << "BEGIN" << this;
     assert(connection);
     auto conId = connection->connectionId();
 
@@ -1027,6 +1048,7 @@ Graph::restoreConnection(Connection* connection)
     {
         cons = pimpl->local.iterateConnections(conId.outNodeId, PortType::Out);
         assert(std::find(cons.begin(), cons.end(), conId) != cons.end());
+        gtDebug() << __FUNCTION__ << "END-1" << this;
         return;
     }
 
@@ -1061,11 +1083,13 @@ Graph::restoreConnection(Connection* connection)
         if (success) appendConnection(std::move(ptr));
     }
     ptr.release();
+    gtDebug() << __FUNCTION__ << "END-2" << this;
 }
 
 void
 Graph::restoreConnections()
 {
+    gtDebug() << __FUNCTION__ << "BEGIN" << this;
     auto cmd = modify();
     Q_UNUSED(cmd);
 
@@ -1078,11 +1102,13 @@ Graph::restoreConnections()
 
         restoreConnection(connection);
     }
+    gtDebug() << __FUNCTION__ << "END  " << this;
 }
 
 void
 Graph::restoreNodesAndConnections()
 {
+    gtDebug() << __FUNCTION__ << "BEGIN" << this;
     auto cmd = modify();
     Q_UNUSED(cmd);
 
@@ -1126,6 +1152,7 @@ Graph::restoreNodesAndConnections()
     {
         restoreConnection(connection);
     }
+    gtDebug() << __FUNCTION__ << "END  " << this;
 }
 
 void

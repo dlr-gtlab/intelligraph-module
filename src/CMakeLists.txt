@@ -40,6 +40,7 @@ set(PUBLIC_HEADERS
     intelli/graphconnectionmodel.h
     intelli/graphdatamodel.h
     intelli/graphexecmodel.h
+    intelli/graphexecutor.h
     intelli/graphuservariables.h
     intelli/graphutilities.h
     intelli/memory.h
@@ -124,8 +125,10 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/stringbuilder.h
     intelli/node/stringselection.h
     intelli/node/textdisplay.h
-    intelli/node/input/graphuservariablesinput.h
+    intelli/node/control/conditional.h intelli/node/control/conditional.cpp
+    intelli/node/input/numberinputnode_utils.h
     intelli/node/input/fileinput.h
+    intelli/node/input/graphuservariablesinput.h
     intelli/gui/commentgroup.h
     intelli/gui/commentdata.h
     intelli/gui/grapheditor.h
@@ -159,7 +162,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/node/stringselectionnodeui.h
     intelli/gui/ui/node/textdisplaynodeui.h
     intelli/gui/ui/node/numberinputnodeui_utils.h
-    intelli/node/input/numberinputnode_utils.h
+    intelli/gui/ui/node/control/conditionalgroupnodeui.h intelli/gui/ui/node/control/conditionalgroupnodeui.cpp
     intelli/gui/graphics/commentobject.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/lineobject.h
@@ -189,6 +192,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp
     intelli/graphexecmodel.cpp
+    intelli/graphexecutor.cpp
     intelli/graphuservariables.cpp
     intelli/graphutilities.cpp
     intelli/module.cpp

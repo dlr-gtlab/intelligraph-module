@@ -149,6 +149,20 @@ public:
     QStringList openWith(GtObject* obj) override;
 
     /**
+     * @brief Returns the list of all port actions registered
+     * @return
+     */
+    QList<PortUIAction> const& portActions() const;
+
+    /**
+     * @brief Opens the Edit-User-Variables-Dialog for the root graph `obj`.
+     * @param obj Object must be root graph.
+     */
+    static void editUserVariables(GtObject* obj);
+
+protected:
+
+    /**
      * @brief Casts the object to a node object. Can be used for validation
      * @param obj Object to cast
      * @return node object (may be null)
@@ -193,19 +207,19 @@ public:
      */
     static void executeNode(GtObject* obj);
 
+    /** PORT ACTIONS **/
+
     /**
      * @brief Adds an input port to a dynamic node
      * @param obj
      */
-    static void addInPort(GtObject* obj);
+    static void addDynamicInPort(GtObject* obj);
 
     /**
      * @brief Adds an output port to a dynamic node
      * @param obj
      */
-    static void addOutPort(GtObject* obj);
-
-    /** PORT ACTIONS **/
+    static void addDynamicOutPort(GtObject* obj);
 
     /**
      * @brief Deletes a dynamic port
@@ -226,20 +240,6 @@ public:
      */
     static bool isDynamicPort(Node* obj, PortType type, PortIndex idx);
     static bool isDynamicNode(Node* obj, PortType type, PortIndex idx);
-
-    /**
-     * @brief Opens the Edit-User-Variables-Dialog for the root graph `obj`.
-     * @param obj Object must be root graph.
-     */
-    static void editUserVariables(GtObject* obj);
-
-    /**
-     * @brief Returns the list of all port actions registered
-     * @return
-     */
-    QList<PortUIAction> const& portActions() const;
-
-protected:
 
     /**
      * @brief Adds a port action and returns a reference to the added action,

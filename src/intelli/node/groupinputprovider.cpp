@@ -12,7 +12,12 @@
 using namespace intelli;
 
 GroupInputProvider::GroupInputProvider() :
-    AbstractGroupProvider("Input Provider")
+    GroupInputProvider("Input Provider")
+{ }
+
+
+GroupInputProvider::GroupInputProvider(QString const& modelName) :
+    AbstractGroupProvider(modelName)
 {
     setPos({-250, 0});
 }

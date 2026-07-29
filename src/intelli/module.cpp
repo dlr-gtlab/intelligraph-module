@@ -43,6 +43,7 @@
 #include "intelli/node/input/intinput.h"
 #include "intelli/node/input/objectinput.h"
 #include "intelli/node/input/stringinput.h"
+#include "intelli/node/control/conditional.h"
 #include "intelli/gui/commentgroup.h"
 #include "intelli/gui/commentdata.h"
 #include "intelli/gui/grapheditor.h"
@@ -70,6 +71,7 @@
 #include "intelli/gui/ui/node/intinputnodeui.h"
 #include "intelli/gui/ui/node/objectinputnodeui.h"
 #include "intelli/gui/ui/node/stringinputnodeui.h"
+#include "intelli/gui/ui/node/control/conditionalgroupnodeui.h"
 #include "intelli/gui/property_item/stringselection.h"
 
 #include "intelli/calculators/graphexeccalculator.h"
@@ -360,6 +362,13 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(StringSelectionNodeUI));
     map.insert(GT_CLASSNAME(SleepyNode),
                GT_METADATA(SleepyNodeUI));
+
+    map.insert(GT_CLASSNAME(ConditionalGroupNode),
+               GT_METADATA(ConditionalGroupNodeUI));
+    map.insert(GT_CLASSNAME(ConditionalInputProvider),
+               GT_METADATA(ConditionalGroupNodeUI));
+    map.insert(GT_CLASSNAME(ConditionalOutputProvider),
+               GT_METADATA(ConditionalGroupNodeUI));
 
     QStringList registeredNodes = NodeFactory::instance().registeredNodes();
 

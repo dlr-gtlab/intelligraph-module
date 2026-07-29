@@ -46,11 +46,11 @@
 
 using namespace intelli;
 
-using BoolObjectMethod = std::function<bool (GtObject*)>;
-using BoolPortMethod = std::function<bool (Node*, PortType, PortIndex)>;
-
 using DeleteAction = std::pair<NodeUI::CustomDeleteFunctor,
                                NodeUI::EnableCustomDeleteFunctor>;
+
+using BoolObjectMethod = std::function<bool (GtObject*)>;
+using BoolPortMethod = std::function<bool (Node*, PortType, PortIndex)>;
 
 /// NOT operator
 template <typename Functor>
@@ -160,11 +160,11 @@ NodeUI::NodeUI(Option option) :
             return  (static_cast<DynamicNode*>(obj)->dynamicNodeOption() & DynamicNode::DynamicOutput);
         };
 
-        addSingleAction(tr("Add In Port"), addInPort)
+        addSingleAction(tr("Add In Port"), addDynamicInPort)
             .setIcon(gt::gui::icon::add())
             .setVisibilityMethod(toDynamicNode * NOT(toDummy) * hasInputPorts);
 
-        addSingleAction(tr("Add Out Port"), addOutPort)
+        addSingleAction(tr("Add Out Port"), addDynamicOutPort)
             .setIcon(gt::gui::icon::add())
             .setVisibilityMethod(toDynamicNode * NOT(toDummy) * hasOutputPorts);
 
@@ -206,7 +206,27 @@ NodeUI::NodeUI(Option option) :
                 debug(graph->globalConnectionModel());
             }
         }).setIcon(gt::gui::icon::bug())
-          .setVisibilityMethod(toGraph);
+            .setVisibilityMethod(toGraph);
+
+        addSingleAction(tr("Print Debug Port Information"), [](GtObject* obj){
+            if (auto* node = toNode(obj))
+            {
+                QString const& path = relativeNodePath(*node);
+                gtInfo() << "### Node:" << path;
+                gtInfo() << "###  - Inputs:";
+                for (auto const& port : node->ports(PortType::In))
+                {
+                    gtInfo() << "###    -> " << port;
+                }
+                gtInfo() << "###  - Outputs:";
+                for (auto const& port : node->ports(PortType::Out))
+                {
+                    gtInfo() << "###    -> " << port;
+                }
+                gtInfo() << "###";
+            }
+        }).setIcon(gt::gui::icon::bug())
+            .setVisibilityMethod(toNode);
     }
 
     addSeparator();
@@ -540,14 +560,21 @@ addPort(DynamicNode& node, PortType type)
                   node.addInPort(typeId<DoubleData>()) :
                   node.addOutPort(typeId<DoubleData>());
 
+    auto* port = node.port(id);
+    if (!port)
+    {
+        gtWarning().verbose() << QObject::tr("Failed to add dynamic port to %1!")
+                                     .arg(relativeNodePath(node));
+        return;
+    }
     gtInfo().verbose() << QObject::tr("Added dynamic port '%1'")
-                              .arg(toString(*node.port(id)));
+                              .arg(port ? toString(*port) : "N/A");
 }
 
 } // namespace
 
 void
-NodeUI::addInPort(GtObject* obj)
+NodeUI::addDynamicInPort(GtObject* obj)
 {
     auto* node = toDynamicNode(obj);
     if (!node) return;
@@ -556,7 +583,7 @@ NodeUI::addInPort(GtObject* obj)
 }
 
 void
-NodeUI::addOutPort(GtObject* obj)
+NodeUI::addDynamicOutPort(GtObject* obj)
 {
     auto* node = toDynamicNode(obj);
     if (!node) return;

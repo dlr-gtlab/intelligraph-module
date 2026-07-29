@@ -12,7 +12,12 @@
 using namespace intelli;
 
 GroupOutputProvider::GroupOutputProvider() :
-    AbstractGroupProvider("Output Provider")
+    GroupOutputProvider("Output Provider")
+{ }
+
+
+GroupOutputProvider::GroupOutputProvider(QString const& modelName) :
+    AbstractGroupProvider(modelName)
 {
     setPos({250, 0});
 }

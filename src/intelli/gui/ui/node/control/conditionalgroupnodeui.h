@@ -1,0 +1,42 @@
+/* GTlab - Gas Turbine laboratory
+ *
+ * SPDX-License-Identifier: MPL-2.0+
+ * SPDX-FileCopyrightText: 2026 German Aerospace Center (DLR)
+ */
+
+#ifndef GT_INTELLI_CONDITIONALGROUPNODEUI_H
+#define GT_INTELLI_CONDITIONALGROUPNODEUI_H
+
+#include <intelli/gui/nodeui.h>
+
+namespace intelli
+{
+
+class ConditionalGroupNodeUI : public NodeUI
+{
+    Q_OBJECT
+
+public:
+
+    Q_INVOKABLE ConditionalGroupNodeUI();
+
+    QIcon icon(GtObject* obj) const override;
+
+private:
+
+    /**
+     * @brief Adds an input port to a dynamic node
+     * @param obj
+     */
+    static void addInPort(GtObject* obj);
+
+    /**
+     * @brief Adds an output port to a dynamic node
+     * @param obj
+     */
+    static void addOutPort(GtObject* obj);
+};
+
+} // namespace intelli
+
+#endif // GT_INTELLI_CONDITIONALGROUPNODEUI_H

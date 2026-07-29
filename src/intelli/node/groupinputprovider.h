@@ -25,6 +25,8 @@ public:
 
 protected:
 
+    GroupInputProvider(QString const& modelName);
+
     void eval() override;
 };
 

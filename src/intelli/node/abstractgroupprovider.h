@@ -24,6 +24,7 @@ class AbstractGroupProvider : public DynamicNode
     /// Input and output provider will have mutually exclusive port ids
     /// The initial offset is calculated like this
     PortId m_nextPortId{(size_t)Type + 1};
+    bool m_useVirtualPorts{true};
 
 public:
 
@@ -51,6 +52,16 @@ public:
         connect(this, &Node::portAboutToBeDeleted,
                 this, &AbstractGroupProvider::onPortDeleted,
                 Qt::DirectConnection);
+    }
+
+    void setUnique(bool enable)
+    {
+        setNodeFlag(Unique, enable);
+    }
+
+    void setUseVirtualPorts(bool enable)
+    {
+        m_useVirtualPorts = enable;
     }
 
     PortId addPort(PortInfo port, int idx = -1)
@@ -91,11 +102,23 @@ protected:
     PortId insertPort(PortOption option, PortType type, PortInfo port, int idx) final
     {
         // no static ports allowed
-        if (option == StaticPort) return PortId{};
+        if (option == StaticPort)
+        {
+            gtError() << __FUNCTION__ << "Cannot add static ports!";
+            return PortId{};
+        }
         // no custom port ids allowed
-        if (port.id().isValid()) return PortId{};
+        if (m_useVirtualPorts && port.id().isValid())
+        {
+            gtError() << __FUNCTION__ << "Custom portId not allowed!";
+            return PortId{};
+        }
         // invalid port type
-        if (type == providerType) return PortId{};
+        if (type == providerType)
+        {
+            gtError() << __FUNCTION__ << "Invalid port type!";
+            return PortId{};
+        }
 
         port = PortInfo::customId(m_nextPortId, std::move(port));
         PortId portId =
@@ -136,6 +159,12 @@ private slots:
 
         // update next port id
         m_nextPortId = std::max(m_nextPortId, portId);
+        if (!m_useVirtualPorts)
+        {
+            // update next port id
+            m_nextPortId += PortId(4);
+            return onFailure.clear();
+        }
 
         // append main port to graph
         auto* graph = findParent<Graph*>();
@@ -144,7 +173,7 @@ private slots:
         PortId addedPortId = actualType == PortType::Out ?
                            graph->insertInPort( *port, idx) :
                            graph->insertOutPort(*port, idx);
-        assert(addedPortId.isValid());
+        if (!addedPortId.isValid()) return;
 
         port = this->port(addedPortId);
         // generate virtual port for connecting parent graph and this provider
@@ -181,6 +210,8 @@ private slots:
      */
     void onPortChanged(PortId portId)
     {
+        if (!m_useVirtualPorts) return;
+
         bool isVirtual = !isMainPort(portId);
         if (isVirtual) return;
 
@@ -222,6 +253,8 @@ private slots:
      */
     void onPortDeleted(PortType actualType, PortIndex idx)
     {
+        if (!m_useVirtualPorts) return;
+
         auto* graph = findParent<Graph*>();
         if (!graph) return;
 

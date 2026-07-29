@@ -44,6 +44,8 @@
 #include "intelli/node/input/stringinput.h"
 #include "intelli/node/input/graphuservariablesinput.h"
 
+#include "intelli/node/control/conditional.h"
+
 #include "intelli/node/booldisplay.h"
 #include "intelli/node/textdisplay.h"
 
@@ -120,6 +122,7 @@ intelli::registerDefaultNodes()
         QString catProcess = QObject::tr("Process");
         QString catFile = QObject::tr("File");
         QString catDisplay = QObject::tr("Display");
+        QString catControl = QObject::tr("Control");
 
         GT_INTELLI_REGISTER_NODE(DummyNode, hidden);
 
@@ -159,9 +162,14 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
 
+        GT_INTELLI_REGISTER_NODE(ConditionalGroupNode, catControl);
+        GT_INTELLI_REGISTER_NODE(ConditionalInputProvider, hidden);
+        GT_INTELLI_REGISTER_NODE(ConditionalOutputProvider, hidden);
+
 #ifdef GT_INTELLI_EXPERIMENTAL_NODES
         GT_INTELLI_REGISTER_NODE(BinaryDisplayNode, catDisplay);
 #endif
+
         return true;
     }();
 
