@@ -20,7 +20,6 @@
 #include "gt_boolproperty.h"
 #include "gt_exceptions.h"
 #include "gt_version.h"
-#include "intelli/data/int.h"
 
 using namespace intelli;
 
@@ -138,6 +137,14 @@ DynamicNode::DynamicNode(QString const& modelName,
                 this, &DynamicNode::onPortEntryRemoved,
                 Qt::UniqueConnection);
     }
+}
+
+void
+DynamicNode::setPortContainerVisible(PortType type, bool visible)
+{
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
+    dynamicPorts(type).setFlags(GtPropertyStructContainer::Hidden);
+#endif
 }
 
 DynamicNode::~DynamicNode() = default;
@@ -333,7 +340,6 @@ DynamicNode::onPortChanged(PortId portId)
 void
 DynamicNode::onPortEntryAdded(int idx)
 {
-    gtDebug() << "port entry added" << idx;
     auto const makeError = [](){
         return tr("Adding dynamic port entry failed!");
     };
@@ -416,7 +422,6 @@ DynamicNode::onPortEntryAdded(int idx)
 void
 DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
 {
-    gtDebug() << "port entry changed" << idx;
     GtPropertyStructContainer* dynamicPorts = toDynamicPorts(sender());
     if (!dynamicPorts) return;
 
@@ -477,7 +482,6 @@ DynamicNode::onPortEntryChanged(int idx, GtAbstractProperty* p)
 void
 DynamicNode::onPortEntryRemoved(int idx)
 {
-    gtDebug() << "port entry removed" << idx;
     GtPropertyStructContainer* dynamicPorts = toDynamicPorts(sender());
     if (!dynamicPorts) return;
 

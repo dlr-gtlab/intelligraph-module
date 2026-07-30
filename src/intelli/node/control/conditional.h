@@ -40,6 +40,12 @@ public:
 
     PortId addDataOutPort(PortInfo info);
 
+    bool isDataPort(PortId portId) const;
+
+    void updateDataPort(PortId portId, PortInfo newPort);
+
+    void deleteDataPort(PortId portId);
+
     /**
      * @brief initializes the input and output of this graph
      */

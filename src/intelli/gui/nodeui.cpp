@@ -376,8 +376,7 @@ NodeUI::openWith(GtObject* obj)
 }
 
 PortUIAction&
-NodeUI::addPortAction(const QString& actionText,
-                                    PortActionFunction actionMethod)
+NodeUI::addPortAction(QString const& actionText, PortActionFunction actionMethod)
 {
     pimpl->portActions.append(PortUIAction(actionText, std::move(actionMethod)));
     return pimpl->portActions.back();

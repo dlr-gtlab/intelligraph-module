@@ -137,6 +137,8 @@ protected:
                 size_t option = DynamicInputAndOutput,
                 GtObject* parent = nullptr);
 
+    void setPortContainerVisible(PortType type, bool visible = true);
+
     /**
      * @brief Appends a static input port. Static ports are like the regular
      * ports and are not saved persistently. They should only be created within

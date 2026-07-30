@@ -77,6 +77,7 @@ set(PUBLIC_HEADERS
     intelli/gui/graphics/graphicsobject.h
     intelli/gui/graphics/interactableobject.h
     intelli/gui/graphics/nodeobject.h
+    intelli/gui/widgets/porteditdialog.h
     intelli/node/input/boolinput.h
     intelli/node/input/doubleinput.h
     intelli/node/input/intinput.h
@@ -294,6 +295,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/widgets/finddirectchildwidget.cpp
     intelli/gui/widgets/graphuservariablesdialog.cpp
     intelli/gui/widgets/intinputwidget.cpp
+    intelli/gui/widgets/porteditdialog.cpp
     intelli/gui/property_item/stringselection.cpp
     intelli/property/color.cpp
     intelli/property/metaenum.cpp

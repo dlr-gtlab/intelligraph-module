@@ -35,6 +35,10 @@ private:
      * @param obj
      */
     static void addOutPort(GtObject* obj);
+
+    static void editPort(Node* obj, PortType type, PortIndex idx);
+
+    static void deletePort(Node* obj, PortType type, PortIndex idx);
 };
 
 } // namespace intelli

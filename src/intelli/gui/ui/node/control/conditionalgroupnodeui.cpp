@@ -7,8 +7,10 @@
 #include "intelli/gui/ui/node/control/conditionalgroupnodeui.h"
 
 #include "intelli/data/double.h"
+#include "intelli/data/int.h"
 #include "intelli/node/control/conditional.h"
 #include "intelli/private/utils.h"
+#include "intelli/gui/widgets/porteditdialog.h"
 
 #include <gt_icons.h>
 
@@ -73,6 +75,17 @@ ConditionalOutputProvider* toConditionalOutputNode(GtObject* obj)
     return qobject_cast<ConditionalOutputProvider*>(obj);
 }
 
+Node::PortInfo* toDataPort(Node* obj, PortType type, PortIndex idx)
+{
+    auto node = qobject_cast<ConditionalGroupNode*>(obj);
+    if (!node) return nullptr;
+
+    PortId portId = node->portId(type, idx);
+    if (!node->isDataPort(portId)) return nullptr;
+
+    return node->port(portId);
+}
+
 ConditionalGroupNodeUI::ConditionalGroupNodeUI() :
     NodeUI(Option::NoDefaultPortActions)
 {
@@ -86,6 +99,14 @@ ConditionalGroupNodeUI::ConditionalGroupNodeUI() :
         .setIcon(gt::gui::icon::add())
         .setVisibilityMethod(
             Op{}.OR(toConditionalNode).OR(toConditionalInputNode));
+
+    addPortAction(tr("Edit Port"), editPort)
+        .setIcon(gt::gui::icon::rename())
+        .setVisibilityMethod(toDataPort);
+
+    addPortAction(tr("Delete Port"), deletePort)
+        .setIcon(gt::gui::icon::delete_())
+        .setVisibilityMethod(toDataPort);
 }
 
 QIcon
@@ -105,17 +126,22 @@ void
 addPort(ConditionalGroupNode& node, PortType type)
 {
     assert(node.parentObject());
-    auto cmd = gtApp->makeCommand(node.parentObject(),
+    auto cmd = gtApp->makeCommand(&node,
                                   QStringLiteral("Adding an %1put port to conditional node '%2'")
                                       .arg(type == PortType::In ? "in" : "out",
                                            relativeNodePath(node)));
     Q_UNUSED(cmd);
 
-    // TODO: add option for type id
+    PortEditDialog dialog{type};
+    if (!dialog.exec()) return;
+
+    auto portInfo = Node::PortInfo{dialog.typeId()}
+        .setCaption(dialog.caption())
+        .setCaptionVisible(dialog.captionVisible());
 
     auto id = (type == PortType::In) ?
-                  node.addDataInPort(typeId<DoubleData>()) :
-                  node.addDataOutPort(typeId<DoubleData>());
+                  node.addDataInPort(std::move(portInfo)) :
+                  node.addDataOutPort(std::move(portInfo));
 
     auto* port = node.port(id);
     if (!port)
@@ -146,5 +172,49 @@ ConditionalGroupNodeUI::addOutPort(GtObject* obj)
     if (!node) return;
 
     ::addPort(*node, PortType::Out);
+}
+
+void
+ConditionalGroupNodeUI::editPort(Node* obj, PortType type, PortIndex idx)
+{
+    auto* node = toConditionalNode(obj);
+    if (!node) return;
+
+    auto* srcPort = toDataPort(node, type, idx);
+    if (!srcPort) return;
+
+    PortEditDialog dialog{type};
+    dialog.setTypeId(srcPort->typeId);
+    dialog.setCaption(srcPort->caption);
+    dialog.setCaptionVisible(srcPort->captionVisible);
+    if (!dialog.exec()) return;
+
+    auto cmd = gtApp->makeCommand(node,
+                                  QStringLiteral("Edited port '%1' of node '%2'")
+                                      .arg(toString(*srcPort), relativeNodePath(*node)));
+    Q_UNUSED(cmd);
+
+    auto port = *srcPort;
+    port.typeId = dialog.typeId();
+    port.caption = dialog.caption();
+    port.captionVisible = dialog.captionVisible();
+    node->updateDataPort(srcPort->id(), port);
+}
+
+void
+ConditionalGroupNodeUI::deletePort(Node* obj, PortType type, PortIndex idx)
+{
+    auto* node = toConditionalNode(obj);
+    if (!node) return;
+
+    auto* port = toDataPort(node, type, idx);
+    if (!port) return;
+
+    auto cmd = gtApp->makeCommand(node,
+                                  QStringLiteral("Deleting port '%1' of node '%2'")
+                                      .arg(toString(*port), relativeNodePath(*node)));
+    Q_UNUSED(cmd);
+
+    node->deleteDataPort(port->id());
 }
 

@@ -215,6 +215,8 @@ ConditionalGroupNode::ConditionalGroupNode() :
         appendNode(std::move(output));
     }
 
+    /// only the if branch nodes are used to synchronize the state across all
+    /// other nodes
     if (auto* input = inputProvider(IfBranch))
     {
         connect(input, &Node::portInserted,
@@ -291,6 +293,64 @@ ConditionalGroupNode::addDataOutPort(PortInfo info)
     return provider->addPort(std::move(info));
 }
 
+bool
+ConditionalGroupNode::isDataPort(PortId portId) const
+{
+    return portId.isValid() && portId > m_condition;
+}
+
+void
+ConditionalGroupNode::updateDataPort(PortId portId, PortInfo newPort)
+{
+    if (!isDataPort(portId)) return;
+
+    PortType type = portType(portId);
+
+    auto* provider = type == PortType::In ?
+                         static_cast<DynamicNode*>(inputProvider(IfBranch)) :
+                         static_cast<DynamicNode*>(outputProvider(IfBranch));
+    if (!provider)
+    {
+        gtError() << relativeNodePath(*this) + QStringLiteral(":")
+                  << tr("Failed to update data port %1! (Node not found)")
+                         .arg(toString(portId));
+        return;
+    }
+
+    auto* port = provider->port(portId);
+    if (!port)
+    {
+        gtError() << relativeNodePath(*this) + QStringLiteral(":")
+                  << tr("Failed to update data port %1! (Port not found)")
+                         .arg(toString(portId));
+        return;
+    }
+
+    port->assign(newPort);
+    emit provider->portChanged(portId);
+}
+
+void
+ConditionalGroupNode::deleteDataPort(PortId portId)
+{
+    if (!isDataPort(portId)) return;
+
+    PortType type = portType(portId);
+
+    auto* provider = type == PortType::In ?
+                         static_cast<DynamicNode*>(inputProvider(IfBranch)) :
+                         static_cast<DynamicNode*>(outputProvider(IfBranch));
+    if (!provider)
+    {
+        gtError() << relativeNodePath(*this) + QStringLiteral(":")
+                  << tr("Failed to delete data port %1! (Node not found)")
+                         .arg(toString(portId));
+        return;
+    }
+
+    provider->removePort(portId);
+}
+
 void
 ConditionalGroupNode::initInputOutputProviders()
 {
@@ -352,6 +412,7 @@ ConditionalInputProvider::ConditionalInputProvider(ConditionalGroupNode::BranchT
 
     setNodeFlag(Unique, false);
     setUseVirtualPorts(false);
+    setPortContainerVisible(PortType::Out, false);
 }
 
 
@@ -364,4 +425,5 @@ ConditionalOutputProvider::ConditionalOutputProvider(ConditionalGroupNode::Branc
 
     setNodeFlag(Unique, false);
     setUseVirtualPorts(false);
+    setPortContainerVisible(PortType::In, false);
 }

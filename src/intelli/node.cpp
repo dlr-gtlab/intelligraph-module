@@ -44,8 +44,6 @@ Node::Node(QString const& modelName, GtObject* parent) :
     GtObject(parent),
     pimpl(std::make_unique<Impl>(modelName))
 {
-    gtDebug() << "NODE CREATED" << modelName << (void*)this;
-
     setFlag(UserDeletable, true);
     // nodes can be renamed using custom rename action
     setFlag(UserRenamable, false);
@@ -118,7 +116,6 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
 Node::~Node()
 {
-    gtDebug() << "DELETING NODE" << this;
     emit nodeAboutToBeDeleted(id());
 }
 
