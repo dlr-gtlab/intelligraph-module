@@ -118,10 +118,6 @@ GraphUserVariablesDialog::GraphUserVariablesDialog(Graph& graph) :
 
     infoLabel->setWordWrap(true);
 
-    auto* line = new QFrame();
-    line->setFrameShape(QFrame::HLine);
-    line->setFrameShadow(QFrame::Sunken);
-
     // user variables
     m_listView = new QListWidget();
 
