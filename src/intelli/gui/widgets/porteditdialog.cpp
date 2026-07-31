@@ -56,21 +56,33 @@ PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhite
     pimpl->portTypeComboBox = new QComboBox{};
     pimpl->portTypeComboBox->addItems(typeIds);
 
+    auto* portCaptionLabel = new QLabel{tr("Port Caption:")};
     pimpl->portCaptionCheckBox = new QCheckBox{};
     pimpl->portCaptionEdit = new QLineEdit{};
     pimpl->portCaptionEdit->setValidator(new QRegularExpressionValidator(
         gt::rex::onlyLettersAndNumbersAndDot(), this));
 
-    pimpl->portTypeComboBox->setToolTip(tr("Select the Port Type"));
-    pimpl->portCaptionEdit->setToolTip(tr("Enter Port Caption: ") +
-                                gt::rex::onlyLettersAndNumbersAndDotHint());
-    pimpl->portCaptionCheckBox->setToolTip(tr("Toggle whether caption should be displayed"));
+    pimpl->portTypeComboBox->setToolTip(
+        tr("Select the Port Type"));
+    pimpl->portCaptionEdit->setToolTip(
+        tr("Enter Port Caption: %1")
+            .arg(gt::rex::onlyLettersAndNumbersAndDotHint()));
+    pimpl->portCaptionCheckBox->setToolTip(
+        tr("Toggle whether the caption should be displayed"));
+
+    constexpr int rowSpan = 1;
+    constexpr int colSpan = 2;
+
+    auto* captionLayout = new QHBoxLayout;
+    captionLayout->setContentsMargins(0, 0, 0, 0);
+    captionLayout->addWidget(pimpl->portCaptionEdit);
+    captionLayout->addWidget(pimpl->portCaptionCheckBox);
 
     int row = 1;
     layout->addWidget(portTypeLabel, row, 1);
     layout->addWidget(pimpl->portTypeComboBox, row++, 2);
-    layout->addWidget(pimpl->portCaptionCheckBox, row, 1);
-    layout->addWidget(pimpl->portCaptionEdit, row++, 2);
+    layout->addWidget(portCaptionLabel, row, 1);
+    layout->addLayout(captionLayout, row++, 2);
 
     // dialog buttons
     auto applyButton = new QPushButton{tr("Apply")};
@@ -83,14 +95,20 @@ PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhite
     closeButton->setDefault(false);
     closeButton->setAutoDefault(false);
 
+    auto* line = new QFrame();
+    line->setFrameShape(QFrame::HLine);
+    line->setFrameShadow(QFrame::Sunken);
+    layout->addWidget(line, row++, 1, rowSpan, colSpan);
+
     auto* buttonsLayout = new QHBoxLayout();
     buttonsLayout->setContentsMargins(4, 4, 4, 4);
     buttonsLayout->addStretch(1);
     buttonsLayout->addWidget(closeButton);
     buttonsLayout->addWidget(applyButton);
-    layout->addLayout(buttonsLayout, row++, 1, 1, 2);
+    layout->addLayout(buttonsLayout, row++, 1, rowSpan, colSpan);
 
     setLayout(layout);
+    layout->setSizeConstraint(QLayout::SetFixedSize);
 
     connect(closeButton, &QPushButton::clicked, this, &QDialog::reject);
     connect(applyButton, &QPushButton::clicked, this, &QDialog::accept);
@@ -120,7 +138,6 @@ PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhite
 
     auto updateCaptionVisibility = [this](bool checked){
         pimpl->captionVisible = checked;
-        pimpl->portCaptionCheckBox->setText(checked ? tr("true") : tr("false"));
     };
 
     connect(pimpl->portTypeComboBox, &QComboBox::currentTextChanged,
@@ -152,12 +169,20 @@ void
 PortEditDialog::setTypeId(const TypeId& typeId)
 {
     pimpl->portTypeComboBox->setCurrentText(typeId);
+    setCaption(pimpl->caption);
 }
 
 void
 PortEditDialog::setCaption(const QString& caption)
 {
-    pimpl->portCaptionEdit->setText(caption.trimmed());
+    QString typeName = NodeDataFactory::instance()
+                           .typeName(pimpl->portTypeComboBox->currentText());
+    if (typeName == caption)
+    {
+        pimpl->portCaptionEdit->setText({});
+        return;
+    }
+    pimpl->portCaptionEdit->setText(caption);
 }
 
 void

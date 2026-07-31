@@ -18,7 +18,6 @@ using namespace intelli;
 
 using BoolObjectMethod = std::function<bool (GtObject*)>;
 
-
 struct Op
 {
     BoolObjectMethod f = nullptr;
@@ -75,10 +74,25 @@ ConditionalOutputProvider* toConditionalOutputNode(GtObject* obj)
     return qobject_cast<ConditionalOutputProvider*>(obj);
 }
 
-Node::PortInfo* toDataPort(Node* obj, PortType type, PortIndex idx)
+Node::PortInfo*
+toDataPort(Node* obj, PortType type, PortIndex idx)
 {
-    auto node = qobject_cast<ConditionalGroupNode*>(obj);
-    if (!node) return nullptr;
+    auto node = toConditionalNode(obj);
+    if (!node)
+    {
+        if (toConditionalInputNode(obj))
+        {
+            node = toConditionalNode(obj->parentObject());
+            type = invert(type);
+            idx++;
+        }
+        if (toConditionalOutputNode(obj))
+        {
+            node = toConditionalNode(obj->parentObject());
+            type = invert(type);
+        }
+        if (!node) return nullptr;
+    }
 
     PortId portId = node->portId(type, idx);
     if (!node->isDataPort(portId)) return nullptr;
@@ -126,18 +140,20 @@ void
 addPort(ConditionalGroupNode& node, PortType type)
 {
     assert(node.parentObject());
-    auto cmd = gtApp->makeCommand(&node,
-                                  QStringLiteral("Adding an %1put port to conditional node '%2'")
-                                      .arg(type == PortType::In ? "in" : "out",
-                                           relativeNodePath(node)));
-    Q_UNUSED(cmd);
 
     PortEditDialog dialog{type};
     if (!dialog.exec()) return;
 
-    auto portInfo = Node::PortInfo{dialog.typeId()}
-        .setCaption(dialog.caption())
-        .setCaptionVisible(dialog.captionVisible());
+    Node::PortInfo portInfo{dialog.typeId()};
+    portInfo.caption = dialog.caption();
+    portInfo.captionVisible = dialog.captionVisible();
+
+    // TODO: undo/redo command not working, since multiple nodes are updated in parallel
+//    auto cmd = gtApp->makeCommand(&node,
+//                                  QStringLiteral("Adding an %1put port to conditional node '%2'")
+//                                      .arg(type == PortType::In ? "in" : "out",
+//                                           relativeNodePath(node)));
+//    Q_UNUSED(cmd);
 
     auto id = (type == PortType::In) ?
                   node.addDataInPort(std::move(portInfo)) :
@@ -160,7 +176,14 @@ void
 ConditionalGroupNodeUI::addInPort(GtObject* obj)
 {
     auto* node = toConditionalNode(obj);
-    if (!node) return;
+    if (!node)
+    {
+        if (toConditionalOutputNode(obj))
+        {
+            return addOutPort(obj->parentObject());
+        }
+        return;
+    }
 
     ::addPort(*node, PortType::In);
 }
@@ -169,7 +192,14 @@ void
 ConditionalGroupNodeUI::addOutPort(GtObject* obj)
 {
     auto* node = toConditionalNode(obj);
-    if (!node) return;
+    if (!node)
+    {
+        if (toConditionalInputNode(obj))
+        {
+            return addInPort(obj->parentObject());
+        }
+        return;
+    }
 
     ::addPort(*node, PortType::Out);
 }
@@ -178,9 +208,16 @@ void
 ConditionalGroupNodeUI::editPort(Node* obj, PortType type, PortIndex idx)
 {
     auto* node = toConditionalNode(obj);
-    if (!node) return;
+    if (!node)
+    {
+        if (toConditionalInputNode(obj) || toConditionalOutputNode(obj))
+        {
+            node = toConditionalNode(obj->parentObject());
+        }
+        if (!node) return;
+    }
 
-    auto* srcPort = toDataPort(node, type, idx);
+    auto* srcPort = toDataPort(obj, type, idx);
     if (!srcPort) return;
 
     PortEditDialog dialog{type};
@@ -189,10 +226,11 @@ ConditionalGroupNodeUI::editPort(Node* obj, PortType type, PortIndex idx)
     dialog.setCaptionVisible(srcPort->captionVisible);
     if (!dialog.exec()) return;
 
-    auto cmd = gtApp->makeCommand(node,
-                                  QStringLiteral("Edited port '%1' of node '%2'")
-                                      .arg(toString(*srcPort), relativeNodePath(*node)));
-    Q_UNUSED(cmd);
+    // TODO: undo/redo command not working, since multiple nodes are updated in parallel
+//    auto cmd = gtApp->makeCommand(node,
+//                                  QStringLiteral("Edited port '%1' of node '%2'")
+//                                      .arg(toString(*srcPort), relativeNodePath(*node)));
+//    Q_UNUSED(cmd);
 
     auto port = *srcPort;
     port.typeId = dialog.typeId();
@@ -205,15 +243,23 @@ void
 ConditionalGroupNodeUI::deletePort(Node* obj, PortType type, PortIndex idx)
 {
     auto* node = toConditionalNode(obj);
-    if (!node) return;
+    if (!node)
+    {
+        if (toConditionalInputNode(obj) || toConditionalOutputNode(obj))
+        {
+            node = toConditionalNode(obj->parentObject());
+        }
+        if (!node) return;
+    }
 
     auto* port = toDataPort(node, type, idx);
     if (!port) return;
 
-    auto cmd = gtApp->makeCommand(node,
-                                  QStringLiteral("Deleting port '%1' of node '%2'")
-                                      .arg(toString(*port), relativeNodePath(*node)));
-    Q_UNUSED(cmd);
+    // TODO: undo/redo command not working, since multiple nodes are updated in parallel
+//    auto cmd = gtApp->makeCommand(node,
+//                                  QStringLiteral("Deleting port '%1' of node '%2'")
+//                                      .arg(toString(*port), relativeNodePath(*node)));
+//    Q_UNUSED(cmd);
 
     node->deleteDataPort(port->id());
 }

@@ -702,6 +702,7 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
 
     // forwards inputs of graph node to subgraph
     if (auto* graph = qobject_cast<Graph*>(&targetNode))
+    if (graph->metaObject()->className() == GT_CLASSNAME(Graph))
     {
         auto* inputProvider = graph->inputProvider();
         assert(inputProvider);
@@ -714,6 +715,7 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
 
     // forwards outputs of subgraph to graph node
     if (auto* output = qobject_cast<GroupOutputProvider*>(&targetNode))
+    if (output->parent()->metaObject()->className() == GT_CLASSNAME(Graph))
     {
         NodeUuid const& graphUuid = uuid();
 
