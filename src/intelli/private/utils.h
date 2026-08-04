@@ -108,6 +108,15 @@ inline QString toString(T const& t)
     return QString::fromStdString(s.str());
 }
 
+/// Converts `t` into a `std::string` using `gt::log::Stream`
+template <typename T>
+inline std::string toStdString(T const& t)
+{
+    gt::log::Stream s;
+    s.nospace() << t;
+    return s.str();
+}
+
 namespace utils
 {
 
@@ -132,6 +141,63 @@ erase(List& list, T const& t)
     }
     return false;
 }
+
+/**
+ * @brief Proxy object that filters an iterable  using std::find_if.
+ */
+template<typename Iter, typename Operator>
+struct FindIfProxy
+{
+    using value_type = typename std::iterator_traits<Iter>::value_type;
+    using reference  = typename std::iterator_traits<Iter>::reference;
+    using pointer  = typename std::iterator_traits<Iter>::pointer;
+
+    Iter end{};
+    Operator op;
+
+    /// finds the first item
+    void init(Iter& i)
+    {
+        i = std::find_if(i, end, op);
+    }
+
+    /// returns the underlying value type of iterator
+    reference get(Iter& i) { return *i; }
+
+    /// finds the next item if not at the end
+    void advance(Iter& i)
+    {
+        if (i != end) i = std::find_if(std::next(i), end, op);
+    }
+};
+
+template<typename InputIter,
+         typename OutputIter,
+         typename IfFunctor,
+         typename TransformFunctor>
+inline void transform_if(InputIter begin,
+                         InputIter end,
+                         IfFunctor ifOp,
+                         OutputIter out,
+                         TransformFunctor transform)
+{
+    FindIfProxy<InputIter, IfFunctor> proxy{end, ifOp};
+    auto find_if = makeProxy(begin, end, proxy);
+    std::transform(find_if.begin(), find_if.end(), out, transform);
+}
+
+template<typename InputIterable,
+         typename OutputIter,
+         typename IfFunctor,
+         typename TransformFunctor>
+inline void transform_if(InputIterable iterable,
+                         IfFunctor ifOp,
+                         OutputIter out,
+                         TransformFunctor transform)
+{
+    return transform_if(iterable.begin(), iterable.end(), ifOp, out, transform);
+}
+
 
 /// Helper function that returns the path of the node as a formated string for
 /// logging

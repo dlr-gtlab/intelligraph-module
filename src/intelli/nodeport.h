@@ -122,6 +122,13 @@ private:
 
 using PortInfo = NodePort;
 
+/**
+     * @brief Helper method to create a `PortInfo` struct given a `TypeId`.
+     * @param typeId TypeId
+     * @return `PortInfo` struct
+     */
+inline NodePort makePort(TypeId typeId) { return NodePort{std::move(typeId)}; }
+
 } // namespace intelli
 
 namespace gt

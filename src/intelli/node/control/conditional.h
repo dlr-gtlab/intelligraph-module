@@ -16,7 +16,7 @@ namespace intelli
 class ConditionalInputProvider;
 class ConditionalOutputProvider;
 
-class ConditionalGroupNode : public Graph
+class GT_INTELLI_EXPORT ConditionalGroupNode : public Graph
 {
     Q_OBJECT
 

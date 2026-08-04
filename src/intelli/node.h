@@ -222,7 +222,8 @@ public:
      * @param typeId TypeId
      * @return `PortInfo` struct
      */
-    static PortInfo makePort(TypeId typeId) { return PortInfo{std::move(typeId)}; }
+
+    static NodePort makePort(TypeId typeId) { return intelli::makePort(std::move(typeId)); }
 
     ~Node();
 

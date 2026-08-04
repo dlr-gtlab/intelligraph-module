@@ -158,9 +158,10 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
     if (&from != pimpl->graph->findNode(from.id()) ||
         &to   != pimpl->graph->findNode(to.id()))
     {
+        Node& errNode = (&from != pimpl->graph->findNode(from.id())) ? from : to;
         throw std::logic_error{
             buildError() +
-            ", nodes have not been added to the graph before! " +
+            ", node '" + errNode.caption().toStdString() + "' has not been added to the graph before! " +
             gt::brackets(pimpl->graph->caption().toStdString())
         };
     }

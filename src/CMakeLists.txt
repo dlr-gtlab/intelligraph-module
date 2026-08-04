@@ -86,6 +86,7 @@ set(PUBLIC_HEADERS
     intelli/node/input/intinput.h
     intelli/node/input/objectinput.h
     intelli/node/input/stringinput.h
+    intelli/node/control/conditional.h
     intelli/property/color.h
     intelli/property/metaenum.h
     intelli/property/stringselection.h
@@ -129,7 +130,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/stringbuilder.h
     intelli/node/stringselection.h
     intelli/node/textdisplay.h
-    intelli/node/control/conditional.h intelli/node/control/conditional.cpp
     intelli/node/input/numberinputnode_utils.h
     intelli/node/input/fileinput.h
     intelli/node/input/graphuservariablesinput.h
@@ -244,6 +244,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/input/intinput.cpp
     intelli/node/input/objectinput.cpp
     intelli/node/input/stringinput.cpp
+    intelli/node/control/conditional.cpp
     intelli/gui/connectiongeometry.cpp
     intelli/gui/connectionpainter.cpp
     intelli/gui/commentgroup.cpp
