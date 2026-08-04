@@ -28,6 +28,9 @@ public:
     GraphExecutor(Graph& graph, GraphDataModel& dataModel);
     ~GraphExecutor();
 
+    bool isSilent() const;
+    void setSilent(bool value);
+
     Graph& graph();
     Graph const& graph() const;
 
@@ -53,6 +56,8 @@ private:
 
     struct Impl;
     std::unique_ptr<Impl> pimpl;
+
+    void evaluateQueue();
 };
 
 } // namespace intelli

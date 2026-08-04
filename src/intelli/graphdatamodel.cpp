@@ -346,8 +346,9 @@ NodeDataPtrList
 GraphDataModel::nodeData(NodeUuid const& nodeUuid,
                          PortType type) const
 {
-    assert(!"function should not be needed");
-    assert(type == PortType::Out);
+//    assert(!"function should not be needed");
+//    assert(type == PortType::Out);
+    if (type != PortType::Out) return {};
 
     auto* node = graph().findNodeByUuid(nodeUuid);
     if (!node)
@@ -468,8 +469,8 @@ GraphDataModel::setNodeData(NodeUuid const& nodeUuid,
                             PortType type,
                             NodeDataPtrList const& data)
 {
-    assert(!"function should not be needed");
-    assert(type == PortType::Out);
+//    assert(!"function should not be needed");
+    if (type != PortType::Out) return true;
 
     for (auto const& entry : data)
     {
@@ -669,6 +670,7 @@ GraphDataModel::onNodeAppended(Node* node)
                    .arg(portData.size());
 
     pimpl->data.insert(nodeUuid, NodeDataItem{portData, NodeEvalState::Outdated});
+    exec::setNodeDataInterface(*node, this);
 }
 
 void

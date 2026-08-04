@@ -15,6 +15,8 @@
 #include "intelli/graphdatamodel.h"
 #include "intelli/node/control/conditional.h"
 
+#include <gt_eventloop.h>
+
 namespace intelli
 {
 namespace test
@@ -139,4 +141,7 @@ TEST(GraphExecutor, test)
     ASSERT_TRUE(scenario);
 
     executor.evaluateAll();
+
+    GtEventLoop loop{std::chrono::seconds{1}};
+    loop.exec();
 }

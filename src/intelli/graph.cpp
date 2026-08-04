@@ -1000,12 +1000,6 @@ Graph::moveNodes(QList<Node const*> const& nodes,
     return ::moveNodesAndConnectionsHelper(*this, nodes, targetGraph, policy);
 }
 
-bool
-Graph::isBeingModified() const
-{
-    return pimpl->modificationCount > 0;
-}
-
 void
 Graph::onObjectDataMerged()
 {
@@ -1197,6 +1191,12 @@ Graph::modify()
 {
     emitBeginModification();
     return gt::finally(EndModificationFunctor{this});
+}
+
+bool
+Graph::isBeingModified() const
+{
+    return pimpl->modificationCount > 0;
 }
 
 void

@@ -556,6 +556,12 @@ public:
     Modification modify();
 
     /**
+     * @brief Whether this model is currently undergoing modification.
+     * @return Is being modified
+     */
+    bool isBeingModified() const;
+
+    /**
      * @brief Tells the graph that is about to be modifed. Should be called
      * before e.g. bulk deleting/inserting nodes and connections
      */
@@ -657,12 +663,6 @@ private:
 
     struct Impl;
     std::unique_ptr<Impl> pimpl;
-
-    /**
-     * @brief Whether this model is currently undergoing modification.
-     * @return Is being modified
-     */
-    bool isBeingModified() const;
 
     /**
      * @brief Returns the group object in which all connections are stored
