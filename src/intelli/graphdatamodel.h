@@ -120,6 +120,8 @@ public:
      */
     void setNodeEvaluationFailed(NodeUuid const& nodeUuid) override;
 
+    void setNodeEvaluationOutdated(NodeUuid const& nodeUuid);
+
     /**
      * @brief Returns the user variables object if any exists.
      * @return User variables object (may be null)

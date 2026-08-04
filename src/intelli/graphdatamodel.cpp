@@ -11,14 +11,11 @@
 #include "intelli/graph.h"
 #include "intelli/graphuservariables.h"
 #include "intelli/private/utils.h"
-#include "intelli/utilities.h"
 
 #include <gt_coreapplication.h>
 #include <gt_project.h>
 
 #include <QPointer>
-#include <QMutex>
-#include <QMutexLocker>
 
 using namespace intelli;
 
@@ -32,8 +29,8 @@ struct PortDataItem
 
 struct NodeDataItem
 {
+    /// only the output data is stored
     QVector<PortDataItem> outputPortData;
-
     /// internal evalution state
     NodeEvalState state = NodeEvalState::Outdated;
 };
@@ -42,13 +39,13 @@ struct GraphDataModel::Impl
 {
     Impl(Graph& g) : graph(&g) {}
 
+    /// referencing graph
     QPointer<Graph> graph;
+    /// scope object
     QPointer<GtObject> scope = {};
-
+    /// data map
     QHash<NodeUuid, NodeDataItem> data = {};
-
-    QMutex mutex{};
-
+    /// logging indicator
     bool silent = false;
 
     NodeDataSet nodeData(NodeUuid const& nodeUuid, PortId portId) const
@@ -57,7 +54,7 @@ struct GraphDataModel::Impl
         if (nodeEntry == data.constEnd())
         {
             if (!silent)
-                gtError() << tr("failed to find data for node '%1'!")
+                gtError() << tr("failed to find data for node '%1'! (entry not found)")
                                  .arg(nodeUuid);
             return {};
         }
@@ -77,20 +74,20 @@ struct GraphDataModel::Impl
         }
 
         if (!silent)
-            gtDebug()
+            gtTrace().verbose()
                 << tr("Accessing node data of '%1', data: %2")
                        .arg(nodeUuid, toString(portEntry->data.ptr));
 
         return portEntry->data;
     }
 
-    bool setNodeData(NodeUuid const& nodeUuid, PortId portId, NodeDataSet dset)
+    bool setNodeData(GraphDataModel& model, NodeUuid const& nodeUuid, PortId portId, NodeDataSet dset)
     {
         auto nodeEntry = data.find(nodeUuid);
         if (nodeEntry == data.end())
         {
             if (!silent)
-                gtError() << tr("failed to set data for node '%1'!")
+                gtError() << tr("failed to set data for node '%1'! (entry not found)")
                                  .arg(nodeUuid);
             return false;
         }
@@ -102,19 +99,34 @@ struct GraphDataModel::Impl
         if (portEntry == nodeEntry->outputPortData.end())
         {
             if (!silent)
-                gtError() << tr("failed to set data for port '%2' of node '%1'!")
+                gtError() << tr("failed to set data for port '%2' of node '%1'! "
+                                "(out port not found)")
                                  .arg(nodeUuid)
                                  .arg(portId);
             return false;
         }
 
         if (!silent)
-            gtDebug()
+            gtTrace().verbose()
                 << tr("Setting node data for '%1', data: %2")
                        .arg(nodeUuid, toString(dset.ptr));
 
         portEntry->data = std::move(dset);
+
+        // TODO: need to update successors?
+        Impl::propagate(model, nodeUuid, &GraphDataModel::setNodeEvaluationOutdated);
         return true;
+    }
+
+    static void propagate(GraphDataModel& model,
+                          NodeUuid const& source,
+                          void (GraphDataModel::*functor)(NodeUuid const&))
+    {
+        for (auto& successor : model.pimpl->graph->globalConnectionModel()
+                                   .iterateNodes(source, PortType::Out))
+        {
+            (model.*functor)(successor);
+        }
     }
 };
 
@@ -148,7 +160,7 @@ void
 GraphDataModel::reset()
 {
     if (!isSilent())
-        gtDebug()
+        gtTrace().verbose()
             << tr("Resetting the data model of '%1'")
                    .arg(relativeNodePath(graph()));
 
@@ -180,8 +192,8 @@ GraphDataModel::graph() const
 
 NodeDataSet
 GraphDataModel::nodeData(Graph const& graph,
-                            NodeId nodeId,
-                            PortId portId) const
+                         NodeId nodeId,
+                         PortId portId) const
 {
     auto& conModel = graph.connectionModel();
     auto entry = conModel.find(nodeId);
@@ -215,10 +227,13 @@ GraphDataModel::nodeData(Graph const& graph,
         }
 
         if (!isSilent())
-            gtError() << tr("failed to access data for node '%1' in graph '%2', port %3 not found!")
-                             .arg(nodeId)
-                             .arg(relativeNodePath(graph))
-                             .arg(portId);
+            gtTrace().verbose()
+                << tr("failed to access data for node '%1' in graph '%2', "
+                      "port %3 not found! (not connected?)")
+                       .arg(nodeId)
+                       .arg(relativeNodePath(graph))
+                       .arg(portId);
+
         return {};
     }
 
@@ -227,7 +242,7 @@ GraphDataModel::nodeData(Graph const& graph,
 
 NodeDataSet
 GraphDataModel::nodeData(NodeUuid const& nodeUuid,
-                            PortId portId) const
+                         PortId portId) const
 {
     auto& conModel = graph().globalConnectionModel();
     auto entry = conModel.find(nodeUuid);
@@ -258,9 +273,12 @@ GraphDataModel::nodeData(NodeUuid const& nodeUuid,
         }
 
         if (!isSilent())
-            gtError() << tr("failed to access data for node '%1' in graph '%2', port %3 not found!")
-                             .arg(nodeUuid, relativeNodePath(graph()))
-                             .arg(portId);
+            gtTrace().verbose()
+                << tr("failed to access data for node '%1' in graph '%2', "
+                      "port %3 not found! (not connected?)")
+                       .arg(nodeUuid, relativeNodePath(graph()))
+                       .arg(portId);
+
         return {};
     }
 
@@ -269,8 +287,8 @@ GraphDataModel::nodeData(NodeUuid const& nodeUuid,
 
 NodeDataSet
 GraphDataModel::nodeData(NodeUuid const& nodeUuid,
-                            PortType type,
-                            PortIndex portIdx) const
+                         PortType type,
+                         PortIndex portIdx) const
 {
     auto& conModel = graph().globalConnectionModel();
     auto entry = conModel.find(nodeUuid);
@@ -312,10 +330,12 @@ GraphDataModel::nodeData(NodeUuid const& nodeUuid,
         }
 
         if (!isSilent())
-            gtError() << tr("failed to access data for node '%1', port %2 (%3) not found!")
-                             .arg(nodeUuid)
-                             .arg(portIdx)
-                             .arg(toString(type));
+            gtTrace().verbose()
+                << tr("failed to access data for node '%1', "
+                      "port %2 (%3) not found! (not connected?)")
+                       .arg(nodeUuid)
+                       .arg(portIdx)
+                       .arg(toString(type));
         return {};
     }
 
@@ -324,7 +344,7 @@ GraphDataModel::nodeData(NodeUuid const& nodeUuid,
 
 NodeDataPtrList
 GraphDataModel::nodeData(NodeUuid const& nodeUuid,
-                            PortType type) const
+                         PortType type) const
 {
     assert(!"function should not be needed");
     assert(type == PortType::Out);
@@ -352,9 +372,9 @@ GraphDataModel::nodeData(NodeUuid const& nodeUuid,
 
 bool
 GraphDataModel::setNodeData(Graph const& graph,
-                               NodeId nodeId,
-                               PortId portId,
-                               NodeDataSet data)
+                            NodeId nodeId,
+                            PortId portId,
+                            NodeDataSet data)
 {
     auto& conModel = graph.connectionModel();
     auto entry = conModel.find(nodeId);
@@ -375,22 +395,31 @@ GraphDataModel::setNodeData(Graph const& graph,
         return false;
     }
 
-    return pimpl->setNodeData(node->uuid(), portId, std::move(data));
+    if (node->portType(portId) != PortType::Out)
+    {
+        if (!isSilent())
+            gtError() << tr("failed to set data of node '%1' in graph '%2', "
+                            "not an output port type!")
+                             .arg(nodeId).arg(relativeNodePath(graph));
+        return false;
+    }
+
+    return pimpl->setNodeData(*this, node->uuid(), portId, std::move(data));
 }
 
 bool
 GraphDataModel::setNodeData(NodeUuid const& nodeUuid,
-                               PortId portId,
-                               NodeDataSet data)
+                            PortId portId,
+                            NodeDataSet data)
 {
-    return pimpl->setNodeData(nodeUuid, portId, std::move(data));
+    return pimpl->setNodeData(*this, nodeUuid, portId, std::move(data));
 }
 
 bool
 GraphDataModel::setNodeData(NodeUuid const& nodeUuid,
-                               PortType type,
-                               PortIndex portIdx,
-                               NodeDataSet data)
+                            PortType type,
+                            PortIndex portIdx,
+                            NodeDataSet data)
 {
     auto& conModel = graph().globalConnectionModel();
     auto entry = conModel.find(nodeUuid);
@@ -422,13 +451,22 @@ GraphDataModel::setNodeData(NodeUuid const& nodeUuid,
         return false;
     }
 
-    return pimpl->setNodeData(node->uuid(), portId, std::move(data));
+    if (type != PortType::Out)
+    {
+        if (!isSilent())
+            gtError() << tr("failed to set data of node '%1' in graph '%2', "
+                            "not an output port type!")
+                             .arg(nodeUuid, relativeNodePath(graph()));
+        return false;
+    }
+
+    return pimpl->setNodeData(*this, node->uuid(), portId, std::move(data));
 }
 
 bool
 GraphDataModel::setNodeData(NodeUuid const& nodeUuid,
-                               PortType type,
-                               NodeDataPtrList const& data)
+                            PortType type,
+                            NodeDataPtrList const& data)
 {
     assert(!"function should not be needed");
     assert(type == PortType::Out);
@@ -436,9 +474,10 @@ GraphDataModel::setNodeData(NodeUuid const& nodeUuid,
     for (auto const& entry : data)
     {
         PortId portId = entry.first;
-        if (!pimpl->setNodeData(nodeUuid, portId, std::move(entry.second)))
+        if (!pimpl->setNodeData(*this, nodeUuid, portId, std::move(entry.second)))
         {
-            if (!isSilent()) gtError() << tr("failed to set data for port '%2' of node '%1'!")
+            if (!isSilent())
+                gtError() << tr("failed to set data for port '%2' of node '%1'!")
                                  .arg(nodeUuid)
                                  .arg(portId);
             return false;
@@ -454,9 +493,10 @@ GraphDataModel::nodeEvalState(NodeUuid const& nodeUuid) const
     auto nodeEntry = pimpl->data.constFind(nodeUuid);
     if (nodeEntry == pimpl->data.constEnd())
     {
-        if (!pimpl->silent)
-            gtError() << tr("failed to find data for node '%1'!")
-                             .arg(nodeUuid);
+        if (!isSilent())
+            gtError()
+                << tr("failed to find data for node '%1'!")
+                       .arg(nodeUuid);
         return {};
     }
 
@@ -479,8 +519,6 @@ GraphDataModel::nodeEvaluationFinished(NodeUuid const& nodeUuid)
 void
 GraphDataModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
 {
-    // TODO, needed?
-
     auto nodeEntry = pimpl->data.find(nodeUuid);
     if (nodeEntry == pimpl->data.end())
     {
@@ -496,7 +534,7 @@ GraphDataModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
     }
 
     if (!isSilent())
-        gtDebug()
+        gtTrace().verbose()
             << tr("Marking the data of the node '%1' as invalid")
                    .arg(nodeUuid);
 
@@ -506,12 +544,42 @@ GraphDataModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
         item.data.ptr = {};
         item.data.state = PortDataState::Outdated;
     }
+    // TODO: emit that node state updated?
 
-    // TODO: need to update successors?
-    for (auto& successor : graph().globalConnectionModel().iterateNodes(nodeUuid, PortType::Out))
+    Impl::propagate(*this, nodeUuid, &GraphDataModel::setNodeEvaluationFailed);
+}
+
+void
+GraphDataModel::setNodeEvaluationOutdated(const NodeUuid& nodeUuid)
+{
+    auto nodeEntry = pimpl->data.find(nodeUuid);
+    if (nodeEntry == pimpl->data.end())
     {
-        NodeDataInterface::setNodeEvaluationFailed(successor);
+        if (!isSilent())
+            gtError() << tr("failed to update state of node '%1'!")
+                             .arg(nodeUuid);
+        return;
     }
+
+    if (nodeEntry->state == NodeEvalState::Outdated)
+    {
+        return;
+    }
+
+    if (!isSilent())
+        gtTrace().verbose()
+            << tr("Marking the data of the node '%1' as outdated")
+                   .arg(nodeUuid);
+
+    nodeEntry->state = NodeEvalState::Outdated;
+    for (PortDataItem& item : nodeEntry->outputPortData)
+    {
+        item.data.ptr = {};
+        item.data.state = PortDataState::Outdated;
+    }
+    // TODO: emit that node state updated?
+
+    Impl::propagate(*this, nodeUuid, &GraphDataModel::setNodeEvaluationOutdated);
 }
 
 GraphUserVariables const*
@@ -533,7 +601,7 @@ void
 GraphDataModel::setScope(GtObject& scope)
 {
     if (!isSilent())
-        gtDebug()
+        gtTrace().verbose()
             << tr("Setting the scope of the data model of '%1' to '%2'")
                    .arg(relativeNodePath(graph()), toString(&scope));
 
@@ -581,7 +649,7 @@ GraphDataModel::onNodeAppended(Node* node)
     }
 
     QVector<PortDataItem> portData;
-    for (auto& portType : { /*PortType::In, */PortType::Out })
+    for (auto& portType : { PortType::Out })
     {
         for (auto& port : node->ports(portType))
         {
@@ -593,13 +661,14 @@ GraphDataModel::onNodeAppended(Node* node)
             portData.push_back(PortDataItem{ port.id(), NodeDataSet{} });
         }
     }
+
     if (!isSilent())
-        gtDebug()
+        gtTrace().verbose()
             << tr("Updated data model: added node '%1' (%2), data size: %3")
                    .arg(relativeNodePath(*node), node->uuid())
                    .arg(portData.size());
 
-//    pimpl->data.insert(nodeUuid, portData);
+    pimpl->data.insert(nodeUuid, NodeDataItem{portData, NodeEvalState::Outdated});
 }
 
 void
@@ -629,11 +698,13 @@ GraphDataModel::onNodeDeleted(Graph* graph, NodeId nodeId)
     }
 
     if (!isSilent())
-        gtDebug()
+        gtTrace().verbose()
             << tr("Updated data model: deleted node '%1' (%2)")
                    .arg(relativeNodePath(*node), node->uuid());
-}
 
+    // TODO: need to update successors?
+    Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
+}
 void
 GraphDataModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx)
 {
@@ -687,11 +758,15 @@ GraphDataModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx)
     }
 
     if (!isSilent())
-        gtDebug()
+        gtTrace().verbose()
             << tr("Updated data model: added port '%3' to node '%1' (%2)")
                    .arg(relativeNodePath(*node), node->uuid(), toString(*node->port(portId)));
 
-//    nodeEntry->append(PortDataItem{portId, NodeDataSet{}});
+    nodeEntry->outputPortData.append(PortDataItem{portId, NodeDataSet{}});
+
+    // TODO: need to update successors?
+    nodeEntry->state = NodeEvalState::Outdated;
+    Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
 }
 
 void
@@ -746,27 +821,32 @@ GraphDataModel::onNodePortDeleted(NodeId nodeId, PortType type, PortIndex idx)
         return;
     }
 
-//    auto iter = nodeEntry->erase(
-//        std::remove_if(nodeEntry->begin(), nodeEntry->end(),
-//                       [portId](PortDataItem& item){
-//            return item.portId == portId;
-//        }), nodeEntry->end()
-//    );
-//    if (iter == nodeEntry->end())
-//    {
-//        gtError()
-//            << tr("Failed to update the data model, "
-//                  "deleted port '%3' (%4) of node '%1' (%2) not found!")
-//                   .arg(relativeNodePath(*node), node->uuid())
-//                   .arg(idx)
-//                   .arg(toString(type));
-//        return;
-//    }
+    auto iter = nodeEntry->outputPortData.erase(
+        std::remove_if(nodeEntry->outputPortData.begin(),
+                       nodeEntry->outputPortData.end(),
+                       [portId](PortDataItem& item){
+            return item.portId == portId;
+        }), nodeEntry->outputPortData.end()
+    );
+    if (iter == nodeEntry->outputPortData.end())
+    {
+        gtError()
+            << tr("Failed to update the data model, "
+                  "deleted port '%3' (%4) of node '%1' (%2) not found!")
+                   .arg(relativeNodePath(*node), node->uuid())
+                   .arg(idx)
+                   .arg(toString(type));
+        return;
+    }
 
     if (!isSilent())
-        gtDebug()
+        gtTrace().verbose()
             << tr("Updated data model: removed port '%3' from node '%1' (%2)")
                    .arg(relativeNodePath(*node), node->uuid(), toString(*node->port(portId)));
+
+    // TODO: need to update successors?
+    nodeEntry->state = NodeEvalState::Outdated;
+    Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
 }
 
 void
@@ -785,7 +865,7 @@ GraphDataModel::onGraphDeleted()
     graph->disconnect(this);
 
     if (!isSilent())
-        gtDebug()
+        gtTrace().verbose()
             << tr("Updating the data model: removing graph '%1' (%2)")
                    .arg(relativeNodePath(*graph), graph->uuid());
 
@@ -796,7 +876,13 @@ GraphDataModel::onGraphDeleted()
     }
 
     if (!isSilent())
-        gtDebug()
+        gtTrace().verbose()
             << tr("Updated the data model: removed graph '%1' (%2)")
                    .arg(relativeNodePath(*graph), graph->uuid());
+
+    // TODO: need to update successors?
+    if (graph->rootGraph() != &this->graph())
+    {
+        Impl::propagate(*this, graph->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
+    }
 }
