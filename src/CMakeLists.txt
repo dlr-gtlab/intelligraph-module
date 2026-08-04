@@ -48,7 +48,9 @@ set(PUBLIC_HEADERS
     intelli/nodedata.h
     intelli/nodedatafactory.h
     intelli/nodedatainterface.h
+    intelli/nodeevent.h
     intelli/nodefactory.h
+    intelli/nodeport.h
     intelli/span.h
     intelli/graphdatamodel.h
     intelli/utilities.h
