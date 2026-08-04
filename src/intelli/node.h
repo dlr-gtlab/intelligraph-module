@@ -168,6 +168,128 @@ std::shared_ptr<T const> convert(NodeDataPtr data)
     );
 }
 
+/// Port info struct
+class PortInfo
+{
+public:
+
+    // cppcheck-suppress noExplicitConstructor
+    PortInfo(QString _typeId) : PortInfo(std::move(_typeId), {}) {}
+
+    PortInfo(QString _typeId,
+             QString _caption,
+             bool _captionVisible = true,
+             bool _optional = true) :
+        typeId(std::move(_typeId)),
+        caption(std::move(_caption) ),
+        captionVisible(_captionVisible),
+        optional(_optional)
+    {}
+
+    PortInfo(PortInfo const& other) = default;
+    PortInfo(PortInfo&& other) = default;
+    PortInfo& operator=(PortInfo const& other) = delete;
+    PortInfo& operator=(PortInfo&& other) = default;
+    ~PortInfo() = default;
+
+    /// creates a PortInfo struct with a custom port id
+    template<typename ...T>
+    static PortInfo customId(PortId newPortId, T&&... args)
+    {
+        PortInfo pd(std::forward<T>(args)...);
+        pd.m_id = newPortId;
+        return pd;
+    }
+
+    /// Performs a copy assignment using `other` but keeps old id
+    void assign(PortInfo other)
+    {
+        PortInfo tmp(std::move(other));
+        tmp.m_id = m_id;
+        swap(tmp);
+    }
+
+    /// creates a copy of this object but resets the id parameter
+    PortInfo copy() const
+    {
+        PortInfo pd(*this);
+        pd.m_id = invalid<PortId>();
+        return pd;
+    }
+
+    /// swap
+    void swap(PortInfo& other) noexcept
+    {
+        using std::swap;
+        swap(typeId, other.typeId);
+        swap(caption, other.caption);
+        swap(captionVisible, other.captionVisible);
+        swap(visible, other.visible);
+        swap(optional, other.optional);
+        swap(m_isConnected, other.m_isConnected);
+        swap(m_id, other.m_id);
+    }
+
+    // setters to allow function chaining
+    PortInfo& setCaption(QString v) { caption = std::move(v); return *this; }
+    PortInfo& setToolTip(QString v) { toolTip = std::move(v); return *this; }
+    PortInfo& setCaptionVisible(bool v) { captionVisible = v; return *this; }
+    PortInfo& setVisible(bool v) { visible = v; return *this; }
+    PortInfo& setOptional(bool v) { optional = v; return *this; }
+
+    /// type id for port data (classname)
+    TypeId typeId;
+    /// custom port caption (optional)
+    QString caption;
+    /// custom tooltip
+    QString toolTip;
+    /// whether port caption should be visible
+    bool captionVisible = true;
+    /// whether the port is visible at all
+    bool visible = true;
+    /// whether the port is required for the node evaluation
+    bool optional = true;
+
+    /**
+         * @brief Returns the port id
+         * @return port id
+         */
+    inline PortId id() const { return m_id; }
+
+    /**
+         * @brief Whether port is connected
+         * @return Whether port is connected
+         */
+    inline bool isConnected() const { return m_isConnected; }
+
+private:
+    /// whether port is connected
+    bool m_isConnected{false};
+    /// read only PortId
+    PortId m_id{};
+
+    friend class Node;
+};
+
+/// Enums inidacting of node event
+enum NodeEventType
+{
+    UnkownEvent = 0,
+    /// Event is emitted once `nodeDataInterface` yields a valid pointer
+    /// (not emitted if `nodeDataInterface` chnages).
+    /// Can be used to initialize a node.
+    DataInterfaceAvailableEvent
+};
+
+/// Base class for node specific events
+class NodeEvent
+{
+    NodeEventType m_type = UnkownEvent;
+public:
+    explicit NodeEvent(NodeEventType type) : m_type(type) {}
+    NodeEventType type() const { return m_type; }
+};
+
 /**
  * @brief Creates a base widget that has a simple layout attached. Can be used
  * for widgets, that have trouble resizing correctly.
@@ -190,11 +312,14 @@ public:
     using NodeFlags     = intelli::NodeFlags;
     using NodeEvalMode  = intelli::NodeEvalMode;
     using NodeEvalState = intelli::NodeEvalState;
+    using PortInfo      = intelli::PortInfo;
     using PortType      = intelli::PortType;
     using PortId        = intelli::PortId;
     using PortIndex     = intelli::PortIndex;
     using Position      = intelli::Position;
     using NodeDataPtr   = intelli::NodeDataPtr;
+    using NodeEvent     = intelli::NodeEvent;
+    using NodeEventType = intelli::NodeEventType;
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
@@ -203,25 +328,6 @@ public:
     using WidgetFactoryNoArgs =
         std::function<std::unique_ptr<QWidget>()>;
 
-    /// Enums inidacting of node event
-    enum NodeEventType
-    {
-        UnkownEvent = 0,
-        /// Event is emitted once `nodeDataInterface` yields a valid pointer
-        /// (not emitted if `nodeDataInterface` chnages).
-        /// Can be used to initialize a node.
-        DataInterfaceAvailableEvent
-    };
-
-    /// Base class for node specific events
-    class NodeEvent
-    {
-        NodeEventType m_type = UnkownEvent;
-    public:
-        explicit NodeEvent(NodeEventType type) : m_type(type) {}
-        NodeEventType type() const { return m_type; }
-    };
-
     /// enum for defining whether a port is optional
     enum PortPolicy
     {
@@ -229,110 +335,6 @@ public:
         Optional,
         DefaultPortPolicy = Optional
     };
-
-    /// Port info struct
-    class PortInfo
-    {
-    public:
-
-        // cppcheck-suppress noExplicitConstructor
-        PortInfo(QString _typeId) : PortInfo(std::move(_typeId), {}) {}
-
-        PortInfo(QString _typeId,
-                 QString _caption,
-                 bool _captionVisible = true,
-                 bool _optional = true) :
-            typeId(std::move(_typeId)),
-            caption(std::move(_caption) ),
-            captionVisible(_captionVisible),
-            optional(_optional)
-        {}
-
-        PortInfo(PortInfo const& other) = default;
-        PortInfo(PortInfo&& other) = default;
-        PortInfo& operator=(PortInfo const& other) = delete;
-        PortInfo& operator=(PortInfo&& other) = default;
-        ~PortInfo() = default;
-
-        /// creates a PortInfo struct with a custom port id
-        template<typename ...T>
-        static PortInfo customId(PortId newPortId, T&&... args)
-        {
-            PortInfo pd(std::forward<T>(args)...);
-            pd.m_id = newPortId;
-            return pd;
-        }
-
-        /// Performs a copy assignment using `other` but keeps old id
-        void assign(PortInfo other)
-        {
-            PortInfo tmp(std::move(other));
-            tmp.m_id = m_id;
-            swap(tmp);
-        }
-
-        /// creates a copy of this object but resets the id parameter
-        PortInfo copy() const
-        {
-            PortInfo pd(*this);
-            pd.m_id = invalid<PortId>();
-            return pd;
-        }
-
-        /// swap
-        void swap(PortInfo& other) noexcept
-        {
-            using std::swap;
-            swap(typeId, other.typeId);
-            swap(caption, other.caption);
-            swap(captionVisible, other.captionVisible);
-            swap(visible, other.visible);
-            swap(optional, other.optional);
-            swap(m_isConnected, other.m_isConnected);
-            swap(m_id, other.m_id);
-        }
-
-        // setters to allow function chaining
-        PortInfo& setCaption(QString v) { caption = std::move(v); return *this; }
-        PortInfo& setToolTip(QString v) { toolTip = std::move(v); return *this; }
-        PortInfo& setCaptionVisible(bool v) { captionVisible = v; return *this; }
-        PortInfo& setVisible(bool v) { visible = v; return *this; }
-        PortInfo& setOptional(bool v) { optional = v; return *this; }
-
-        /// type id for port data (classname)
-        TypeId typeId;
-        /// custom port caption (optional)
-        QString caption;
-        /// custom tooltip
-        QString toolTip;
-        /// whether port caption should be visible
-        bool captionVisible = true;
-        /// whether the port is visible at all
-        bool visible = true;
-        /// whether the port is required for the node evaluation
-        bool optional = true;
-
-        /**
-         * @brief Returns the port id
-         * @return port id
-         */
-        inline PortId id() const { return m_id; }
-
-        /**
-         * @brief Whether port is connected
-         * @return Whether port is connected
-         */
-        inline bool isConnected() const { return m_isConnected; }
-
-    private:
-        /// whether port is connected
-        bool m_isConnected{false};
-        /// read only PortId
-        PortId m_id{};
-        
-        friend class Node;
-    };
-    using PortData [[deprecated("use PortInfo")]] = PortInfo;
     
     /**
      * @brief Helper method to create a `PortInfo` struct given a `TypeId`.

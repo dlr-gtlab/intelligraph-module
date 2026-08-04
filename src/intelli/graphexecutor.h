@@ -7,15 +7,31 @@
 #ifndef GT_INTELLI_GRAPHEXECUTOR_H
 #define GT_INTELLI_GRAPHEXECUTOR_H
 
+#include <intelli/exports.h>
+#include <intelli/globals.h>
+
+#include <QObject>
 
 namespace intelli
 {
 
-class GraphExecutor
+class Graph;
+class GraphExecutor : public QObject
 {
+    Q_OBJECT
 
 public:
-    GraphExecutor();
+
+    GraphExecutor(Graph& graph);
+    ~GraphExecutor();
+
+    Graph& graph();
+    Graph const& graph() const;
+
+private:
+
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
 };
 
 } // namespace intelli

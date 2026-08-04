@@ -38,7 +38,7 @@ set(PUBLIC_HEADERS
     intelli/graph.h
     intelli/graphbuilder.h
     intelli/graphconnectionmodel.h
-    intelli/graphdatamodel.h
+    intelli/graphexecdatamodel.h
     intelli/graphexecmodel.h
     intelli/graphexecutor.h
     intelli/graphuservariables.h
@@ -50,6 +50,7 @@ set(PUBLIC_HEADERS
     intelli/nodedatainterface.h
     intelli/nodefactory.h
     intelli/span.h
+    intelli/graphdatamodel.h
     intelli/utilities.h
     intelli/view.h
     intelli/data/bool.h
@@ -202,6 +203,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/nodedatafactory.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp
+    intelli/graphdatamodel.cpp
     intelli/calculators/graphexeccalculator.cpp
     intelli/exec/detachedexecutor.cpp
     intelli/exec/dummynodedatamodel.cpp

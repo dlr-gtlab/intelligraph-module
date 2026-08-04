@@ -596,7 +596,7 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
     return true;
 }
 
-GraphDataModel const&
+GraphExecDataModel const&
 GraphExecutionModel::data() const
 {
     return pimpl->data;
