@@ -424,6 +424,15 @@ Graph::nodeId(NodeUuid const& nodeUuid) const
     return node->id();
 }
 
+NodeUuid
+Graph::nodeUuid(NodeId nodeId) const
+{
+    Node const* node = connectionModel().node(nodeId);
+    if (!node || Graph::accessGraph(*node) != this) return NodeUuid{};
+
+    return node->uuid();
+}
+
 ConnectionId
 Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, PortIndex inPortIdx) const
 {

@@ -428,20 +428,6 @@ signals:
     void inputDataRecieved(PortId portId = invalid<PortId>());
 
     /**
-     * @brief Emitted once the node evaluation has started. Will update the node
-     * flag `Evaluating` automatically.
-     */
-    [[deprecated]]
-    void computingStarted();
-    
-    /**
-     * @brief Emitted once the node evaluation has finished. Will update the node
-     * flag `Evaluating` automatically.
-     */
-    [[deprecated("use `evaluated` signal instead")]]
-    void computingFinished();
-
-    /**
      * @brief Emitted if node specific data has changed (cpation, number of
      * ports etc.). May be invoked by the "user" to update the graphical node
      * representation in case a port has changed for example.

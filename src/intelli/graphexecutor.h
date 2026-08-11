@@ -50,7 +50,13 @@ public:
      * @return Future object
      */
     GT_NO_DISCARD
-    Future evaluateAll();
+        Future evaluateGraph();
+
+    void autoEvaluate(bool enable = true);
+
+signals:
+
+    void allNodesEvaluated();
 
 private:
 
@@ -58,6 +64,12 @@ private:
     std::unique_ptr<Impl> pimpl;
 
     void evaluateQueue();
+
+    void onNodeEvaluationStarted(QString const& nodeUuid);
+
+    void onNodeEvaluationFinished(QString const& nodeUuid);
+
+    void onNodeEvaluated(NodeUuid const& nodeUuid);
 };
 
 } // namespace intelli

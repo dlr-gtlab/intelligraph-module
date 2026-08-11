@@ -403,7 +403,7 @@ LogicNodeUI::centralWidgetFactory(Node const& node) const
             wid->display(value);
         };
         auto updateDigitCount = [wid, node](){
-            size_t maxValue = std::pow(2u, node->ports(PortType::In).size());
+            size_t maxValue = std::exp2(node->ports(PortType::In).size());
             int digits = std::ceil(std::log10(maxValue));
             wid->setDigitCount(digits);
             wid->setMinimumSize(20 * digits, 20);

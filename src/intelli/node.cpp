@@ -587,6 +587,7 @@ public:
     triggerNodeEvaluation(Node& node)
     {
         auto evalMode = node.nodeEvalMode();
+        // TODO: emit evaluated signal?
         if (evalMode == NodeEvalMode::NoEvaluationRequired) return true;
 
         size_t evalFlag = (size_t)node.nodeEvalMode();
@@ -600,7 +601,7 @@ public:
         }
 
         gtError() << utils::logId(node)
-                  << QObject::tr("Unhandled eval mode! (%1)").arg((size_t)evalFlag);
+                  << QObject::tr("Unhandled eval mode! (%1)").arg(evalFlag);
 
         return false;
     }
@@ -665,14 +666,6 @@ intelli::exec::blockingEvaluation(Node& node, NodeDataInterface* model)
 
     auto cmd = model->nodeEvaluation(node.uuid());
     Q_UNUSED(cmd);
-
-    // cleanup routine
-    auto finally = gt::finally([&node](){
-        emit node.computingFinished();
-    });
-    Q_UNUSED(finally);
-
-    emit node.computingStarted();
 
     INode::evaluateNode(node);
 

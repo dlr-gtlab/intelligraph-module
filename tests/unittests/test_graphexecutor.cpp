@@ -56,7 +56,7 @@ inline Scenario buildConditionalGraph(Graph& graph)
 
     try
     {
-        auto& input = builder.addNode("TestNumberInputNode")
+        auto& input = builder.addNode("intelli::DoubleInputNode")
                           .setCaption("Input");
 
         auto& condition = builder.addNode("intelli::BoolInputNode")
@@ -139,8 +139,10 @@ TEST(GraphExecutor, test)
 
     auto scenario = test::buildConditionalGraph(graph);
     ASSERT_TRUE(scenario);
+    
+    executor.autoEvaluate();
 
-    executor.evaluateAll();
+    gtDebug() << "scheduled!";
 
     GtEventLoop loop{std::chrono::seconds{1}};
     loop.exec();

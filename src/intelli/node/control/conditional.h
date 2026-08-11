@@ -54,6 +54,11 @@ public:
 protected:
 
     using Graph::inputProvider;
+    using Graph::inputNode;
+    using Graph::outputProvider;
+    using Graph::outputNode;
+
+    void eval() override;
 
 private:
 
@@ -86,7 +91,7 @@ public:
 
 protected:
 
-    void eval() override {}
+    void eval() override;
 };
 
 class ConditionalOutputProvider : public GroupOutputProvider
@@ -99,7 +104,7 @@ public:
 
 protected:
 
-    void eval() override {}
+    void eval() override;
 };
 
 } // namespace intelli

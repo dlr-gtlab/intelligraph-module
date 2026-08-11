@@ -149,6 +149,12 @@ public:
 
     void nodeEvaluationFinished(NodeUuid const& nodeUuid) override;
 
+signals:
+
+    void evaluationStarted(QString const& nodeUuid);
+
+    void evaluationFinished(QString const& nodeUuid);
+
 private:
 
     struct Impl;

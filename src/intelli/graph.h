@@ -135,11 +135,20 @@ public:
     /**
      * @brief Returns the node id for the node given its object uuid. Returned
      * node id may be invalid if the object uuid does not belong to a node
-     * belonging to this graph.
+     * of this graph.
      * @param nodeUuid Node's oobject uuid
-     * @return Node id (may be invalid)
+     * @return Node's id (may be invalid)
      */
     NodeId nodeId(NodeUuid const& nodeUuid) const;
+
+    /**
+     * @brief Returns the object uuid for the node given its node id. Returned
+     * uuid may be invalid (empty) if the node id does not belong to a node
+     * of this graph.
+     * @param nodeId Node's id
+     * @return Node's uuid (may be invalid/empty)
+     */
+    NodeUuid nodeUuid(NodeId nodeId) const;
 
     /**
      * @brief Returns the connection id matched by the given nodes and port

@@ -348,7 +348,7 @@ GraphDataModel::nodeData(NodeUuid const& nodeUuid,
 {
 //    assert(!"function should not be needed");
 //    assert(type == PortType::Out);
-    if (type != PortType::Out) return {};
+//    if (type != PortType::Out) return {};
 
     auto* node = graph().findNodeByUuid(nodeUuid);
     if (!node)
@@ -508,13 +508,45 @@ GraphDataModel::nodeEvalState(NodeUuid const& nodeUuid) const
 void
 GraphDataModel::nodeEvaluationStarted(NodeUuid const& nodeUuid)
 {
+    auto nodeEntry = pimpl->data.find(nodeUuid);
+    if (nodeEntry == pimpl->data.end())
+    {
+        if (!isSilent())
+            gtError()
+                << tr("failed to find data for node '%1'!")
+                       .arg(nodeUuid);
+        return;
+    }
+
     // TODO
+    if (nodeEntry->state == NodeEvalState::Outdated)
+    {
+        nodeEntry->state = NodeEvalState::Evaluating;
+    }
+
+    emit evaluationStarted(nodeUuid);
 }
 
 void
 GraphDataModel::nodeEvaluationFinished(NodeUuid const& nodeUuid)
 {
+    auto nodeEntry = pimpl->data.find(nodeUuid);
+    if (nodeEntry == pimpl->data.end())
+    {
+        if (!isSilent())
+            gtError()
+                << tr("failed to find data for node '%1'!")
+                       .arg(nodeUuid);
+        return;
+    }
+
     // TODO
+    if (nodeEntry->state == NodeEvalState::Evaluating)
+    {
+        nodeEntry->state = NodeEvalState::Valid;
+    }
+
+    emit evaluationFinished(nodeUuid);
 }
 
 void
@@ -631,6 +663,11 @@ GraphDataModel::setupConnections(Graph& graph)
     connect(&graph, &Graph::nodePortAboutToBeDeleted,
             this, &GraphDataModel::onNodePortDeleted,
             Qt::DirectConnection);
+
+    for (Node* node : graph.nodes())
+    {
+        onNodeAppended(node);
+    }
 }
 
 void
@@ -671,6 +708,11 @@ GraphDataModel::onNodeAppended(Node* node)
 
     pimpl->data.insert(nodeUuid, NodeDataItem{portData, NodeEvalState::Outdated});
     exec::setNodeDataInterface(*node, this);
+
+    if (Graph* subgraph = qobject_cast<Graph*>(node))
+    {
+        setupConnections(*subgraph);
+    }
 }
 
 void

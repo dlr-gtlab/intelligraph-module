@@ -11,8 +11,13 @@
 
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
+#include "intelli/nodedatainterface.h"
+#include "intelli/graphdatamodel.h"
+#include "intelli/graphexecutor.h"
 
 #include "intelli/private/utils.h"
+
+#include <gt_eventloop.h>"
 
 
 using namespace intelli;
@@ -243,10 +248,13 @@ ConditionalGroupNode::ConditionalGroupNode() :
     }
 
     m_condition = addInPort(PortInfo::customId(PortId{0}, typeId<BoolData>())
-                                .setCaption("condition"));
+                                .setCaption("condition")
+                                .setOptional(false));
 
     addDataInPort(makePort(typeId<DoubleData>()));
     addDataOutPort(makePort(typeId<DoubleData>()));
+
+    setNodeEvalMode(NodeEvalMode::Blocking);
 }
 
 ConditionalInputProvider*
@@ -363,6 +371,106 @@ ConditionalGroupNode::initInputOutputProviders()
 }
 
 void
+ConditionalGroupNode::eval()
+{
+    auto makeError = [this](){
+        return gt::quoted(relativeNodePath(*this), "[", "] ") +
+               tr("evaluation failed!");
+    };
+
+    // setup
+    auto conditionData = nodeData<BoolData>(m_condition);
+    if (!conditionData)
+    {
+        gtError() << makeError() << tr("unknown condition!");
+        return evalFailed();
+    }
+
+    bool condition = conditionData->value();
+
+    ConditionalInputProvider* inputNode = inputProvider(condition ? IfBranch : ElseBranch);
+    ConditionalOutputProvider* outputNode = outputProvider(condition ? IfBranch : ElseBranch);
+
+    if (!inputNode || !outputNode)
+    {
+        gtError() << makeError() << tr("input/ouput providers not found!");
+        return evalFailed();
+    }
+
+    auto* dataModel = qobject_cast<GraphDataModel*>(exec::nodeDataInterface(*this));
+    if (!dataModel)
+    {
+        gtError() << makeError() << tr("data model not found!");
+        return evalFailed();
+    }
+
+    // set input data
+    for (NodePort const& port : ports(PortType::In))
+    {
+        if (port.id() == m_condition) continue;
+
+        if (!inputNode->port(port.id()))
+        {
+            gtError() << makeError()
+                      << tr("port '%1' in input provider not found!")
+                             .arg(toString(port));
+            return evalFailed();
+        }
+
+        if (!dataModel->setNodeData(inputNode->uuid(), port.id(), nodeData(port.id())))
+        {
+            gtError() << makeError()
+                      << tr("failed to set input data for port '%1'!")
+                             .arg(toString(port));
+            return evalFailed();
+        }
+    }
+
+    GtEventLoop loop{std::chrono::seconds{10}};
+
+    // evaluate branch
+    GraphExecutor executor{*this, *dataModel};
+
+    loop.connectSuccess(&executor, &GraphExecutor::allNodesEvaluated);
+    loop.connectAbort(this, &Graph::graphAboutToBeDeleted);
+    // TODO: evaluate branch only
+
+    gtTrace() << "AUTO EVAL START";
+    executor.autoEvaluate();
+    // TODO: cannot block main thread here!
+
+    gtTrace() << "EXEC LOOP";
+    if (!loop.exec())
+    {
+        gtTrace() << "FAIL";
+        return evalFailed();
+    }
+    gtTrace() << "DONE";
+
+    // set output data
+    for (NodePort const& port : ports(PortType::Out))
+    {
+        if (port.id() == m_condition) continue;
+
+        if (!outputNode->port(port.id()))
+        {
+            gtError() << makeError()
+                      << tr("port '%1' in output provider not found!")
+                             .arg(toString(port));
+            return evalFailed();
+        }
+
+        if (!dataModel->setNodeData(outputNode->uuid(), port.id(), nodeData(port.id())))
+        {
+            gtError() << makeError()
+                      << tr("failed to set output data for port '%1'!")
+                             .arg(toString(port));
+            return evalFailed();
+        }
+    }
+}
+
+void
 ConditionalGroupNode::onInPortInserted(PortType actualType, PortIndex idx)
 {
     assert(actualType == PortType::Out);
@@ -410,11 +518,14 @@ ConditionalInputProvider::ConditionalInputProvider(ConditionalGroupNode::BranchT
     position.ry() += (type == ConditionalGroupNode::IfBranch ? -1 : 1) * 100;
     setPos(position);
 
+    setNodeEvalMode(NodeEvalMode::Blocking);
     setNodeFlag(Unique, false);
     setUseVirtualPorts(false);
     setPortContainerVisible(PortType::Out, false);
 }
 
+void
+ConditionalInputProvider::eval() {}
 
 ConditionalOutputProvider::ConditionalOutputProvider(ConditionalGroupNode::BranchType type) :
     GroupOutputProvider(type == ConditionalGroupNode::IfBranch ? C_NAME_IF_OUT_NODE : C_NAME_ELSE_OUT_NODE)
@@ -423,7 +534,10 @@ ConditionalOutputProvider::ConditionalOutputProvider(ConditionalGroupNode::Branc
     position.ry() += (type == ConditionalGroupNode::IfBranch ? -1 : 1) * 100;
     setPos(position);
 
+    setNodeEvalMode(NodeEvalMode::Blocking);
     setNodeFlag(Unique, false);
     setUseVirtualPorts(false);
     setPortContainerVisible(PortType::In, false);
 }
+
+void ConditionalOutputProvider::eval() {}
