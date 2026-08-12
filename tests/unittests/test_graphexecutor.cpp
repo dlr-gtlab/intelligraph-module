@@ -136,7 +136,7 @@ TEST(GraphExecutor, test)
 
     Graph graph;
     GraphDataModel dataModel{graph};
-    dataModel.setSilent(false);
+    dataModel.setSilent(true);
     GraphExecutor executor{graph, dataModel};
 
     auto scenario = test::buildConditionalGraph(graph, true);

@@ -286,6 +286,7 @@ Future
 GraphExecutor::evaluateNode(NodeId nodeId)
 {
     auto logError = utils::logIds(this, graph(), tr("Evaluation failed: "));
+    auto logTrace = utils::logIds(this, graph(), tr("Evaluation updated: "));
 
     Node* node = graph().findNode(nodeId);
     if (!node)
@@ -441,7 +442,11 @@ GraphExecutor::queuePending()
     auto logError = utils::logIds(this, graph(), tr("Queuing Pending Nodes failed:"));
     auto logTrace = utils::logIds(this, graph(), tr("Pending Nodes updated:"));
 
-    QVector<NodeId>& pending = pimpl->queue;
+    QVector<NodeId>& pending = pimpl->pending;
+
+    if (!isSilent())
+        gtTrace().verbose()
+            << logTrace << tr("evaluating pending:") << logNodePaths(pimpl->pending, graph());
 
     bool failure = false;
     bool queued = false;
@@ -482,13 +487,12 @@ GraphExecutor::queuePending()
             continue;
         }
 
-        removeFromPending.clear();
-
         // node not yet evaluated
         if (!pimpl->areDependenciesMet(*node))
         {
             if (!isSilent())
                 gtWarning().verbose() << logErrorExt << tr("dependencies not met!");
+            removeFromPending.clear();
             break;
         }
 
@@ -638,12 +642,12 @@ GraphExecutor::onNodeEvaluationStarted(QString const& nodeUuid)
         if (Graph::accessGraph(*node) != &graph()) return;
     }
 
-    auto logTrace = utils::logIds(this, graph());
+//    auto logTrace = utils::logIds(this, graph());
 
-    if (!isSilent())
-        gtTrace().verbose()
-            << logTrace << tr("node evaluation of '%1' started!")
-                                          .arg(nodeUuid);
+//    if (!isSilent())
+//        gtTrace().verbose()
+//            << logTrace << tr("node evaluation of '%1' started!")
+//                                          .arg(nodeUuid);
 
     assert(!pimpl->evaluating.contains(nodeUuid));
     pimpl->evaluating.push_back(nodeUuid);
@@ -657,12 +661,12 @@ GraphExecutor::onNodeEvaluationFinished(QString const& nodeUuid)
         if (Graph::accessGraph(*node) != &graph()) return;
     }
 
-    auto logTrace = utils::logIds(this, graph());
+//    auto logTrace = utils::logIds(this, graph());
 
-    if (!isSilent())
-        gtTrace().verbose()
-            << logTrace << tr("node evaluation of '%1' finished!")
-                               .arg(nodeUuid);
+//    if (!isSilent())
+//        gtTrace().verbose()
+//            << logTrace << tr("node evaluation of '%1' finished!")
+//                               .arg(nodeUuid);
 
     QTimer::singleShot(0, this, std::bind(&GraphExecutor::onNodeEvaluated, this, nodeUuid));
 }
