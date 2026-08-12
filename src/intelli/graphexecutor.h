@@ -17,6 +17,7 @@ namespace intelli
 
 using Future = bool;
 
+class Node;
 class Graph;
 class GraphDataModel;
 class GT_INTELLI_EXPORT GraphExecutor : public QObject
@@ -50,7 +51,10 @@ public:
      * @return Future object
      */
     GT_NO_DISCARD
-        Future evaluateGraph();
+    Future evaluateGraph();
+
+    GT_NO_DISCARD
+    Future evaluateNode(NodeId nodeId);
 
     void autoEvaluate(bool enable = true);
 
@@ -58,10 +62,14 @@ signals:
 
     void allNodesEvaluated();
 
+    void targetNodesEvaluated();
+
 private:
 
     struct Impl;
     std::unique_ptr<Impl> pimpl;
+
+    void queuePending();
 
     void evaluateQueue();
 

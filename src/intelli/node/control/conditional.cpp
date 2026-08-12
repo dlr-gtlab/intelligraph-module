@@ -17,7 +17,7 @@
 
 #include "intelli/private/utils.h"
 
-#include <gt_eventloop.h>"
+#include <gt_eventloop.h>
 
 
 using namespace intelli;
@@ -431,16 +431,16 @@ ConditionalGroupNode::eval()
     // evaluate branch
     GraphExecutor executor{*this, *dataModel};
 
-    loop.connectSuccess(&executor, &GraphExecutor::allNodesEvaluated);
+    loop.connectSuccess(&executor, &GraphExecutor::targetNodesEvaluated);
     loop.connectAbort(this, &Graph::graphAboutToBeDeleted);
     // TODO: evaluate branch only
 
     gtTrace() << "AUTO EVAL START";
-    executor.autoEvaluate();
+    executor.evaluateNode(outputNode->id());
     // TODO: cannot block main thread here!
 
     gtTrace() << "EXEC LOOP";
-    if (!loop.exec())
+    if (loop.exec() != GtEventLoop::Success)
     {
         gtTrace() << "FAIL";
         return evalFailed();
@@ -460,7 +460,7 @@ ConditionalGroupNode::eval()
             return evalFailed();
         }
 
-        if (!dataModel->setNodeData(outputNode->uuid(), port.id(), nodeData(port.id())))
+        if (!setNodeData(port.id(), dataModel->nodeData(outputNode->uuid(), port.id())))
         {
             gtError() << makeError()
                       << tr("failed to set output data for port '%1'!")

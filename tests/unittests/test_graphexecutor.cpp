@@ -45,7 +45,7 @@ public:
     operator bool() const { return success; }
 };
 
-inline Scenario buildConditionalGraph(Graph& graph)
+inline Scenario buildConditionalGraph(Graph& graph, bool conditionValue = false)
 {
     auto modification = graph.modify();
 
@@ -106,6 +106,7 @@ inline Scenario buildConditionalGraph(Graph& graph)
         subBuilder.connect(minus, PortIndex(0), *conditionalElseOutput, PortIndex(0));
 
         setNodeProperty(input, "value", 42.0);
+        setNodeProperty(condition, "value", conditionValue);
 
         scenario.addNode(input);
         scenario.addNode(conditional);
@@ -135,9 +136,10 @@ TEST(GraphExecutor, test)
 
     Graph graph;
     GraphDataModel dataModel{graph};
+    dataModel.setSilent(false);
     GraphExecutor executor{graph, dataModel};
 
-    auto scenario = test::buildConditionalGraph(graph);
+    auto scenario = test::buildConditionalGraph(graph, true);
     ASSERT_TRUE(scenario);
     
     executor.autoEvaluate();

@@ -12,6 +12,9 @@
 
 #include <intelli/globals.h>
 #include <intelli/data/double.h>
+#include <intelli/data/bool.h>
+#include <intelli/data/int.h>
+#include <intelli/data/string.h>
 #include <intelli/graph.h>
 
 #include <gt_state.h>
@@ -19,6 +22,7 @@
 #include <gt_utilities.h>
 #include <gt_qtutilities.h>
 #include <gt_regexp.h>
+#include <gt_mpl.h>
 
 #include <gt_logstream.h>
 
@@ -31,17 +35,47 @@ intelli::Profiler profiler__{__FUNCTION__}; (void)profiler__;
 #define GT_INTELLI_PROFILE_C(X) \
 intelli::Profiler profiler__{X}; (void)profiler__;
 
+// TODO: remove me, for debugging purposes only
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& data)
 {
-    // TODO: remove me, for debugging purposes only
     if (auto* d = qobject_cast<intelli::DoubleData const*>(data.get()))
     {
         gt::log::StreamStateSaver saver(s);
-        return s.nospace() << data->metaObject()->className() << " (" <<d->value() << ")";
+        return s.nospace() << data->metaObject()->className() << "(" <<d->value() << ")";
+    }
+    if (auto* d = qobject_cast<intelli::BoolData const*>(data.get()))
+    {
+        gt::log::StreamStateSaver saver(s);
+        return s.nospace() << data->metaObject()->className() << "(" <<d->value() << ")";
+    }
+    if (auto* d = qobject_cast<intelli::IntData const*>(data.get()))
+    {
+        gt::log::StreamStateSaver saver(s);
+        return s.nospace() << data->metaObject()->className() << "(" <<d->value() << ")";
+    }
+    if (auto* d = qobject_cast<intelli::StringData const*>(data.get()))
+    {
+        gt::log::StreamStateSaver saver(s);
+        return s.nospace() << data->metaObject()->className() << "(" <<d->value() << ")";
     }
 
     return s << (data ? data->metaObject()->className() : "nullptr");
+}
+
+template<typename T>
+using has_gt_log_call_operator =
+    std::enable_if_t<
+        std::is_same<
+            decltype(std::declval<T const&>()
+                         .operator()(std::declval<gt::log::Stream&>())),
+            gt::log::Stream&>::value,
+        bool>;
+
+template <typename T, has_gt_log_call_operator<T> = true>
+inline gt::log::Stream& operator<<(gt::log::Stream& s, T const& f)
+{
+    return f(s);
 }
 
 namespace intelli
@@ -119,6 +153,78 @@ inline std::string toStdString(T const& t)
 
 namespace utils
 {
+
+namespace details
+{
+
+template<typename ...Args>
+struct LogIdsLambda
+{
+    LogIdsLambda(Args... args_) : args(args_...) {}
+
+    std::tuple<Args...> args;
+
+    gt::log::Stream& operator()(gt::log::Stream& s) const;
+};
+
+struct LogIdsFormatter
+{
+    gt::log::Stream& operator()(gt::log::Stream& s, QObject const* obj) const
+    {
+        return s << (obj ? gt::quoted(QString{obj->metaObject()->className()}.remove("intelli::"), "[", "]") :
+                                  QStringLiteral("[NULL]"));
+    }
+    gt::log::Stream& operator()(gt::log::Stream& s, Node const* node) const
+    {
+        return s << (node ? gt::quoted(relativeNodePath(*node), "'", "'") : QStringLiteral("'NULL'"));
+    }
+    gt::log::Stream& operator()(gt::log::Stream& s, Node const& node) const
+    {
+        return s << gt::quoted(relativeNodePath(node), "'", "'");
+    }
+    gt::log::Stream& operator()(gt::log::Stream& s, Graph const* graph) const
+    {
+        return s << (graph ? gt::quoted(relativeNodePath(*graph), "<", ">") : QStringLiteral("<NULL>"));
+    }
+    gt::log::Stream& operator()(gt::log::Stream& s, Graph const& graph) const
+    {
+        return s << gt::quoted(relativeNodePath(graph), "<", ">");
+    }
+    gt::log::Stream& operator()(gt::log::Stream& s, QString const& str) const
+    {
+        return s << str;
+    }
+    gt::log::Stream& operator()(gt::log::Stream& s, const char* str) const
+    {
+        return s << str;
+    }
+    template<typename ...Args>
+    gt::log::Stream& operator()(gt::log::Stream& s, LogIdsLambda<Args...> const& lambda) const
+    {
+        return lambda(s);
+    }
+    gt::log::Stream& operator()(gt::log::Stream& s) const
+    {
+        return s;
+    }
+};
+
+template<typename ...Args>
+inline gt::log::Stream& LogIdsLambda<Args...>::operator()(gt::log::Stream& s) const
+{
+    gt::mpl::static_foreach(args, [&s](auto&& arg){
+        LogIdsFormatter{}(s, std::forward<decltype(arg)>(arg));
+    });
+    return s;
+}
+
+} // namespace detail
+
+template<typename ...Args>
+inline details::LogIdsLambda<Args...> logIds(Args&&... args)
+{
+    return details::LogIdsLambda<Args...>{args...};
+}
 
 /// Helper function that searches for `t` in List and returns the iterator
 template<typename List, typename T>

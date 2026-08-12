@@ -5,15 +5,60 @@
  */
 
 #include "intelli/graphexecutor.h"
-#include "gt_algorithms.h"
 
 #include <intelli/graph.h>
 #include <intelli/graphdatamodel.h>
 #include <intelli/private/utils.h>
 
+#include <gt_algorithms.h>
+#include <gt_mpl.h>
+
 #include <QPointer>
 
 using namespace intelli;
+
+template<typename Functor>
+struct FunctorProxy
+{
+    using ftraits = gt::mpl::function_traits<Functor>;
+    using value_type = typename ftraits::return_type;
+    using reference  = value_type;
+    using pointer    = value_type;
+
+    Functor functor = {};
+
+    template <typename Iter>
+    void init(Iter& i) { }
+
+    template <typename Iter>
+    reference get(Iter& i) { return functor(*i); }
+
+    template <typename Iter>
+    void advance(Iter& i) { ++i; }
+};
+
+template<typename Iter, typename Functor>
+auto wrap(Iter* begin, Iter* end, Functor f)
+{
+    return intelli::makeProxy(begin, end, FunctorProxy<Functor>{f});
+}
+
+template<typename Iterable, typename Functor>
+auto wrap(Iterable iter, Functor f)
+{
+    return intelli::makeProxy(iter, FunctorProxy<Functor>{f});
+}
+
+auto logNodePaths(QVector<NodeId> const& nodeIds, Graph const& graph)
+{
+    return [&nodeIds, &graph](gt::log::Stream& s) -> gt::log::Stream& {
+        auto wrapped = wrap(nodeIds, [&graph](NodeId nodeId){
+            Node const* node = graph.findNode(nodeId);
+            return node ? relativeNodePath(*node) : QStringLiteral("NULL");
+        });
+        return s << gt::log::range(wrapped);
+    };
+}
 
 struct GraphExecutor::Impl
 {
@@ -29,6 +74,8 @@ struct GraphExecutor::Impl
     QVector<NodeUuid> evaluating;
 
     bool isProcessingQueue = false;
+    bool isProcessingPending = false;
+    bool isProcessingAutoEval = false;
 
     bool autoEvaluate = false;
 
@@ -78,7 +125,7 @@ struct GraphExecutor::Impl
         auto& conModel = graph->connectionModel();
 
         // reschedule target nodes
-        for (NodeId const& nodeId : targets)
+        for (NodeId const& nodeId : qAsConst(targets))
         {
             accumulateDependencies(conModel, pending, nodeId);
         }
@@ -100,7 +147,17 @@ struct GraphExecutor::Impl
 
     inline bool isEvaluated(Node& node) const
     {
-        return evalState(node) == NodeEvalState::Valid;
+        return evalState(node) == NodeEvalState::Valid && !evaluating.contains(node.uuid());
+    }
+
+    inline bool isEvaluating(Node& node) const
+    {
+        return evaluating.contains(node.uuid());
+    }
+
+    inline bool isPaused(Node& node) const
+    {
+        return !node.isActive();
     }
 
     inline bool areDependenciesMet(Node& node) const
@@ -127,6 +184,7 @@ struct GraphExecutor::Impl
             });
         return ready;
     }
+
 
 }; // struct Impl
 
@@ -200,8 +258,10 @@ Future
 GraphExecutor::evaluateGraph()
 {
     // if operator
-    auto const isLeafNode = [](ConnectionData<NodeId> const& data){
-        return data.ports(PortType::Out).empty();
+    auto const isLeafNode = [this](ConnectionData<NodeId> const& data){
+        assert(data.node);
+        return data.ports(PortType::Out).empty() &&
+               !pimpl->targets.contains(data.node->id());
     };
     // transformer
     auto const getNodeId = [](ConnectionData<NodeId> const& data){
@@ -209,35 +269,64 @@ GraphExecutor::evaluateGraph()
         return data.node->id();
     };
 
-    auto& targets = pimpl->targets;
-
     ConnectionModel const& model = graph().connectionModel();
     utils::transform_if(
-        model, isLeafNode, std::back_inserter(targets), getNodeId);
+        model, isLeafNode, std::back_inserter(pimpl->targets), getNodeId);
 
-    // remove duplicates
-    std::sort(targets.begin(), targets.end());
-    targets.erase(std::unique(targets.begin(), targets.end()), targets.end());
+    if (graph().isBeingModified()) return {};
 
     pimpl->rescheduleTargetNodes();
 
-//    evaluateQueue();
+    queuePending();
 
     return Future{};
+}
+
+Future
+GraphExecutor::evaluateNode(NodeId nodeId)
+{
+    auto logError = utils::logIds(this, graph(), tr("Evaluation failed: "));
+
+    Node* node = graph().findNode(nodeId);
+    if (!node)
+    {
+        if (!isSilent())
+            gtWarning().verbose()
+                << logError << tr("invalid node '%1'!").arg(toString(nodeId));
+        return {};
+    }
+
+    if (!pimpl->targets.contains(nodeId))
+    {
+        pimpl->targets.append(nodeId);
+    }
+
+    if (graph().isBeingModified()) return {};
+
+    pimpl->rescheduleTargetNodes();
+
+    queuePending();
+
+    return {};
 }
 
 void
 GraphExecutor::autoEvaluate(bool enable)
 {
-    auto makeError = [this](){
-        return utils::logId(this) + tr(" failed to auto evaluate node:");
-    };
-
     pimpl->autoEvaluate = enable;
 
     if (!pimpl->autoEvaluate) return;
 
     if (graph().isBeingModified()) return;
+
+    if (pimpl->isProcessingAutoEval) return;
+
+    pimpl->isProcessingAutoEval = true;
+    auto unlock = gt::finally([this](){ pimpl->isProcessingAutoEval = false; });
+    Q_UNUSED(unlock);
+
+    auto logError = utils::logIds(this, graph(), tr("Auto Evaluation failed:"));
+    auto logTrace = utils::logIds(this, graph(), tr("Auto Evaluation updated:"));
 
     // if operator
     auto const isInputNode = [](ConnectionData<NodeId> const& data){
@@ -249,12 +338,13 @@ GraphExecutor::autoEvaluate(bool enable)
         return data.node->id();
     };
 
+    // find starting nodes
     QVector<NodeId> nextNodeIds;
     auto const& conModel = graph().connectionModel();
     utils::transform_if(
         conModel, isInputNode, std::back_inserter(nextNodeIds), getNodeId);
 
-    bool allReady = true;
+    int readyCount = 0;
     bool queued = false;
     while (!nextNodeIds.empty())
     {
@@ -265,17 +355,19 @@ GraphExecutor::autoEvaluate(bool enable)
         {
             if (!isSilent())
                 gtWarning().verbose()
-                    << makeError()
-                    << tr("invalid node '%1'!").arg(toString(nodeId));
+                    << logError << tr("invalid node '%1'!").arg(toString(nodeId));
             break;
         }
+
+        auto logErrorExt = utils::logIds(logError, node, "->");
+        auto logTraceExt = utils::logIds(logTrace, node, "->");
 
         if (pimpl->isEvaluated(*node))
         {
             if (!isSilent())
-                gtTrace().verbose()
-                    << utils::logId(this)
-                    << tr("node '%1' ready!").arg(node->caption());
+                gtTrace().verbose() << logTraceExt << tr("node is already evaluated!");
+
+            readyCount++;
 
             // node evaluated -> schedule next nodes
             auto nextIter = conModel.iterateNodes(nodeId, PortType::Out);
@@ -286,44 +378,142 @@ GraphExecutor::autoEvaluate(bool enable)
             continue;
         }
 
+        if (pimpl->isPaused(*node))
+        {
+            if (!isSilent())
+                gtTrace().verbose()
+                    << logErrorExt << tr("node is paused!");
+            continue;
+        }
+
+        if (pimpl->isEvaluating(*node))
+        {
+            if (!isSilent())
+                gtTrace().verbose()
+                    << logErrorExt << tr("node is already evaluating!");
+            continue;
+        }
+
         // node not yet evaluated
         if (!pimpl->areDependenciesMet(*node))
         {
             if (!isSilent())
-                gtWarning().verbose()
-                    << makeError()
-                    << tr("dependencies of node '%1' not ready!").arg(node->caption());
-
-            allReady = false;
+                gtWarning().verbose() << logErrorExt << tr("dependencies not met!");
             break;
         }
 
         if (!isSilent())
             gtTrace().verbose()
-                << utils::logId(this)
-                << tr("node '%1' queued!").arg(node->caption());
+                << logTraceExt << tr("node queued!");
 
         pimpl->queue.push_front(nodeId);
         queued = true;
     }
 
-    if (queued)
+    if (readyCount == conModel.size())
     {
         if (!isSilent())
             gtTrace().verbose()
-                << utils::logId(*this)
-                << tr("queued:") << gt::log::range(pimpl->queue) << "...";
+                << logTrace << tr("all nodes evaluated!");
+
+        assert(!queued);
+        emit allNodesEvaluated();
+        return;
+    }
+
+    if (queued)
+    {
         evaluateQueue();
     }
-//    if (allReady)
-//    {
-//        if (!isSilent())
-//            gtTrace().verbose()
-//                << utils::logId(this)
-//                << tr("all nodes evaluated!");
+}
 
-//        emit allNodesEvaluated();
-//    }
+void
+GraphExecutor::queuePending()
+{
+    if (graph().isBeingModified()) return;
+
+    if (pimpl->isProcessingPending) return;
+
+    pimpl->isProcessingPending = true;
+    auto unlock = gt::finally([this](){ pimpl->isProcessingPending = false; });
+    Q_UNUSED(unlock);
+
+    auto logError = utils::logIds(this, graph(), tr("Queuing Pending Nodes failed:"));
+    auto logTrace = utils::logIds(this, graph(), tr("Pending Nodes updated:"));
+
+    QVector<NodeId>& pending = pimpl->queue;
+
+    bool failure = false;
+    bool queued = false;
+    for (int idx = 0; idx < pending.size(); idx++)
+    {
+        auto removeFromPending = gt::finally([&pending, &idx](){
+            pending.removeAt(idx);
+            idx--;
+        });
+        Q_UNUSED(removeFromPending);
+
+        NodeId nodeId = pending.at(idx);
+        Node* node = graph().findNode(nodeId);
+        if (!node)
+        {
+            if (!isSilent())
+                gtWarning().verbose()
+                    << logError << tr("invalid node '%1'!").arg(toString(nodeId));
+            failure = true;
+            break;
+        }
+
+        auto logErrorExt = utils::logIds(logError, node, "->");
+        auto logTraceExt = utils::logIds(logTrace, node, "->");
+
+        if (pimpl->isEvaluated(*node))
+        {
+            if (!isSilent())
+                gtTrace().verbose() << logTraceExt << tr("node is already evaluated!");
+            continue;
+        }
+
+        if (pimpl->isEvaluating(*node))
+        {
+            if (!isSilent())
+                gtTrace().verbose()
+                    << logErrorExt << tr("node is already evaluating!");
+            continue;
+        }
+
+        removeFromPending.clear();
+
+        // node not yet evaluated
+        if (!pimpl->areDependenciesMet(*node))
+        {
+            if (!isSilent())
+                gtWarning().verbose() << logErrorExt << tr("dependencies not met!");
+            break;
+        }
+
+        if (!isSilent())
+            gtTrace().verbose()
+                << logTraceExt << tr("node queued!");
+
+        pimpl->queue.push_front(nodeId);
+        queued = true;
+    }
+
+    if (failure)
+    {
+        if (!isSilent())
+            gtTrace().verbose()
+                << logTrace << tr("failed to evaluate some nodes!");
+
+        return;
+    }
+
+    if (queued)
+    {
+        evaluateQueue();
+    }
+
 }
 
 void
@@ -334,29 +524,31 @@ GraphExecutor::evaluateQueue()
     if (pimpl->isProcessingQueue) return;
 
     pimpl->isProcessingQueue = true;
-    auto unlockQueue = gt::finally([this](){ pimpl->isProcessingQueue = false; });
-    Q_UNUSED(unlockQueue);
+    auto unlock = gt::finally([this](){ pimpl->isProcessingQueue = false; });
+    Q_UNUSED(unlock);
 
     if (pimpl->queue.empty()) return;
 
     QVector<NodeId>& queue = pimpl->queue;
 
+    auto logError = utils::logIds(this, graph(), tr("Evaluating Queue failed: "));
+    auto logTrace = utils::logIds(this, graph(), tr("Queue updated:"));
+
     QVector<NodeId> backlog;
-    auto appendBacklog = gt::finally([this, &backlog, &queue](){
+    auto appendBacklog = gt::finally([this, &backlog, &queue, &logTrace](){
         if (backlog.empty()) return;
 
         if (!isSilent())
             gtTrace().verbose()
-                << utils::logId(*this)
-                << tr("backlog:") << gt::log::range(backlog) << "...";
+                << logTrace << tr("Merging backlog:") << backlog << "...";
+
         std::copy(backlog.begin(), backlog.end(), std::back_inserter(queue));
     });
     Q_UNUSED(appendBacklog);
 
     if (!isSilent())
         gtTrace().verbose()
-            << utils::logId(*this)
-            << tr("evaluating queue:") << gt::log::range(queue) << "...";
+            << logTrace << tr("evaluating queue:") << logNodePaths(pimpl->queue, graph());
 
     while(!queue.empty())
     {
@@ -369,17 +561,16 @@ GraphExecutor::evaluateQueue()
         {
             if (!isSilent())
                 gtWarning().verbose()
-                    << utils::logId(*this)
-                    << tr("failed to evaluate queued node '%1'! (node deleted?)")
-                           .arg(toString(nodeId));
+                    << logError << tr("invalid node '%1'!").arg(toString(nodeId));
             continue;
         }
 
+        auto logErrorExt = utils::logIds(logError, node, "->");
+        auto logTraceExt = utils::logIds(logTrace, node, "->");
+
         if (!isSilent())
             gtTrace().verbose()
-                << utils::logId(*this)
-                << tr("evaluating node '%1'...")
-                       .arg(relativeNodePath(*node));
+                << logTraceExt << tr("triggering evaluation...");
 
         if (auto* subgraph = qobject_cast<Graph*>(node))
         {
@@ -387,18 +578,16 @@ GraphExecutor::evaluateQueue()
             {
                 if (!isSilent())
                     gtTrace().verbose()
-                        << utils::logId(*this)
-                        << tr("-> subgraph is being modifed.");
+                        << logErrorExt << tr("node is being modifed!");
                 continue;
             }
         }
 
-        bool isEvaluating = pimpl->evaluating.contains(node->uuid());
-        if (isEvaluating)
+        if (pimpl->isEvaluating(*node))
         {
             if (!isSilent())
                 gtTrace().verbose()
-                    << utils::logId(*this) << tr("-> already evaluating!");
+                    << logErrorExt << tr("node is already evaluating!");
             continue;
         }
 
@@ -406,7 +595,7 @@ GraphExecutor::evaluateQueue()
         {
             if (!isSilent())
                 gtTrace().verbose()
-                    << utils::logId(*this) << tr("-> dependencies not met!");
+                    << logErrorExt << tr("dependencies not met!");
             continue;
         }
 
@@ -414,7 +603,7 @@ GraphExecutor::evaluateQueue()
         {
             if (!isSilent())
                 gtTrace().verbose()
-                    << utils::logId(*this) << tr("-> inputs not met!");
+                    << logErrorExt << tr("inputs not ready!");
             continue;
         }
 
@@ -422,7 +611,7 @@ GraphExecutor::evaluateQueue()
         if ((size_t)node->nodeEvalMode() & IsExclusiveMask)
         {
             gtWarning()
-                << utils::logId(*this) << tr("exclusive node evaluation is not handled currently!");
+                << tr("exclusive node evaluation is not handled currently!");
         }
         assert(exec::nodeDataInterface(*node) == pimpl->dataModel);
 
@@ -430,13 +619,13 @@ GraphExecutor::evaluateQueue()
         {
             if (!isSilent())
                 gtError().verbose()
-                    << utils::logId(*this) << tr("-> triggering evaluation failed!");
+                    << logErrorExt << tr("triggering evaluation failed!");
             continue;
         }
 
         if (!isSilent())
             gtTrace().verbose()
-                << utils::logId(*this) << tr("-> triggering evaluation succeeded!");
+                << logTraceExt << tr("triggering evaluation succeeded!");
     }
 }
 
@@ -444,9 +633,16 @@ GraphExecutor::evaluateQueue()
 void
 GraphExecutor::onNodeEvaluationStarted(QString const& nodeUuid)
 {
+    if (Node const* node = graph().findNodeByUuid(nodeUuid))
+    {
+        if (Graph::accessGraph(*node) != &graph()) return;
+    }
+
+    auto logTrace = utils::logIds(this, graph());
+
     if (!isSilent())
         gtTrace().verbose()
-            << utils::logId(*this) << tr("node evaluation of '%1' started!")
+            << logTrace << tr("node evaluation of '%1' started!")
                                           .arg(nodeUuid);
 
     assert(!pimpl->evaluating.contains(nodeUuid));
@@ -456,13 +652,17 @@ GraphExecutor::onNodeEvaluationStarted(QString const& nodeUuid)
 void
 GraphExecutor::onNodeEvaluationFinished(QString const& nodeUuid)
 {
+    if (Node const* node = graph().findNodeByUuid(nodeUuid))
+    {
+        if (Graph::accessGraph(*node) != &graph()) return;
+    }
+
+    auto logTrace = utils::logIds(this, graph());
+
     if (!isSilent())
         gtTrace().verbose()
-            << utils::logId(*this) << tr("node evaluation of '%1' finished!")
-                                          .arg(nodeUuid);
-
-    assert(pimpl->evaluating.contains(nodeUuid));
-    pimpl->evaluating.removeOne(nodeUuid);
+            << logTrace << tr("node evaluation of '%1' finished!")
+                               .arg(nodeUuid);
 
     QTimer::singleShot(0, this, std::bind(&GraphExecutor::onNodeEvaluated, this, nodeUuid));
 }
@@ -470,126 +670,78 @@ GraphExecutor::onNodeEvaluationFinished(QString const& nodeUuid)
 void
 GraphExecutor::onNodeEvaluated(const NodeUuid& nodeUuid)
 {
+    assert(pimpl->evaluating.contains(nodeUuid));
+    pimpl->evaluating.removeOne(nodeUuid);
+
+    auto logError = utils::logIds(this, graph(), tr("Finalizing evaluation failed: "));
+    auto logTrace = utils::logIds(this, graph(), tr("Finalizing evaluation: "));
+
     Node* node = graph().findNodeByUuid(nodeUuid);
     if (!node)
     {
-        gtError() << utils::logId(*this)
-                  << relativeNodePath(graph())
-                  << tr("failed to finalize node evaluation of node '%1'! "
-                        "(invalid node)")
-                         .arg(nodeUuid);
+        gtError() << logError << tr("invalid node '%1'!").arg(nodeUuid);
         return;
     }
 
     bool isValidNode = graph().findNode(node->id()) == node;
     if (!isValidNode)
     {
-        gtError()
-            << utils::logId(*this)
-            << relativeNodePath(graph())
-            << tr("failed to finalize node evaluation of node '%1'! "
-                  "(node deleted?)")
-                   .arg(nodeUuid);
+        gtError() << logError << tr("unknown node '%1'!").arg(relativeNodePath(*node));
         return;
     }
 
     if (!isSilent())
         gtTrace().verbose()
-            << utils::logId(*this) << tr("finalizing node evaluation of '%1'!")
-                                          .arg(relativeNodePath(*node));
+            << logTrace << tr("node '%1'!").arg(relativeNodePath(*node));
 
     NodeEvalState state = pimpl->evalState(*node);
     switch (state)
     {
     case NodeEvalState::Invalid:
-        gtError()
-            << utils::logId(*this) << tr("-> execution failed?");
+        gtError() << logError << tr("execution failed?");
         return;
     case NodeEvalState::Outdated:
-        gtError()
-            << utils::logId(*this) << tr("-> outdated, must restart?");
+        gtError() << logError << tr("outdated, was invalidated and must restart?");
         return;
     case NodeEvalState::Evaluating:
-        gtError()
-            << utils::logId(*this) << tr("-> evaluating?");
+        gtError() << logError << tr("still evaluating?");
         return;
     case NodeEvalState::Paused:
-        gtError()
-            << utils::logId(*this) << tr("-> paused?");
+        gtError() << logError << tr("paused?");
         return;
     case NodeEvalState::Valid:
-        gtTrace().verbose()
-            << utils::logId(*this) << tr("-> sucess!");
         break;
     }
 
     if (pimpl->autoEvaluate)
     {
-        auto makeError = [this](){
-            return utils::logId(this) + tr(" failed to schedule next evaluate node:");
-        };
+        autoEvaluate();
+    }
 
-        auto nextNodeIds = graph().connectionModel().iterateUniqueNodes(node->id());
+    bool isTarget = pimpl->targets.contains(node->id());
+    if (isTarget)
+    {
+        pimpl->targets.removeOne(node->id());
 
-        bool queued = false;
-        for (NodeId nextNodeId : nextNodeIds)
-        {
-            Node* nextNode = graph().findNode(nextNodeId);
-            if (!nextNode)
-            {
-                if (!isSilent())
-                    gtWarning().verbose()
-                        << makeError()
-                        << tr("invalid node '%1'!").arg(toString(nextNodeId));
-                break;
-            }
-            if (pimpl->isEvaluated(*nextNode))
-            {
-                if (!isSilent())
-                    gtWarning().verbose()
-                        << makeError()
-                        << tr("next noode already evaluated '%1'!").arg(toString(nextNodeId));
-                break;
-            }
-//            assert(!pimpl->isEvaluated(*nextNode));
-
-            // node not yet evaluated
-            if (!pimpl->areDependenciesMet(*nextNode))
-            {
-                if (!isSilent())
-                    gtWarning().verbose()
-                        << makeError()
-                        << tr("dependencies of node '%1' not ready!").arg(nextNode->caption());
-                break;
-            }
-
-            if (!isSilent())
-                gtTrace().verbose()
-                    << utils::logId(this)
-                    << tr("node '%1' queued!").arg(nextNode->caption());
-
-            pimpl->queue.push_front(nextNodeId);
-            queued = true;
-        }
-
-        if (queued)
-        {
-            evaluateQueue();
-        }
-
-        if (!queued && nextNodeIds.empty())
+        if (pimpl->targets.empty())
         {
             if (!isSilent())
                 gtTrace().verbose()
-                    << utils::logId(this)
-                    << tr("all nodes evaluated!");
+                    << logTrace << tr("target nodes evaluated!");
 
-            emit allNodesEvaluated();
+            assert(pimpl->pending.empty());
+            emit targetNodesEvaluated();
         }
     }
 
+    if (pimpl->pending.size() > 0)
+    {
+        queuePending();
+    }
+
+
     if (!isSilent())
         gtTrace().verbose()
-            << utils::logId(*this) << tr("finalized node evaluation!");
+            << logTrace << tr("node finalized!");
 }
 

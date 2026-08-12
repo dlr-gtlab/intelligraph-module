@@ -116,12 +116,12 @@ NodeUI::NodeUI(Option option) :
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("runProcess"), categroy))
         .setVisibilityMethod(toNode * NOT(toDummy));
 
-    addSingleAction(tr("Set inactive"), setActive<false>)
+    addSingleAction(tr("Set Inactive"), setActive<false>)
         .setIcon(gt::gui::icon::sleep())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("skipProcess"), categroy))
         .setVisibilityMethod(toNode * NOT(toDummy) * isActive);
 
-    addSingleAction(tr("set active"), setActive<true>)
+    addSingleAction(tr("Set Active"), setActive<true>)
         .setIcon(gt::gui::icon::sleepOff())
         .setShortCut(gtApp->getShortCutSequence(QStringLiteral("unskipProcess"), categroy))
         .setVisibilityMethod(toNode * NOT(toDummy) * NOT(isActive));

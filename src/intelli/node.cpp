@@ -389,6 +389,7 @@ Node::removePort(PortId id)
 NodeEvalState
 Node::nodeEvalState() const
 {
+    // TODO: remove this function from here?
     NodeDataInterface* model = pimpl->dataInterface;
     if (!model)
     {

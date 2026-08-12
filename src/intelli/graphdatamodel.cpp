@@ -75,8 +75,8 @@ struct GraphDataModel::Impl
 
         if (!silent)
             gtTrace().verbose()
-                << tr("Accessing node data of '%1', data: %2")
-                       .arg(nodeUuid, toString(portEntry->data.ptr));
+                << tr("Accessing node data of '%1', port: %3, data: %2")
+                       .arg(nodeUuid, toString(portEntry->data.ptr), toString(portId));
 
         return portEntry->data;
     }
@@ -108,8 +108,8 @@ struct GraphDataModel::Impl
 
         if (!silent)
             gtTrace().verbose()
-                << tr("Setting node data for '%1', data: %2")
-                       .arg(nodeUuid, toString(dset.ptr));
+                << tr("Setting node data for '%1', port: %3, data: %2")
+                       .arg(nodeUuid, toString(dset.ptr), toString(portId));
 
         portEntry->data = std::move(dset);
 
