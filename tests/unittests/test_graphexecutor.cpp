@@ -130,7 +130,7 @@ inline Scenario buildConditionalGraph(Graph& graph, bool conditionValue = false)
 } // namespace intelli
 
 
-TEST(GraphExecutor, test)
+TEST(GraphExecutor, conditional_node)
 {
     using namespace intelli;
 
@@ -141,11 +141,35 @@ TEST(GraphExecutor, test)
 
     auto scenario = test::buildConditionalGraph(graph, true);
     ASSERT_TRUE(scenario);
-    
-    executor.autoEvaluate();
+
+    auto future = executor.evaluateGraph();
 
     gtDebug() << "scheduled!";
 
+    // TODO: use future, check for correct value
     GtEventLoop loop{std::chrono::seconds{1}};
+    loop.connectSuccess(&executor, &GraphExecutor::allNodesEvaluated);
+    loop.exec();
+}
+
+TEST(GraphExecutor, test)
+{
+    using namespace intelli;
+
+    Graph graph;
+    GraphDataModel dataModel{graph};
+    dataModel.setSilent(true);
+    GraphExecutor executor{graph, dataModel};
+
+    auto scenario = test::buildBasicGraph(graph);
+    ASSERT_TRUE(scenario);
+
+    auto future = executor.evaluateGraph();
+
+    gtDebug() << "scheduled!";
+
+    // TODO: use future, check for correct value
+    GtEventLoop loop{std::chrono::seconds{1}};
+    loop.connectSuccess(&executor, &GraphExecutor::allNodesEvaluated);
     loop.exec();
 }

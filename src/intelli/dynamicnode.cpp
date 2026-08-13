@@ -309,7 +309,7 @@ void
 DynamicNode::onPortChanged(PortId portId)
 {
     PortType type = portType(portId);
-    assert(type != PortType::NoType);
+    if (type == PortType::NoType) return;
 
     PortIndex portIdx = portIndex(type, portId);
     if (!isDynamicPort(type, portIdx)) return;

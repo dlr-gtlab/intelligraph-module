@@ -28,7 +28,6 @@ class GroupOutputProvider;
 class Connection;
 class ConnectionGroup;
 class DynamicNode;
-class GraphExecutionModel;
 
 /**
  * @brief Opens the graph in a graph editor. The graph object should be kept

@@ -588,8 +588,15 @@ public:
     triggerNodeEvaluation(Node& node)
     {
         auto evalMode = node.nodeEvalMode();
-        // TODO: emit evaluated signal?
-        if (evalMode == NodeEvalMode::NoEvaluationRequired) return true;
+        if (evalMode == NodeEvalMode::NoEvaluationRequired)
+        {
+            // TODO: emit evaluated signal?
+            auto model = nodeDataInterface(node);
+            if (!model) return false;
+
+            model->nodeEvaluation(node.uuid()).finalize();
+            return true;
+        }
 
         size_t evalFlag = (size_t)node.nodeEvalMode();
         if (evalFlag & IsDetachedMask)

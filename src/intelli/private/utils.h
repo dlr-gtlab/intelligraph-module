@@ -221,10 +221,35 @@ inline gt::log::Stream& LogIdsLambda<Args...>::operator()(gt::log::Stream& s) co
 } // namespace detail
 
 template<typename ...Args>
-inline details::LogIdsLambda<Args...> logIds(Args&&... args)
+inline details::LogIdsLambda<Args...>
+logIds(Args&&... args)
 {
     return details::LogIdsLambda<Args...>{args...};
 }
+
+/// Helper function that returns the path of the node as a formated string for
+/// logging
+inline QString
+logId(Node const& node)
+{
+    return gt::quoted(relativeNodePath(node), "'", "'");
+}
+
+/// Helper function that returns the class name of the template parameter as a
+/// formated string for logging
+template<typename T>
+inline QString logId()
+{
+    static QString str = QString{T::staticMetaObject.className()}.remove("intelli::");
+    return gt::quoted(str, "<", ">");
+}
+
+/// Helper function to deduce class name from argument and return a formated
+/// string for logging
+template<typename T,
+         typename U = std::remove_cv_t<std::remove_reference_t<std::remove_pointer_t<T>>>,
+         std::enable_if_t<!std::is_base_of<Node, U>::value, bool> = true>
+inline QString logId(T const&) { return logId<U>(); }
 
 /// Helper function that searches for `t` in List and returns the iterator
 template<typename List, typename T>
@@ -303,31 +328,6 @@ inline void transform_if(InputIterable iterable,
 {
     return transform_if(iterable.begin(), iterable.end(), ifOp, out, transform);
 }
-
-
-/// Helper function that returns the path of the node as a formated string for
-/// logging
-inline QString
-logId(Node const& node)
-{
-    return gt::quoted(relativeNodePath(node), "[", "]");
-}
-
-/// Helper function that returns the class name of the template parameter as a
-/// formated string for logging
-template<typename T>
-inline QString logId()
-{
-    static QString str = QString{T::staticMetaObject.className()}.remove("intelli::");
-    return gt::quoted(str, "[", "]");
-}
-
-/// Helper function to deduce class name from argument and return a formated
-/// string for logging
-template<typename T,
-         typename U = std::remove_cv_t<std::remove_reference_t<std::remove_pointer_t<T>>>,
-         std::enable_if_t<!std::is_base_of<Node, U>::value, bool> = true>
-inline QString logId(T const&) { return logId<U>(); }
 
 /// helper struct to make state creation more explicit and ledgible
 template <typename GetValue>

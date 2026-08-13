@@ -60,6 +60,8 @@ protected:
 
     void eval() override;
 
+    void onObjectDataMerged() override;
+
 private:
 
     PortId m_condition{};

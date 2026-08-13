@@ -122,6 +122,8 @@ public:
 
     void setNodeEvaluationOutdated(NodeUuid const& nodeUuid);
 
+    void setNodeEvaluationSuccess(NodeUuid const& nodeUuid);
+
     /**
      * @brief Returns the user variables object if any exists.
      * @return User variables object (may be null)
@@ -162,8 +164,6 @@ private:
 
     void setupConnections(Graph& graph);
 
-private slots:
-
     /// Updates the model if a node was appended
     void onNodeAppended(Node* node);
 
@@ -178,6 +178,10 @@ private slots:
 
     /// Updates the model if a graph was deleted
     void onGraphDeleted();
+
+    void onConnectionAppended(ConnectionUuid con);
+
+    void onConnectionDeleted(ConnectionUuid con);
 };
 
 } // namespace intelli

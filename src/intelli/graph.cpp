@@ -8,6 +8,9 @@
  */
 
 #include "intelli/graph.h"
+#include "intelli/graphdatamodel.h"
+#include "intelli/graphexecmodel.h"
+#include "intelli/graphexecutor.h"
 #include "intelli/graphuservariables.h"
 #include "intelli/private/graph_impl.h"
 
@@ -18,6 +21,7 @@
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/gui/guidata.h"
+#include "gt_eventloop.h"
 
 #include <gt_qtutilities.h>
 #include <gt_algorithms.h>
@@ -398,7 +402,7 @@ Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
     auto* node = findNode(nodeId);
     if (!node)
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << utils::logIds(*this) << makeError()
                     << tr("(node not found)");
         return invalid<PortId>();
     }
@@ -406,7 +410,7 @@ Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
     PortId portId = node->portId(type, portIdx);
     if (portId == invalid<PortId>())
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << utils::logIds(*this) << makeError()
                     << tr("(port idx %1 of type %2 out of bounds)")
                            .arg(portIdx).arg(toString(type));
         return invalid<PortId>();
@@ -450,7 +454,7 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
     auto* inNode  = findNode(inNodeId);
     if (!outNode || !inNode)
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << utils::logIds(*this) << makeError()
                     << (!outNode ? nodeNotFound(outNodeId) :
                                    nodeNotFound(inNodeId));
         return invalid<ConnectionId>();
@@ -460,7 +464,7 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
     auto inPort  = inNode->portId(PortType::In, inPortIdx);
     if (outPort == invalid<PortId>() || inPort == invalid<PortId>())
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << utils::logIds(*this) << makeError()
                     << (outPort == invalid<PortId>() ?
                                    portOutOfBounds(outNodeId, outPortIdx) :
                                    portOutOfBounds(inNodeId, inPortIdx));
@@ -485,14 +489,14 @@ Graph::connectionId(ConnectionUuid const& conUuid) const
     auto* inNode  = findNodeByUuid(conUuid.inNodeId);
     if (!outNode || !inNode)
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << utils::logIds(*this) << makeError()
                     << (!outNode ? nodeNotFound(conUuid.outNodeId) :
                                    nodeNotFound(conUuid.inNodeId));
         return invalid<ConnectionId>();
     }
     if (outNode->parent() != this || inNode->parent() != this)
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << utils::logIds(*this) << makeError()
                     << tr("(nodes do not belong to this graph '%3')")
                            .arg(relativeNodePath(*this));
         return invalid<ConnectionId>();
@@ -516,7 +520,7 @@ Graph::connectionUuid(ConnectionId conId) const
     auto* inNode  = findNode(conId.inNodeId);
     if (!outNode || !inNode)
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning( )<< utils::logIds(*this) << makeError()
                     << (!outNode ? nodeNotFound(conId.outNodeId) :
                                    nodeNotFound(conId.inNodeId));
         return invalid<ConnectionUuid>();
@@ -581,6 +585,7 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
         gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Medium)
     {
         gtLogOnce(Warning)
+            << utils::logIds(*this)
             << tr("Node '%1' is deprecated and may be removed in "
                   "a future release of the associated module!")
                    .arg(node->metaObject()->className());
@@ -709,39 +714,39 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
 
     appendGlobalConnection(guard, conUuid);
 
-    // forwards inputs of graph node to subgraph
-    if (auto* graph = qobject_cast<Graph*>(&targetNode))
-    if (graph->metaObject()->className() == GT_CLASSNAME(Graph))
-    {
-        auto* inputProvider = graph->inputProvider();
-        assert(inputProvider);
+//    // forwards inputs of graph node to subgraph
+//    if (auto* graph = qobject_cast<Graph*>(&targetNode))
+//    if (graph->metaObject()->className() == GT_CLASSNAME(Graph))
+//    {
+//        auto* inputProvider = graph->inputProvider();
+//        assert(inputProvider);
 
-        conUuid.inNodeId = inputProvider->uuid();
-        conUuid.inPort   = GroupInputProvider::virtualPortId(conId.inPort);
+//        conUuid.inNodeId = inputProvider->uuid();
+//        conUuid.inPort   = GroupInputProvider::virtualPortId(conId.inPort);
 
-        appendGlobalConnection(guard, conUuid);
-    }
+//        appendGlobalConnection(guard, conUuid);
+//    }
 
-    // forwards outputs of subgraph to graph node
-    if (auto* output = qobject_cast<GroupOutputProvider*>(&targetNode))
-    if (output->parent()->metaObject()->className() == GT_CLASSNAME(Graph))
-    {
-        NodeUuid const& graphUuid = uuid();
+//    // forwards outputs of subgraph to graph node
+//    if (auto* output = qobject_cast<GroupOutputProvider*>(&targetNode))
+//    if (output->parent()->metaObject()->className() == GT_CLASSNAME(Graph))
+//    {
+//        NodeUuid const& graphUuid = uuid();
 
-        // graph is being restored (memento diff)
-        if (!pimpl->global->contains(graphUuid))
-        {
-            assert(isBeingModified());
-            pimpl->global->insert(graphUuid, this);
-        }
+//        // graph is being restored (memento diff)
+//        if (!pimpl->global->contains(graphUuid))
+//        {
+//            assert(isBeingModified());
+//            pimpl->global->insert(graphUuid, this);
+//        }
 
-        conUuid.outNodeId = output->uuid();
-        conUuid.outPort   = GroupOutputProvider::virtualPortId(conUuid.inPort);
-        conUuid.inNodeId  = graphUuid;
-        conUuid.inPort    = conUuid.outPort;
+//        conUuid.outNodeId = output->uuid();
+//        conUuid.outPort   = GroupOutputProvider::virtualPortId(conUuid.inPort);
+//        conUuid.inNodeId  = graphUuid;
+//        conUuid.inPort    = conUuid.outPort;
 
-        appendGlobalConnection(nullptr, std::move(conUuid));
-    }
+//        appendGlobalConnection(nullptr, std::move(conUuid));
+//    }
 }
 
 void
@@ -754,13 +759,15 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionUuid conUuid)
 
     if (globalTargetNode == pimpl->global->end())
     {
-        gtError() << tr("Failed to append connection, target node not found! "
+        gtError() << utils::logIds(*this)
+                  <<tr("Failed to append connection, target node not found! "
                         "(Connection: %1)").arg(conUuid.inNodeId);
         return;
     }
     if (globalSourceNode == pimpl->global->end())
     {
-        gtError() << tr("Failed to append connection, source node not found! "
+        gtError() << utils::logIds(*this)
+                  << tr("Failed to append connection, source node not found! "
                         "(Connection: %1)").arg(conUuid.outNodeId);
         return;
     }
@@ -835,7 +842,7 @@ Graph::deleteNode(NodeId nodeId)
     if (auto* node = findNode(nodeId))
     {
         gtInfo().verbose()
-            << utils::logId(*this)
+            << utils::logIds(*this)
             << tr("Deleting node:") << node->objectName();
         delete node;
         return true;
@@ -849,7 +856,7 @@ Graph::deleteConnection(ConnectionId connectionId)
     if (auto* connection = findConnection(connectionId))
     {
         gtInfo().verbose()
-            << utils::logId(*this)
+            << utils::logIds(*this)
             << tr("Deleting connection:") << connectionId;
         delete connection;
         return true;
@@ -1020,7 +1027,6 @@ Graph::onObjectDataMerged()
 void
 Graph::restoreNode(Node* node)
 {
-    gtDebug() << __FUNCTION__ << "BEGIN" << this << node;
     assert(node);
     if (findNode(node->id()))
     {
@@ -1030,7 +1036,14 @@ Graph::restoreNode(Node* node)
             assert(subgraph->pimpl->global == pimpl->global);
         }
 #endif
-        gtDebug() << __FUNCTION__ << "END-1" << this;
+        // TODO: this should be fixed with #1370 (GTlab Core)
+        if (pimpl->global->node(node->uuid()) != node)
+        {
+            gtError().verbose()
+                << utils::logIds(*this)
+                << tr("Node '%1' changed uuid, need to reset model!")
+                       .arg(relativeNodePath(*node));
+        }
         return;
     }
 
@@ -1038,13 +1051,11 @@ Graph::restoreNode(Node* node)
     static_cast<QObject*>(node)->setParent(nullptr);
 
     appendNode(std::move(ptr));
-    gtDebug() << __FUNCTION__ << "END-2" << this;
 }
 
 void
 Graph::restoreConnection(Connection* connection)
 {
-    gtDebug() << __FUNCTION__ << "BEGIN" << this;
     assert(connection);
     auto conId = connection->connectionId();
 
@@ -1053,7 +1064,6 @@ Graph::restoreConnection(Connection* connection)
     {
         cons = pimpl->local.iterateConnections(conId.outNodeId, PortType::Out);
         assert(std::find(cons.begin(), cons.end(), conId) != cons.end());
-        gtDebug() << __FUNCTION__ << "END-1" << this;
         return;
     }
 
@@ -1088,13 +1098,11 @@ Graph::restoreConnection(Connection* connection)
         if (success) appendConnection(std::move(ptr));
     }
     ptr.release();
-    gtDebug() << __FUNCTION__ << "END-2" << this;
 }
 
 void
 Graph::restoreConnections()
 {
-    gtDebug() << __FUNCTION__ << "BEGIN" << this;
     auto cmd = modify();
     Q_UNUSED(cmd);
 
@@ -1107,13 +1115,11 @@ Graph::restoreConnections()
 
         restoreConnection(connection);
     }
-    gtDebug() << __FUNCTION__ << "END  " << this;
 }
 
 void
 Graph::restoreNodesAndConnections()
 {
-    gtDebug() << __FUNCTION__ << "BEGIN" << this;
     auto cmd = modify();
     Q_UNUSED(cmd);
 
@@ -1157,7 +1163,6 @@ Graph::restoreNodesAndConnections()
     {
         restoreConnection(connection);
     }
-    gtDebug() << __FUNCTION__ << "END  " << this;
 }
 
 void
@@ -1186,11 +1191,101 @@ Graph::resetGlobalConnectionModel()
 void
 Graph::eval()
 {
-    for (auto& port : ports(PortType::Out))
+    auto* interface = exec::nodeDataInterface(*this);
+    if (qobject_cast<GraphExecutionModel*>(interface))
     {
-        if (port.visible)
+        for (auto& port : ports(PortType::Out))
         {
-            setNodeData(port.id(), nodeData(port.id() + PortId(2)));
+            if (port.visible)
+            {
+                setNodeData(port.id(), nodeData(port.id() + PortId(2)));
+            }
+        }
+        return;
+    }
+
+    auto makeError = [this](){
+        return gt::quoted(relativeNodePath(*this), "[", "] ") +
+               tr("evaluation failed!");
+    };
+
+    // setup
+    GroupInputProvider* inputNode = inputProvider();
+    GroupOutputProvider* outputNode = outputProvider();
+
+    if (!inputNode || !outputNode)
+    {
+        gtError() << makeError() << tr("input/ouput providers not found!");
+        return evalFailed();
+    }
+
+    auto* dataModel = qobject_cast<GraphDataModel*>(exec::nodeDataInterface(*this));
+    if (!dataModel)
+    {
+        gtError() << makeError() << tr("data model not found!");
+        return evalFailed();
+    }
+
+    // set input data
+    for (NodePort const& port : ports(PortType::In))
+    {
+        // TODO: remove invisible ports
+        if (!port.visible) continue;
+
+        if (!inputNode->port(port.id()))
+        {
+            gtError() << makeError()
+                      << tr("port '%1' in input provider not found!")
+                             .arg(toString(port));
+            return evalFailed();
+        }
+
+        if (!dataModel->setNodeData(inputNode->uuid(), port.id(), nodeData(port.id())))
+        {
+            gtError() << makeError()
+                      << tr("failed to set input data for port '%1'!")
+                             .arg(toString(port));
+            return evalFailed();
+        }
+    }
+
+    GtEventLoop loop{std::chrono::seconds{10}};
+
+    // evaluate branch
+    GraphExecutor executor{*this, *dataModel};
+
+    loop.connectSuccess(&executor, &GraphExecutor::targetNodesEvaluated);
+    loop.connectAbort(this, &Graph::graphAboutToBeDeleted);
+    // TODO: evaluate branch only
+
+    auto future = executor.evaluateNode(outputNode->id());
+    // TODO: cannot block main thread here!
+
+    if (loop.exec() != GtEventLoop::Success)
+    {
+        return evalFailed();
+    }
+
+    // set output data
+    for (NodePort const& port : ports(PortType::Out))
+    {
+        // TODO: remove invisible ports
+        if (!port.visible) continue;
+
+        if (!outputNode->port(port.id()))
+        {
+            gtError() << makeError()
+                      << tr("port '%1' in output provider not found!")
+                             .arg(toString(port));
+            return evalFailed();
+        }
+
+        if (!setNodeData(port.id(), dataModel->nodeData(outputNode->uuid(), port.id())))
+        {
+            gtError() << makeError()
+                      << tr("failed to set output data for port '%1'!")
+                             .arg(toString(port));
+            return evalFailed();
         }
     }
 }

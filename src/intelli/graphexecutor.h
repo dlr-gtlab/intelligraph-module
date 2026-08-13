@@ -58,6 +58,13 @@ public:
 
     void autoEvaluate(bool enable = true);
 
+    GT_NO_DISCARD
+    [[deprecated("use `isAutoEvaluating` instead")]]
+    bool isAutoEvaluatingGraph() const { return isAutoEvaluating(); }
+
+    GT_NO_DISCARD
+    bool isAutoEvaluating() const;
+
 signals:
 
     void allNodesEvaluated();
@@ -78,6 +85,14 @@ private:
     void onNodeEvaluationFinished(QString const& nodeUuid);
 
     void onNodeEvaluated(NodeUuid const& nodeUuid);
+
+    void setupConnections(Graph& graph);
+
+    void onNodeAppended(Node* node);
+
+    void onConnectionAppended(ConnectionId conId);
+
+    void onConnectionDeleted(ConnectionId conId);
 };
 
 } // namespace intelli

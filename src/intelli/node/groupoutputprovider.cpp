@@ -8,6 +8,7 @@
  */
 
 #include <intelli/node/groupoutputprovider.h>
+#include "intelli/graphexecmodel.h"
 
 using namespace intelli;
 
@@ -25,13 +26,18 @@ GroupOutputProvider::GroupOutputProvider(QString const& modelName) :
 void
 GroupOutputProvider::eval()
 {
-    auto const& inPorts  = ports(PortType::In);
-    auto const& outPorts = ports(PortType::Out);
-
-    assert(inPorts.size() == outPorts.size());
-
-    for (auto& port : inPorts)
+    auto* interface = exec::nodeDataInterface(*this);
+    if (qobject_cast<GraphExecutionModel*>(interface))
     {
-        setNodeData(virtualPortId(port.id()), nodeData(port.id()));
+        auto const& inPorts  = ports(PortType::In);
+        auto const& outPorts = ports(PortType::Out);
+
+        assert(inPorts.size() == outPorts.size());
+
+        for (auto& port : inPorts)
+        {
+            setNodeData(virtualPortId(port.id()), nodeData(port.id()));
+        }
+        return;
     }
 }

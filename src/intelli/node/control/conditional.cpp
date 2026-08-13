@@ -389,9 +389,10 @@ ConditionalGroupNode::eval()
     bool condition = conditionData->value();
 
     ConditionalInputProvider* inputNode = inputProvider(condition ? IfBranch : ElseBranch);
+    ConditionalInputProvider* otherInputNode = inputProvider(condition ? ElseBranch : IfBranch);
     ConditionalOutputProvider* outputNode = outputProvider(condition ? IfBranch : ElseBranch);
 
-    if (!inputNode || !outputNode)
+    if (!inputNode || !outputNode || !otherInputNode)
     {
         gtError() << makeError() << tr("input/ouput providers not found!");
         return evalFailed();
@@ -433,19 +434,16 @@ ConditionalGroupNode::eval()
 
     loop.connectSuccess(&executor, &GraphExecutor::targetNodesEvaluated);
     loop.connectAbort(this, &Graph::graphAboutToBeDeleted);
-    // TODO: evaluate branch only
 
-    gtTrace() << "AUTO EVAL START";
     executor.evaluateNode(outputNode->id());
-    // TODO: cannot block main thread here!
+    dataModel->setNodeEvaluationFailed(otherInputNode->uuid());
 
-    gtTrace() << "EXEC LOOP";
-    if (loop.exec() != GtEventLoop::Success)
+    // TODO: cannot block main thread here!
+    auto status = loop.exec();
+    if (status != GtEventLoop::Success)
     {
-        gtTrace() << "FAIL";
         return evalFailed();
     }
-    gtTrace() << "DONE";
 
     // set output data
     for (NodePort const& port : ports(PortType::Out))
@@ -468,6 +466,21 @@ ConditionalGroupNode::eval()
             return evalFailed();
         }
     }
+}
+
+void
+ConditionalGroupNode::onObjectDataMerged()
+{
+    Graph::onObjectDataMerged();
+
+    // TODO: this should be fixed with #1370 (GTlab Core)
+    // issue arises because provider nodes are added in the constructor, their
+    // uuid changes once the initial memento is applied. Thus, the connection
+    // model is outdated
+    gtTrace().verbose()
+        << utils::logIds(*this)
+        << tr("Resetting global connection model!");
+    resetGlobalConnectionModel();
 }
 
 void

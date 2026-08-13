@@ -409,7 +409,7 @@ LogicNodeUI::centralWidgetFactory(Node const& node) const
             wid->setMinimumSize(20 * digits, 20);
         };
 
-        QObject::connect(node, &Node::evaluated, wid, updateDisplay);
+        QObject::connect(node, &Node::inputDataRecieved, wid, updateDisplay);
         QObject::connect(node, &Node::portInserted, wid, updateDigitCount);
         QObject::connect(node, &Node::portDeleted, wid, updateDigitCount);
         QObject::connect(gtApp, &GtApplication::themeChanged, wid, updateStyle);

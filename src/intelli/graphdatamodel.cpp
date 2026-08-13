@@ -45,6 +45,9 @@ struct GraphDataModel::Impl
     QPointer<GtObject> scope = {};
     /// data map
     QHash<NodeUuid, NodeDataItem> data = {};
+
+    QVector<NodeUuid> evaluating;
+
     /// logging indicator
     bool silent = false;
 
@@ -115,7 +118,31 @@ struct GraphDataModel::Impl
 
         // TODO: need to update successors?
         Impl::propagate(model, nodeUuid, &GraphDataModel::setNodeEvaluationOutdated);
+
+        auto nextNodes = graph->globalConnectionModel().iterateConnections(nodeUuid, PortType::Out);
+
+        for (ConnectionUuid const& con : nextNodes)
+        {
+            inputDataUpdated(con.inNodeId, con.inPort);
+        }
+
         return true;
+    }
+
+    void nodeEvalStateUpdated(NodeUuid const& nodeUuid)
+    {
+        Node* node = graph->findNodeByUuid(nodeUuid);
+        if (!node) return;
+
+        emit node->nodeEvalStateChanged();
+    }
+
+    void inputDataUpdated(NodeUuid const& nodeUuid, PortId portId = PortId{})
+    {
+        Node* node = graph->findNodeByUuid(nodeUuid);
+        if (!node) return;
+
+        emit node->inputDataRecieved(portId);
     }
 
     static void propagate(GraphDataModel& model,
@@ -128,7 +155,8 @@ struct GraphDataModel::Impl
             (model.*functor)(successor);
         }
     }
-};
+
+}; // struct Impl
 
 GraphDataModel::GraphDataModel(Graph& graph) :
     pimpl(std::make_unique<Impl>(graph))
@@ -168,12 +196,6 @@ GraphDataModel::reset()
 
     Graph& graph = this->graph();
     setupConnections(graph);
-
-    auto const& nodes = graph.nodes();
-    for (Node* node : nodes)
-    {
-        onNodeAppended(node);
-    }
 }
 
 Graph&
@@ -496,10 +518,32 @@ GraphDataModel::nodeEvalState(NodeUuid const& nodeUuid) const
     {
         if (!isSilent())
             gtError()
-                << tr("failed to find data for node '%1'!")
+                << tr("failed to access eval state for node '%1'!")
                        .arg(nodeUuid);
-        return {};
+        return NodeEvalState::Invalid;
     }
+
+    Node const* node = graph().globalConnectionModel().node(nodeUuid);
+    if (!node)
+    {
+        if (!isSilent())
+            gtError()
+                << tr("failed to access eval state of invalid node '%1'!")
+                       .arg(nodeUuid);
+        return NodeEvalState::Invalid;
+    }
+
+    if (!node->isActive())
+    {
+        return NodeEvalState::Paused;
+    }
+    if (pimpl->evaluating.contains(nodeUuid))
+    {
+        return NodeEvalState::Evaluating;
+    }
+
+    assert(nodeEntry->state != NodeEvalState::Evaluating);
+    assert(nodeEntry->state != NodeEvalState::Paused);
 
     // TODO
     return nodeEntry->state;
@@ -508,6 +552,9 @@ GraphDataModel::nodeEvalState(NodeUuid const& nodeUuid) const
 void
 GraphDataModel::nodeEvaluationStarted(NodeUuid const& nodeUuid)
 {
+    assert(!pimpl->evaluating.contains(nodeUuid));
+    pimpl->evaluating.push_back(nodeUuid);
+
     auto nodeEntry = pimpl->data.find(nodeUuid);
     if (nodeEntry == pimpl->data.end())
     {
@@ -518,11 +565,14 @@ GraphDataModel::nodeEvaluationStarted(NodeUuid const& nodeUuid)
         return;
     }
 
-    // TODO
-    if (nodeEntry->state == NodeEvalState::Outdated)
+    if (nodeEntry->state == NodeEvalState::Outdated ||
+        nodeEntry->state == NodeEvalState::Invalid ||
+        nodeEntry->state == NodeEvalState::Valid)
     {
-        nodeEntry->state = NodeEvalState::Evaluating;
+        nodeEntry->state = NodeEvalState::Outdated;
     }
+
+    pimpl->nodeEvalStateUpdated(nodeUuid);
 
     emit evaluationStarted(nodeUuid);
 }
@@ -530,6 +580,9 @@ GraphDataModel::nodeEvaluationStarted(NodeUuid const& nodeUuid)
 void
 GraphDataModel::nodeEvaluationFinished(NodeUuid const& nodeUuid)
 {
+    assert(pimpl->evaluating.contains(nodeUuid));
+    pimpl->evaluating.removeOne(nodeUuid);
+
     auto nodeEntry = pimpl->data.find(nodeUuid);
     if (nodeEntry == pimpl->data.end())
     {
@@ -540,11 +593,13 @@ GraphDataModel::nodeEvaluationFinished(NodeUuid const& nodeUuid)
         return;
     }
 
-    // TODO
-    if (nodeEntry->state == NodeEvalState::Evaluating)
+    if (nodeEntry->state == NodeEvalState::Outdated ||
+        nodeEntry->state == NodeEvalState::Valid)
     {
         nodeEntry->state = NodeEvalState::Valid;
     }
+
+    pimpl->nodeEvalStateUpdated(nodeUuid);
 
     emit evaluationFinished(nodeUuid);
 }
@@ -577,7 +632,8 @@ GraphDataModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
         item.data.ptr = {};
         item.data.state = PortDataState::Outdated;
     }
-    // TODO: emit that node state updated?
+
+    pimpl->nodeEvalStateUpdated(nodeUuid);
 
     Impl::propagate(*this, nodeUuid, &GraphDataModel::setNodeEvaluationFailed);
 }
@@ -610,9 +666,27 @@ GraphDataModel::setNodeEvaluationOutdated(const NodeUuid& nodeUuid)
         item.data.ptr = {};
         item.data.state = PortDataState::Outdated;
     }
-    // TODO: emit that node state updated?
+
+    pimpl->nodeEvalStateUpdated(nodeUuid);
 
     Impl::propagate(*this, nodeUuid, &GraphDataModel::setNodeEvaluationOutdated);
+}
+
+void
+GraphDataModel::setNodeEvaluationSuccess(const NodeUuid& nodeUuid)
+{
+    auto nodeEntry = pimpl->data.find(nodeUuid);
+    if (nodeEntry == pimpl->data.end())
+    {
+        if (!isSilent())
+            gtError() << tr("failed to update state of node '%1'!")
+                             .arg(nodeUuid);
+        return;
+    }
+
+    nodeEntry->state = NodeEvalState::Valid;
+
+    pimpl->nodeEvalStateUpdated(nodeUuid);
 }
 
 GraphUserVariables const*
@@ -644,6 +718,10 @@ GraphDataModel::setScope(GtObject& scope)
 void
 GraphDataModel::setupConnections(Graph& graph)
 {
+    if (!isSilent())
+        gtTrace().verbose()
+            << utils::logIds(this, graph) << tr("Setting up connections");
+
     graph.disconnect(this);
 
     connect(&graph, &Graph::graphAboutToBeDeleted,
@@ -653,15 +731,22 @@ GraphDataModel::setupConnections(Graph& graph)
             this, &GraphDataModel::onNodeAppended,
             Qt::DirectConnection);
     connect(&graph, &Graph::childNodeAboutToBeDeleted,
-        this, [this, g = &graph](NodeId nodeId){
-            onNodeDeleted(g, nodeId);
-        }, Qt::DirectConnection);
+            this, [this, g = &graph](NodeId nodeId){
+                onNodeDeleted(g, nodeId);
+            }, Qt::DirectConnection);
 
     connect(&graph, &Graph::nodePortInserted,
             this, &GraphDataModel::onNodePortInserted,
             Qt::DirectConnection);
     connect(&graph, &Graph::nodePortAboutToBeDeleted,
             this, &GraphDataModel::onNodePortDeleted,
+            Qt::DirectConnection);
+
+    connect(&graph, &Graph::globalConnectionAppended,
+            this, &GraphDataModel::onConnectionAppended,
+            Qt::DirectConnection);
+    connect(&graph, &Graph::globalConnectionDeleted,
+            this, &GraphDataModel::onConnectionDeleted,
             Qt::DirectConnection);
 
     for (Node* node : graph.nodes())
@@ -709,6 +794,22 @@ GraphDataModel::onNodeAppended(Node* node)
     pimpl->data.insert(nodeUuid, NodeDataItem{portData, NodeEvalState::Outdated});
     exec::setNodeDataInterface(*node, this);
 
+    node->disconnect(this);
+
+    connect(node, &Node::triggerNodeEvaluation,
+            this, [node, this](){
+                gtTrace().verbose() << utils::logIds(node) << tr("Triggering Node Evaluation!");
+                setNodeEvaluationOutdated(node->uuid());
+            },
+            Qt::DirectConnection);
+    connect(node, &Node::isActiveChanged,
+            this, [node, this](){
+                pimpl->nodeEvalStateUpdated(node->uuid());
+            },
+            Qt::DirectConnection);
+
+    pimpl->nodeEvalStateUpdated(nodeUuid);
+
     if (Graph* subgraph = qobject_cast<Graph*>(node))
     {
         setupConnections(*subgraph);
@@ -730,6 +831,8 @@ GraphDataModel::onNodeDeleted(Graph* graph, NodeId nodeId)
                    .arg(relativeNodePath(*graph));
         return;
     }
+
+    node->disconnect(this);
 
     bool success = pimpl->data.remove(node->uuid()) > 0;
     if (!success)
@@ -811,6 +914,8 @@ GraphDataModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx)
     // TODO: need to update successors?
     nodeEntry->state = NodeEvalState::Outdated;
     Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
+
+    pimpl->nodeEvalStateUpdated(nodeUuid);
 }
 
 void
@@ -891,6 +996,8 @@ GraphDataModel::onNodePortDeleted(NodeId nodeId, PortType type, PortIndex idx)
     // TODO: need to update successors?
     nodeEntry->state = NodeEvalState::Outdated;
     Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
+
+    pimpl->nodeEvalStateUpdated(nodeUuid);
 }
 
 void
@@ -929,4 +1036,20 @@ GraphDataModel::onGraphDeleted()
     {
         Impl::propagate(*this, graph->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
     }
+}
+
+void
+GraphDataModel::onConnectionAppended(ConnectionUuid con)
+{
+    assert(con.isValid());
+    pimpl->inputDataUpdated(con.inNodeId, con.inPort);
+    setNodeEvaluationOutdated(con.inNodeId);
+}
+
+void
+GraphDataModel::onConnectionDeleted(ConnectionUuid con)
+{
+    assert(con.isValid());
+    pimpl->inputDataUpdated(con.inNodeId, con.inPort);
+    setNodeEvaluationOutdated(con.inNodeId);
 }

@@ -18,7 +18,7 @@ BinaryDisplayNode::BinaryDisplayNode() :
                 QStringList{},
                 DynamicNode::DynamicInput)
 {
-    setNodeEvalMode(NodeEvalMode::Blocking);
+    setNodeEvalMode(NodeEvalMode::NoEvaluationRequired);
     setNodeFlag(Resizable);
 
     addStaticInPort(makePort(typeId<BoolData>()).setCaption("in_0"));

@@ -425,10 +425,11 @@ signals:
      * Data may be invalid. Should not be triggered by the "user".
      * @param portId Input port that recieved data
      */
+    // TODO: rename `inputDataUpdated` because it is triggered on disconnect too
     void inputDataRecieved(PortId portId = invalid<PortId>());
 
     /**
-     * @brief Emitted if node specific data has changed (cpation, number of
+     * @brief Emitted if node specific data has changed (caption, number of
      * ports etc.). May be invoked by the "user" to update the graphical node
      * representation in case a port has changed for example.
      */
@@ -453,7 +454,7 @@ signals:
     void nodeAboutToBeDeleted(NodeId nodeId);
 
     /**
-     * @brief Emitted if port specific data has changed (e.g. port cpation).
+     * @brief Emitted if port specific data has changed (e.g. port caption).
      * May be invoked by the "user" to update the graphical node representation
      * @param id id of port that changed
      */
@@ -467,7 +468,7 @@ signals:
     void portAboutToBeDeleted(PortType type, PortIndex idx);
 
     /**
-     * @brief Will be emiited just after a port was deleted
+     * @brief Will be emitted just after a port was deleted
      * @param type Port type (input or output)
      * @param idx Old index
      */

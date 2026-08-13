@@ -252,6 +252,9 @@ GraphExecutor::reset()
             this, &GraphExecutor::onNodeEvaluationStarted);
     connect(&dm, &GraphDataModel::evaluationFinished,
             this, &GraphExecutor::onNodeEvaluationFinished);
+
+    Graph& graph = this->graph();
+    setupConnections(graph);
 }
 
 Future
@@ -399,7 +402,7 @@ GraphExecutor::autoEvaluate(bool enable)
         if (!pimpl->areDependenciesMet(*node))
         {
             if (!isSilent())
-                gtWarning().verbose() << logErrorExt << tr("dependencies not met!");
+                gtTrace().verbose() << logErrorExt << tr("dependencies not met!");
             break;
         }
 
@@ -426,6 +429,12 @@ GraphExecutor::autoEvaluate(bool enable)
     {
         evaluateQueue();
     }
+}
+
+bool
+GraphExecutor::isAutoEvaluating() const
+{
+    return pimpl->autoEvaluate;
 }
 
 void
@@ -491,7 +500,7 @@ GraphExecutor::queuePending()
         if (!pimpl->areDependenciesMet(*node))
         {
             if (!isSilent())
-                gtWarning().verbose() << logErrorExt << tr("dependencies not met!");
+                gtTrace().verbose() << logErrorExt << tr("dependencies not met!");
             removeFromPending.clear();
             break;
         }
@@ -621,9 +630,8 @@ GraphExecutor::evaluateQueue()
 
         if (!exec::triggerNodeEvaluation(*node))
         {
-            if (!isSilent())
-                gtError().verbose()
-                    << logErrorExt << tr("triggering evaluation failed!");
+            gtError().verbose()
+                << logErrorExt << tr("triggering evaluation failed!");
             continue;
         }
 
@@ -717,6 +725,9 @@ GraphExecutor::onNodeEvaluated(const NodeUuid& nodeUuid)
         break;
     }
 
+    dataModel().setNodeEvaluationSuccess(nodeUuid);
+    emit node->evaluated();
+
     if (pimpl->autoEvaluate)
     {
         autoEvaluate();
@@ -743,9 +754,102 @@ GraphExecutor::onNodeEvaluated(const NodeUuid& nodeUuid)
         queuePending();
     }
 
-
     if (!isSilent())
         gtTrace().verbose()
             << logTrace << tr("node finalized!");
+}
+
+void
+GraphExecutor::setupConnections(Graph& graph)
+{
+    if (!isSilent())
+        gtTrace().verbose()
+            << utils::logIds(this, graph) << tr("Setting up connections");
+
+    // TODO: only attempt to trigger node
+    auto disconnectGraph = [this, &graph](){
+        graph.disconnect(this);
+    };
+    disconnectGraph();
+
+    connect(&graph, &Graph::graphAboutToBeDeleted,
+            this, disconnectGraph,
+            Qt::DirectConnection);
+
+    connect(&graph, &Graph::nodeAppended,
+            this, &GraphExecutor::onNodeAppended,
+            Qt::DirectConnection);
+
+    connect(&graph, &Graph::connectionAppended,
+            this, &GraphExecutor::onConnectionAppended,
+            Qt::DirectConnection);
+    connect(&graph, &Graph::connectionDeleted,
+            this, &GraphExecutor::onConnectionDeleted,
+            Qt::DirectConnection);
+
+    for (Node* node : graph.nodes())
+    {
+        onNodeAppended(node);
+    }
+}
+
+void
+GraphExecutor::onNodeAppended(Node* node)
+{
+    assert(node);
+
+    // TODO: only trigger next node
+    auto triggerAutoEval = [this](){
+        if (!isAutoEvaluating()) return;
+        autoEvaluate();
+    };
+    // TODO: only attempt to trigger node
+    auto disconnectNode = [this, node](){
+        node->disconnect(this);
+    };
+
+    disconnectNode();
+    connect(node, &Node::isActiveChanged,
+            this, triggerAutoEval,
+            Qt::DirectConnection);
+    connect(node, &Node::triggerNodeEvaluation,
+            this, triggerAutoEval,
+            Qt::DirectConnection);
+    connect(node, &Node::portConnected,
+            this, triggerAutoEval,
+            Qt::DirectConnection);
+    connect(node, &Node::portDisconnected,
+            this, triggerAutoEval,
+            Qt::DirectConnection);
+    connect(node, &Node::nodeAboutToBeDeleted,
+            this, disconnectNode,
+            Qt::DirectConnection);
+    triggerAutoEval();
+}
+
+void
+GraphExecutor::onConnectionAppended(ConnectionId conId)
+{
+    assert(conId.isValid());
+
+    // TODO: only trigger next node
+    auto triggerAutoEval = [this](){
+        if (!isAutoEvaluating()) return;
+        autoEvaluate();
+    };
+    triggerAutoEval();
+}
+
+void
+GraphExecutor::onConnectionDeleted(ConnectionId conId)
+{
+    assert(conId.isValid());
+
+    // TODO: only trigger next node
+    auto triggerAutoEval = [this](){
+        if (!isAutoEvaluating()) return;
+        autoEvaluate();
+    };
+    triggerAutoEval();
 }
 

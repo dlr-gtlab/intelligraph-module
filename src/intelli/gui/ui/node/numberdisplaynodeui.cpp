@@ -36,7 +36,7 @@ NumberDisplayNodeUI::centralWidgetFactory(Node const& n) const
             w_->setText(QString::number(node->displayValue()));
         };
 
-        QObject::connect(node, &Node::evaluated, w.get(), updateText);
+        QObject::connect(node, &Node::inputDataRecieved, w.get(), updateText);
         updateText();
 
         return convertToGraphicsWidget(std::move(w), object);

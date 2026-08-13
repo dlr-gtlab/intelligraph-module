@@ -127,7 +127,6 @@ GraphStateManager::setupUserStates(GraphScene* scene)
         })
         .onValueChange(model, &GraphExecutionModel::autoEvaluationChanged)
         .finalize();
-
 }
 
 void
