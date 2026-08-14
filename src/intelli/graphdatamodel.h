@@ -124,6 +124,8 @@ public:
 
     void setNodeEvaluationSuccess(NodeUuid const& nodeUuid);
 
+    void invalidateNode(NodeUuid const& nodeUuid) { setNodeEvaluationOutdated(nodeUuid); }
+
     /**
      * @brief Returns the user variables object if any exists.
      * @return User variables object (may be null)

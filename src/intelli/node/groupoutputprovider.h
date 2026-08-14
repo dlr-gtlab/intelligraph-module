@@ -15,6 +15,7 @@
 namespace intelli
 {
 
+// TODO: move dynamic node logic to graph itself, maybe make a "group" graph
 class GroupOutputProvider : public AbstractGroupProvider<PortType::Out>
 {
     Q_OBJECT

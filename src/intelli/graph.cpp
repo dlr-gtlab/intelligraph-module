@@ -56,7 +56,9 @@ Graph::Graph(const QString& modelName) :
 
 Graph::Graph() :
     Graph(QStringLiteral("Graph"))
-{ }
+{
+    pimpl->forwardInvalidation = true;
+}
 
 Graph::~Graph()
 {
@@ -631,6 +633,13 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
     connect(node, &Node::nodeAboutToBeDeleted,
             this, Impl::NodeDeleted(this),
             Qt::DirectConnection);
+
+//    if (pimpl->forwardInvalidation)
+//    {
+//        connect(node, &Node::triggerNodeEvaluation,
+//                this, &Graph::childNodeInvalidated,
+//                Qt::DirectConnection);
+//    }
 
     // notify
     emit nodeAppended(node);

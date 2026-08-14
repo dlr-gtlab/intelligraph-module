@@ -304,6 +304,9 @@ enum class PortDataState : unsigned
 class NodeData;
 using NodeDataPtr = std::shared_ptr<const NodeData>;
 
+// TODO: add makeNodeData set
+// TODO: add NodeData<T> type
+
 struct NodeDataSet
 {
     NodeDataSet(std::nullptr_t) :

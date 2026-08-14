@@ -58,18 +58,26 @@ public:
 
     void autoEvaluate(bool enable = true);
 
-    GT_NO_DISCARD
-    [[deprecated("use `isAutoEvaluating` instead")]]
-    bool isAutoEvaluatingGraph() const { return isAutoEvaluating(); }
+    [[deprecated("use `autoEvaluate(false)` instead")]]
+    void stopAutoEvaluatingGraph() { autoEvaluate(false); }
+
+    [[deprecated("use `autoEvaluate(true)` instead")]]
+    void autoEvaluateGraph() { autoEvaluate(true); }
 
     GT_NO_DISCARD
     bool isAutoEvaluating() const;
+
+    GT_NO_DISCARD
+    [[deprecated("use `isAutoEvaluating` instead")]]
+    bool isAutoEvaluatingGraph() const { return isAutoEvaluating(); }
 
 signals:
 
     void allNodesEvaluated();
 
     void targetNodesEvaluated();
+
+    void autoEvaluationChanged();
 
 private:
 

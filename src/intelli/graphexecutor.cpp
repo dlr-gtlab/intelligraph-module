@@ -79,7 +79,7 @@ struct GraphExecutor::Impl
 
     bool autoEvaluate = false;
 
-    bool silent = false;
+    bool silent = true;
 
     /// Helper method that accumulates all dependencies recursively of the given
     /// node and appens them to the spcified list.
@@ -317,7 +317,11 @@ GraphExecutor::evaluateNode(NodeId nodeId)
 void
 GraphExecutor::autoEvaluate(bool enable)
 {
-    pimpl->autoEvaluate = enable;
+    if (pimpl->autoEvaluate != enable)
+    {
+        pimpl->autoEvaluate = enable;
+        emit autoEvaluationChanged();
+    }
 
     if (!pimpl->autoEvaluate) return;
 
@@ -628,8 +632,14 @@ GraphExecutor::evaluateQueue()
         }
         assert(exec::nodeDataInterface(*node) == pimpl->dataModel);
 
+        assert(!pimpl->evaluating.contains(node->uuid()));
+        pimpl->evaluating.push_back(node->uuid());
+
         if (!exec::triggerNodeEvaluation(*node))
         {
+            assert(pimpl->evaluating.contains(node->uuid()));
+            pimpl->evaluating.removeOne(node->uuid());
+
             gtError().verbose()
                 << logErrorExt << tr("triggering evaluation failed!");
             continue;
@@ -641,56 +651,28 @@ GraphExecutor::evaluateQueue()
     }
 }
 
-
 void
 GraphExecutor::onNodeEvaluationStarted(QString const& nodeUuid)
 {
-    if (Node const* node = graph().findNodeByUuid(nodeUuid))
-    {
-        if (Graph::accessGraph(*node) != &graph()) return;
-    }
 
-//    auto logTrace = utils::logIds(this, graph());
-
-//    if (!isSilent())
-//        gtTrace().verbose()
-//            << logTrace << tr("node evaluation of '%1' started!")
-//                                          .arg(nodeUuid);
-
-    assert(!pimpl->evaluating.contains(nodeUuid));
-    pimpl->evaluating.push_back(nodeUuid);
 }
 
 void
 GraphExecutor::onNodeEvaluationFinished(QString const& nodeUuid)
 {
-    if (Node const* node = graph().findNodeByUuid(nodeUuid))
-    {
-        if (Graph::accessGraph(*node) != &graph()) return;
-    }
-
-//    auto logTrace = utils::logIds(this, graph());
-
-//    if (!isSilent())
-//        gtTrace().verbose()
-//            << logTrace << tr("node evaluation of '%1' finished!")
-//                               .arg(nodeUuid);
-
     QTimer::singleShot(0, this, std::bind(&GraphExecutor::onNodeEvaluated, this, nodeUuid));
 }
 
 void
 GraphExecutor::onNodeEvaluated(const NodeUuid& nodeUuid)
 {
-    assert(pimpl->evaluating.contains(nodeUuid));
-    pimpl->evaluating.removeOne(nodeUuid);
-
     auto logError = utils::logIds(this, graph(), tr("Finalizing evaluation failed: "));
     auto logTrace = utils::logIds(this, graph(), tr("Finalizing evaluation: "));
 
     Node* node = graph().findNodeByUuid(nodeUuid);
     if (!node)
     {
+        assert(!pimpl->evaluating.contains(nodeUuid));
         gtError() << logError << tr("invalid node '%1'!").arg(nodeUuid);
         return;
     }
@@ -698,9 +680,14 @@ GraphExecutor::onNodeEvaluated(const NodeUuid& nodeUuid)
     bool isValidNode = graph().findNode(node->id()) == node;
     if (!isValidNode)
     {
+        assert(!pimpl->evaluating.contains(nodeUuid));
         gtError() << logError << tr("unknown node '%1'!").arg(relativeNodePath(*node));
         return;
     }
+
+    assert(node->uuid() == nodeUuid);
+    assert(pimpl->evaluating.contains(nodeUuid));
+    pimpl->evaluating.removeOne(nodeUuid);
 
     if (!isSilent())
         gtTrace().verbose()
@@ -726,6 +713,7 @@ GraphExecutor::onNodeEvaluated(const NodeUuid& nodeUuid)
     }
 
     dataModel().setNodeEvaluationSuccess(nodeUuid);
+
     emit node->evaluated();
 
     if (pimpl->autoEvaluate)
@@ -742,7 +730,7 @@ GraphExecutor::onNodeEvaluated(const NodeUuid& nodeUuid)
         {
             if (!isSilent())
                 gtTrace().verbose()
-                    << logTrace << tr("target nodes evaluated!");
+                    << logTrace << tr("all target nodes evaluated!");
 
             assert(pimpl->pending.empty());
             emit targetNodesEvaluated();
@@ -756,7 +744,7 @@ GraphExecutor::onNodeEvaluated(const NodeUuid& nodeUuid)
 
     if (!isSilent())
         gtTrace().verbose()
-            << logTrace << tr("node finalized!");
+            << logTrace << tr("node '%1' finalized!").arg(relativeNodePath(*node));
 }
 
 void

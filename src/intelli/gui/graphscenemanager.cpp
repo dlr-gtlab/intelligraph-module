@@ -10,6 +10,8 @@
 #include <intelli/gui/graphscenemanager.h>
 
 #include <intelli/graph.h>
+#include <intelli/graphdatamodel.h>
+#include <intelli/graphexecutor.h>
 #include <intelli/gui/graphview.h>
 #include <intelli/gui/graphscene.h>
 
@@ -88,6 +90,17 @@ GraphSceneManager::createScene(Graph& graph)
 
     connect(scene, &GraphScene::destroyed,
             this, &GraphSceneManager::onSceneRemoved);
+
+    auto* root = graph.rootGraph();
+    assert(root);
+    bool isRoot = &graph == root;
+
+    auto* dataModel = root->findDirectChild<GraphDataModel*>();
+    if (dataModel)
+    {
+        auto* executor = new GraphExecutor{graph, *dataModel};
+        executor->autoEvaluate(isRoot);
+    }
 
     // if view has no scene -> set scene
     if (!m_view->nodeScene()) m_view->setScene(*scene);

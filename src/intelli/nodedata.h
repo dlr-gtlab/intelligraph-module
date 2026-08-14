@@ -24,6 +24,7 @@ namespace intelli
 /**
  * @brief The NodeData class. Base class for all node data
  */
+// TODO: use QObject instead?
 class GT_INTELLI_EXPORT NodeData : public GtObject
 {
     Q_OBJECT
@@ -81,7 +82,7 @@ public:
                                        std::forward<Args>(args)...))
         {
             gtTraceId("IntelliGraph")
-                << tr("Invoking meber function '%1 %2(...)' failed!")
+                << tr("Invoking member function '%1 %2(...)' failed!")
                         .arg(rtypeName, methodName);
             return {};
         }

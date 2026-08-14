@@ -33,6 +33,8 @@ struct Graph::Impl
     /// the graph is no longer being modified
     bool resetAfterModification = false;
 
+    bool forwardInvalidation = false;
+
     template <typename MakeError = QString(*)()>
     static inline bool
     canAppendConnection(Graph const& graph,

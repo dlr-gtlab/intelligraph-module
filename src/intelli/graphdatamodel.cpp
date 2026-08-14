@@ -116,8 +116,10 @@ struct GraphDataModel::Impl
 
         portEntry->data = std::move(dset);
 
-        // TODO: need to update successors?
-        Impl::propagate(model, nodeUuid, &GraphDataModel::setNodeEvaluationOutdated);
+        if (nodeEntry->state != NodeEvalState::Invalid)
+        {
+            Impl::propagate(model, nodeUuid, &GraphDataModel::setNodeEvaluationOutdated);
+        }
 
         auto nextNodes = graph->globalConnectionModel().iterateConnections(nodeUuid, PortType::Out);
 
@@ -796,12 +798,18 @@ GraphDataModel::onNodeAppended(Node* node)
 
     node->disconnect(this);
 
+    if (Graph* subgraph = qobject_cast<Graph*>(node))
+    {
+        setupConnections(*subgraph);
+    }
+
     connect(node, &Node::triggerNodeEvaluation,
             this, [node, this](){
                 gtTrace().verbose() << utils::logIds(node) << tr("Triggering Node Evaluation!");
                 setNodeEvaluationOutdated(node->uuid());
             },
             Qt::DirectConnection);
+
     connect(node, &Node::isActiveChanged,
             this, [node, this](){
                 pimpl->nodeEvalStateUpdated(node->uuid());
@@ -809,11 +817,6 @@ GraphDataModel::onNodeAppended(Node* node)
             Qt::DirectConnection);
 
     pimpl->nodeEvalStateUpdated(nodeUuid);
-
-    if (Graph* subgraph = qobject_cast<Graph*>(node))
-    {
-        setupConnections(*subgraph);
-    }
 }
 
 void
@@ -852,6 +855,7 @@ GraphDataModel::onNodeDeleted(Graph* graph, NodeId nodeId)
     // TODO: need to update successors?
     Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
 }
+
 void
 GraphDataModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx)
 {

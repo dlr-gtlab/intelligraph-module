@@ -658,6 +658,8 @@ signals:
      */
     void childNodeDeleted(NodeId nodeId);
 
+    void childNodeInvalidated();
+
 protected:
 
     /// protected constructor

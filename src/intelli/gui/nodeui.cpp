@@ -12,22 +12,26 @@
 #include "intelli/dynamicnode.h"
 #include "intelli/node.h"
 #include "intelli/graph.h"
+#include "intelli/graphdatamodel.h"
+#include "intelli/graphexecmodel.h"
+#include "intelli/graphexecutor.h"
 #include "intelli/graphutilities.h"
+
 #include "intelli/node/dummy.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/node/input/graphuservariablesinput.h"
-#include "intelli/graphexecmodel.h"
+
 #include "intelli/data/double.h"
-#include "intelli/gui/commentgroup.h"
+
 #include "intelli/gui/grapheditor.h"
-#include "intelli/gui/guidata.h"
 #include "intelli/gui/icons.h"
 #include "intelli/gui/nodeuidata.h"
 #include "intelli/gui/nodegeometry.h"
 #include "intelli/gui/nodepainter.h"
 #include "intelli/gui/graphics/nodeobject.h"
 #include "intelli/gui/widgets/graphuservariablesdialog.h"
+
 #include "intelli/private/utils.h"
 #include "intelli/private/node_impl.h" // temporary, needed for widget factory
 
@@ -52,6 +56,7 @@ using DeleteAction = std::pair<NodeUI::CustomDeleteFunctor,
 using BoolObjectMethod = std::function<bool (GtObject*)>;
 using BoolPortMethod = std::function<bool (Node*, PortType, PortIndex)>;
 
+// TODO: expose as public API?
 /// NOT operator
 template <typename Functor>
 inline BoolObjectMethod NOT(Functor fA)
@@ -212,7 +217,7 @@ NodeUI::NodeUI(Option option) :
             if (auto* node = toNode(obj))
             {
                 QString const& path = relativeNodePath(*node);
-                gtInfo() << "### Node:" << path;
+                gtInfo() << "### Node:" << path << node->uuid() << gt::brackets(toString(node->id()));
                 gtInfo() << "###  - Inputs:";
                 for (auto const& port : node->ports(PortType::In))
                 {
@@ -530,12 +535,25 @@ NodeUI::executeNode(GtObject* obj)
     auto* graph = toGraph(node->parentObject());
     if (!graph) return;
 
+#if 1
+    auto* executor = graph->findDirectChild<GraphExecutor*>();
+    if (!executor) return;
+
+    auto* dataModel = graph->findDirectChild<GraphDataModel*>();
+    if (!dataModel) return;
+
+    dataModel->invalidateNode(node->uuid());
+
+    auto future = executor->evaluateNode(node->id());
+    Q_UNUSED(future)
+#else
     auto model = GraphExecutionModel::accessExecModel(*graph);
     if (!model) return;
 
     auto const& nodeUuid = node->uuid();
     model->invalidateNode(nodeUuid);
     model->evaluateNode(nodeUuid).detach();
+#endif
 }
 
 namespace
