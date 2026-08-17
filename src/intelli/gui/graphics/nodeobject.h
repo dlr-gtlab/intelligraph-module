@@ -220,11 +220,21 @@ public:
 
         public:
             EndHighlightsFunctor(Highlights* obj) : h(obj) {}
+            ~EndHighlightsFunctor() { finalize(); }
+
             EndHighlightsFunctor(EndHighlightsFunctor const&) = delete;
-            EndHighlightsFunctor(EndHighlightsFunctor&&) = delete;
             EndHighlightsFunctor& operator=(EndHighlightsFunctor const&) = delete;
-            EndHighlightsFunctor& operator=(EndHighlightsFunctor&&) = delete;
-            inline ~EndHighlightsFunctor() { finalize(); }
+
+            EndHighlightsFunctor(EndHighlightsFunctor&& o) :
+                h(o.h)
+            {
+                o.h = nullptr;
+            }
+            EndHighlightsFunctor& operator=(EndHighlightsFunctor&& o)
+            {
+                std::swap(h, o.h);
+                return *this;
+            }
 
             inline EndHighlightsFunctor& highlightPort(PortId portId)
             {
