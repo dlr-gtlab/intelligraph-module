@@ -297,15 +297,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
 
 )
 
-target_sources(GTlabIntelliGraph
-  PRIVATE
-
-
-
-
-
-)
-
 target_link_libraries(GTlabIntelliGraph
     PUBLIC
     Qt${QT_VERSION_MAJOR}::Core

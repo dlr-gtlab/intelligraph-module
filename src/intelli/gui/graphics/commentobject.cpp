@@ -44,6 +44,8 @@ class CommentGraphicsObject::Overlay : public QGraphicsObject
 {
 public:
 
+    bool showBorder = true;
+
     Overlay(QGraphicsObject* parent = nullptr) : QGraphicsObject(parent)
     {
         setAcceptHoverEvents(true);
@@ -54,7 +56,7 @@ public:
         return static_cast<CommentGraphicsObject*>(parentObject())->boundingRect();
     }
 
-    void paint(QPainter *painter,
+    void paint(QPainter* painter,
                QStyleOptionGraphicsItem const* option,
                QWidget* widget = nullptr) override
     {
@@ -71,6 +73,7 @@ public:
             auto icon = gt::gui::icon::comment();
 
             QSize size{24, 24};
+
             QSize offset = ((p->boundingRect().size() - size) * 0.5).toSize();
             QRect rect{QPoint{offset.width(), offset.height()}, size};
 
@@ -90,11 +93,12 @@ public:
                             Qt::darkGray;
             }
 
-
             gt::gui::colorize(iconbg, bgcolor).paint(painter, rect);
             gt::gui::colorize(icon, color).paint(painter, rect);
             return;
         }
+
+        if (!showBorder && !isSelected && !isHovered) return;
 
         QRectF resizeRect = p->resizeHandleRect();
 
@@ -116,7 +120,7 @@ public:
         // outline
         painter->setPen(pen);
         painter->setBrush(Qt::NoBrush);
-        painter->drawRect(boundingRect());
+        painter->drawRect(p->boundingRect());
     }
 
 protected:
@@ -189,9 +193,7 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
                                              GraphSceneData const& data) :
     InteractableGraphicsObject(data, nullptr),
     m_graph(&graph),
-    m_comment(&comment),
-    m_color(comment.Color()),
-    m_bgcolor(comment.bgColor())
+    m_comment(&comment)
 {
     setFlag(GraphicsItemFlag::ItemIsSelectable, true);
     setFlag(GraphicsItemFlag::ItemContainsChildrenInShape, true);
@@ -204,26 +206,15 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     m_editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_editor->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_editor->setMinimumSize(50, 25);
-
     m_editor->setAutoFillBackground(false);
 
-    QString style = QString(
-                        "QTextEdit {"
-                        " color: %1;"
-                        " background-color: %2;"
-                        "}"
-                        ).arg(comment.Color(),comment.bgColor());
-    m_editor->setStyleSheet(style);
-
     auto* w = new QWidget();
+    w->setAttribute(Qt::WA_TranslucentBackground);
+
     auto* lay = new QVBoxLayout(w);
     lay->setContentsMargins(0, 0, 0, 0);
     lay->addWidget(m_editor);
     w->setLayout(lay);
-
-    w->setAttribute(Qt::WA_TranslucentBackground);
-    w->setAutoFillBackground(false);
-    w->setStyleSheet("background: transparent;");
 
     m_proxyWidget = new QGraphicsProxyWidget(this);
     m_proxyWidget->setWidget(w);
@@ -237,9 +228,8 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
         update();
     });
 
-    connect(this, &InteractableGraphicsObject::objectMoved, this, [this](){
-        commitPosition();
-    }, Qt::DirectConnection);
+    connect(this, &InteractableGraphicsObject::objectMoved,
+            this, &CommentGraphicsObject::commitPosition);
 
     connect(this, &InteractableGraphicsObject::objectCollapsed,
             this, &CommentGraphicsObject::onObjectCollapsed);
@@ -247,12 +237,33 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     connect(m_comment, &CommentData::commentPositionChanged, this, [this](){
         setPos(m_comment->pos());
     }, Qt::DirectConnection);
-    
-    connect(m_comment, &CommentData::commentCollapsedChanged, this, [this](bool doCollapse){
+
+    auto onCollapsedChanged = [this](bool doCollapse){
         setCollapsed(doCollapse);
+    };
+
+    connect(m_comment, &CommentData::commentCollapsedChanged, this, onCollapsedChanged);
+
+    auto onCommentChanged = [this](){
+        m_editor->setMarkdown(m_comment->text());
+        setEditing(false);
+    };
+
+    connect(m_comment, &CommentData::commentChanged, this, onCommentChanged);
+
+    connect(m_comment, &CommentData::commentAlignmentChanged, this, [this](){
+        setEditing(false);
     });
 
-    connect(m_comment, &CommentData::commentSizeChanged, m_proxyWidget, [this](){
+    connect(m_comment, &CommentData::commentBorderVisibilityChanged, this, [this](bool visible){
+        m_overlay->showBorder = visible;
+        m_overlay->update();
+    });
+
+    connect(m_comment, &CommentData::commentColorChanged,
+            this, &CommentGraphicsObject::onColorChanged);
+
+    connect(m_comment, &CommentData::commentSizeChanged, this, [this](){
         QWidget* widget = m_proxyWidget->widget();
         assert(widget);
 
@@ -264,27 +275,18 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
         }
     });
 
-    connect(m_comment, &CommentData::commentChanged, m_editor, [this](){
-        QSignalBlocker _(this);
-        m_editor->setMarkdown(m_comment->text());
-        m_color = m_comment->Color();
-        m_bgcolor = m_comment->bgColor();
-        onColorChanged();
-        setEditing(false);
-    });
-
-    connect(this, &CommentGraphicsObject::colorChanged, this, [this](){
-        auto _ = gtApp->makeCommand(m_comment, tr("Change Comment Color"));
-        m_comment->setColor(m_color,m_bgcolor);
-    }, Qt::DirectConnection);
-
-
     // setup object
     setPos(m_comment->pos());
 
     QSize size = m_comment->size();
-    if (size.isValid()) m_proxyWidget->widget()->resize(size);
-    else m_comment->setSize(m_proxyWidget->widget()->size());
+    if (size.isValid())
+    {
+        m_proxyWidget->widget()->resize(size);
+    }
+    else
+    {
+        m_comment->setSize(m_proxyWidget->widget()->size());
+    }
 
     scene.addItem(this);
 
@@ -302,11 +304,11 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
             this, &CommentGraphicsObject::onCommentConnectionRemoved,
             Qt::DirectConnection);
 
-    m_editor->setMarkdown(m_comment->text());
+    onCommentChanged();
 
-    setEditing(false);
+    onCollapsedChanged(m_comment->isCollapsed());
 
-    collapse(m_comment->isCollapsed());
+    onColorChanged();
 }
 
 CommentGraphicsObject::~CommentGraphicsObject() = default;
@@ -348,8 +350,7 @@ CommentGraphicsObject::boundingRect() const
 {
     if (isCollapsed()) return QRectF{QPointF{0, 0}, QSizeF{30, 30}};
 
-    QRectF rect = m_proxyWidget->boundingRect();
-    return rect;
+    return m_proxyWidget->boundingRect();
 }
 
 QRectF
@@ -405,11 +406,22 @@ CommentGraphicsObject::setEditing(bool isEditing)
                                 style::ZValue::NodeHovered :
                                 style::ZValue::Comment));
 
+    Qt::Alignment alignment = isEditing || !m_comment->isTextCentered() ?
+                                  Qt::AlignLeft : Qt::AlignCenter;
+
+    QTextCursor cursor = m_editor->textCursor();
+    cursor.select(QTextCursor::Document);
+
+    QTextBlockFormat format;
+    format.setAlignment(alignment);
+    cursor.mergeBlockFormat(format);
+    cursor.clearSelection();
+
     if (isEditing)
     {
         setSelected(true);
 
-        auto cursor = m_editor->textCursor();
+        QTextCursor cursor = m_editor->textCursor();
         cursor.movePosition(QTextCursor::MoveOperation::End);
         m_editor->setTextCursor(cursor);
     }
@@ -421,35 +433,52 @@ CommentGraphicsObject::isEditing() const
     return m_overlay->zValue() < 0;
 }
 
-void CommentGraphicsObject::selectColor()
+void
+CommentGraphicsObject::selectColor()
 {
+    QColor bgColor = QColorDialog::getColor(m_comment->backgroundColor(), nullptr, "Select Background Color", QColorDialog::ShowAlphaChannel);
+    if (!bgColor.isValid()) return;
 
-    QColor color = QColorDialog::getColor(m_bgcolor, nullptr, "Select Background Color", QColorDialog::ShowAlphaChannel);
+    QColor colorText = QColorDialog::getColor(m_comment->textColor(), nullptr, "Select Text Color");
+    if (!colorText.isValid()) return;
 
-
-    if (!color.isValid())
-        return;
-
-    QColor colorText = QColorDialog::getColor(m_color, nullptr, "Select Text Color");
-
-    if (!colorText.isValid())
-        return;
-
-    m_color = colorText.name();
-    m_bgcolor = color.name(QColor::HexArgb);
-    emit colorChanged();
+    auto cmd = gtApp->makeCommand(m_comment, tr("Change Comment Color"));
+    Q_UNUSED(cmd);
+    m_comment->setBackgroundColor(bgColor.name(QColor::HexArgb));
+    m_comment->setTextColor(colorText.name(QColor::HexArgb));
 }
 
-void CommentGraphicsObject::onColorChanged()
+void
+CommentGraphicsObject::onColorChanged()
 {
-    QString style = QString(
-                        "QTextEdit {"
-                        " color: %1;"
-                        " background-color: %2;"
-                        "}"
-                        ).arg(m_color,m_bgcolor);
+    QColor textColor = gt::gui::color::text();
+    QColor backgroundColor = gt::gui::color::base();
 
-    m_editor->setStyleSheet(style);
+    QString textColorStr = m_comment->textColor();
+    QString backgroundColorStr = m_comment->backgroundColor();
+
+    if (!textColorStr.isEmpty())
+    {
+        QColor tmp{textColorStr};
+        if (tmp.isValid()) textColor = tmp;
+    }
+    if (!backgroundColorStr.isEmpty())
+    {
+        QColor tmp{backgroundColorStr};
+        if (tmp.isValid()) backgroundColor = tmp;
+    }
+
+    m_editor->setStyleSheet(
+        QStringLiteral(
+            "QTextEdit {"
+            " color: %1;"
+            " background-color: %2;"
+            "}"
+        ).arg(
+            textColor.name(QColor::HexArgb),
+            backgroundColor.name(QColor::HexArgb)
+        )
+    );
 }
 
 void
@@ -522,13 +551,43 @@ CommentGraphicsObject::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 void
 CommentGraphicsObject::setupContextMenu(QMenu& menu)
 {
-    QAction* changeColor = menu.addAction(tr("Change color"));
-    changeColor->setVisible(!isCollapsed());
+    // text alignment
+    QAction* alignmentAction = menu.addAction(tr("Center Text"));
+    alignmentAction->setVisible(!isCollapsed());
+    alignmentAction->setCheckable(true);
+    alignmentAction->setChecked(m_comment->isTextCentered());
 
-    connect(changeColor, &QAction::triggered, this, [this](){
-        selectColor();
+    connect(alignmentAction, &QAction::triggered, this, [this](bool enable){
+        auto arg = enable ? tr("Centered") : tr("Uncentered");
+        auto cmd = gtApp->makeCommand(&commentObject(),
+                                      tr("%1 the comment").arg(arg));
+        Q_UNUSED(cmd);
+        m_comment->setTextCentered(enable);
     });
 
+    // text alignment
+    QAction* showBorderAction = menu.addAction(tr("Show Border"));
+    showBorderAction->setVisible(!isCollapsed());
+    showBorderAction->setCheckable(true);
+    showBorderAction->setChecked(m_comment->showBorder());
+
+    connect(showBorderAction, &QAction::triggered, this, [this](bool enable){
+        auto arg = enable ? tr("Show") : tr("Hide");
+        auto cmd = gtApp->makeCommand(&commentObject(),
+                                      tr("%1 the comment's border").arg(arg));
+        Q_UNUSED(cmd);
+        m_comment->setShowBorder(enable);
+    });
+
+    // color
+    QAction* changeColorAction = menu.addAction(tr("Change color..."));
+    changeColorAction->setIcon(gt::gui::icon::palette());
+    changeColorAction->setVisible(!isCollapsed());
+
+    connect(changeColorAction, &QAction::triggered,
+            this, &CommentGraphicsObject::selectColor);
+
+    // node connection
     QAction* connectAction = menu.addAction(tr("Connect to..."));
     connectAction->setIcon(gt::gui::icon::chain());
     connectAction->setVisible(!isCollapsed());

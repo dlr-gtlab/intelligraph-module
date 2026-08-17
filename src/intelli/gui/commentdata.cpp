@@ -17,7 +17,6 @@
 #include <gt_stringproperty.h>
 #include <gt_propertystructcontainer.h>
 
-
 #include <gt_coreapplication.h>
 
 #include <QSize>
@@ -59,19 +58,37 @@ struct CommentData::Impl
         "collapsed", QObject::tr("Collapsed"), QObject::tr("Collapsed"), false
     };
 
+    /// whether the comment is centered
+    GtBoolProperty textCentered{
+        "textCentered", QObject::tr("Text Centered"),
+        QObject::tr("Whether to center the text of the comment"),
+        false
+    };
+
+    /// whether the comment's border should be displayed
+    GtBoolProperty showBorder{
+        "showBorder", QObject::tr("Show Broder"),
+        QObject::tr("Whether to show the comment's border"),
+        true
+    };
+
     GtPropertyStructContainer connections{
         "connections", tr("Connected Objects")
     };
-    //
-    GtStringProperty colorText{
-        "colortext", QObject::tr("Text Color"), QObject::tr("Color of the comment text")
-    };
-    GtStringProperty bgcolor{
-        "backgroundtext", QObject::tr("Background Color"), QObject::tr("Color of the background")
-    };
-
     /// TODO: remove me once core issue #1366 is merged
     QVector<NodeId> connectionsData;
+
+    /// text color
+    GtStringProperty textColor{
+        "textColor", QObject::tr("Text Color"),
+        QObject::tr("Color of the text")
+    };
+
+    /// text background color
+    GtStringProperty bgColor{
+        "bgColor", QObject::tr("Background Color"),
+        QObject::tr("Color of the background")
+    };
 };
 
 char const* S_CONNECTION_DATA_TYPE_ID = "ConnectionData";
@@ -90,8 +107,12 @@ CommentData::CommentData(GtObject* parent) :
     registerProperty(pimpl->sizeHeight);
     registerProperty(pimpl->collapsed);
     registerProperty(pimpl->text);
-    registerProperty(pimpl->colorText);
-    registerProperty(pimpl->bgcolor);
+
+    QString displayCat = tr("Display");
+    registerProperty(pimpl->textCentered, displayCat);
+    registerProperty(pimpl->showBorder, displayCat);
+    registerProperty(pimpl->textColor, displayCat);
+    registerProperty(pimpl->bgColor, displayCat);
 
     // presence of struct indicates that the node is collapsed
     GtPropertyStructDefinition structType{S_CONNECTION_DATA_TYPE_ID};
@@ -120,32 +141,33 @@ CommentData::CommentData(GtObject* parent) :
     });
 
     // must subscribe to both properties incase only one changes
-    connect(&pimpl->posX, &GtAbstractProperty::changed, this, [this](){
-        emit commentPositionChanged();
-    });
-    connect(&pimpl->posY, &GtAbstractProperty::changed, this, [this](){
-        emit commentPositionChanged();
-    });
+    connect(&pimpl->posX, &GtAbstractProperty::changed,
+            this, &CommentData::commentPositionChanged);
+
+    connect(&pimpl->posY, &GtAbstractProperty::changed,
+            this, &CommentData::commentPositionChanged);
 
     // must subscribe to both properties incase only one changes
-    connect(&pimpl->sizeWidth, &GtAbstractProperty::changed, this, [this](){
-        emit commentSizeChanged();
-    });
-    connect(&pimpl->sizeHeight, &GtAbstractProperty::changed, this, [this](){
-        emit commentSizeChanged();
+    connect(&pimpl->sizeWidth, &GtAbstractProperty::changed,
+            this, &CommentData::commentSizeChanged);
+    connect(&pimpl->sizeHeight, &GtAbstractProperty::changed,
+            this, &CommentData::commentSizeChanged);
+
+    connect(&pimpl->text, &GtAbstractProperty::changed,
+            this, &CommentData::commentChanged);
+
+    connect(&pimpl->textCentered, &GtAbstractProperty::changed,
+            this, &CommentData::commentAlignmentChanged);
+
+    connect(&pimpl->showBorder, &GtAbstractProperty::changed, this, [this](){
+        emit commentBorderVisibilityChanged(showBorder());
     });
 
-    connect(&pimpl->text, &GtAbstractProperty::changed, this, [this](){
-        emit commentChanged();
-    });
+    connect(&pimpl->bgColor, &GtAbstractProperty::changed,
+            this, &CommentData::commentColorChanged);
 
-    connect(&pimpl->bgcolor, &GtAbstractProperty::changed, this, [this](){
-        emit commentChanged();
-    });
-
-    connect(&pimpl->colorText, &GtAbstractProperty::changed, this, [this](){
-        emit commentChanged();
-    });
+    connect(&pimpl->textColor, &GtAbstractProperty::changed,
+            this, &CommentData::commentColorChanged);
 
     setObjectName(QStringLiteral("comment_%1")
                       .arg(uuid().remove("{").remove("-").mid(0, 8)));
@@ -242,6 +264,62 @@ CommentData::isCollapsed() const
 }
 
 void
+CommentData::setTextCentered(bool centered)
+{
+    if (this->isTextCentered() != centered)
+    {
+        pimpl->textCentered = centered;
+        changed();
+    }
+}
+
+bool
+CommentData::isTextCentered() const
+{
+    return pimpl->textCentered;
+}
+
+void
+CommentData::setShowBorder(bool enabled)
+{
+    if (this->showBorder() != enabled)
+    {
+        pimpl->showBorder = enabled;
+        changed();
+    }
+}
+
+bool
+CommentData::showBorder() const
+{
+    return pimpl->showBorder;
+}
+
+void
+CommentData::setTextColor(QString textColor)
+{
+    pimpl->textColor = std::move(textColor);
+}
+
+QString const&
+CommentData::textColor() const
+{
+    return pimpl->textColor.get();
+}
+
+void
+CommentData::setBackgroundColor(QString textColor)
+{
+    pimpl->bgColor = std::move(textColor);
+}
+
+QString const&
+CommentData::backgroundColor() const
+{
+    return pimpl->bgColor.get();
+}
+
+void
 CommentData::appendNodeConnection(NodeId targetNodeId)
 {
     if (!targetNodeId.isValid() || isNodeConnected(targetNodeId)) return;
@@ -292,30 +370,6 @@ CommentData::nodeConnectionAt(size_t idx) const
     bool ok = true;
     NodeId nodeId = NodeId::fromValue(pimpl->connections.at(idx).ident().toUInt(&ok));
     return ok ? nodeId : invalid<NodeId>();
-}
-
-void
-CommentData::setColor(QString color,QString bgcolor)
-{
-    {
-        QSignalBlocker _(this);
-        pimpl->colorText=color;
-        pimpl->bgcolor=bgcolor;
-    }
-    emit commentChanged();
-}
-
-
-QString
-CommentData::Color() const
-{
-    return pimpl->colorText;
-}
-
-QString
-CommentData::bgColor() const
-{
-    return pimpl->bgcolor;
 }
 
 void

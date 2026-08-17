@@ -82,6 +82,30 @@ public:
      */
     bool isCollapsed() const;
 
+    void setTextCentered(bool centered);
+
+    bool isTextCentered() const;
+
+    void setShowBorder(bool centered);
+
+    bool showBorder() const;
+
+    void setTextColor(QString textColor);
+
+    /**
+     * @brief Returns the current color of the comment text
+     * @return text color string
+     */
+    QString const& textColor() const;
+
+    void setBackgroundColor(QString textColor);
+
+    /**
+     * @brief Returns the current color of the comment background
+     * @return background color string
+     */
+    QString const& backgroundColor() const;
+
     /**
      * @brief Links the comment to a node with the id `targetNodeId`. A comment
      * may be linked to none, one, or multiple comments.
@@ -121,24 +145,6 @@ public:
      */
     NodeId nodeConnectionAt(size_t idx) const;
 
-    /**
-     * @brief Sets the color of the comment text and background.
-     * @param color Text color, bgcolor Background color.
-     */
-    void setColor(QString color,QString bgcolor);
-
-    /**
-     * @brief Returns the current color of the comment text
-     * @return text color string
-     */
-    QString Color() const;
-
-    /**
-     * @brief Returns the current color of the comment background
-     * @return background color string
-     */
-    QString bgColor() const;
-
 signals:
 
     /// Emitted once the comment is about to be deleted. Its data can still be
@@ -154,6 +160,15 @@ signals:
     /// Emitted once the widget's size changes (is also triggered by `setSize`)
     void commentSizeChanged();
 
+    /// Emitted once a comment color is changed.
+    void commentColorChanged();
+
+    /// Emitted once the comment alignment is changed.
+    void commentAlignmentChanged();
+
+    /// Emitted once the comment's border visibility changed.
+    void commentBorderVisibilityChanged(bool visible);
+
     /// Emitted once the comment's text changes
     void commentChanged();
 
@@ -162,9 +177,6 @@ signals:
 
     /// Emitted once a node connection was removed.
     void nodeConnectionRemoved(NodeId nodeId);
-
-    /// Emitted once a comment color is changed.
-    void colorChanged();
 
 protected:
 
