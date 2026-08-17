@@ -357,9 +357,7 @@ public:
      * @param conId Connection to chech
      * @return Can connect
      */
-    bool canAppendConnection(ConnectionId conId);
-    [[deprecated("Use `canAppendConnection` instead")]]
-    bool canAppendConnections(ConnectionId conId);
+    bool canAppendConnection(ConnectionId conId) const;
 
     /**
      * @brief Appends the node to the intelli graph. Use this function instead

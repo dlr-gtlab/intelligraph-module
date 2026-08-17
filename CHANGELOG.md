@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed sporadic crashes, while shutting down a detached executor - #352
+- Fixed node and port highlighting when creating a draft connection - #362
 
 ### Added
 
