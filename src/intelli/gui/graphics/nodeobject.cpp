@@ -625,7 +625,7 @@ NodeGraphicsObject::Highlights::isPortCompatible(PortId port) const
 }
 
 void
-NodeGraphicsObject::Highlights::setAsIncompatible()
+NodeGraphicsObject::Highlights::makeIncompatible()
 {
     m_isActive = true;
     m_isNodeCompatible = false;
@@ -633,34 +633,6 @@ NodeGraphicsObject::Highlights::setAsIncompatible()
     m_compatiblePorts.clear();
 
     emit m_object->updateWidgetPalette(QPrivateSignal());
-
-    m_object->update();
-}
-
-void
-NodeGraphicsObject::Highlights::setCompatiblePorts(TypeId const& typeId,
-                                                   PortType type)
-{
-    m_isActive = true;
-    m_isNodeCompatible = true;
-
-    auto& node = m_object->node();
-
-    auto& factory = NodeDataFactory::instance();
-    for (auto& port : node.ports(type))
-    {
-        // check whether port is already connected
-        if (type == PortType::In && port.isConnected()) continue;
-
-        if (!factory.canConvert(port.typeId, typeId, type)) continue;
-
-        m_compatiblePorts.append(port.id());
-    }
-
-    if (isNodeCompatible())
-    {
-        emit m_object->updateWidgetPalette(QPrivateSignal());
-    }
     m_object->update();
 }
 
@@ -674,9 +646,26 @@ void
 NodeGraphicsObject::Highlights::clear()
 {
     m_isActive = false;
+    m_isNodeCompatible = false;
     m_compatiblePorts.clear();
 
     emit m_object->updateWidgetPalette(QPrivateSignal());
+    m_object->update();
+}
 
+NodeGraphicsObject::Highlights::EndHighlightsFunctor
+NodeGraphicsObject::Highlights::beginHighlights()
+{
+    m_compatiblePorts.clear();
+    return EndHighlightsFunctor{this};
+}
+
+void
+NodeGraphicsObject::Highlights::endHighlights()
+{
+    m_isActive = true;
+    m_isNodeCompatible = !m_compatiblePorts.empty();
+
+    emit m_object->updateWidgetPalette(QPrivateSignal());
     m_object->update();
 }

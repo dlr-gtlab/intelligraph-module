@@ -35,7 +35,7 @@ struct Graph::Impl
 
     template <typename MakeError = QString(*)()>
     static inline bool
-    canAppendConnection(Graph& graph,
+    canAppendConnection(Graph const& graph,
                         ConnectionId conId,
                         MakeError const& makeError = {},
                         bool silent = true)
@@ -47,7 +47,7 @@ struct Graph::Impl
                 gtWarning() << makeError()
                             << tr("(invalid connection)");
             }
-            return {};
+            return false;
         }
 
         // check if nodes differ
@@ -58,7 +58,7 @@ struct Graph::Impl
                 gtWarning() << makeError()
                             << tr("(connection in-node and out-node are qeual)");
             }
-            return {};
+            return false;
         }
 
         // connection may already exist
@@ -69,7 +69,7 @@ struct Graph::Impl
                 gtWarning() << makeError()
                             << tr("(connection already exists)");
             }
-            return {};
+            return false;
         }
 
         // check if nodes exist
@@ -87,7 +87,7 @@ struct Graph::Impl
                                    .arg(targetNode == conModel.end() ? "found" : "not found")
                                    .arg(sourceNode == conModel.end() ? "found" : "not found");
             }
-            return {};
+            return false;
         }
 
         assert(targetNode->node->id() == conId.inNodeId &&
@@ -108,7 +108,7 @@ struct Graph::Impl
                                    .arg(inPort  ? "found" : "not found")
                                    .arg(outPort ? "found" : "not found");
             }
-            return {};
+            return false;
         }
 
         // check if output is connected to input
@@ -120,7 +120,7 @@ struct Graph::Impl
                 gtWarning() << makeError()
                             << tr("(cannot connect ports of same port type)");
             }
-            return {};
+            return false;
         }
 
         // target node should be an input port
@@ -136,7 +136,7 @@ struct Graph::Impl
                             << tr("(cannot connect ports with incompatible types: %1 vs %2")
                                    .arg(outPort->typeId, inPort->typeId);
             }
-            return {};
+            return false;
         }
 
         // check if input port is already connected
@@ -148,7 +148,7 @@ struct Graph::Impl
                 gtWarning() << makeError()
                             << tr("(in-port is already connected)");
             }
-            return {};
+            return false;
         }
 
         return true;

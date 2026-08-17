@@ -512,13 +512,7 @@ Graph::connectionUuid(ConnectionId conId) const
 }
 
 bool
-Graph::canAppendConnection(ConnectionId conId)
-{
-    return Impl::canAppendConnection(*this, conId);
-}
-
-bool
-Graph::canAppendConnections(ConnectionId conId)
+Graph::canAppendConnection(ConnectionId conId) const
 {
     return Impl::canAppendConnection(*this, conId);
 }

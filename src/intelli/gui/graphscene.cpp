@@ -184,25 +184,25 @@ highlightCompatibleNodes(GraphScene& scene,
                          Node& sourceNode,
                          Node::PortInfo const& sourcePort)
 {
-    NodeId sourceNodeId = sourceNode.id();
-    PortId sourcePortId = sourcePort.id();
-    PortType type = sourceNode.portType(sourcePortId);
+    NodeId const sourceNodeId = sourceNode.id();
+    PortId const sourcePortId = sourcePort.id();
+    PortType const type = sourceNode.portType(sourcePortId);
+    PortType const targetType = invert(type);
     assert(type != PortType::NoType);
 
-    // "deemphasize" all connections
+    // "deactivate" all connections
     for (auto& con : scene.m_connections)
     {
         con.object->makeInactive(true);
     }
 
-    // find nodes that can potentially recieve a connection
-    // -> all nodes that we do not depend on/that do not depend on us
+    Graph const& graph = scene.graph();
+    auto const& conModel = graph.connectionModel();
+    auto const& allNodeIds = conModel.iterateNodeIds();
+
+    // all nodes downstream are incompatible
     QSet<NodeId> dependencies;
-
-    auto const& conModel = scene.graph().connectionModel();
-    auto allNodes = conModel.iterateNodeIds();
-
-    auto accumulate = [&conModel](QSet<NodeId>& storage, auto const& range, PortType type, auto const& lambda) -> void {
+    auto const accumulate = [&conModel](QSet<NodeId>& storage, auto const& range, PortType type, auto const& lambda) -> void {
         for (NodeId nodeId : range)
         {
             if (storage.contains(nodeId)) continue;
@@ -211,35 +211,45 @@ highlightCompatibleNodes(GraphScene& scene,
         }
     };
 
-    accumulate(dependencies, conModel.iterateNodes(sourceNodeId, PortType::In ), PortType::In , accumulate);
-    accumulate(dependencies, conModel.iterateNodes(sourceNodeId, PortType::Out), PortType::Out, accumulate);
+    accumulate(dependencies, conModel.iterateNodes(sourceNodeId, targetType), targetType, accumulate);
     dependencies.insert(sourceNodeId);
 
-    QVector<NodeId> targets;
-    std::set_difference(allNodes.begin(), allNodes.end(),
-                        dependencies.begin(), dependencies.end(),
-                        std::back_inserter(targets));
+    // for all other nodes check if a connection can be created
+    auto const highlights = [&scene](NodeId nodeId) -> NodeGraphicsObject::Highlights& {
+        NodeGraphicsObject* target = scene.nodeObject(nodeId);
+        assert(target);
+        return target->highlights();
+    };
 
-    // "unhighlight" all dependencies and dependent nodes
-    for (NodeId nodeId : qAsConst(dependencies))
+    for (NodeId const targetId : allNodeIds)
     {
-        NodeGraphicsObject* target = scene.nodeObject(nodeId);
+        if (dependencies.contains(targetId))
+        {
+            highlights(targetId).makeIncompatible();
+            continue;
+        }
+
+        Node const* target = conModel.node(targetId);
         assert(target);
-        target->highlights().setAsIncompatible();
-    }
-    // highlight all potential target nodes
-    for (NodeId nodeId : qAsConst(targets))
-    {
-        NodeGraphicsObject* target = scene.nodeObject(nodeId);
-        assert(target);
-        target->highlights().setCompatiblePorts(sourcePort.typeId, invert(type));
+
+        auto highlighting = highlights(targetId).beginHighlights();
+
+        // check each port
+        for (auto const& targetPort : target->ports(targetType))
+        {
+            if (!targetPort.visible) continue;
+
+            ConnectionId targetCon = {sourceNodeId, sourcePortId, targetId, targetPort.id()};
+            if (targetType == PortType::Out) targetCon.reverse();
+
+            if (!graph.canAppendConnection(targetCon)) continue;
+
+            highlighting.highlightPort(targetPort.id());
+        }
     }
 
     // override source port
-    NodeGraphicsObject* source = scene.nodeObject(sourceNodeId);
-    assert(source);
-    source->highlights().setAsIncompatible();
-    source->highlights().setPortAsCompatible(sourcePortId);
+    highlights(sourceNodeId).beginHighlights().highlightPort(sourcePortId);
 }
 
 static void
@@ -251,6 +261,7 @@ clearHighlights(GraphScene& scene)
         assert(entry.object);
         entry.object->highlights().clear();
     }
+    // reset all connections
     for (auto& con : scene.m_connections)
     {
         con.object->makeInactive(false);
