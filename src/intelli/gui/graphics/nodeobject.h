@@ -13,6 +13,8 @@
 #include <intelli/globals.h>
 #include <intelli/gui/graphics/interactableobject.h>
 
+#include <gt_finally.h>
+
 #include <QPointer>
 
 class QGraphicsProxyWidget;
@@ -171,7 +173,7 @@ public:
         NodeGraphicsObject* m_object = nullptr;
         /// List of highlighted ports
         /// (used preallocated array as a preliminary optimization)
-        QVarLengthArray<PortId, 10> m_compatiblePorts;
+        QVector<PortId> m_compatiblePorts;
         /// Whether ports should be highlighted
         bool m_isActive = false;
         /// Whether the node is considered compatible
@@ -189,38 +191,91 @@ public:
          * @brief Returns whether highlighting is active
          * @return Is active
          */
+        GT_NO_DISCARD
         bool isActive() const;
+
         /**
          * @brief Whether this node is should be marked as compatible
          * @return Is node comaptible
          */
+        GT_NO_DISCARD
         bool isNodeCompatible() const;
+
         /**
          * @brief Returns whether the port should be marked compatible
          * @param port Port to check
          * @return Is port highlighted
          */
+        GT_NO_DISCARD
         bool isPortCompatible(PortId port) const;
+
         /**
          * @brief Highlights this node and all ports as incompatible
          */
-        void setAsIncompatible();
+        void makeIncompatible();
+
+        class EndHighlightsFunctor
+        {
+            Highlights* h = {};
+
+        public:
+            EndHighlightsFunctor(Highlights* obj) : h(obj) {}
+            EndHighlightsFunctor(EndHighlightsFunctor const&) = delete;
+            EndHighlightsFunctor(EndHighlightsFunctor&&) = delete;
+            EndHighlightsFunctor& operator=(EndHighlightsFunctor const&) = delete;
+            EndHighlightsFunctor& operator=(EndHighlightsFunctor&&) = delete;
+            inline ~EndHighlightsFunctor() { finalize(); }
+
+            inline EndHighlightsFunctor& highlightPort(PortId portId)
+            {
+                if (h) h->setPortAsCompatible(portId);
+                return *this;
+            }
+
+            inline void makeIncompatible()
+            {
+                if (h) h->makeIncompatible();
+                h = nullptr;
+            }
+
+            inline void clear()
+            {
+                if (h) h->clear();
+                h = nullptr;
+            }
+
+            inline void finalize()
+            {
+                if (h) h->endHighlights();
+                h = nullptr;
+            }
+        };
+
         /**
-         * @brief Highlights all ports that are compatible to the TypeId.
-         * @param typeId TypeId to check
-         * @param type Which ports to check
+         * @brief Begin scoped builder, for adding compatible ports one by one
+         * @return Scoped helper object for setting up the highlights
          */
-        void setCompatiblePorts(TypeId const& typeId, PortType type);
+        GT_NO_DISCARD
+        EndHighlightsFunctor beginHighlights();
+
+        /**
+         * @brief Clears the highlights.
+         */
+        void clear();
+
+    private:
+
         /**
          * @brief Forces the port to be marked as compatible (visual only). Does
          * not override other highlights.
          * @param port Port to mark as compatible
          */
         void setPortAsCompatible(PortId port);
+
         /**
-         * @brief Clears the highlights.
+         * @brief Finalizes the highlighting, started with `beginHighlights`
          */
-        void clear();
+        void endHighlights();
     };
 
 protected:
