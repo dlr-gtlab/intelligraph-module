@@ -126,19 +126,17 @@ private:
     /// anchor object and cannot be moved unless its uncollapsed.
     QPointer<GraphicsObject const> m_anchor;
     /// Main widget
-    QGraphicsProxyWidget* m_proxyWidget = {};
+    QGraphicsProxyWidget* m_proxyWidget;
     /// Overlay widget to suppress mouse and key event to the main widget
-    Overlay* m_overlay = {};
+    Overlay* m_overlay;
     /// Comment editor
-    QTextEdit* m_editor = {};
+    QTextEdit* m_editor;
 
     QRectF resizeHandleRect() const;
 
     void setEditing(bool isEditing = true);
 
     bool isEditing() const;
-
-    void selectColor();
 
     void onColorChanged();
 

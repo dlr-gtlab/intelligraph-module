@@ -13,6 +13,7 @@
 #include <intelli/gui/style.h>
 #include <intelli/utilities.h>
 #include <intelli/gui/commentdata.h>
+#include <intelli/gui/widgets/commentcolordialog.h>
 #include <intelli/private/utils.h>
 
 #include <gt_application.h>
@@ -31,7 +32,6 @@
 #include <QMenu>
 #include <QAction>
 #include <QVBoxLayout>
-#include <QColorDialog>
 
 using namespace intelli;
 
@@ -193,7 +193,10 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
                                              GraphSceneData const& data) :
     InteractableGraphicsObject(data, nullptr),
     m_graph(&graph),
-    m_comment(&comment)
+    m_comment(&comment),
+    m_proxyWidget(nullptr),
+    m_overlay(nullptr),
+    m_editor(nullptr)
 {
     setFlag(GraphicsItemFlag::ItemIsSelectable, true);
     setFlag(GraphicsItemFlag::ItemContainsChildrenInShape, true);
@@ -434,21 +437,6 @@ CommentGraphicsObject::isEditing() const
 }
 
 void
-CommentGraphicsObject::selectColor()
-{
-    QColor bgColor = QColorDialog::getColor(m_comment->backgroundColor(), nullptr, "Select Background Color", QColorDialog::ShowAlphaChannel);
-    if (!bgColor.isValid()) return;
-
-    QColor colorText = QColorDialog::getColor(m_comment->textColor(), nullptr, "Select Text Color");
-    if (!colorText.isValid()) return;
-
-    auto cmd = gtApp->makeCommand(m_comment, tr("Change Comment Color"));
-    Q_UNUSED(cmd);
-    m_comment->setBackgroundColor(bgColor.name(QColor::HexArgb));
-    m_comment->setTextColor(colorText.name(QColor::HexArgb));
-}
-
-void
 CommentGraphicsObject::onColorChanged()
 {
     QColor textColor = gt::gui::color::text();
@@ -565,27 +553,23 @@ CommentGraphicsObject::setupContextMenu(QMenu& menu)
         m_comment->setTextCentered(enable);
     });
 
-    // text alignment
-    QAction* showBorderAction = menu.addAction(tr("Show Border"));
-    showBorderAction->setVisible(!isCollapsed());
-    showBorderAction->setCheckable(true);
-    showBorderAction->setChecked(m_comment->showBorder());
-
-    connect(showBorderAction, &QAction::triggered, this, [this](bool enable){
-        auto arg = enable ? tr("Show") : tr("Hide");
-        auto cmd = gtApp->makeCommand(&commentObject(),
-                                      tr("%1 the comment's border").arg(arg));
-        Q_UNUSED(cmd);
-        m_comment->setShowBorder(enable);
-    });
-
     // color
-    QAction* changeColorAction = menu.addAction(tr("Change color..."));
+    QAction* changeColorAction = menu.addAction(tr("Change style..."));
     changeColorAction->setIcon(gt::gui::icon::palette());
     changeColorAction->setVisible(!isCollapsed());
 
-    connect(changeColorAction, &QAction::triggered,
-            this, &CommentGraphicsObject::selectColor);
+    connect(changeColorAction, &QAction::triggered, this, [this](){
+        CommentColorDialog dialog;
+        dialog.setShowBorder(m_comment->showBorder());
+
+        if (!dialog.exec()) return;
+
+        auto cmd = gtApp->makeCommand(m_comment, tr("Change style of comment"));
+        Q_UNUSED(cmd);
+        m_comment->setBackgroundColor(dialog.backgroundColor().name(QColor::HexArgb));
+        m_comment->setTextColor(dialog.textColor().name(QColor::HexRgb));
+        m_comment->setShowBorder(dialog.showBorder());
+    });
 
     // node connection
     QAction* connectAction = menu.addAction(tr("Connect to..."));

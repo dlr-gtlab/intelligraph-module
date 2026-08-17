@@ -167,6 +167,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphics/popupitem.h
     intelli/gui/widgets/abstractnumberinputwidget.h
     intelli/gui/widgets/booldisplaygraphicswidget.h intelli/gui/widgets/booldisplaygraphicswidget.cpp
+    intelli/gui/widgets/commentcolordialog.h intelli/gui/widgets/commentcolordialog.cpp
     intelli/gui/widgets/doubleinputwidget.h
     intelli/gui/widgets/editablelabel.h
     intelli/gui/widgets/finddirectchildwidget.h
