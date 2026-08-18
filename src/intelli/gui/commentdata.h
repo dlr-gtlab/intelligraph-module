@@ -82,15 +82,15 @@ public:
      */
     bool isCollapsed() const;
 
-    void setTextCentered(bool centered);
+    void setTextAlignment(Qt::Alignment alignment);
 
-    bool isTextCentered() const;
+    Qt::Alignment textAlignment() const;
 
-    void setShowBorder(bool centered);
+    void setShowFrame(bool centered);
 
-    bool showBorder() const;
+    bool showFrame() const;
 
-    void setTextColor(QString textColor);
+    void setTextColor(QString color);
 
     /**
      * @brief Returns the current color of the comment text
@@ -98,7 +98,7 @@ public:
      */
     QString const& textColor() const;
 
-    void setBackgroundColor(QString textColor);
+    void setBackgroundColor(QString color);
 
     /**
      * @brief Returns the current color of the comment background
@@ -167,7 +167,7 @@ signals:
     void commentAlignmentChanged();
 
     /// Emitted once the comment's border visibility changed.
-    void commentBorderVisibilityChanged(bool visible);
+    void commentFrameVisibilityChanged(bool visible);
 
     /// Emitted once the comment's text changes
     void commentChanged();

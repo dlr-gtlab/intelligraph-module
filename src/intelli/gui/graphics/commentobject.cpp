@@ -35,6 +35,8 @@
 
 using namespace intelli;
 
+constexpr int padding = 1;
+
 /**
  * @brief The CommentGraphicsObject::Overlay class.
  * Helper class that forwards all key, mouse, and hover events it recieves
@@ -44,7 +46,7 @@ class CommentGraphicsObject::Overlay : public QGraphicsObject
 {
 public:
 
-    bool showBorder = true;
+    bool showFrame = true;
 
     Overlay(QGraphicsObject* parent = nullptr) : QGraphicsObject(parent)
     {
@@ -98,7 +100,7 @@ public:
             return;
         }
 
-        if (!showBorder && !isSelected && !isHovered) return;
+        if (!showFrame && !isSelected && !isHovered) return;
 
         QRectF resizeRect = p->resizeHandleRect();
 
@@ -120,7 +122,7 @@ public:
         // outline
         painter->setPen(pen);
         painter->setBrush(Qt::NoBrush);
-        painter->drawRect(p->boundingRect());
+        painter->drawRect(p->boundingRect().adjusted(padding, padding, -padding, -padding));
     }
 
 protected:
@@ -215,7 +217,7 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     w->setAttribute(Qt::WA_TranslucentBackground);
 
     auto* lay = new QVBoxLayout(w);
-    lay->setContentsMargins(0, 0, 0, 0);
+    lay->setContentsMargins(padding, padding, padding, padding);
     lay->addWidget(m_editor);
     w->setLayout(lay);
 
@@ -228,7 +230,7 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     // setup connections
     connect(gtApp, &GtApplication::themeChanged, this, [this, w](){
         gt::gui::applyThemeToWidget(w);
-        update();
+        onColorChanged();
     });
 
     connect(this, &InteractableGraphicsObject::objectMoved,
@@ -258,8 +260,8 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
         setEditing(false);
     });
 
-    connect(m_comment, &CommentData::commentBorderVisibilityChanged, this, [this](bool visible){
-        m_overlay->showBorder = visible;
+    connect(m_comment, &CommentData::commentFrameVisibilityChanged, this, [this](bool visible){
+        m_overlay->showFrame = visible;
         m_overlay->update();
     });
 
@@ -409,8 +411,7 @@ CommentGraphicsObject::setEditing(bool isEditing)
                                 style::ZValue::NodeHovered :
                                 style::ZValue::Comment));
 
-    Qt::Alignment alignment = isEditing || !m_comment->isTextCentered() ?
-                                  Qt::AlignLeft : Qt::AlignCenter;
+    Qt::Alignment alignment = isEditing ? Qt::AlignLeft : m_comment->textAlignment();
 
     QTextCursor cursor = m_editor->textCursor();
     cursor.select(QTextCursor::Document);
@@ -463,10 +464,11 @@ CommentGraphicsObject::onColorChanged()
             " background-color: %2;"
             "}"
         ).arg(
-            textColor.name(QColor::HexArgb),
+            textColor.name(QColor::HexRgb),
             backgroundColor.name(QColor::HexArgb)
         )
     );
+    update();
 }
 
 void
@@ -481,6 +483,7 @@ CommentGraphicsObject::resizeHandleRect() const
     constexpr QSize size{8, 8};
 
     QRectF body = boundingRect();
+    body.translate(-padding, -padding);
     return QRectF(body.bottomRight() - QPoint{size.width(), size.height()}, size);
 }
 
@@ -539,36 +542,31 @@ CommentGraphicsObject::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 void
 CommentGraphicsObject::setupContextMenu(QMenu& menu)
 {
-    // text alignment
-    QAction* alignmentAction = menu.addAction(tr("Center Text"));
-    alignmentAction->setVisible(!isCollapsed());
-    alignmentAction->setCheckable(true);
-    alignmentAction->setChecked(m_comment->isTextCentered());
-
-    connect(alignmentAction, &QAction::triggered, this, [this](bool enable){
-        auto arg = enable ? tr("Centered") : tr("Uncentered");
-        auto cmd = gtApp->makeCommand(&commentObject(),
-                                      tr("%1 the comment").arg(arg));
-        Q_UNUSED(cmd);
-        m_comment->setTextCentered(enable);
-    });
-
-    // color
+    // style
     QAction* changeColorAction = menu.addAction(tr("Change style..."));
     changeColorAction->setIcon(gt::gui::icon::palette());
     changeColorAction->setVisible(!isCollapsed());
 
     connect(changeColorAction, &QAction::triggered, this, [this](){
         CommentColorDialog dialog;
-        dialog.setShowBorder(m_comment->showBorder());
+        dialog.setBackgroundColor(m_comment->backgroundColor());
+        dialog.setTextColor(m_comment->textColor());
+        dialog.setShowFrame(m_comment->showFrame());
+        dialog.setTextAlignment(m_comment->textAlignment());
 
         if (!dialog.exec()) return;
 
         auto cmd = gtApp->makeCommand(m_comment, tr("Change style of comment"));
         Q_UNUSED(cmd);
-        m_comment->setBackgroundColor(dialog.backgroundColor().name(QColor::HexArgb));
-        m_comment->setTextColor(dialog.textColor().name(QColor::HexRgb));
-        m_comment->setShowBorder(dialog.showBorder());
+
+        m_comment->setBackgroundColor(!dialog.isDefaultBackgroundColor() ?
+                                          dialog.backgroundColor().name(QColor::HexArgb) :
+                                          QString{});
+        m_comment->setTextColor(!dialog.isDefaultTextColor() ?
+                                    dialog.textColor().name(QColor::HexRgb) :
+                                    QString{});
+        m_comment->setShowFrame(dialog.showFrame());
+        m_comment->setTextAlignment(dialog.textAlignment());
     });
 
     // node connection
