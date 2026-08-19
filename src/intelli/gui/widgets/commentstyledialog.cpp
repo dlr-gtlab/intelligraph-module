@@ -169,6 +169,7 @@ QPushButton*
 makeAlignmentButton(CommentData& comment, Qt::Alignment alignment)
 {
     constexpr int size = 32;
+    // cppcheck-suppress uninitvar
     auto* button = new QPushButton{};
     button->setFixedSize(size, size);
     button->setCheckable(true);
@@ -199,8 +200,8 @@ makeAlignmentButton(CommentData& comment, Qt::Alignment alignment)
     auto updateAlignment = [&comment, alignment]{
         comment.setTextAlignment(alignment);
     };
-
-    QObject::connect(&comment, &CommentData::commentAlignmentChanged,
+    
+    QObject::connect(&comment, &CommentData::commentTextAlignmentChanged,
                      button, updateButtonState);
 
     QObject::connect(button, &QPushButton::clicked,
@@ -212,7 +213,7 @@ makeAlignmentButton(CommentData& comment, Qt::Alignment alignment)
 }
 
 inline void
-colorizeIcon(QPushButton* button, QColor color)
+setCustomColorIcon(QPushButton* button, QColor color)
 {
     double max = std::numeric_limits<uint8_t>::max();
     bool dark = color.black() * (color.alpha() / max) > (max / 3);
@@ -251,7 +252,7 @@ CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
             assert(m_comment);
             m_comment->setBackgroundColor(m_customBgColor.name(QColor::HexArgb));
             m_customBgColorButton->setPrimaryColor(m_customBgColor);
-            colorizeIcon(m_customBgColorButton, m_customBgColor);
+            setCustomColorIcon(m_customBgColorButton, m_customBgColor);
         };
     };
 
@@ -267,7 +268,7 @@ CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
             assert(m_comment);
             m_comment->setTextColor(m_customTextColor.name(QColor::HexArgb));
             m_customTextColorButton->setPrimaryColor(m_customTextColor);
-            colorizeIcon(m_customTextColorButton, m_customTextColor);
+            setCustomColorIcon(m_customTextColorButton, m_customTextColor);
         };
     };
 
@@ -301,7 +302,7 @@ CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
     m_customBgColorButton = makeColorButton(
         this, setCustomBgColor, m_bgColorButtons, bgButtonGroup, m_customBgColor);
     m_customBgColorButton->setToolTip(tr("Custom color"));
-    colorizeIcon(m_customBgColorButton, gt::gui::color::base());
+    setCustomColorIcon(m_customBgColorButton, gt::gui::color::base());
 
     int row = 0, col = 0;
     bgColorButtonLayout->addWidget(defaultBgButton, row, col++);
@@ -344,7 +345,7 @@ CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
     m_customTextColorButton = makeColorButton(
         this, setCustomTextColor, m_textColorButtons, textButtonGroup, m_customTextColor);
     m_customTextColorButton->setToolTip(tr("Custom color"));
-    colorizeIcon(m_customTextColorButton, gt::gui::color::text());
+    setCustomColorIcon(m_customTextColorButton, gt::gui::color::text());
 
     textColorButtonLayout->addWidget(defaultTextColorButton);
     textColorButtonLayout->addWidget(blackTextColorButton);
@@ -438,8 +439,8 @@ CommentStyleDialog::setBackgroundColor(QColor const& color)
     assert(customBtn);
     customBtn->setPrimaryColor(color);
     customBtn->setChecked(true);
+    setCustomColorIcon(customBtn, color);
     m_customBgColor = color;
-    emit customBackgroundColorChanged();
 }
 
 void
@@ -469,8 +470,8 @@ CommentStyleDialog::setTextColor(QColor const& color)
     assert(customBtn);
     customBtn->setPrimaryColor(color);
     customBtn->setChecked(true);
+    setCustomColorIcon(customBtn, color);
     m_customTextColor = color;
-    emit customTextColorChanged();
 }
 
 void

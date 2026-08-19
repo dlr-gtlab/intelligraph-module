@@ -68,6 +68,9 @@ protected:
 };
 
 class CommentData;
+
+/// Dialog to edit the style (e.g. colors and text alignemnt) of a comment in
+/// real time.
 class CommentStyleDialog : public QDialog
 {
     Q_OBJECT
@@ -77,36 +80,43 @@ public:
     explicit CommentStyleDialog(CommentData& comment);
     ~CommentStyleDialog();
 
+    /**
+     * @brief Sets the background color and updates the dialog correctly.
+     * @param color Background color
+     */
     void setBackgroundColor(QColor const& color);
 
+    /**
+     * @brief Sets the text color and updates the dialog correctly.
+     * @param color Text color
+     */
     void setTextColor(QColor const& color);
 
 private:
 
+    /// pointer to comment object
     QPointer<CommentData> m_comment;
 
+    /// list of buttons for setting the background color
     QVector<ColorButton*> m_bgColorButtons;
+    /// list of buttons for setting the text color
     QVector<ColorButton*> m_textColorButtons;
-
+    /// button for setting a custom background color
     ColorButton* m_customBgColorButton;
+    /// button for setting a custom text color
     ColorButton* m_customTextColorButton;
-
+    /// custom background color
     QColor m_customTextColor;
+    /// custom text color
     QColor m_customBgColor;
 
 private slots:
 
+    /// triggers a color dialog to update the custom background color
     void getCustomBackgroundColor();
 
+    /// triggers a color dialog to update the custom text color
     void getCustomTextColor();
-
-signals:
-
-    void customTextColorChanged();
-
-    void customBackgroundColorChanged();
-
-    void textAlignmentChanged();
 };
 
 } // namespace intelli

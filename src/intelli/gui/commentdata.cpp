@@ -158,7 +158,7 @@ CommentData::CommentData(GtObject* parent) :
             this, &CommentData::commentChanged);
 
     connect(&pimpl->textAlignment, &GtAbstractProperty::changed,
-            this, &CommentData::commentAlignmentChanged);
+            this, &CommentData::commentTextAlignmentChanged);
 
     connect(&pimpl->showFrame, &GtAbstractProperty::changed, this, [this](){
         emit commentFrameVisibilityChanged(showFrame());
@@ -268,7 +268,7 @@ CommentData::setTextAlignment(Qt::Alignment alignment)
 {
     if (this->textAlignment() != alignment)
     {
-        pimpl->textAlignment.setVal(alignment);
+        pimpl->textAlignment = alignment;
         changed();
     }
 }

@@ -245,17 +245,17 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
         setCollapsed(doCollapse);
     };
 
-    connect(m_comment, &CommentData::commentCollapsedChanged, this, onCollapsedChanged);
-
     auto onCommentChanged = [this](){
         m_editor->setMarkdown(m_comment->text());
         setEditing(false);
     };
 
+    connect(m_comment, &CommentData::commentCollapsedChanged, this, onCollapsedChanged);
+
     connect(m_comment, &CommentData::commentChanged, this, onCommentChanged);
 
-    connect(m_comment, &CommentData::commentAlignmentChanged, this, [this](){
-        setEditing(false);
+    connect(m_comment, &CommentData::commentTextAlignmentChanged, this, [this](){
+        setEditing(false); // updates the text alignment accordingly
     });
 
     connect(m_comment, &CommentData::commentFrameVisibilityChanged, this, [this](bool visible){

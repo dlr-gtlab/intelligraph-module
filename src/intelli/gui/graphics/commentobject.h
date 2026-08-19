@@ -81,9 +81,6 @@ public:
      * @param menu Menu
      */
     void setupContextMenu(QMenu& menu) override;
-signals:
-
-    void colorChanged();
 
 protected:
 
@@ -138,9 +135,9 @@ private:
 
     bool isEditing() const;
 
-    void onColorChanged();
-
 private slots:
+
+    void onColorChanged();
 
     void onCommentConnectionAppended(NodeId nodeId);
 

@@ -164,7 +164,7 @@ signals:
     void commentColorChanged();
 
     /// Emitted once the comment alignment is changed.
-    void commentAlignmentChanged();
+    void commentTextAlignmentChanged();
 
     /// Emitted once the comment's border visibility changed.
     void commentFrameVisibilityChanged(bool visible);
