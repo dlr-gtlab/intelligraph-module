@@ -62,6 +62,8 @@ public:
                QStyleOptionGraphicsItem const* option,
                QWidget* widget = nullptr) override
     {
+        painter->setRenderHint(QPainter::Antialiasing);
+
         auto* p = static_cast<CommentGraphicsObject*>(parentObject());
 
         auto& style = style::currentStyle().node;

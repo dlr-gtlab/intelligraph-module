@@ -146,6 +146,9 @@ ColorButton::paintEvent(QPaintEvent* e)
     icon.paint(&painter, iconRect);
 }
 
+namespace
+{
+
 template<typename Reciever, typename Slot>
 ColorButton*
 makeColorButton(Reciever* reciever, Slot slot,
@@ -220,6 +223,15 @@ setCustomColorIcon(QPushButton* button, QColor color)
     button->setIcon(gt::gui::colorize(gt::gui::icon::dots(), dark ? Qt::white : Qt::black));
 };
 
+inline QColor
+makeColor(QColor color, int alpha = 255)
+{
+    color.setAlpha(gt::clamp(alpha, 0, static_cast<int>(std::numeric_limits<uint8_t>::max())));
+    return color;
+}
+
+} // namespace
+
 CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
     m_comment(&comment),
     m_customBgColorButton(nullptr),
@@ -248,7 +260,7 @@ CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
     };
     auto setCustomBgColor = [this](QColor const&){
         return [this](){
-            getCustomBackgroundColor();
+            if (!getCustomBackgroundColor()) return;
             assert(m_comment);
             m_comment->setBackgroundColor(m_customBgColor.name(QColor::HexArgb));
             m_customBgColorButton->setPrimaryColor(m_customBgColor);
@@ -264,7 +276,7 @@ CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
     };
     auto setCustomTextColor = [this](QColor const&){
         return [this](){
-            getCustomTextColor();
+            if (!getCustomTextColor()) return;
             assert(m_comment);
             m_comment->setTextColor(m_customTextColor.name(QColor::HexArgb));
             m_customTextColorButton->setPrimaryColor(m_customTextColor);
@@ -282,21 +294,21 @@ CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
     // defaults
     auto* blackBgButton = makeColorButton(
         &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, Qt::black);
-    auto* greyBgButton = makeColorButton(
-        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, Qt::gray);
     auto* whiteBgButton = makeColorButton(
         &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, Qt::white);
+    auto* blackAlphaBgButton = makeColorButton(
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, makeColor(Qt::black, 50));
     auto* transparentBgButton = makeColorButton(
         &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, Qt::transparent);
     // some magic colors
     auto* light1BgButton = makeColorButton(
-        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, QColor{QStringLiteral("#fffee5")});
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, makeColor(0x460000, 30));
     auto* light2BgButton = makeColorButton(
-        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, QColor{QStringLiteral("#d9e2ea")});
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, makeColor(0x302d00, 30));
     auto* dark1BgButton = makeColorButton(
-        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, QColor{QStringLiteral("#132726")});
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, makeColor(0x003146, 30));
     auto* dark2BgButton = makeColorButton(
-        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, QColor{QStringLiteral("#1c1c2f")});
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, makeColor(0x173b00, 30));
 
     // custom color
     m_customBgColorButton = makeColorButton(
@@ -307,8 +319,8 @@ CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
     int row = 0, col = 0;
     bgColorButtonLayout->addWidget(defaultBgButton, row, col++);
     bgColorButtonLayout->addWidget(blackBgButton, row, col++);
-    bgColorButtonLayout->addWidget(greyBgButton, row, col++);
     bgColorButtonLayout->addWidget(whiteBgButton, row, col++);
+    bgColorButtonLayout->addWidget(blackAlphaBgButton, row, col++);
     bgColorButtonLayout->addWidget(transparentBgButton, row, col++);
     row++;
     col = 0;
@@ -474,7 +486,7 @@ CommentStyleDialog::setTextColor(QColor const& color)
     m_customTextColor = color;
 }
 
-void
+bool
 CommentStyleDialog::getCustomBackgroundColor()
 {
     QColor color = QColorDialog::getColor(
@@ -484,13 +496,13 @@ CommentStyleDialog::getCustomBackgroundColor()
         QColorDialog::ShowAlphaChannel
     );
 
-    if (color.isValid())
-    {
-        m_customBgColor = color;
-    }
+    if (!color.isValid()) return false;
+
+    m_customBgColor = color;
+    return true;
 }
 
-void
+bool
 CommentStyleDialog::getCustomTextColor()
 {
     QColor color = QColorDialog::getColor(
@@ -499,8 +511,8 @@ CommentStyleDialog::getCustomTextColor()
         tr("Select Custom Text Color")
     );
 
-    if (color.isValid())
-    {
-        m_customTextColor = color;
-    }
+    if (!color.isValid()) return false;
+
+    m_customTextColor = color;
+    return true;
 }

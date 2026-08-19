@@ -113,10 +113,10 @@ private:
 private slots:
 
     /// triggers a color dialog to update the custom background color
-    void getCustomBackgroundColor();
+    bool getCustomBackgroundColor();
 
     /// triggers a color dialog to update the custom text color
-    void getCustomTextColor();
+    bool getCustomTextColor();
 };
 
 } // namespace intelli
