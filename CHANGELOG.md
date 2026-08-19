@@ -9,15 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed sporadic crashes, while shutting down a detached executor - #352
 - Fixed node and port highlighting when creating a draft connection - #362
+- Fixed duplicate node creation on some desktop systems - #350
+- Fixed icons not being licensed under Apache 2.0.
 
 ### Added
 - Selected nodes can now be "cut" using the corresponding shortcut (usually `Ctrl+X`). Cut-nodes are "greyed-out", similar to how cutting works for files and folders. Once the selection is pasted, the cut-objects are deleted. - #283
-- Comments background color and text color can now be changed using a dialog window accessible from the context menu
+- The style of comments can be customized using a dedicated dialog that can be opened using the context menu of comments. This dialog allows changing the background color and text color, frame visibility, and text alignment. - #326
 
 ### Changed
-
-### Fixed
- - Fixed duplicate node creation on linux system - #350
 
 ## [0.15.0] - 2025-10-27
 *This release is not ABI compatible with `0.14.0` and introduces small API changes*

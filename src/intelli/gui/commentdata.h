@@ -12,6 +12,7 @@
 
 #include <intelli/globals.h>
 #include <intelli/exports.h>
+#include <gt_stringproperty.h>
 
 #include <gt_object.h>
 
@@ -81,6 +82,30 @@ public:
      */
     bool isCollapsed() const;
 
+    void setTextAlignment(Qt::Alignment alignment);
+
+    Qt::Alignment textAlignment() const;
+
+    void setShowFrame(bool centered);
+
+    bool showFrame() const;
+
+    void setTextColor(QString color);
+
+    /**
+     * @brief Returns the current color of the comment text
+     * @return text color string
+     */
+    QString const& textColor() const;
+
+    void setBackgroundColor(QString color);
+
+    /**
+     * @brief Returns the current color of the comment background
+     * @return background color string
+     */
+    QString const& backgroundColor() const;
+
     /**
      * @brief Links the comment to a node with the id `targetNodeId`. A comment
      * may be linked to none, one, or multiple comments.
@@ -134,6 +159,15 @@ signals:
 
     /// Emitted once the widget's size changes (is also triggered by `setSize`)
     void commentSizeChanged();
+
+    /// Emitted once a comment color is changed.
+    void commentColorChanged();
+
+    /// Emitted once the comment alignment is changed.
+    void commentTextAlignmentChanged();
+
+    /// Emitted once the comment's border visibility changed.
+    void commentFrameVisibilityChanged(bool visible);
 
     /// Emitted once the comment's text changes
     void commentChanged();

@@ -15,6 +15,7 @@
 #include <gt_boolproperty.h>
 #include <gt_structproperty.h>
 #include <gt_stringproperty.h>
+#include <gt_enumproperty.h>
 #include <gt_propertystructcontainer.h>
 
 #include <gt_coreapplication.h>
@@ -58,12 +59,37 @@ struct CommentData::Impl
         "collapsed", QObject::tr("Collapsed"), QObject::tr("Collapsed"), false
     };
 
+    /// whether the comment's frame should be displayed
+    GtBoolProperty showFrame{
+        "showFrame", QObject::tr("Show Frame"),
+        QObject::tr("Whether to show the comment's frame"),
+        true
+    };
+
     GtPropertyStructContainer connections{
         "connections", tr("Connected Objects")
     };
-
     /// TODO: remove me once core issue #1366 is merged
     QVector<NodeId> connectionsData;
+
+    /// whether the comment is centered
+    GtEnumProperty<Qt::Alignment> textAlignment{
+        "textAlignment", QObject::tr("Text Alignment"),
+        QObject::tr("How to align the text of the comment"),
+        Qt::AlignLeft
+    };
+
+    /// text color
+    GtStringProperty textColor{
+        "textColor", QObject::tr("Text Color"),
+        QObject::tr("Color of the text")
+    };
+
+    /// text background color
+    GtStringProperty bgColor{
+        "bgColor", QObject::tr("Background Color"),
+        QObject::tr("Color of the background")
+    };
 };
 
 char const* S_CONNECTION_DATA_TYPE_ID = "ConnectionData";
@@ -82,6 +108,12 @@ CommentData::CommentData(GtObject* parent) :
     registerProperty(pimpl->sizeHeight);
     registerProperty(pimpl->collapsed);
     registerProperty(pimpl->text);
+
+    QString displayCat = tr("Display");
+    registerProperty(pimpl->textAlignment, displayCat);
+    registerProperty(pimpl->showFrame, displayCat);
+    registerProperty(pimpl->textColor, displayCat);
+    registerProperty(pimpl->bgColor, displayCat);
 
     // presence of struct indicates that the node is collapsed
     GtPropertyStructDefinition structType{S_CONNECTION_DATA_TYPE_ID};
@@ -110,24 +142,33 @@ CommentData::CommentData(GtObject* parent) :
     });
 
     // must subscribe to both properties incase only one changes
-    connect(&pimpl->posX, &GtAbstractProperty::changed, this, [this](){
-        emit commentPositionChanged();
-    });
-    connect(&pimpl->posY, &GtAbstractProperty::changed, this, [this](){
-        emit commentPositionChanged();
-    });
+    connect(&pimpl->posX, &GtAbstractProperty::changed,
+            this, &CommentData::commentPositionChanged);
+
+    connect(&pimpl->posY, &GtAbstractProperty::changed,
+            this, &CommentData::commentPositionChanged);
 
     // must subscribe to both properties incase only one changes
-    connect(&pimpl->sizeWidth, &GtAbstractProperty::changed, this, [this](){
-        emit commentSizeChanged();
-    });
-    connect(&pimpl->sizeHeight, &GtAbstractProperty::changed, this, [this](){
-        emit commentSizeChanged();
+    connect(&pimpl->sizeWidth, &GtAbstractProperty::changed,
+            this, &CommentData::commentSizeChanged);
+    connect(&pimpl->sizeHeight, &GtAbstractProperty::changed,
+            this, &CommentData::commentSizeChanged);
+
+    connect(&pimpl->text, &GtAbstractProperty::changed,
+            this, &CommentData::commentChanged);
+
+    connect(&pimpl->textAlignment, &GtAbstractProperty::changed,
+            this, &CommentData::commentTextAlignmentChanged);
+
+    connect(&pimpl->showFrame, &GtAbstractProperty::changed, this, [this](){
+        emit commentFrameVisibilityChanged(showFrame());
     });
 
-    connect(&pimpl->text, &GtAbstractProperty::changed, this, [this](){
-        emit commentChanged();
-    });
+    connect(&pimpl->bgColor, &GtAbstractProperty::changed,
+            this, &CommentData::commentColorChanged);
+
+    connect(&pimpl->textColor, &GtAbstractProperty::changed,
+            this, &CommentData::commentColorChanged);
 
     setObjectName(QStringLiteral("comment_%1")
                       .arg(uuid().remove("{").remove("-").mid(0, 8)));
@@ -220,6 +261,70 @@ bool
 CommentData::isCollapsed() const
 {
     return pimpl->collapsed;
+}
+
+void
+CommentData::setTextAlignment(Qt::Alignment alignment)
+{
+    if (this->textAlignment() != alignment)
+    {
+        pimpl->textAlignment = alignment;
+        changed();
+    }
+}
+
+Qt::Alignment
+CommentData::textAlignment() const
+{
+    return pimpl->textAlignment.getVal();
+}
+
+void
+CommentData::setShowFrame(bool enabled)
+{
+    if (this->showFrame() != enabled)
+    {
+        pimpl->showFrame = enabled;
+        changed();
+    }
+}
+
+bool
+CommentData::showFrame() const
+{
+    return pimpl->showFrame;
+}
+
+void
+CommentData::setTextColor(QString color)
+{
+    if (this->textColor() != color)
+    {
+        pimpl->textColor = std::move(color);
+        changed();
+    }
+}
+
+QString const&
+CommentData::textColor() const
+{
+    return pimpl->textColor.get();
+}
+
+void
+CommentData::setBackgroundColor(QString color)
+{
+    if (this->backgroundColor() != color)
+    {
+        pimpl->bgColor = std::move(color);
+        changed();
+    }
+}
+
+QString const&
+CommentData::backgroundColor() const
+{
+    return pimpl->bgColor.get();
 }
 
 void

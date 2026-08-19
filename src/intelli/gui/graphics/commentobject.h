@@ -13,6 +13,7 @@
 #include <intelli/globals.h>
 #include <intelli/memory.h>
 #include <intelli/gui/graphics/interactableobject.h>
+#include <intelli/gui/commentdata.h>
 
 #include <unordered_map>
 
@@ -135,6 +136,8 @@ private:
     bool isEditing() const;
 
 private slots:
+
+    void onColorChanged();
 
     void onCommentConnectionAppended(NodeId nodeId);
 

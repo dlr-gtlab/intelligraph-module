@@ -27,6 +27,12 @@ GT_INTELLI_EXPORT QIcon const& intelliGraph();
 
 GT_INTELLI_EXPORT QIcon const& node();
 
+GT_INTELLI_EXPORT QIcon const& textAlignLeft();
+
+GT_INTELLI_EXPORT QIcon const& textAlignCenter();
+
+GT_INTELLI_EXPORT QIcon const& textAlignRight();
+
 }
 
 } // namespace icon
