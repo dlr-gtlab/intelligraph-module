@@ -250,6 +250,11 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
         setEditing(false);
     };
 
+    auto updateFrame = [this](bool visible){
+        m_overlay->showFrame = visible;
+        m_overlay->update();
+    };
+
     connect(m_comment, &CommentData::commentCollapsedChanged, this, onCollapsedChanged);
 
     connect(m_comment, &CommentData::commentChanged, this, onCommentChanged);
@@ -258,10 +263,7 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
         setEditing(false); // updates the text alignment accordingly
     });
 
-    connect(m_comment, &CommentData::commentFrameVisibilityChanged, this, [this](bool visible){
-        m_overlay->showFrame = visible;
-        m_overlay->update();
-    });
+    connect(m_comment, &CommentData::commentFrameVisibilityChanged, this, updateFrame);
 
     connect(m_comment, &CommentData::commentColorChanged,
             this, &CommentGraphicsObject::onColorChanged);
@@ -310,6 +312,8 @@ CommentGraphicsObject::CommentGraphicsObject(QGraphicsScene& scene,
     onCommentChanged();
 
     onCollapsedChanged(m_comment->isCollapsed());
+
+    updateFrame(m_comment->showFrame());
 
     onColorChanged();
 }
