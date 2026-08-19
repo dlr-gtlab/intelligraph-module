@@ -7,8 +7,8 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef GT_INTELLI_COMMENTCOLORDIALOG_H
-#define GT_INTELLI_COMMENTCOLORDIALOG_H
+#ifndef GT_INTELLI_COMMENTSTYLEDIALOG_H
+#define GT_INTELLI_COMMENTSTYLEDIALOG_H
 
 #include <QDialog>
 #include <QPushButton>
@@ -30,10 +30,10 @@ class ColorButton : public QPushButton
 public:
 
     /// constructor for primary and secondary color
-    ColorButton(QColor primary, QColor secondary, QWidget* parent = nullptr);
+    explicit ColorButton(QColor primary, QColor secondary, QWidget* parent = nullptr);
 
     /// constructor for primary color
-    ColorButton(QColor primary, QWidget* parent = nullptr) :
+    explicit ColorButton(QColor primary, QWidget* parent = nullptr) :
         ColorButton(primary, QColor{}, parent)
     {}
 
@@ -74,7 +74,7 @@ class CommentStyleDialog : public QDialog
 
 public:
 
-    CommentStyleDialog(CommentData& comment);
+    explicit CommentStyleDialog(CommentData& comment);
     ~CommentStyleDialog();
 
     void setBackgroundColor(QColor const& color);
@@ -111,4 +111,4 @@ signals:
 
 } // namespace intelli
 
-#endif // GT_INTELLI_COMMENTCOLORDIALOG_H
+#endif // GT_INTELLI_COMMENTSTYLEDIALOG_H

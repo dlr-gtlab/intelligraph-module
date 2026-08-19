@@ -7,7 +7,7 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include "intelli/gui/widgets/commentcolordialog.h"
+#include "intelli/gui/widgets/commentstyledialog.h"
 
 #include <intelli/gui/style.h>
 #include <intelli/gui/icons.h>

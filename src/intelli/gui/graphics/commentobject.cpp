@@ -13,7 +13,7 @@
 #include <intelli/gui/style.h>
 #include <intelli/utilities.h>
 #include <intelli/gui/commentdata.h>
-#include <intelli/gui/widgets/commentcolordialog.h>
+#include <intelli/gui/widgets/commentstyledialog.h>
 #include <intelli/private/utils.h>
 
 #include <gt_application.h>
