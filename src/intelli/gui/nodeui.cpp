@@ -16,6 +16,7 @@
 #include "intelli/node/dummy.h"
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
+#include "intelli/node/input/graphuservariablesinput.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
 #include "intelli/gui/commentgroup.h"
@@ -74,10 +75,20 @@ inline BoolPortMethod operator*(BoolPortMethod fA, Functor fOther)
         return a(obj, type, idx) && b(obj, type, idx);
     };
 }
+/// AND operator
+template <typename Functor>
+inline BoolObjectMethod OR(BoolObjectMethod fA, Functor fOther)
+{
+    return [a = std::move(fA), b = std::move(fOther)](GtObject* obj){
+        return a(obj) || b(obj);
+    };
+}
 
 DummyNode* toDummy(GtObject* obj) { return qobject_cast<DummyNode*>(obj); }
 
 bool isDummy(Node const* obj) { return qobject_cast<DummyNode const*>(obj); }
+
+GraphUserVariablesInputNode* toUserVariablesNode(GtObject* obj) { return qobject_cast<GraphUserVariablesInputNode*>(obj);}
 
 struct NodeUI::Impl
 {
@@ -136,7 +147,7 @@ NodeUI::NodeUI(Option option) :
 
     addSingleAction(tr("Edit User Variables..."), editUserVariables)
         .setIcon(gt::gui::icon::variable())
-        .setVisibilityMethod(isRootGraph);
+        .setVisibilityMethod(OR(isRootGraph, toUserVariablesNode));
 
     addSeparator();
 
@@ -579,6 +590,15 @@ void
 NodeUI::editUserVariables(GtObject* obj)
 {
     Graph* graph = toGraph(obj);
+    if (!graph)
+    {
+        GraphUserVariablesInputNode* node = toUserVariablesNode(obj);
+        if (!node) return;
+
+        graph = Graph::accessGraph(*node);
+        graph = graph->rootGraph();
+        if (!graph) return;
+    }
     if (!isRootGraph(graph)) return;
 
     GraphUserVariablesDialog dialog{*graph};

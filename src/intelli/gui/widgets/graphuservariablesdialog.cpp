@@ -118,10 +118,6 @@ GraphUserVariablesDialog::GraphUserVariablesDialog(Graph& graph) :
 
     infoLabel->setWordWrap(true);
 
-    auto* line = new QFrame();
-    line->setFrameShape(QFrame::HLine);
-    line->setFrameShadow(QFrame::Sunken);
-
     // user variables
     m_listView = new QListWidget();
 
@@ -138,7 +134,7 @@ GraphUserVariablesDialog::GraphUserVariablesDialog(Graph& graph) :
     // dialog buttons
     m_saveButton = new QPushButton{tr("Save")};
     m_saveButton->setIcon(gt::gui::icon::save());
-    m_saveButton->setDefault(false);
+    m_saveButton->setDefault(true);
     m_saveButton->setAutoDefault(false);
 
     auto* closeButton = new QPushButton{tr("Cancel")};
@@ -150,8 +146,8 @@ GraphUserVariablesDialog::GraphUserVariablesDialog(Graph& graph) :
     buttonsLayout->setContentsMargins(4, 4, 4, 4);
     buttonsLayout->addWidget(addVariableButton);
     buttonsLayout->addStretch(1);
-    buttonsLayout->addWidget(m_saveButton);
     buttonsLayout->addWidget(closeButton);
+    buttonsLayout->addWidget(m_saveButton);
 
     layout->addLayout(infoLayout);
     layout->addWidget(m_listView);
@@ -159,8 +155,10 @@ GraphUserVariablesDialog::GraphUserVariablesDialog(Graph& graph) :
 
     setLayout(layout);
 
-    connect(closeButton, SIGNAL(clicked()), this, SLOT(close()));
-    connect(m_saveButton, SIGNAL(clicked()), this, SLOT(saveChanges()));
+    connect(closeButton, &QPushButton::clicked,
+            this, &QDialog::reject);
+    connect(m_saveButton, &QPushButton::clicked,
+            this, &GraphUserVariablesDialog::saveChanges);
 
     load();
 }
