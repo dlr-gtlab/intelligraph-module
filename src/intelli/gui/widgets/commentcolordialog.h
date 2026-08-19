@@ -12,12 +12,15 @@
 
 #include <QDialog>
 #include <QPushButton>
+#include <QPointer>
 
 class QCheckBox;
 
 namespace intelli
 {
 
+/// Pushbutton for displaying colors.
+/// Supports displaying a primary and secondary color.
 class ColorButton : public QPushButton
 {
     Q_OBJECT
@@ -26,71 +29,84 @@ class ColorButton : public QPushButton
 
 public:
 
-    ColorButton(QColor primary, QColor secondary = {}, QWidget* parent = nullptr);
+    /// constructor for primary and secondary color
+    ColorButton(QColor primary, QColor secondary, QWidget* parent = nullptr);
 
+    /// constructor for primary color
+    ColorButton(QColor primary, QWidget* parent = nullptr) :
+        ColorButton(primary, QColor{}, parent)
+    {}
+
+    /**
+     * @brief Setter for the primary color
+     * @param color Primary color
+     */
     void setPrimaryColor(QColor color);
 
+    /**
+     * @brief Returns the primary color
+     * @return Primary color
+     */
     QColor primaryColor() const;
 
+    /**
+     * @brief Setter for the secondary color
+     * @param color Secondary color
+     */
     void setSecondaryColor(QColor color);
 
+    /**
+     * @brief Returns the secondary color
+     * @return Secondary color
+     */
     QColor secondaryColor() const;
 
 protected:
 
+    /// draw the primary and secondary color
     void paintEvent(QPaintEvent* e) override;
 };
 
-class CommentColorDialog : public QDialog
+class CommentData;
+class CommentStyleDialog : public QDialog
 {
     Q_OBJECT
 
 public:
 
-    CommentColorDialog();
-    ~CommentColorDialog();
-
-    void setShowFrame(bool enable);
-
-    bool showFrame() const;
-
-    bool isDefaultBackgroundColor() const;
+    CommentStyleDialog(CommentData& comment);
+    ~CommentStyleDialog();
 
     void setBackgroundColor(QColor const& color);
 
-    QColor backgroundColor() const;
-
-    bool isDefaultTextColor() const;
-
     void setTextColor(QColor const& color);
-
-    QColor textColor() const;
-
-    void setTextAlignment(Qt::Alignment alignment);
-
-    Qt::Alignment textAlignment() const;
 
 private:
 
-    QVector<ColorButton*> m_bgColorButtons;
+    QPointer<CommentData> m_comment;
 
+    QVector<ColorButton*> m_bgColorButtons;
     QVector<ColorButton*> m_textColorButtons;
 
     ColorButton* m_customBgColorButton;
     ColorButton* m_customTextColorButton;
 
-    QCheckBox* m_showFrameCheckBox;
-
     QColor m_customTextColor;
     QColor m_customBgColor;
 
-    bool m_showBorder = true;
+private slots:
+
+    void getCustomBackgroundColor();
+
+    void getCustomTextColor();
 
 signals:
 
     void customTextColorChanged();
 
     void customBackgroundColorChanged();
+
+    void textAlignmentChanged();
 };
 
 } // namespace intelli

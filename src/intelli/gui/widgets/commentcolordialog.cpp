@@ -10,7 +10,9 @@
 #include "intelli/gui/widgets/commentcolordialog.h"
 
 #include <intelli/gui/style.h>
+#include <intelli/gui/icons.h>
 #include <intelli/utilities.h>
+#include <intelli/gui/commentdata.h>
 
 #include <gt_colors.h>
 #include <gt_icons.h>
@@ -144,8 +146,12 @@ ColorButton::paintEvent(QPaintEvent* e)
     icon.paint(&painter, iconRect);
 }
 
+template<typename Reciever, typename Slot>
 ColorButton*
-makeColorButton(QVector<ColorButton*>& buttons, QButtonGroup* group, QColor const& baseColor)
+makeColorButton(Reciever* reciever, Slot slot,
+               QVector<ColorButton*>& buttons,
+               QButtonGroup* group,
+               QColor const& baseColor)
 {
     constexpr int size = 32;
     auto* button = new ColorButton{baseColor};
@@ -154,60 +160,69 @@ makeColorButton(QVector<ColorButton*>& buttons, QButtonGroup* group, QColor cons
     group->addButton(button);
     buttons.push_back(button);
 
+    QObject::connect(button, &QPushButton::clicked, reciever, slot(baseColor));
+
     return button;
 }
 
 QPushButton*
-makeAlignmentButton(QButtonGroup* group, Qt::Alignment alignment = {})
+makeAlignmentButton(CommentData& comment, Qt::Alignment alignment)
 {
     constexpr int size = 32;
     auto* button = new QPushButton{};
     button->setFixedSize(size, size);
     button->setCheckable(true);
+    button->setFlat(true);
 
-    QPixmap pixmap = gt::gui::icon::arrowUp().pixmap(size, size);
-    QTransform transform;
-
-    switch (alignment)
+    switch (alignment & Qt::AlignHorizontal_Mask)
     {
-    case Qt::AlignLeft  | Qt::AlignTop:
-        transform.rotate(-45);
+    case Qt::AlignLeft:
+        button->setToolTip(QObject::tr("Left-align text"));
+        button->setIcon(gt::gui::icon::intelli::textAlignLeft());
         break;
-    case Qt::AlignRight | Qt::AlignTop:
-        transform.rotate(45);
+    case Qt::AlignRight:
+        button->setToolTip(QObject::tr("Right-align text"));
+        button->setIcon(gt::gui::icon::intelli::textAlignRight());
         break;
-    case Qt::AlignLeft  | Qt::AlignVCenter:
-        transform.rotate(-90);
-        break;
-    case Qt::AlignRight | Qt::AlignVCenter:
-        transform.rotate(90);
-        break;
-    case Qt::AlignCenter:
-        pixmap = gt::gui::icon::square().pixmap(size, size);
-        break;
-    case Qt::AlignLeft  | Qt::AlignBottom:
-        transform.rotate(-135);
-        break;
-    case Qt::AlignBottom:
-        transform.rotate(180);
-        break;
-    case Qt::AlignRight | Qt::AlignBottom:
-        transform.rotate(135);
+    case Qt::AlignHCenter:
+        button->setToolTip(QObject::tr("Center text"));
+        button->setIcon(gt::gui::icon::intelli::textAlignCenter());
         break;
     }
 
-    QPixmap rotatedPixmap = pixmap.transformed(transform, Qt::SmoothTransformation);
-    button->setIcon(QIcon{rotatedPixmap});
-    button->setFlat(true);
-    group->addButton(button);
+    auto updateButtonState = [&comment, button, alignment]{
+        bool matches = (comment.textAlignment() & Qt::AlignHorizontal_Mask) ==
+                       (alignment & Qt::AlignHorizontal_Mask);
+        button->setChecked(matches);
+    };
+
+    auto updateAlignment = [&comment, alignment]{
+        comment.setTextAlignment(alignment);
+    };
+
+    QObject::connect(&comment, &CommentData::commentAlignmentChanged,
+                     button, updateButtonState);
+
+    QObject::connect(button, &QPushButton::clicked,
+                     &comment, updateAlignment);
+
+    updateButtonState();
 
     return button;
 }
 
-CommentColorDialog::CommentColorDialog() :
+inline void
+colorizeIcon(QPushButton* button, QColor color)
+{
+    double max = std::numeric_limits<uint8_t>::max();
+    bool dark = color.black() * (color.alpha() / max) > (max / 3);
+    button->setIcon(gt::gui::colorize(gt::gui::icon::dots(), dark ? Qt::white : Qt::black));
+};
+
+CommentStyleDialog::CommentStyleDialog(CommentData& comment) :
+    m_comment(&comment),
     m_customBgColorButton(nullptr),
     m_customTextColorButton(nullptr),
-    m_showFrameCheckBox(nullptr),
     m_customTextColor(gt::gui::color::text()),
     m_customBgColor(gt::gui::color::base())
 {
@@ -215,63 +230,94 @@ CommentColorDialog::CommentColorDialog() :
     setWindowIcon(gt::gui::icon::palette() );
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
-    auto colorizeIcon = [](QPushButton* button, QColor color){
-        double max = std::numeric_limits<uint8_t>::max();
-        bool dark = color.black() * (color.alpha() / max) > (max / 3);
-        button->setIcon(gt::gui::colorize(gt::gui::icon::dots(), dark ? Qt::white : Qt::black));
-    };
-
-    // background color buttons
-    auto* bgColorLabel = new QLabel{tr("Background Color:")};
-    auto* bgColorButtonLayout = new QHBoxLayout;
-    auto* bgButtonGroup = new QButtonGroup(this);
-    bgButtonGroup->setExclusive(true);
-
     QPalette const& darkTheme = gt::gui::darkTheme();
     QPalette const& lightTheme = gt::gui::standardTheme();
 
-    auto* defaultBackgroundColorButton = makeColorButton(m_bgColorButtons, bgButtonGroup, lightTheme.color(QPalette::Base));
-    defaultBackgroundColorButton->setChecked(true);
-    defaultBackgroundColorButton->setSecondaryColor(darkTheme.color(QPalette::Base));
-    defaultBackgroundColorButton->setToolTip(tr("Default theme-based color"));
+    // background color buttons
+    auto* bgColorLabel = new QLabel{tr("Background Color:")};
+    auto* bgColorButtonLayout = new QGridLayout;
+    auto* bgButtonGroup = new QButtonGroup(this);
+    bgButtonGroup->setExclusive(true);
 
-    auto* blackBackgroundColorButton = makeColorButton(m_bgColorButtons, bgButtonGroup, Qt::black);
-    auto* greyBackgroundColorButton = makeColorButton(m_bgColorButtons, bgButtonGroup, Qt::gray);
-    auto* whiteBackgroundColorButton = makeColorButton(m_bgColorButtons, bgButtonGroup, Qt::white);
+    auto updateBgColor = [&comment](QColor const& color){
+        return [&comment, color](){ comment.setBackgroundColor(color.name(QColor::HexArgb)); };
+    };
+    auto setDefaultBgColor = [&comment](QColor const&){
+        return [&comment](){ comment.setBackgroundColor(QString{}); };
+    };
+    auto setCustomBgColor = [this](QColor const&){
+        return [this](){
+            getCustomBackgroundColor();
+            assert(m_comment);
+            m_comment->setBackgroundColor(m_customBgColor.name(QColor::HexArgb));
+            m_customBgColorButton->setPrimaryColor(m_customBgColor);
+            colorizeIcon(m_customBgColorButton, m_customBgColor);
+        };
+    };
 
-    auto* transparentBackgroundColorButton = makeColorButton(m_bgColorButtons, bgButtonGroup, Qt::transparent);
-    m_customBgColorButton = makeColorButton(m_bgColorButtons, bgButtonGroup, m_customBgColor);
+    auto updateTextColor = [&comment](QColor const& color){
+        return [&comment, color](){ comment.setTextColor(color.name(QColor::HexRgb)); };
+    };
+    auto setDefaultTextColor = [&comment](QColor const&){
+        return [&comment](){ comment.setTextColor(QString{}); };
+    };
+    auto setCustomTextColor = [this](QColor const&){
+        return [this](){
+            getCustomTextColor();
+            assert(m_comment);
+            m_comment->setTextColor(m_customTextColor.name(QColor::HexArgb));
+            m_customTextColorButton->setPrimaryColor(m_customTextColor);
+            colorizeIcon(m_customTextColorButton, m_customTextColor);
+        };
+    };
+
+    // theme color
+    auto* defaultBgButton = makeColorButton(
+        &comment, setDefaultBgColor, m_bgColorButtons, bgButtonGroup, lightTheme.color(QPalette::Base));
+    defaultBgButton->setChecked(true);
+    defaultBgButton->setSecondaryColor(darkTheme.color(QPalette::Base));
+    defaultBgButton->setToolTip(tr("Default theme-based color"));
+
+    // defaults
+    auto* blackBgButton = makeColorButton(
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, Qt::black);
+    auto* greyBgButton = makeColorButton(
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, Qt::gray);
+    auto* whiteBgButton = makeColorButton(
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, Qt::white);
+    auto* transparentBgButton = makeColorButton(
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, Qt::transparent);
+    // some magic colors
+    auto* light1BgButton = makeColorButton(
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, QColor{QStringLiteral("#fffee5")});
+    auto* light2BgButton = makeColorButton(
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, QColor{QStringLiteral("#d9e2ea")});
+    auto* dark1BgButton = makeColorButton(
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, QColor{QStringLiteral("#132726")});
+    auto* dark2BgButton = makeColorButton(
+        &comment, updateBgColor, m_bgColorButtons, bgButtonGroup, QColor{QStringLiteral("#1c1c2f")});
+
+    // custom color
+    m_customBgColorButton = makeColorButton(
+        this, setCustomBgColor, m_bgColorButtons, bgButtonGroup, m_customBgColor);
+    m_customBgColorButton->setToolTip(tr("Custom color"));
     colorizeIcon(m_customBgColorButton, gt::gui::color::base());
 
-    bgColorButtonLayout->addWidget(defaultBackgroundColorButton);
-    bgColorButtonLayout->addWidget(blackBackgroundColorButton);
-    bgColorButtonLayout->addWidget(greyBackgroundColorButton);
-    bgColorButtonLayout->addWidget(whiteBackgroundColorButton);
-    bgColorButtonLayout->addWidget(transparentBackgroundColorButton);
-    bgColorButtonLayout->addWidget(m_customBgColorButton);
-    bgColorButtonLayout->addStretch(1);
-
-    m_customBgColorButton->disconnect(this);
-    connect(m_customBgColorButton, &QPushButton::clicked,
-            this, [this](){
-        QColor color = QColorDialog::getColor(
-            m_customBgColor,
-            nullptr,
-            tr("Select Background Color"),
-            QColorDialog::ShowAlphaChannel
-        );
-        if (color.isValid())
-        {
-            m_customBgColor = color;
-            emit customBackgroundColorChanged();
-        }
-    });
-
-    connect(this, &CommentColorDialog::customBackgroundColorChanged,
-            this, [colorizeIcon, this](){
-        m_customBgColorButton->setPrimaryColor(m_customBgColor);
-        colorizeIcon(m_customBgColorButton, m_customBgColor);
-    });
+    int row = 0, col = 0;
+    bgColorButtonLayout->addWidget(defaultBgButton, row, col++);
+    bgColorButtonLayout->addWidget(blackBgButton, row, col++);
+    bgColorButtonLayout->addWidget(greyBgButton, row, col++);
+    bgColorButtonLayout->addWidget(whiteBgButton, row, col++);
+    bgColorButtonLayout->addWidget(transparentBgButton, row, col++);
+    row++;
+    col = 0;
+    bgColorButtonLayout->addWidget(dark1BgButton, row, col++);
+    bgColorButtonLayout->addWidget(dark2BgButton, row, col++);
+    bgColorButtonLayout->addWidget(light1BgButton, row, col++);
+    bgColorButtonLayout->addWidget(light2BgButton, row, col++);
+    bgColorButtonLayout->addWidget(m_customBgColorButton, row, col++);
+    auto* stretch = new QSpacerItem{1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding};
+    bgColorButtonLayout->addItem(stretch, row, col++);
 
     // text color buttons
     auto* textColorLabel = new QLabel{tr("Text Color:")};
@@ -279,16 +325,25 @@ CommentColorDialog::CommentColorDialog() :
     auto* textButtonGroup = new QButtonGroup(this);
     textButtonGroup->setExclusive(true);
 
-    auto* defaultTextColorButton = makeColorButton(m_textColorButtons, textButtonGroup, lightTheme.color(QPalette::Text));
+    // theme color
+    auto* defaultTextColorButton = makeColorButton(
+        &comment, setDefaultTextColor, m_textColorButtons, textButtonGroup, lightTheme.color(QPalette::Text));
     defaultTextColorButton->setChecked(true);
     defaultTextColorButton->setSecondaryColor(darkTheme.color(QPalette::Text));
-    defaultTextColorButton->setToolTip(defaultBackgroundColorButton->toolTip());
+    defaultTextColorButton->setToolTip(defaultBgButton->toolTip());
 
-    auto* blackTextColorButton = makeColorButton(m_textColorButtons, textButtonGroup, Qt::black);
-    auto* greyTextColorButton = makeColorButton(m_textColorButtons, textButtonGroup, Qt::gray);
-    auto* whiteTextColorButton = makeColorButton(m_textColorButtons, textButtonGroup, Qt::white);
+    // defaults
+    auto* blackTextColorButton = makeColorButton(
+        &comment, updateTextColor, m_textColorButtons, textButtonGroup, Qt::black);
+    auto* greyTextColorButton = makeColorButton(
+        &comment, updateTextColor, m_textColorButtons, textButtonGroup, Qt::gray);
+    auto* whiteTextColorButton = makeColorButton(
+        &comment, updateTextColor, m_textColorButtons, textButtonGroup, Qt::white);
 
-    m_customTextColorButton = makeColorButton(m_textColorButtons, textButtonGroup, m_customTextColor);
+    // custom color
+    m_customTextColorButton = makeColorButton(
+        this, setCustomTextColor, m_textColorButtons, textButtonGroup, m_customTextColor);
+    m_customTextColorButton->setToolTip(tr("Custom color"));
     colorizeIcon(m_customTextColorButton, gt::gui::color::text());
 
     textColorButtonLayout->addWidget(defaultTextColorButton);
@@ -298,80 +353,37 @@ CommentColorDialog::CommentColorDialog() :
     textColorButtonLayout->addWidget(m_customTextColorButton);
     textColorButtonLayout->addStretch(1);
 
-    m_customTextColorButton->disconnect(this);
-    connect(m_customTextColorButton, &QPushButton::clicked,
-            this, [this](){
-        QColor color = QColorDialog::getColor(
-            m_customTextColor,
-            nullptr,
-            tr("Select Text Color")
-        );
-        if (color.isValid())
-        {
-            m_customTextColor = color;
-            emit customTextColorChanged();
-        }
-    });
-
-    connect(this, &CommentColorDialog::customTextColorChanged,
-            this, [colorizeIcon, this](){
-        m_customTextColorButton->setPrimaryColor(m_customTextColor);
-        colorizeIcon(m_customTextColorButton, m_customTextColor);
-    });
-
     // frame
     auto* frameLabel = new QLabel{tr("Frame:")};
-    m_showFrameCheckBox = new QCheckBox{tr("Show Frame")};
-    m_showFrameCheckBox->setChecked(true);
+    auto* showFrameCheckBox = new QCheckBox{tr("Show Frame")};
+    showFrameCheckBox->setChecked(m_comment->showFrame());
 
-    // alignment
+    connect(showFrameCheckBox, &QCheckBox::stateChanged, &comment, [&comment](int state){
+        comment.setShowFrame(state > 0);
+    });
+
+    // text alignment
     auto* alignmentLabel = new QLabel{tr("Text Alignment:")};
-    auto* alignmentButtonGroup = new QButtonGroup(this);
-    alignmentButtonGroup->setExclusive(true);
 
-    auto* alignmentButtonTopLeft      = makeAlignmentButton(alignmentButtonGroup, Qt::AlignTop     | Qt::AlignLeft );
-    auto* alignmentButtonTopCenter    = makeAlignmentButton(alignmentButtonGroup, Qt::AlignTop                     );
-    auto* alignmentButtonTopRight     = makeAlignmentButton(alignmentButtonGroup, Qt::AlignTop     | Qt::AlignRight);
-    auto* alignmentButtonCenterLeft   = makeAlignmentButton(alignmentButtonGroup, Qt::AlignVCenter | Qt::AlignLeft );
-    auto* alignmentButtonCenter       = makeAlignmentButton(alignmentButtonGroup, Qt::AlignCenter                  );
-    auto* alignmentButtonCenterRight  = makeAlignmentButton(alignmentButtonGroup, Qt::AlignVCenter | Qt::AlignRight);
-    auto* alignmentButtonBottomLeft   = makeAlignmentButton(alignmentButtonGroup, Qt::AlignBottom  | Qt::AlignLeft );
-    auto* alignmentButtonBottomCenter = makeAlignmentButton(alignmentButtonGroup, Qt::AlignBottom                  );
-    auto* alignmentButtonBottomRight  = makeAlignmentButton(alignmentButtonGroup, Qt::AlignBottom  | Qt::AlignRight);
-    alignmentButtonTopLeft->setChecked(true);
+    auto* alignmentButtonTopLeft   = makeAlignmentButton(comment, Qt::AlignLeft);
+    auto* alignmentButtonTopCenter = makeAlignmentButton(comment, Qt::AlignHCenter);
+    auto* alignmentButtonTopRight  = makeAlignmentButton(comment, Qt::AlignRight);
 
-    auto* alignmentButtonLayout = new QGridLayout;
-    int row = 0;
-    int col = 0;
-    alignmentButtonLayout->addWidget(alignmentButtonTopLeft, row, col++);
-    alignmentButtonLayout->addWidget(alignmentButtonTopCenter, row, col++);
-    alignmentButtonLayout->addWidget(alignmentButtonTopRight, row, col);
-    row++; col = 0;
-    alignmentButtonLayout->addWidget(alignmentButtonCenterLeft, row, col++);
-    alignmentButtonLayout->addWidget(alignmentButtonCenter, row, col++);
-    alignmentButtonLayout->addWidget(alignmentButtonCenterRight, row, col);
-    row++; col = 0;
-    alignmentButtonLayout->addWidget(alignmentButtonBottomLeft, row, col++);
-    alignmentButtonLayout->addWidget(alignmentButtonBottomCenter, row, col++);
-    alignmentButtonLayout->addWidget(alignmentButtonBottomRight, row, col);
-    alignmentButtonLayout->addItem(new QSpacerItem{1, 1, QSizePolicy::Expanding, QSizePolicy::Expanding}, row, col+1);
+    auto* alignmentButtonLayout = new QHBoxLayout;
+    alignmentButtonLayout->addWidget(alignmentButtonTopLeft);
+    alignmentButtonLayout->addWidget(alignmentButtonTopCenter);
+    alignmentButtonLayout->addWidget(alignmentButtonTopRight);
+    alignmentButtonLayout->addStretch(1);
 
     // dialog buttons
-    auto* saveButton = new QPushButton{tr("Apply")};
-    saveButton->setIcon(gt::gui::icon::save());
-    saveButton->setDefault(true);
-    saveButton->setAutoDefault(false);
-
-    auto* closeButton = new QPushButton{tr("Cancel")};
-    closeButton->setIcon(gt::gui::icon::cancel());
-    closeButton->setDefault(false);
+    auto* closeButton = new QPushButton{tr("Close")};
+    closeButton->setDefault(true);
     closeButton->setAutoDefault(false);
 
     auto* buttonsLayout = new QHBoxLayout();
     buttonsLayout->setContentsMargins(4, 4, 4, 4);
     buttonsLayout->addStretch(1);
     buttonsLayout->addWidget(closeButton);
-    buttonsLayout->addWidget(saveButton);
 
     // main layout
     auto* layout = new QVBoxLayout(this);
@@ -382,51 +394,25 @@ CommentColorDialog::CommentColorDialog() :
     layout->addWidget(alignmentLabel);
     layout->addLayout(alignmentButtonLayout);
     layout->addWidget(frameLabel);
-    layout->addWidget(m_showFrameCheckBox);
+    layout->addWidget(showFrameCheckBox);
     layout->addStretch(1);
     layout->addLayout(buttonsLayout);
     layout->setSizeConstraint(QLayout::SetFixedSize);
     setLayout(layout);
 
-    bgColorLabel->setMinimumWidth(300);
+    bgColorLabel->setMinimumWidth(250);
 
-    connect(closeButton, &QPushButton::clicked, this, &CommentColorDialog::reject);
-    connect(saveButton, &QPushButton::clicked, this, [this](){
-        if (!textColor().isValid() || !backgroundColor().isValid())
-        {
-            return reject();
-        }
-        accept();
-    });
+    connect(closeButton, &QPushButton::clicked, this, &CommentStyleDialog::accept);
+
+    setBackgroundColor(m_comment->backgroundColor());
+    setTextColor(m_comment->textColor());
 }
 
-CommentColorDialog::~CommentColorDialog() = default;
+CommentStyleDialog::~CommentStyleDialog() = default;
+
 
 void
-CommentColorDialog::setShowFrame(bool enable)
-{
-    assert(m_showFrameCheckBox);
-    m_showFrameCheckBox->setChecked(enable);
-}
-
-bool
-CommentColorDialog::showFrame() const
-{
-    assert(m_showFrameCheckBox);
-    return m_showFrameCheckBox->isChecked();
-}
-
-bool
-CommentColorDialog::isDefaultBackgroundColor() const
-{
-    assert(m_bgColorButtons.size() > 0);
-    ColorButton* defaultBtn = m_bgColorButtons.front();
-    assert(defaultBtn);
-    return defaultBtn->isChecked();
-}
-
-void
-CommentColorDialog::setBackgroundColor(QColor const& color)
+CommentStyleDialog::setBackgroundColor(QColor const& color)
 {
     assert(m_bgColorButtons.size() > 0);
     if (!color.isValid())
@@ -452,33 +438,12 @@ CommentColorDialog::setBackgroundColor(QColor const& color)
     assert(customBtn);
     customBtn->setPrimaryColor(color);
     customBtn->setChecked(true);
+    m_customBgColor = color;
     emit customBackgroundColorChanged();
 }
 
-QColor
-CommentColorDialog::backgroundColor() const
-{
-    for (ColorButton* button : qAsConst(m_bgColorButtons))
-    {
-        if (button->isChecked())
-        {
-            return button->primaryColor();
-        }
-    }
-    return QColor{};
-}
-
-bool
-CommentColorDialog::isDefaultTextColor() const
-{
-    assert(m_textColorButtons.size() > 0);
-    ColorButton* defaultBtn = m_textColorButtons.front();
-    assert(defaultBtn);
-    return defaultBtn->isChecked();
-}
-
 void
-CommentColorDialog::setTextColor(QColor const& color)
+CommentStyleDialog::setTextColor(QColor const& color)
 {
     assert(m_textColorButtons.size() > 0);
     if (!color.isValid())
@@ -504,30 +469,37 @@ CommentColorDialog::setTextColor(QColor const& color)
     assert(customBtn);
     customBtn->setPrimaryColor(color);
     customBtn->setChecked(true);
+    m_customTextColor = color;
     emit customTextColorChanged();
 }
 
-QColor
-CommentColorDialog::textColor() const
+void
+CommentStyleDialog::getCustomBackgroundColor()
 {
-    for (ColorButton* button : qAsConst(m_textColorButtons))
+    QColor color = QColorDialog::getColor(
+        m_customBgColor,
+        nullptr,
+        tr("Select Custom Background Color"),
+        QColorDialog::ShowAlphaChannel
+    );
+
+    if (color.isValid())
     {
-        if (button->isChecked())
-        {
-            return button->primaryColor();
-        }
+        m_customBgColor = color;
     }
-    return QColor{};
 }
 
 void
-CommentColorDialog::setTextAlignment(Qt::Alignment alignment)
+CommentStyleDialog::getCustomTextColor()
 {
+    QColor color = QColorDialog::getColor(
+        m_customTextColor,
+        nullptr,
+        tr("Select Custom Text Color")
+    );
 
-}
-
-Qt::Alignment
-CommentColorDialog::textAlignment() const
-{
-    return Qt::AlignCenter;
+    if (color.isValid())
+    {
+        m_customTextColor = color;
+    }
 }

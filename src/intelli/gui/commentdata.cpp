@@ -194,7 +194,6 @@ CommentData::CommentData(GtObject* parent) :
         emit nodeConnectionRemoved(nodeId);
         ASSERT_EQ_SIZE();
     }, Qt::DirectConnection);
-
 }
 
 CommentData::~CommentData()

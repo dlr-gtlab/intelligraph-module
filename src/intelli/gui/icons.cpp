@@ -26,3 +26,30 @@ gt::gui::icon::intelli::node()
     );
     return icon;
 }
+
+QIcon const&
+gt::gui::icon::intelli::textAlignLeft()
+{
+    static QIcon icon = gt::gui::getIcon(
+        QStringLiteral(":/intelligraph-icons/format-align-left.svg")
+    );
+    return icon;
+}
+
+QIcon const&
+gt::gui::icon::intelli::textAlignCenter()
+{
+    static QIcon icon = gt::gui::getIcon(
+        QStringLiteral(":/intelligraph-icons/format-align-center.svg")
+    );
+    return icon;
+}
+
+QIcon const&
+gt::gui::icon::intelli::textAlignRight()
+{
+    static QIcon icon = gt::gui::getIcon(
+        QStringLiteral(":/intelligraph-icons/format-align-right.svg")
+    );
+    return icon;
+}

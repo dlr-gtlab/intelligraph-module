@@ -75,13 +75,11 @@ public:
             auto icon = gt::gui::icon::comment();
 
             QSize size{24, 24};
-
             QSize offset = ((p->boundingRect().size() - size) * 0.5).toSize();
             QRect rect{QPoint{offset.width(), offset.height()}, size};
 
             QColor color = gt::gui::color::text();
             QColor bgcolor = style::invert(color);
-
 
             if (isSelected)
             {
@@ -411,6 +409,8 @@ CommentGraphicsObject::setEditing(bool isEditing)
                                 style::ZValue::NodeHovered :
                                 style::ZValue::Comment));
 
+    // Note: text edit only cares about h-alignment,
+    // vertical alignment would need to be faked
     Qt::Alignment alignment = isEditing ? Qt::AlignLeft : m_comment->textAlignment();
 
     QTextCursor cursor = m_editor->textCursor();
@@ -548,25 +548,13 @@ CommentGraphicsObject::setupContextMenu(QMenu& menu)
     changeColorAction->setVisible(!isCollapsed());
 
     connect(changeColorAction, &QAction::triggered, this, [this](){
-        CommentColorDialog dialog;
-        dialog.setBackgroundColor(m_comment->backgroundColor());
-        dialog.setTextColor(m_comment->textColor());
-        dialog.setShowFrame(m_comment->showFrame());
-        dialog.setTextAlignment(m_comment->textAlignment());
-
-        if (!dialog.exec()) return;
+        assert(m_comment);
 
         auto cmd = gtApp->makeCommand(m_comment, tr("Change style of comment"));
         Q_UNUSED(cmd);
 
-        m_comment->setBackgroundColor(!dialog.isDefaultBackgroundColor() ?
-                                          dialog.backgroundColor().name(QColor::HexArgb) :
-                                          QString{});
-        m_comment->setTextColor(!dialog.isDefaultTextColor() ?
-                                    dialog.textColor().name(QColor::HexRgb) :
-                                    QString{});
-        m_comment->setShowFrame(dialog.showFrame());
-        m_comment->setTextAlignment(dialog.textAlignment());
+        CommentStyleDialog dialog{*m_comment};
+        dialog.exec();
     });
 
     // node connection
