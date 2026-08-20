@@ -130,7 +130,7 @@ GraphUserVariables::setValue(QString const& key, QVariant const& value)
 
     // update id (if its invalid)
     bool ok = true;
-    if (instance->getMemberVal<ID>(S_MEMBER_ID, &ok) == 0 && !ok)
+    if (instance->getMemberVal<ID>(S_MEMBER_ID, &ok) == 0 || !ok)
     {
         unsigned newId = pimpl->variables.size();
         for (auto& entry : pimpl->variables)
