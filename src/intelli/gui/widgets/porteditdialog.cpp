@@ -14,7 +14,6 @@
 
 #include <gt_icons.h>
 #include <gt_regularexpression.h>
-#include <gt_regexpvalidator.h>
 
 #include <QVBoxLayout>
 #include <QFormLayout>
@@ -23,6 +22,7 @@
 #include <QComboBox>
 #include <QCheckBox>
 #include <QPushButton>
+#include <QRegularExpressionValidator>
 
 using namespace intelli;
 
