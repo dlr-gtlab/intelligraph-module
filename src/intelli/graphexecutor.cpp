@@ -637,8 +637,10 @@ GraphExecutor::evaluateQueue()
 
         if (!exec::triggerNodeEvaluation(*node))
         {
-            assert(pimpl->evaluating.contains(node->uuid()));
-            pimpl->evaluating.removeOne(node->uuid());
+            if (pimpl->evaluating.contains(node->uuid()))
+            {
+                pimpl->evaluating.removeOne(node->uuid());
+            }
 
             gtError().verbose()
                 << logErrorExt << tr("triggering evaluation failed!");

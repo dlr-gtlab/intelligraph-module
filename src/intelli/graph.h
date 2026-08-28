@@ -10,7 +10,7 @@
 #ifndef GT_INTELLI_GRAPH_H
 #define GT_INTELLI_GRAPH_H
 
-#include <intelli/node.h>
+#include <intelli/dynamicnode.h>
 #include <intelli/graphconnectionmodel.h>
 #include <intelli/view.h>
 
@@ -23,11 +23,10 @@ namespace intelli
 {
 
 class Graph;
-class GroupInputProvider;
-class GroupOutputProvider;
+class GraphInputProvider;
+class GraphOutputProvider;
 class Connection;
 class ConnectionGroup;
-class DynamicNode;
 
 /**
  * @brief Opens the graph in a graph editor. The graph object should be kept
@@ -103,7 +102,7 @@ bool containsNodeId(NodeId_t const& nodeId, NodeList const& nodes)
  * Can be appended itself to another graph. Prefer to use appendNode and
  * appendConnection functions instead of using appendChild or setParent.
  */
-class GT_INTELLI_EXPORT Graph : public Node
+class GT_INTELLI_EXPORT Graph : public DynamicNode
 {
     Q_OBJECT
 
@@ -314,30 +313,30 @@ public:
      * graph was not yet initialized or it is the root graph.
      * @return Input provider
      */
-    GroupInputProvider* inputProvider();
-    GroupInputProvider const* inputProvider() const;
+    GraphInputProvider* inputProvider();
+    GraphInputProvider const* inputProvider() const;
 
     /**
      * @brief Returns the input provider of this graph as a plain Node object.
      * @return Input provider
      */
-    DynamicNode* inputNode();
-    DynamicNode const* inputNode() const;
+    Node* inputNode();
+    Node const* inputNode() const;
 
     /**
      * @brief Returns the output provider of this graph. May be null if the sub
      * graph was not yet initialized or it is the root graph.
      * @return Output provider
      */
-    GroupOutputProvider* outputProvider();
-    GroupOutputProvider const* outputProvider() const;
+    GraphOutputProvider* outputProvider();
+    GraphOutputProvider const* outputProvider() const;
 
     /**
      * @brief Returns the output provider of this graph as a plain Node object.
      * @return Input provider
      */
-    DynamicNode* outputNode();
-    DynamicNode const* outputNode() const;
+    Node* outputNode();
+    Node const* outputNode() const;
 
     /**
      * @brief Finds all dependencies of the node referred by `nodeId`
@@ -663,7 +662,7 @@ signals:
 protected:
 
     /// protected constructor
-    Graph(QString const& modelName);
+    Graph(QString const& modelName, bool initProviders = false);
 
     void eval() override;
 
@@ -697,6 +696,14 @@ private:
     void updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr);
 
     void mergeUserVariables(Graph& other);
+
+private slots:
+
+    void onPortInserted(PortType type, PortIndex idx);
+
+    void onPortChanged(PortId portId);
+
+    void onPortDeleted(PortType type, PortIndex idx);
 };
 
 } // namespace intelli

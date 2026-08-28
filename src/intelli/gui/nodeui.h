@@ -210,16 +210,24 @@ protected:
     /** PORT ACTIONS **/
 
     /**
-     * @brief Adds an input port to a dynamic node
+     * @brief Prompts the user and adds an input port to the given dynamic node
      * @param obj
      */
     static void addDynamicInPort(GtObject* obj);
 
     /**
-     * @brief Adds an output port to a dynamic node
+     * @brief Prompts the user and adds an output port to the given dynamic node
      * @param obj
      */
     static void addDynamicOutPort(GtObject* obj);
+
+    /**
+     * @brief Prompts the user to edit the given dynamic port
+     * @param obj
+     * @param type
+     * @param idx
+     */
+    static void editDynamicPort(Node* obj, PortType type, PortIndex idx);
 
     /**
      * @brief Deletes a dynamic port
@@ -228,6 +236,34 @@ protected:
      * @param idx
      */
     static void deleteDynamicPort(Node* obj, PortType type, PortIndex idx);
+
+    /**
+     * @brief Prompts the user and adds an input port to the given dynamic node
+     * @param obj
+     */
+    static void addInputProviderPort(GtObject* obj);
+
+    /**
+     * @brief Prompts the user and adds an output port to the given dynamic node
+     * @param obj
+     */
+    static void addOutputProviderPort(GtObject* obj);
+
+    /**
+     * @brief Prompts the user to edit the given dynamic port
+     * @param obj
+     * @param type
+     * @param idx
+     */
+    static void editProviderPort(Node* obj, PortType type, PortIndex idx);
+
+    /**
+     * @brief Deletes a dynamic port
+     * @param obj
+     * @param type
+     * @param idx
+     */
+    static void deleteProviderPort(Node* obj, PortType type, PortIndex idx);
 
     static bool isInputPort(Node* obj, PortType type, PortIndex idx);
     static bool isOutputPort(Node* obj, PortType type, PortIndex idx);

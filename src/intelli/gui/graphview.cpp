@@ -87,6 +87,7 @@ GraphView::GraphView(QWidget* parent) :
     // controls minor and major lines
     grid->setGridHeight(s_major_grid_size);
     grid->setGridWidth(s_major_grid_size);
+    grid->setScaleGrid(false);
 
     showGrid(true);
 

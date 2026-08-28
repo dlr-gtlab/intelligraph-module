@@ -231,7 +231,6 @@ private:
      * @return Offset to beginning of the first index of a dynamic port.
      */
     int offset(PortType type) const;
-
     /**
      * @brief Can be used to check which port tyoe the container belongs to
      * @param container Container to get port type from

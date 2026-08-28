@@ -43,6 +43,17 @@ struct DynamicNode::Impl
 
     /// Node option
     size_t option = DynamicInputAndOutput;
+
+    size_t unsyncedInPorts  = 0;
+    size_t unsyncedOutPorts = 0;
+
+    auto beginInsertPort(PortType type)
+    {
+        type == PortType::In ? unsyncedInPorts++ : unsyncedOutPorts++;
+        return gt::finally([this, type]{
+            type == PortType::In ? unsyncedInPorts-- : unsyncedOutPorts--;
+        });
+    }
 };
 
 DynamicNode::DynamicNode(QString const& modelName,
@@ -155,11 +166,17 @@ DynamicNode::dynamicNodeOption() const
     return pimpl->option;
 }
 
-int DynamicNode::offset(PortType type) const
+int
+DynamicNode::offset(PortType type) const
 {
     auto const& dynamicPorts = this->dynamicPorts(type);
     auto const& allPorts     = this->ports(type);
     int offset = allPorts.size() - dynamicPorts.size();
+    // port may be added to node but not yet to container
+    offset -= (type == PortType::In ? pimpl->unsyncedInPorts :
+                                      pimpl->unsyncedOutPorts);
+    // NOTE: may still yield < 0 if node is restored and ports exist in dynamic
+    // container but not in the node yet (`onObjectDataMerged` was not called)
     return offset;
 }
 
@@ -238,10 +255,14 @@ DynamicNode::insertPort(PortOption option, PortType type, PortInfo port, int idx
 
     int actualPortIdx = gt::clamp(idx, offset, (int)allPorts.size());
 
+    auto insertPortCmd = pimpl->beginInsertPort(type);
+
     PortId portId = Node::insertPort(type, port, actualPortIdx);
     if (!portId.isValid()) return portId;
 
     int dynamicPortIdx = gt::clamp(idx, 0, (int)dynamicPorts.size());
+
+    insertPortCmd.finalize();
 
     GtPropertyStructInstance& entry =
         dynamicPorts.newEntry(type == PortType::In ? S_PORT_INFO_IN : S_PORT_INFO_OUT,

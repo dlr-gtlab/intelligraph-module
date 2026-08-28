@@ -13,12 +13,18 @@
 #include <intelli/graph.h>
 #include <intelli/connection.h>
 #include <intelli/nodedatafactory.h>
+#include <intelli/node/abstractgroupprovider.h>
 #include <intelli/private/utils.h>
 
 #include <gt_logging.h>
 
+
 namespace intelli
 {
+
+/// NOTE: starting id may not be enforced in old GTlab projects yet
+/// (not guranteed to be free)
+constexpr static NodeId s_startingNodeId{8};
 
 /// Helper struct to "hide" implementation details and template functions
 struct Graph::Impl
@@ -32,6 +38,8 @@ struct Graph::Impl
     /// flag indicating that the connection model should be reset once
     /// the graph is no longer being modified
     bool resetAfterModification = false;
+
+    bool resetAfterMerge = false;
 
     bool forwardInvalidation = false;
 
@@ -77,56 +85,72 @@ struct Graph::Impl
         // check if nodes exist
         auto& conModel = graph.connectionModel();
 
-        auto targetNode = conModel.find(conId.inNodeId);;
-        auto sourceNode = conModel.find(conId.outNodeId);
+        auto target = conModel.find(conId.inNodeId);;
+        auto source = conModel.find(conId.outNodeId);
 
-        if (targetNode == conModel.end() || sourceNode == conModel.end())
+        if (target == conModel.end() || source == conModel.end())
         {
             if (!silent)
             {
                 gtWarning() << makeError()
                             << tr("(connection in-node %1, out-node %2)")
-                                   .arg(targetNode == conModel.end() ? "found" : "not found")
-                                   .arg(sourceNode == conModel.end() ? "found" : "not found");
+                                   .arg(target == conModel.end() ? "found" : "not found")
+                                   .arg(source == conModel.end() ? "found" : "not found");
             }
             return false;
         }
 
-        assert(targetNode->node->id() == conId.inNodeId &&
-               targetNode->node->parent()  == &graph);
-        assert(sourceNode->node->id() == conId.outNodeId &&
-               sourceNode->node->parent() == &graph);
+        if (!target->node || !source->node)
+        {
+            if (!silent)
+            {
+                gtWarning() << makeError()
+                            << tr("(connection in-node %1, out-node %2)")
+                                   .arg(target->node ? "valid" : "null")
+                                   .arg(source->node ? "valid" : "null");
+            }
+            return false;
+        }
+
+        assert(target->node->id() == conId.inNodeId &&
+               target->node->parent()  == &graph);
+        assert(source->node->id() == conId.outNodeId &&
+               source->node->parent() == &graph);
 
         // check if ports to connect exist
-        PortInfo* inPort  = targetNode->node->port(conId.inPort);
-        PortInfo* outPort = sourceNode->node->port(conId.outPort);
+        PortInfo* inPort  = target->node->port(conId.inPort);
+        PortInfo* outPort = source->node->port(conId.outPort);
+
+        gtDebug() << __FUNCTION__ << (void*)graph.pimpl->global.get();
 
         if (!inPort || !outPort)
         {
             if (!silent)
             {
                 gtWarning() << makeError()
-                            << tr("(connection in-port %1, out-port %2)")
-                                   .arg(inPort  ? "found" : "not found")
-                                   .arg(outPort ? "found" : "not found");
+                            << tr("(connection in-port of node '%3' %1, out-port of node '%4' %2)")
+                                   .arg(inPort  ? "found" : "not found",
+                                        outPort ? "found" : "not found",
+                                        relativeNodePath(*target->node),
+                                        relativeNodePath(*source->node));
             }
             return false;
         }
 
         // check if output is connected to input
-        if (targetNode->node->portType(inPort->id())  ==
-            sourceNode->node->portType(outPort->id()))
+        if (target->node->portType(inPort->id())  ==
+            source->node->portType(outPort->id()))
         {
             if (!silent)
             {
                 gtWarning() << makeError()
-                            << tr("(cannot connect ports of same port type)");
+                            << tr("(cannot connect ports of same port side)");
             }
             return false;
         }
 
         // target node should be an input port
-        assert(targetNode->node->portType(inPort->id()) == PortType::In);
+        assert(target->node->portType(inPort->id()) == PortType::In);
 
         // check if types are compatible
         auto& factory = NodeDataFactory::instance();
@@ -142,7 +166,7 @@ struct Graph::Impl
         }
 
         // check if input port is already connected
-        auto connected = !targetNode->iterateConnections(conId.inPort).empty();
+        auto connected = !target->iterateConnections(conId.inPort).empty();
         if (connected)
         {
             if (!silent)
@@ -224,10 +248,11 @@ struct Graph::Impl
             if (policy != NodeIdPolicy::Update) return false;
 
             // generate a new one
-            auto maxId = ids.empty() ? 0 : *std::max_element(std::begin(ids), std::end(ids)) + 1;
+            size_t maxId = ids.empty() ?
+                             s_startingNodeId :
+                             *std::max_element(std::begin(ids), std::end(ids)) + 1;
             node.setId(NodeId::fromValue(maxId));
-
-            return node.id() != invalid<NodeId>();
+            return node.id().isValid();
         }
         return true;
     }
@@ -270,6 +295,122 @@ struct Graph::Impl
 
                 graph.appendGlobalConnection(connection, conId, *targetNode);
             }
+        }
+    }
+
+    static void onPortInserted(Graph* root,
+                               AbstractGraphProvider* provider,
+                               PortType type,
+                               PortIndex idx)
+    {
+        assert(root);
+        assert(root->isDynamicPort(type, idx));
+
+        auto const makeError = [root, type, idx](){
+            return relativeNodePath(*root) + QStringLiteral(": ") +
+                   QObject::tr("Failed to add %3put port (%1/%2)!")
+                       .arg(toString(idx),
+                            toString(type),
+                            type == PortType::In ? "in":"out");
+        };
+
+        PortInfo* srcPort = root->port(root->portId(type, idx));
+        if (!srcPort)
+        {
+            gtError() << makeError() << QObject::tr("(Source port not found)");
+            return;
+        }
+
+        if (!provider)
+        {
+            gtError() << makeError() << tr("(provider not found)");
+            return;
+        }
+
+        PortId addedPortId = provider->addPort(*srcPort);
+        if (!addedPortId.isValid())
+        {
+            gtError() << makeError()
+                      << QObject::tr("(Adding port to provider failed)");
+            return;
+        }
+        assert(addedPortId == srcPort->id());
+    }
+
+    static void onPortChanged(Graph* root,
+                              AbstractGraphProvider* provider,
+                              PortType type,
+                              PortId portId)
+    {
+        assert(portId.isValid());
+        assert(root);
+        assert(root->isDynamicPort(type, root->portIndex(type, portId)));
+
+        auto const makeError = [root, type, portId](){
+            return relativeNodePath(*root) + QStringLiteral(": ") +
+                   tr("Failed to update %2put port (%1)!")
+                       .arg(toString(portId),
+                            type == PortType::In ? "in":"out");
+        };
+
+        PortInfo* srcPort = root->port(portId);
+        if (!srcPort)
+        {
+            gtError() << makeError() << tr("(Source port not found)");
+            return;
+        }
+
+        if (!provider)
+        {
+            gtError() << makeError() << tr("(provider not found)");
+            return;
+        }
+
+        PortInfo* port = provider->port(srcPort->id());
+        if (!port)
+        {
+            gtError() << makeError()
+                      << QObject::tr("(Updating port of provider failed)");
+            return;
+        }
+        port->assign(*srcPort);
+        emit provider->portChanged(port->id());
+    }
+
+    static void onPortDeleted(Graph* root,
+                              AbstractGraphProvider* provider,
+                              PortType type,
+                              PortIndex idx)
+    {
+        assert(root);
+        assert(root->isDynamicPort(type, idx));
+
+        auto const makeError = [root, type, idx](){
+            return relativeNodePath(*root) + QStringLiteral(": ") +
+                   tr("Failed to delete %3put port (%1/%2)!")
+                       .arg(toString(idx),
+                            toString(type),
+                            type == PortType::In ? "in":"out");
+        };
+
+        auto portId = root->portId(type, idx);
+        if (!portId.isValid())
+        {
+            gtError() << makeError() << tr("(Source port not found)");
+            return;
+        }
+
+        if (!provider)
+        {
+            gtError() << makeError() << tr("(provider not found)");
+            return;
+        }
+
+        if (!provider->removePort(portId))
+        {
+            gtError() << makeError()
+                      << QObject::tr("(Removing port of provider failed)");
+            return;
         }
     }
 

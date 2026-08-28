@@ -13,8 +13,10 @@
 
 namespace intelli
 {
-class ConditionalInputProvider;
-class ConditionalOutputProvider;
+
+using ConditionalInputProvider = GraphInputProvider;
+
+using ConditionalOutputProvider = GraphOutputProvider;
 
 class GT_INTELLI_EXPORT ConditionalGroupNode : public Graph
 {
@@ -22,9 +24,9 @@ class GT_INTELLI_EXPORT ConditionalGroupNode : public Graph
 
 public:
 
-    enum BranchType
+    enum BranchType : unsigned
     {
-        IfBranch,
+        IfBranch = 0,
         ElseBranch
     };
 
@@ -44,7 +46,7 @@ public:
 
     void updateDataPort(PortId portId, PortInfo newPort);
 
-    void deleteDataPort(PortId portId);
+    void removeDataPort(PortId portId);
 
     /**
      * @brief initializes the input and output of this graph
@@ -70,43 +72,11 @@ private:
 
 private slots:
 
-    void onInPortInserted(PortType actualType, PortIndex idx);
+    void onPortInserted(PortType type, PortIndex idx);
 
-    void onInPortChanged(PortId portId);
+    void onPortChanged(PortId portId);
 
-    void onInPortDeleted(PortType actualType, PortIndex idx);
-
-    void onOutPortInserted(PortType actualType, PortIndex idx);
-
-    void onOutPortChanged(PortId portId);
-
-    void onOutPortDeleted(PortType actualType, PortIndex idx);
-};
-
-class ConditionalInputProvider : public GroupInputProvider
-{
-    Q_OBJECT
-
-public:
-
-    Q_INVOKABLE ConditionalInputProvider(ConditionalGroupNode::BranchType type = ConditionalGroupNode::IfBranch);
-
-protected:
-
-    void eval() override;
-};
-
-class ConditionalOutputProvider : public GroupOutputProvider
-{
-    Q_OBJECT
-
-public:
-
-    Q_INVOKABLE ConditionalOutputProvider(ConditionalGroupNode::BranchType type = ConditionalGroupNode::IfBranch);
-
-protected:
-
-    void eval() override;
+    void onPortDeleted(PortType type, PortIndex idx);
 };
 
 } // namespace intelli

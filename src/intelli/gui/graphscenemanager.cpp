@@ -96,7 +96,7 @@ GraphSceneManager::createScene(Graph& graph)
     bool isRoot = &graph == root;
 
     auto* dataModel = root->findDirectChild<GraphDataModel*>();
-    if (dataModel)
+    if (dataModel && isRoot)
     {
         auto* executor = new GraphExecutor{graph, *dataModel};
         executor->autoEvaluate(isRoot);

@@ -31,177 +31,145 @@ const char* C_NAME_ELSE_OUT_NODE = "Else Output";
 struct ConditionalGroupNode::Impl
 {
 
-template <typename PorviderA, typename ProviderB>
+template <typename ProviderA, typename ProviderB>
 static void onPortInserted(ConditionalGroupNode* root,
-                           PorviderA* ifProvider,
+                            ProviderA* ifProvider,
                            ProviderB* elseProvider,
-                           PortType actualType,
+                           PortType type,
                            PortIndex idx)
 {
     assert(root);
 
-    PortType type = invert(actualType);
-
     auto const makeError = [root, type, idx](){
         return relativeNodePath(*root) + QStringLiteral(": ") +
-               QObject::tr("Failed to add %3put port (%1/%2)!")
+               QObject::tr("Failed to add %3 port (%1/%2)!")
                    .arg(toString(idx),
                         toString(type),
-                        type == PortType::Out ? "in":"out");
+                        type == PortType::In ? "input":"output");
     };
 
-    // if-node
-    if (!ifProvider)
-    {
-        gtError() << makeError() << QObject::tr("(Source node not found)");
-        return;
-    }
-    // else-node
-    if (!elseProvider)
-    {
-        gtError() << makeError() << QObject::tr("(Else-node not found)");
-        return;
-    }
-
-    PortInfo* srcPort = ifProvider->port(ifProvider->portId(actualType, idx));
+    PortInfo* srcPort = root->port(root->portId(type, idx));
     if (!srcPort)
     {
         gtError() << makeError() << QObject::tr("(Source port not found)");
         return;
     }
-    assert(srcPort->id() > root->m_condition);
+    assert(root->isDataPort(srcPort->id()));
 
-    PortId addedPortId = actualType == PortType::Out ?
-                           root->addInPort(*srcPort) :
-                           root->addOutPort(*srcPort);
-    if (!addedPortId.isValid())
+    for (auto* provider : { ifProvider, elseProvider })
     {
-        gtError() << makeError() << QObject::tr("(Adding port failed)");
-        return;
-    }
-    assert(addedPortId == srcPort->id());
+        if (!provider)
+        {
+            gtError() << makeError()
+                      << QObject::tr("(%1-node not found)")
+                             .arg(provider == ifProvider ? "if":"else");
+            return;
+        }
 
-    addedPortId = elseProvider->addPort(srcPort->copy());
-    if (!addedPortId.isValid())
-    {
-        gtError() << makeError() << tr("(Addig else-port failed)");
-        return;
+        PortId addedPortId = provider->addPort(*srcPort);
+        if (!addedPortId.isValid())
+        {
+            gtError() << makeError()
+                      << QObject::tr("(Adding %1-port failed)")
+                             .arg(provider == ifProvider ? "if":"else");
+            return;
+        }
+        assert(addedPortId == srcPort->id());
     }
-    assert(addedPortId == srcPort->id());
 }
 
-template <PortType Type, typename PorviderA, typename ProviderB>
+template <typename ProviderA, typename ProviderB>
 static void onPortChanged(ConditionalGroupNode* root,
-                          PorviderA* ifProvider,
+                          ProviderA* ifProvider,
                           ProviderB* elseProvider,
+                          PortType type,
                           PortId portId)
 {
     assert(root);
 
-    auto const makeError = [root, portId](){
+    auto const makeError = [root, type, portId](){
         return relativeNodePath(*root) + QStringLiteral(": ") +
-               tr("Failed to update %2put port (%1)!")
+               tr("Failed to update %2 port (%1)!")
                    .arg(toString(portId),
-                        Type == PortType::In ? "in":"out");
+                        type == PortType::In ? "input":"output");
     };
 
     assert(portId.isValid());
 
-    // if-node
-    if (!ifProvider)
-    {
-        gtError() << makeError() << tr("(Source node not found)");
-        return;
-    }
-    // else-node
-    if (!elseProvider)
-    {
-        gtError() << makeError() << tr("(Else-node not found)");
-        return;
-    }
-
-    PortInfo* srcPort = ifProvider->port(portId);
+    PortInfo* srcPort = root->port(portId);
     if (!srcPort)
     {
         gtError() << makeError() << tr("(Source port not found)");
         return;
     }
-    assert(portId > root->m_condition);
+    assert(root->isDataPort(portId));
 
-    // main-node
-    auto* port = root->port(srcPort->id());
-    if (!port)
+    for (auto* provider : { ifProvider, elseProvider })
     {
-        gtError() << makeError() << tr("(Updating port failed)");
-        return;
-    }
-    port->assign(*srcPort);
-    emit root->portChanged(port->id());
+        if (!provider)
+        {
+            gtError() << makeError()
+                      << QObject::tr("(%1-node not found)")
+                             .arg(provider == ifProvider ? "if":"else");
+            return;
+        }
 
-    port = elseProvider->port(srcPort->id());
-    if (!port)
-    {
-        gtError() << makeError() << tr("(Updating else-port failed)");
-        return;
+        PortInfo* port = provider->port(srcPort->id());
+        if (!port)
+        {
+            gtError() << makeError()
+                      << QObject::tr("(Updating %1-port failed)")
+                             .arg(provider == ifProvider ? "if":"else");
+            return;
+        }
+        port->assign(*srcPort);
+        emit provider->portChanged(port->id());
     }
-    port->assign(*srcPort);
-    emit elseProvider->portChanged(port->id());
 }
 
-template <typename PorviderA, typename ProviderB>
+template <typename ProviderA, typename ProviderB>
 static void onPortDeleted(ConditionalGroupNode* root,
-                          PorviderA* ifProvider,
+                          ProviderA* ifProvider,
                           ProviderB* elseProvider,
-                          PortType actualType,
+                          PortType type,
                           PortIndex idx)
 {
     assert(root);
 
-    PortType type = invert(actualType);
-
     auto const makeError = [root, type, idx](){
         return relativeNodePath(*root) + QStringLiteral(": ") +
-               tr("Failed to delete %3put port (%1/%2)!")
+               tr("Failed to delete %3 port (%1/%2)!")
                    .arg(toString(idx),
                         toString(type),
-                        type == PortType::Out ? "in":"out");
+                        type == PortType::In ? "input":"output");
     };
 
-    // if-node
-    if (!ifProvider)
-    {
-        gtError() << makeError() << tr("(Source node not found)");
-        return;
-    }
-    // else-node
-    if (!elseProvider)
-    {
-        gtError() << makeError() << tr("(Else-node not found)");
-        return;
-    }
-
-    auto portId = ifProvider->portId(actualType, idx);
+    auto portId = root->portId(type, idx);
     if (!portId.isValid())
     {
         gtError() << makeError() << tr("(Source port not found)");
         return;
     }
-    assert(portId > root->m_condition);
+    assert(root->isDataPort(portId));
 
-    // main-node
-    if (!root->port(portId))
+    for (auto* provider : { ifProvider, elseProvider })
     {
-        gtError() << makeError() << tr("(Removing port failed)");
-        return;
-    }
-    root->removePort(portId);
+        if (!provider)
+        {
+            gtError() << makeError()
+                      << QObject::tr("(%1-node not found)")
+                             .arg(provider == ifProvider ? "if":"else");
+            return;
+        }
 
-    if (!elseProvider->port(portId))
-    {
-        gtError() << makeError() << tr("(Removing else-port failed)");
-        return;
+        if (!provider->removePort(portId))
+        {
+            gtError() << makeError()
+                      << QObject::tr("(Removing %1-port failed)")
+                             .arg(provider == ifProvider ? "if":"else");
+            return;
+        }
     }
-    elseProvider->removePort(portId);
 }
 
 }; // struct Impl
@@ -209,47 +177,46 @@ static void onPortDeleted(ConditionalGroupNode* root,
 ConditionalGroupNode::ConditionalGroupNode() :
     Graph(QStringLiteral("Conditional"))
 {
+    NodeId nextId{0};
+
     for (auto type : { IfBranch, ElseBranch })
     {
-        auto input = std::make_unique<ConditionalInputProvider>(type);
+        Position offset{0, 100};
+        if (type == ConditionalGroupNode::IfBranch) offset.ry() *= -1;
+
+        auto input = std::make_unique<ConditionalInputProvider>();
+        input->setCaption(type == ConditionalGroupNode::IfBranch ?
+                              C_NAME_IF_IN_NODE : C_NAME_ELSE_IN_NODE);
+        input->setPos(input->pos() + offset);
         input->setDefault(true);
-        appendNode(std::move(input));
+        input->setId(nextId++);
+        appendNode(std::move(input), NodeIdPolicy::Keep);
 
-        auto output = std::make_unique<ConditionalOutputProvider>(type);
+        auto output = std::make_unique<ConditionalOutputProvider>();
+        output->setCaption(type == ConditionalGroupNode::IfBranch ?
+                               C_NAME_IF_OUT_NODE : C_NAME_ELSE_OUT_NODE);
+        output->setPos(output->pos() + offset);
         output->setDefault(true);
-        appendNode(std::move(output));
+        output->setId(nextId++);
+        appendNode(std::move(output), NodeIdPolicy::Keep);
     }
 
-    /// only the if branch nodes are used to synchronize the state across all
-    /// other nodes
-    if (auto* input = inputProvider(IfBranch))
-    {
-        connect(input, &Node::portInserted,
-                this, &ConditionalGroupNode::onInPortInserted,
-                Qt::DirectConnection);
-        connect(input, &Node::portChanged,
-                this, &ConditionalGroupNode::onInPortChanged,
-                Qt::DirectConnection);
-        connect(input, &Node::portAboutToBeDeleted,
-                this, &ConditionalGroupNode::onInPortDeleted,
-                Qt::DirectConnection);
-    }
-    if (auto* output = outputProvider(IfBranch))
-    {
-        connect(output, &Node::portInserted,
-                this, &ConditionalGroupNode::onOutPortInserted,
-                Qt::DirectConnection);
-        connect(output, &Node::portChanged,
-                this, &ConditionalGroupNode::onOutPortChanged,
-                Qt::DirectConnection);
-        connect(output, &Node::portAboutToBeDeleted,
-                this, &ConditionalGroupNode::onOutPortDeleted,
-                Qt::DirectConnection);
-    }
+    // add static port first
+    m_condition = addStaticInPort(
+        PortInfo::customId(PortId{0}, typeId<BoolData>())
+            .setCaption("condition")
+            .setOptional(false));
 
-    m_condition = addInPort(PortInfo::customId(PortId{0}, typeId<BoolData>())
-                                .setCaption("condition")
-                                .setOptional(false));
+    // sync dynamic ports
+    connect(this, &Node::portInserted,
+            this, &ConditionalGroupNode::onPortInserted,
+            Qt::DirectConnection);
+    connect(this, &Node::portChanged,
+            this, &ConditionalGroupNode::onPortChanged,
+            Qt::DirectConnection);
+    connect(this, &Node::portAboutToBeDeleted,
+            this, &ConditionalGroupNode::onPortDeleted,
+            Qt::DirectConnection);
 
     addDataInPort(makePort(typeId<DoubleData>()));
     addDataOutPort(makePort(typeId<DoubleData>()));
@@ -260,7 +227,7 @@ ConditionalGroupNode::ConditionalGroupNode() :
 ConditionalInputProvider*
 ConditionalGroupNode::inputProvider(BranchType type)
 {
-    return findDirectChild<ConditionalInputProvider*>(
+    return findDirectChild<GraphInputProvider*>(
         (type == IfBranch) ? C_NAME_IF_IN_NODE : C_NAME_ELSE_IN_NODE);
 }
 
@@ -273,7 +240,7 @@ ConditionalGroupNode::inputProvider(BranchType type) const
 ConditionalOutputProvider*
 ConditionalGroupNode::outputProvider(BranchType type)
 {
-    return findDirectChild<ConditionalOutputProvider*>(
+    return findDirectChild<GraphOutputProvider*>(
         (type == IfBranch) ? C_NAME_IF_OUT_NODE : C_NAME_ELSE_OUT_NODE);
 }
 
@@ -286,19 +253,13 @@ ConditionalGroupNode::outputProvider(BranchType type) const
 Node::PortId
 ConditionalGroupNode::addDataInPort(PortInfo info)
 {
-    auto* provider = inputProvider(IfBranch);
-    assert(provider);
-
-    return provider->addPort(std::move(info));
+    return addInPort(std::move(info));
 }
 
 Node::PortId
 ConditionalGroupNode::addDataOutPort(PortInfo info)
 {
-    auto* provider = outputProvider(IfBranch);
-    assert(provider);
-
-    return provider->addPort(std::move(info));
+    return addOutPort(std::move(info));
 }
 
 bool
@@ -312,20 +273,7 @@ ConditionalGroupNode::updateDataPort(PortId portId, PortInfo newPort)
 {
     if (!isDataPort(portId)) return;
 
-    PortType type = portType(portId);
-
-    auto* provider = type == PortType::In ?
-                         static_cast<DynamicNode*>(inputProvider(IfBranch)) :
-                         static_cast<DynamicNode*>(outputProvider(IfBranch));
-    if (!provider)
-    {
-        gtError() << relativeNodePath(*this) + QStringLiteral(":")
-                  << tr("Failed to update data port %1! (Node not found)")
-                         .arg(toString(portId));
-        return;
-    }
-
-    auto* port = provider->port(portId);
+    auto* port = this->port(portId);
     if (!port)
     {
         gtError() << relativeNodePath(*this) + QStringLiteral(":")
@@ -335,28 +283,15 @@ ConditionalGroupNode::updateDataPort(PortId portId, PortInfo newPort)
     }
 
     port->assign(newPort);
-    emit provider->portChanged(portId);
+    emit portChanged(portId);
 }
 
 void
-ConditionalGroupNode::deleteDataPort(PortId portId)
+ConditionalGroupNode::removeDataPort(PortId portId)
 {
     if (!isDataPort(portId)) return;
 
-    PortType type = portType(portId);
-
-    auto* provider = type == PortType::In ?
-                         static_cast<DynamicNode*>(inputProvider(IfBranch)) :
-                         static_cast<DynamicNode*>(outputProvider(IfBranch));
-    if (!provider)
-    {
-        gtError() << relativeNodePath(*this) + QStringLiteral(":")
-                  << tr("Failed to delete data port %1! (Node not found)")
-                         .arg(toString(portId));
-        return;
-    }
-
-    provider->removePort(portId);
+    removePort(portId);
 }
 
 void
@@ -435,7 +370,7 @@ ConditionalGroupNode::eval()
     loop.connectSuccess(&executor, &GraphExecutor::targetNodesEvaluated);
     loop.connectAbort(this, &Graph::graphAboutToBeDeleted);
 
-    executor.evaluateNode(outputNode->id());
+    auto future = executor.evaluateNode(outputNode->id());
     dataModel->setNodeEvaluationFailed(otherInputNode->uuid());
 
     // TODO: cannot block main thread here!
@@ -472,85 +407,50 @@ void
 ConditionalGroupNode::onObjectDataMerged()
 {
     Graph::onObjectDataMerged();
-
-    // TODO: this should be fixed with #1370 (GTlab Core)
-    // issue arises because provider nodes are added in the constructor, their
-    // uuid changes once the initial memento is applied. Thus, the connection
-    // model is outdated
-    gtTrace().verbose()
-        << utils::logIds(*this)
-        << tr("Resetting global connection model!");
-    resetGlobalConnectionModel();
 }
 
 void
-ConditionalGroupNode::onInPortInserted(PortType actualType, PortIndex idx)
+ConditionalGroupNode::onPortInserted(PortType type, PortIndex idx)
 {
-    assert(actualType == PortType::Out);
-    Impl::onPortInserted(this, inputProvider(IfBranch), inputProvider(ElseBranch), actualType, idx);
+    auto cmd = modify();
+    Q_UNUSED(cmd);
+    if (type == PortType::In)
+    {
+        Impl::onPortInserted(this, inputProvider(IfBranch), inputProvider(ElseBranch), type, idx);
+    }
+    else
+    {
+        Impl::onPortInserted(this, outputProvider(IfBranch), outputProvider(ElseBranch), type, idx);
+    }
 }
 
 void
-ConditionalGroupNode::onInPortChanged(PortId portId)
+ConditionalGroupNode::onPortChanged(PortId portId)
 {
-    Impl::onPortChanged<PortType::In>(this, inputProvider(IfBranch), inputProvider(ElseBranch), portId);
+    auto cmd = modify();
+    Q_UNUSED(cmd);
+    PortType type = portType(portId);
+    if (type == PortType::In)
+    {
+        Impl::onPortChanged(this, inputProvider(IfBranch), inputProvider(ElseBranch), type, portId);
+    }
+    else
+    {
+        Impl::onPortChanged(this, outputProvider(IfBranch), outputProvider(ElseBranch), type, portId);
+    }
 }
 
 void
-ConditionalGroupNode::onInPortDeleted(PortType actualType, PortIndex idx)
+ConditionalGroupNode::onPortDeleted(PortType type, PortIndex idx)
 {
-    assert(actualType == PortType::Out);
-    Impl::onPortDeleted(this, inputProvider(IfBranch), inputProvider(ElseBranch), actualType, idx);
+    auto cmd = modify();
+    Q_UNUSED(cmd);
+    if (type == PortType::In)
+    {
+        Impl::onPortDeleted(this, inputProvider(IfBranch), inputProvider(ElseBranch), type, idx);
+    }
+    else
+    {
+        Impl::onPortDeleted(this, outputProvider(IfBranch), outputProvider(ElseBranch), type, idx);
+    }
 }
-
-void
-ConditionalGroupNode::onOutPortInserted(PortType actualType, PortIndex idx)
-{
-    assert(actualType == PortType::In);
-    Impl::onPortInserted(this, outputProvider(IfBranch), outputProvider(ElseBranch), actualType, idx);
-}
-
-void
-ConditionalGroupNode::onOutPortChanged(PortId portId)
-{
-    Impl::onPortChanged<PortType::Out>(this, outputProvider(IfBranch), outputProvider(ElseBranch), portId);
-}
-
-void
-ConditionalGroupNode::onOutPortDeleted(PortType actualType, PortIndex idx)
-{
-    assert(actualType == PortType::In);
-    Impl::onPortDeleted(this, outputProvider(IfBranch), outputProvider(ElseBranch), actualType, idx);
-}
-
-
-ConditionalInputProvider::ConditionalInputProvider(ConditionalGroupNode::BranchType type) :
-    GroupInputProvider(type == ConditionalGroupNode::IfBranch ? C_NAME_IF_IN_NODE : C_NAME_ELSE_IN_NODE)
-{
-    QPointF position = pos();
-    position.ry() += (type == ConditionalGroupNode::IfBranch ? -1 : 1) * 100;
-    setPos(position);
-
-    setNodeEvalMode(NodeEvalMode::Blocking);
-    setNodeFlag(Unique, false);
-    setUseVirtualPorts(false);
-    setPortContainerVisible(PortType::Out, false);
-}
-
-void
-ConditionalInputProvider::eval() {}
-
-ConditionalOutputProvider::ConditionalOutputProvider(ConditionalGroupNode::BranchType type) :
-    GroupOutputProvider(type == ConditionalGroupNode::IfBranch ? C_NAME_IF_OUT_NODE : C_NAME_ELSE_OUT_NODE)
-{
-    QPointF position = pos();
-    position.ry() += (type == ConditionalGroupNode::IfBranch ? -1 : 1) * 100;
-    setPos(position);
-
-    setNodeEvalMode(NodeEvalMode::Blocking);
-    setNodeFlag(Unique, false);
-    setUseVirtualPorts(false);
-    setPortContainerVisible(PortType::In, false);
-}
-
-void ConditionalOutputProvider::eval() {}

@@ -1337,6 +1337,8 @@ GraphScene::onNodeAppended(Node* node)
     static NodeUI defaultUI;
     assert(node);
 
+//    if (node->isUserHidden()) return;
+
     NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
     if (!ui) ui = &defaultUI;
 
@@ -1361,6 +1363,8 @@ GraphScene::onNodeAppended(Node* node)
     connect(entity, &NodeGraphicsObject::makeDraftConnection,
             this, &GraphScene::onMakeDraftConnection,
             Qt::DirectConnection);
+
+    if (node->isUserHidden()) entity->hide();
 
     auto* ptr = entity.get();
 

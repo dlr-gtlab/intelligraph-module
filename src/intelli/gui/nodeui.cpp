@@ -31,6 +31,7 @@
 #include "intelli/gui/nodepainter.h"
 #include "intelli/gui/graphics/nodeobject.h"
 #include "intelli/gui/widgets/graphuservariablesdialog.h"
+#include "intelli/gui/widgets/porteditdialog.h"
 
 #include "intelli/private/utils.h"
 #include "intelli/private/node_impl.h" // temporary, needed for widget factory
@@ -65,6 +66,13 @@ inline BoolObjectMethod NOT(Functor fA)
         return !a(obj);
     };
 }
+template <typename Functor>
+inline BoolPortMethod NOT2(Functor fA)
+{
+    return [a = std::move(fA)](GtObject* obj, PortType type, PortIndex idx){
+        return !a(obj, type, idx);
+    };
+}
 /// AND operator
 template <typename Functor>
 inline BoolObjectMethod operator*(BoolObjectMethod fA, Functor fOther)
@@ -80,7 +88,7 @@ inline BoolPortMethod operator*(BoolPortMethod fA, Functor fOther)
         return a(obj, type, idx) && b(obj, type, idx);
     };
 }
-/// AND operator
+/// OR operator
 template <typename Functor>
 inline BoolObjectMethod OR(BoolObjectMethod fA, Functor fOther)
 {
@@ -90,6 +98,14 @@ inline BoolObjectMethod OR(BoolObjectMethod fA, Functor fOther)
 }
 
 DummyNode* toDummy(GtObject* obj) { return qobject_cast<DummyNode*>(obj); }
+
+GraphInputProvider* toInputProvider(GtObject* obj) { return qobject_cast<GraphInputProvider*>(obj); }
+
+GraphInputProvider* toOutputProvider(GtObject* obj) { return qobject_cast<GraphInputProvider*>(obj); }
+
+bool toProvider(GtObject* obj) { return qobject_cast<AbstractGraphProvider const*>(obj); }
+
+bool isProvider(GtObject const* obj, PortType, PortIndex) { return qobject_cast<AbstractGraphProvider const*>(obj); }
 
 bool isDummy(Node const* obj) { return qobject_cast<DummyNode const*>(obj); }
 
@@ -165,25 +181,47 @@ NodeUI::NodeUI(Option option) :
             return  (static_cast<DynamicNode*>(obj)->dynamicNodeOption() & DynamicNode::DynamicOutput);
         };
 
+        /** PORT ACTIONS **/
+
         addSingleAction(tr("Add In Port"), addDynamicInPort)
             .setIcon(gt::gui::icon::add())
-            .setVisibilityMethod(toDynamicNode * NOT(toDummy) * hasInputPorts);
+            .setVisibilityMethod(toDynamicNode * NOT(toDummy) * hasInputPorts * NOT(toProvider));
 
         addSingleAction(tr("Add Out Port"), addDynamicOutPort)
             .setIcon(gt::gui::icon::add())
-            .setVisibilityMethod(toDynamicNode * NOT(toDummy) * hasOutputPorts);
+            .setVisibilityMethod(toDynamicNode * NOT(toDummy) * hasOutputPorts * NOT(toProvider));
+
+        addPortAction(tr("Edit Port"), editDynamicPort)
+            .setIcon(gt::gui::icon::rename())
+            .setVisibilityMethod(BoolPortMethod{isDynamicPort} * isInputPort * hasInputPorts);
+
+        addPortAction(tr("Delete Port"), deleteDynamicPort)
+            .setIcon(gt::gui::icon::delete_())
+            .setVisibilityMethod(BoolPortMethod{isDynamicPort} * isInputPort * hasInputPorts * NOT2(isProvider));
+
+        addPortAction(tr("Delete Port"), deleteDynamicPort)
+            .setIcon(gt::gui::icon::delete_())
+            .setVisibilityMethod(BoolPortMethod{isDynamicPort} * isOutputPort * hasOutputPorts * NOT2(isProvider));
+
+        /** PROVIDER PORT ACTIONS **/
+
+        addSingleAction(tr("Add In Port"), addOutputProviderPort)
+            .setIcon(gt::gui::icon::add())
+            .setVisibilityMethod(toOutputProvider);
+
+        addSingleAction(tr("Add Out Port"), addInputProviderPort)
+            .setIcon(gt::gui::icon::add())
+            .setVisibilityMethod(toInputProvider);
 
         /** PORT ACTIONS **/
 
-        addPortAction(tr("Delete Port"), deleteDynamicPort)
-            .setIcon(gt::gui::icon::delete_())
-            .setVerificationMethod(BoolPortMethod{isDynamicPort} * isInputPort * hasInputPorts)
-            .setVisibilityMethod(isDynamicNode * hasInputPorts);
+        addPortAction(tr("Edit Port"), editProviderPort)
+            .setIcon(gt::gui::icon::rename())
+            .setVisibilityMethod(isProvider);
 
-        addPortAction(tr("Delete Port"), deleteDynamicPort)
+        addPortAction(tr("Delete Port"), deleteProviderPort)
             .setIcon(gt::gui::icon::delete_())
-            .setVerificationMethod(BoolPortMethod{isDynamicPort} * isOutputPort * hasOutputPorts)
-            .setVisibilityMethod(isDynamicNode * hasOutputPorts);
+            .setVisibilityMethod(isProvider);
     }
 
     if (gtApp && gtApp->devMode())
@@ -196,12 +234,14 @@ NodeUI::NodeUI(Option option) :
                             .arg(toString(obj->portId(type, idx)));
         }).setIcon(gt::gui::icon::bug());
 
+        addSeparator();
+
         addSingleAction(tr("Refresh Node"), [](GtObject* obj){
             if (auto* node = toNode(obj)) emit node->nodeChanged();
         }).setIcon(gt::gui::icon::reload())
           .setVisibilityMethod(toNode);
 
-        addSingleAction(tr("Print Debug Information"), [](GtObject* obj){
+        addSingleAction(tr("Print Graph Debug Information"), [](GtObject* obj){
             if (auto* graph = toGraph(obj))
             {
                 QString const& path = relativeNodePath(*graph);
@@ -311,11 +351,11 @@ NodeUI::displayIcon(Node const& node) const
     {
         return gt::gui::icon::intelli::intelliGraph();
     }
-    if (qobject_cast<GroupInputProvider const*>(&node))
+    if (qobject_cast<GraphInputProvider const*>(&node))
     {
         return gt::gui::icon::import();
     }
-    if (qobject_cast<GroupOutputProvider const*>(&node))
+    if (qobject_cast<GraphOutputProvider const*>(&node))
     {
         return gt::gui::icon::export_();
     }
@@ -562,20 +602,23 @@ namespace
 void
 addPort(DynamicNode& node, PortType type)
 {
-    Graph* graph = Graph::accessGraph(node);
-    assert(graph);
+    PortEditDialog dialog{type};
+    if (!dialog.exec()) return;
 
-    auto cmd = gtApp->makeCommand(graph,
-                                  QStringLiteral("Adding an %1put port to node '%2'")
+    Node::PortInfo portInfo{dialog.typeId()};
+    portInfo.caption = dialog.caption();
+    portInfo.captionVisible = dialog.captionVisible();
+
+    // TODO: undo/redo command not working, since multiple nodes are updated in parallel
+    auto cmd = gtApp->makeCommand(&node,
+                                  QStringLiteral("Adding an %1put port to conditional node '%2'")
                                       .arg(type == PortType::In ? "in" : "out",
                                            relativeNodePath(node)));
     Q_UNUSED(cmd);
 
-    // TODO: add option for type id
-
     auto id = (type == PortType::In) ?
-                  node.addInPort(typeId<DoubleData>()) :
-                  node.addOutPort(typeId<DoubleData>());
+                  node.addInPort(std::move(portInfo)) :
+                  node.addOutPort(std::move(portInfo));
 
     auto* port = node.port(id);
     if (!port)
@@ -609,6 +652,39 @@ NodeUI::addDynamicOutPort(GtObject* obj)
 }
 
 void
+NodeUI::editDynamicPort(Node* node, PortType type, PortIndex idx)
+{
+    assert(node);
+
+    PortId srcPortId = node->portId(type, idx);
+    NodePort* srcPort = node->port(srcPortId);
+    if(!srcPort) return;
+
+    PortEditDialog dialog{type};
+    dialog.setTypeId(srcPort->typeId);
+    dialog.setCaption(srcPort->caption);
+    dialog.setCaptionVisible(srcPort->captionVisible);
+    if (!dialog.exec()) return;
+
+    // TODO: undo/redo command not working, since multiple nodes are updated in parallel
+    auto cmd = gtApp->makeCommand(
+        node,
+        QStringLiteral("Edited port '%1' of node '%2'")
+            .arg(toString(*srcPort),
+                 relativeNodePath(*node))
+    );
+    Q_UNUSED(cmd);
+
+    auto port = *srcPort;
+    port.typeId = dialog.typeId();
+    port.caption = dialog.caption();
+    port.captionVisible = dialog.captionVisible();
+    srcPort->assign(port);
+    assert(srcPort->id() == srcPortId);
+    emit node->portChanged(srcPort->id());
+}
+
+void
 NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
 {
     auto* node = toDynamicNode(obj);
@@ -628,6 +704,54 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
     Q_UNUSED(cmd);
 
     node->removePort(portId);
+}
+
+void
+NodeUI::addInputProviderPort(GtObject* obj)
+{
+    auto* provider = qobject_cast<GraphInputProvider*>(obj);
+    if (!provider) return;
+
+    auto* graph = Graph::accessGraph(*provider);
+    if (!graph) return;
+
+    addDynamicInPort(graph);
+}
+
+void
+NodeUI::addOutputProviderPort(GtObject* obj)
+{
+    auto* provider = qobject_cast<GraphOutputProvider*>(obj);
+    if (!provider) return;
+
+    auto* graph = Graph::accessGraph(*provider);
+    if (!graph) return;
+
+    addDynamicOutPort(graph);
+}
+
+void
+NodeUI::editProviderPort(Node* obj, PortType type, PortIndex idx)
+{
+    auto* provider = qobject_cast<AbstractGraphProvider*>(obj);
+    if (!provider) return;
+
+    auto* graph = Graph::accessGraph(*provider);
+    if (!graph) return;
+
+    editDynamicPort(graph, invert(type), idx);
+}
+
+void
+NodeUI::deleteProviderPort(Node* obj, PortType type, PortIndex idx)
+{
+    auto* provider = qobject_cast<AbstractGraphProvider*>(obj);
+    if (!provider) return;
+
+    auto* graph = Graph::accessGraph(*provider);
+    if (!graph) return;
+
+    deleteDynamicPort(graph, invert(type), idx);
 }
 
 void

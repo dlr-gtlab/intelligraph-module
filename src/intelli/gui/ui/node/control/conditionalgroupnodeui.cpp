@@ -101,26 +101,26 @@ toDataPort(Node* obj, PortType type, PortIndex idx)
 }
 
 ConditionalGroupNodeUI::ConditionalGroupNodeUI() :
-    NodeUI(Option::NoDefaultPortActions)
+    NodeUI(/*Option::NoDefaultPortActions*/)
 {
 
-    addSingleAction(tr("Add In Port"), addInPort)
-        .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(
-            Op{}.OR(toConditionalNode).OR(toConditionalOutputNode));
+//    addSingleAction(tr("Add In Port"), addInPort)
+//        .setIcon(gt::gui::icon::add())
+//        .setVisibilityMethod(
+//            Op{}.OR(toConditionalNode).OR(toConditionalOutputNode));
 
-    addSingleAction(tr("Add Out Port"), addOutPort)
-        .setIcon(gt::gui::icon::add())
-        .setVisibilityMethod(
-            Op{}.OR(toConditionalNode).OR(toConditionalInputNode));
+//    addSingleAction(tr("Add Out Port"), addOutPort)
+//        .setIcon(gt::gui::icon::add())
+//        .setVisibilityMethod(
+//            Op{}.OR(toConditionalNode).OR(toConditionalInputNode));
 
-    addPortAction(tr("Edit Port"), editPort)
-        .setIcon(gt::gui::icon::rename())
-        .setVisibilityMethod(toDataPort);
+//    addPortAction(tr("Edit Port"), editPort)
+//        .setIcon(gt::gui::icon::rename())
+//        .setVisibilityMethod(toDataPort);
 
-    addPortAction(tr("Delete Port"), deletePort)
-        .setIcon(gt::gui::icon::delete_())
-        .setVisibilityMethod(toDataPort);
+//    addPortAction(tr("Delete Port"), deletePort)
+//        .setIcon(gt::gui::icon::delete_())
+//        .setVisibilityMethod(toDataPort);
 }
 
 QIcon
@@ -149,11 +149,11 @@ addPort(ConditionalGroupNode& node, PortType type)
     portInfo.captionVisible = dialog.captionVisible();
 
     // TODO: undo/redo command not working, since multiple nodes are updated in parallel
-//    auto cmd = gtApp->makeCommand(&node,
-//                                  QStringLiteral("Adding an %1put port to conditional node '%2'")
-//                                      .arg(type == PortType::In ? "in" : "out",
-//                                           relativeNodePath(node)));
-//    Q_UNUSED(cmd);
+    auto cmd = gtApp->makeCommand(&node,
+                                  QStringLiteral("Adding an %1put port to conditional node '%2'")
+                                      .arg(type == PortType::In ? "in" : "out",
+                                           relativeNodePath(node)));
+    Q_UNUSED(cmd);
 
     auto id = (type == PortType::In) ?
                   node.addDataInPort(std::move(portInfo)) :
@@ -227,10 +227,10 @@ ConditionalGroupNodeUI::editPort(Node* obj, PortType type, PortIndex idx)
     if (!dialog.exec()) return;
 
     // TODO: undo/redo command not working, since multiple nodes are updated in parallel
-//    auto cmd = gtApp->makeCommand(node,
-//                                  QStringLiteral("Edited port '%1' of node '%2'")
-//                                      .arg(toString(*srcPort), relativeNodePath(*node)));
-//    Q_UNUSED(cmd);
+    auto cmd = gtApp->makeCommand(node,
+                                  QStringLiteral("Edited port '%1' of node '%2'")
+                                      .arg(toString(*srcPort), relativeNodePath(*node)));
+    Q_UNUSED(cmd);
 
     auto port = *srcPort;
     port.typeId = dialog.typeId();
@@ -252,15 +252,15 @@ ConditionalGroupNodeUI::deletePort(Node* obj, PortType type, PortIndex idx)
         if (!node) return;
     }
 
-    auto* port = toDataPort(node, type, idx);
+    auto* port = toDataPort(obj, type, idx);
     if (!port) return;
 
     // TODO: undo/redo command not working, since multiple nodes are updated in parallel
-//    auto cmd = gtApp->makeCommand(node,
-//                                  QStringLiteral("Deleting port '%1' of node '%2'")
-//                                      .arg(toString(*port), relativeNodePath(*node)));
-//    Q_UNUSED(cmd);
+    auto cmd = gtApp->makeCommand(node,
+                                  QStringLiteral("Deleting port '%1' of node '%2'")
+                                      .arg(toString(*port), relativeNodePath(*node)));
+    Q_UNUSED(cmd);
 
-    node->deleteDataPort(port->id());
+    node->removeDataPort(port->id());
 }
 
