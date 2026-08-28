@@ -7,12 +7,12 @@
 #ifndef GT_INTELLI_CONDITIONALGROUPNODEUI_H
 #define GT_INTELLI_CONDITIONALGROUPNODEUI_H
 
-#include <intelli/gui/nodeui.h>
+#include <intelli/gui/graphui.h>
 
 namespace intelli
 {
 
-class ConditionalGroupNodeUI : public NodeUI
+class ConditionalGroupNodeUI : public GraphUI
 {
     Q_OBJECT
 
@@ -20,7 +20,7 @@ public:
 
     Q_INVOKABLE ConditionalGroupNodeUI();
 
-    QIcon icon(GtObject* obj) const override;
+    QIcon displayIcon(Node const& node) const override;
 
 private:
 

@@ -11,6 +11,7 @@
 #define GT_INTELLI_PORTUIACTION_H
 
 #include <intelli/globals.h>
+#include <intelli/node.h>
 
 #include <functional>
 
@@ -18,8 +19,6 @@
 
 namespace intelli
 {
-
-class Node;
 
 /**
  * @brief The GtIgPortUIAction class
@@ -33,6 +32,9 @@ public:
     using VerificationMethod = std::function<bool (Node*, PortType, PortIndex)>;
     using VisibilityMethod   = std::function<bool (Node*, PortType, PortIndex)>;
 
+    using ObjectVerificationMethod = std::function<bool (Node*)>;
+    using ObjectVisibilityMethod   = std::function<bool (Node*)>;
+
     PortUIAction() = default;
 
     PortUIAction(QString text, ActionMethod method) :
@@ -40,6 +42,8 @@ public:
     { }
 
     bool empty() const { return m_text.isEmpty() || !m_method; }
+
+    bool isSeparator() const { return empty(); }
 
     /* @brief text
      * @return
@@ -93,6 +97,13 @@ public:
     {
         m_verification = std::move(method); return *this;
     }
+    PortUIAction& setVerificationMethod(ObjectVerificationMethod method)
+    {
+        m_verification = [m = std::move(method)](GtObject* o, PortType, PortIndex){
+            return qobject_cast<Node*>(o) && m(static_cast<Node*>(o));
+        };
+        return *this;
+    }
 
     /**
      * @brief Dedicated setter for the visibility method. Function signature must accept a pointer of the target
@@ -103,6 +114,14 @@ public:
     PortUIAction& setVisibilityMethod(VisibilityMethod method)
     {
         m_visibility = std::move(method); return *this;
+    }
+    /// overload for
+    PortUIAction& setVisibilityMethod(ObjectVisibilityMethod method)
+    {
+        m_visibility = [m = std::move(method)](GtObject* o, PortType, PortIndex){
+            return qobject_cast<Node*>(o) && m(static_cast<Node*>(o));
+        };
+        return *this;
     }
 
 private:

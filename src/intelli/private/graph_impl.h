@@ -121,8 +121,6 @@ struct Graph::Impl
         PortInfo* inPort  = target->node->port(conId.inPort);
         PortInfo* outPort = source->node->port(conId.outPort);
 
-        gtDebug() << __FUNCTION__ << (void*)graph.pimpl->global.get();
-
         if (!inPort || !outPort)
         {
             if (!silent)
@@ -305,6 +303,9 @@ struct Graph::Impl
     {
         assert(root);
         assert(root->isDynamicPort(type, idx));
+        assert(provider);
+
+        if (type != provider->providerType()) return;
 
         auto const makeError = [root, type, idx](){
             return relativeNodePath(*root) + QStringLiteral(": ") +
@@ -339,12 +340,17 @@ struct Graph::Impl
 
     static void onPortChanged(Graph* root,
                               AbstractGraphProvider* provider,
-                              PortType type,
                               PortId portId)
     {
         assert(portId.isValid());
         assert(root);
+        assert(provider);
+
+        PortType type = root->portType(portId);
+        assert(type != PortType::NoType);
         assert(root->isDynamicPort(type, root->portIndex(type, portId)));
+
+        if (type != provider->providerType()) return;
 
         auto const makeError = [root, type, portId](){
             return relativeNodePath(*root) + QStringLiteral(": ") +
@@ -384,6 +390,9 @@ struct Graph::Impl
     {
         assert(root);
         assert(root->isDynamicPort(type, idx));
+        assert(provider);
+
+        if (type != provider->providerType()) return;
 
         auto const makeError = [root, type, idx](){
             return relativeNodePath(*root) + QStringLiteral(": ") +

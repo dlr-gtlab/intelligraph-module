@@ -87,13 +87,13 @@ inline Scenario buildConditionalGraph(Graph& graph, bool conditionValue = false)
                           .setCaption("Minus");
         setNodeProperty(minus, "operation", "Minus");
 
-        Node* conditionalIfInput = conditional.inputProvider(ConditionalGroupNode::IfBranch);
+        Node* conditionalIfInput = conditional.inputProvider(ConditionalBranchType::IfBranch);
         assert(conditionalIfInput);
-        Node* conditionalElseInput = conditional.inputProvider(ConditionalGroupNode::ElseBranch);
+        Node* conditionalElseInput = conditional.inputProvider(ConditionalBranchType::ElseBranch);
         assert(conditionalElseInput);
-        Node* conditionalIfOutput = conditional.outputProvider(ConditionalGroupNode::IfBranch);
+        Node* conditionalIfOutput = conditional.outputProvider(ConditionalBranchType::IfBranch);
         assert(conditionalIfOutput);
-        Node* conditionalElseOutput = conditional.outputProvider(ConditionalGroupNode::ElseBranch);
+        Node* conditionalElseOutput = conditional.outputProvider(ConditionalBranchType::ElseBranch);
         assert(conditionalElseOutput);
 
         subBuilder.connect(*conditionalIfInput, PortIndex(0), plus, PortIndex(0));

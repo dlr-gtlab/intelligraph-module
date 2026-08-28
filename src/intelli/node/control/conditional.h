@@ -14,9 +14,39 @@
 namespace intelli
 {
 
-using ConditionalInputProvider = GraphInputProvider;
+enum class ConditionalBranchType : unsigned
+{
+    IfBranch = 0,
+    ElseBranch
+};
 
-using ConditionalOutputProvider = GraphOutputProvider;
+class ConditionalInputProvider : public GraphInputProvider
+{
+    Q_OBJECT
+    ConditionalBranchType m_type;
+
+public:
+
+    Q_INVOKABLE ConditionalInputProvider(ConditionalBranchType type = ConditionalBranchType::IfBranch) :
+        m_type(type)
+    {}
+
+    ConditionalBranchType branchType() const { return m_type; }
+};
+
+class ConditionalOutputProvider : public GraphOutputProvider
+{
+    Q_OBJECT
+    ConditionalBranchType m_type;
+
+public:
+
+    Q_INVOKABLE ConditionalOutputProvider(ConditionalBranchType type = ConditionalBranchType::IfBranch) :
+        m_type(type)
+    {}
+
+    ConditionalBranchType branchType() const { return m_type; }
+};
 
 class GT_INTELLI_EXPORT ConditionalGroupNode : public Graph
 {
@@ -24,19 +54,13 @@ class GT_INTELLI_EXPORT ConditionalGroupNode : public Graph
 
 public:
 
-    enum BranchType : unsigned
-    {
-        IfBranch = 0,
-        ElseBranch
-    };
-
     Q_INVOKABLE ConditionalGroupNode();
 
-    ConditionalInputProvider* inputProvider(BranchType type);
-    ConditionalInputProvider const* inputProvider(BranchType type) const;
+    ConditionalInputProvider* inputProvider(ConditionalBranchType type);
+    ConditionalInputProvider const* inputProvider(ConditionalBranchType type) const;
 
-    ConditionalOutputProvider* outputProvider(BranchType type);
-    ConditionalOutputProvider const* outputProvider(BranchType type) const;
+    ConditionalOutputProvider* outputProvider(ConditionalBranchType type);
+    ConditionalOutputProvider const* outputProvider(ConditionalBranchType type) const;
 
     PortId addDataInPort(PortInfo info);
 

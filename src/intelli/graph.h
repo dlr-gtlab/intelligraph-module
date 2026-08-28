@@ -23,6 +23,7 @@ namespace intelli
 {
 
 class Graph;
+class AbstractGraphProvider;
 class GraphInputProvider;
 class GraphOutputProvider;
 class Connection;
@@ -667,6 +668,8 @@ protected:
     void eval() override;
 
     void onObjectDataMerged() override;
+
+    void synchronizePorts(AbstractGraphProvider& provider);
 
 private:
 

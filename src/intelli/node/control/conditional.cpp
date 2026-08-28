@@ -9,8 +9,6 @@
 #include "intelli/data/bool.h"
 #include "intelli/data/double.h"
 
-#include "intelli/node/groupinputprovider.h"
-#include "intelli/node/groupoutputprovider.h"
 #include "intelli/nodedatainterface.h"
 #include "intelli/graphdatamodel.h"
 #include "intelli/graphexecutor.h"
@@ -175,77 +173,79 @@ static void onPortDeleted(ConditionalGroupNode* root,
 }; // struct Impl
 
 ConditionalGroupNode::ConditionalGroupNode() :
-    Graph(QStringLiteral("Conditional"))
+    Graph(QStringLiteral("Conditional"), false)
 {
-    NodeId nextId{0};
-
-    for (auto type : { IfBranch, ElseBranch })
-    {
-        Position offset{0, 100};
-        if (type == ConditionalGroupNode::IfBranch) offset.ry() *= -1;
-
-        auto input = std::make_unique<ConditionalInputProvider>();
-        input->setCaption(type == ConditionalGroupNode::IfBranch ?
-                              C_NAME_IF_IN_NODE : C_NAME_ELSE_IN_NODE);
-        input->setPos(input->pos() + offset);
-        input->setDefault(true);
-        input->setId(nextId++);
-        appendNode(std::move(input), NodeIdPolicy::Keep);
-
-        auto output = std::make_unique<ConditionalOutputProvider>();
-        output->setCaption(type == ConditionalGroupNode::IfBranch ?
-                               C_NAME_IF_OUT_NODE : C_NAME_ELSE_OUT_NODE);
-        output->setPos(output->pos() + offset);
-        output->setDefault(true);
-        output->setId(nextId++);
-        appendNode(std::move(output), NodeIdPolicy::Keep);
-    }
-
     // add static port first
     m_condition = addStaticInPort(
         PortInfo::customId(PortId{0}, typeId<BoolData>())
             .setCaption("condition")
             .setOptional(false));
 
-    // sync dynamic ports
-    connect(this, &Node::portInserted,
-            this, &ConditionalGroupNode::onPortInserted,
-            Qt::DirectConnection);
-    connect(this, &Node::portChanged,
-            this, &ConditionalGroupNode::onPortChanged,
-            Qt::DirectConnection);
-    connect(this, &Node::portAboutToBeDeleted,
-            this, &ConditionalGroupNode::onPortDeleted,
-            Qt::DirectConnection);
+    NodeId nextId{0};
 
-    addDataInPort(makePort(typeId<DoubleData>()));
-    addDataOutPort(makePort(typeId<DoubleData>()));
+    for (auto type : { ConditionalBranchType::IfBranch, ConditionalBranchType::ElseBranch })
+    {
+        Position offset{0, 100};
+        if (type == ConditionalBranchType::IfBranch) offset.ry() *= -1;
+
+        auto input = std::make_unique<ConditionalInputProvider>();
+        input->setCaption(type == ConditionalBranchType::IfBranch ?
+                              C_NAME_IF_IN_NODE : C_NAME_ELSE_IN_NODE);
+        input->setPos(input->pos() + offset);
+        input->setDefault(true);
+        input->setId(nextId++);
+        synchronizePorts(*input);
+        appendNode(std::move(input), NodeIdPolicy::Keep);
+
+        auto output = std::make_unique<ConditionalOutputProvider>();
+        output->setCaption(type == ConditionalBranchType::IfBranch ?
+                               C_NAME_IF_OUT_NODE : C_NAME_ELSE_OUT_NODE);
+        output->setPos(output->pos() + offset);
+        output->setDefault(true);
+        output->setId(nextId++);
+        synchronizePorts(*output);
+        appendNode(std::move(output), NodeIdPolicy::Keep);
+    }
+
+//    // sync dynamic ports
+//    connect(this, &Node::portInserted,
+//            this, &ConditionalGroupNode::onPortInserted,
+//            Qt::DirectConnection);
+//    connect(this, &Node::portChanged,
+//            this, &ConditionalGroupNode::onPortChanged,
+//            Qt::DirectConnection);
+//    connect(this, &Node::portAboutToBeDeleted,
+//            this, &ConditionalGroupNode::onPortDeleted,
+//            Qt::DirectConnection);
+
+    addInPort(makePort(typeId<DoubleData>()));
+    addOutPort(makePort(typeId<DoubleData>()));
 
     setNodeEvalMode(NodeEvalMode::Blocking);
 }
 
 ConditionalInputProvider*
-ConditionalGroupNode::inputProvider(BranchType type)
+ConditionalGroupNode::inputProvider(ConditionalBranchType type)
 {
-    return findDirectChild<GraphInputProvider*>(
-        (type == IfBranch) ? C_NAME_IF_IN_NODE : C_NAME_ELSE_IN_NODE);
+    return findDirectChild<ConditionalInputProvider*>(
+        (type == ConditionalBranchType::IfBranch) ? C_NAME_IF_IN_NODE : C_NAME_ELSE_IN_NODE);
 }
 
 ConditionalInputProvider const*
-ConditionalGroupNode::inputProvider(BranchType type) const
+ConditionalGroupNode::inputProvider(ConditionalBranchType type) const
 {
     return const_cast<ConditionalGroupNode*>(this)->inputProvider(type);
 }
 
 ConditionalOutputProvider*
-ConditionalGroupNode::outputProvider(BranchType type)
+ConditionalGroupNode::outputProvider(ConditionalBranchType type)
 {
-    return findDirectChild<GraphOutputProvider*>(
-        (type == IfBranch) ? C_NAME_IF_OUT_NODE : C_NAME_ELSE_OUT_NODE);
+    return findDirectChild<ConditionalOutputProvider*>(
+        (type == ConditionalBranchType::IfBranch) ? C_NAME_IF_OUT_NODE : C_NAME_ELSE_OUT_NODE);
 }
 
 ConditionalOutputProvider const*
-ConditionalGroupNode::outputProvider(BranchType type) const
+ConditionalGroupNode::outputProvider(ConditionalBranchType type) const
 {
     return const_cast<ConditionalGroupNode*>(this)->outputProvider(type);
 }
@@ -297,7 +297,7 @@ ConditionalGroupNode::removeDataPort(PortId portId)
 void
 ConditionalGroupNode::initInputOutputProviders()
 {
-    for (auto type : { IfBranch, ElseBranch })
+    for (auto type : { ConditionalBranchType::IfBranch, ConditionalBranchType::ElseBranch })
     {
         assert(inputProvider(type));
         assert(outputProvider(type));
@@ -323,9 +323,12 @@ ConditionalGroupNode::eval()
 
     bool condition = conditionData->value();
 
-    ConditionalInputProvider* inputNode = inputProvider(condition ? IfBranch : ElseBranch);
-    ConditionalInputProvider* otherInputNode = inputProvider(condition ? ElseBranch : IfBranch);
-    ConditionalOutputProvider* outputNode = outputProvider(condition ? IfBranch : ElseBranch);
+    ConditionalInputProvider* inputNode = inputProvider(
+        condition ? ConditionalBranchType::IfBranch : ConditionalBranchType::ElseBranch);
+    ConditionalInputProvider* otherInputNode = inputProvider(
+        condition ? ConditionalBranchType::ElseBranch : ConditionalBranchType::IfBranch);
+    ConditionalOutputProvider* outputNode = outputProvider(
+        condition ? ConditionalBranchType::IfBranch : ConditionalBranchType::ElseBranch);
 
     if (!inputNode || !outputNode || !otherInputNode)
     {
@@ -416,11 +419,17 @@ ConditionalGroupNode::onPortInserted(PortType type, PortIndex idx)
     Q_UNUSED(cmd);
     if (type == PortType::In)
     {
-        Impl::onPortInserted(this, inputProvider(IfBranch), inputProvider(ElseBranch), type, idx);
+        Impl::onPortInserted(this,
+                             inputProvider(ConditionalBranchType::IfBranch),
+                             inputProvider(ConditionalBranchType::ElseBranch),
+                             type, idx);
     }
     else
     {
-        Impl::onPortInserted(this, outputProvider(IfBranch), outputProvider(ElseBranch), type, idx);
+        Impl::onPortInserted(this,
+                             outputProvider(ConditionalBranchType::IfBranch),
+                             outputProvider(ConditionalBranchType::ElseBranch),
+                             type, idx);
     }
 }
 
@@ -432,11 +441,17 @@ ConditionalGroupNode::onPortChanged(PortId portId)
     PortType type = portType(portId);
     if (type == PortType::In)
     {
-        Impl::onPortChanged(this, inputProvider(IfBranch), inputProvider(ElseBranch), type, portId);
+        Impl::onPortChanged(this,
+                            inputProvider(ConditionalBranchType::IfBranch),
+                            inputProvider(ConditionalBranchType::ElseBranch),
+                            type, portId);
     }
     else
     {
-        Impl::onPortChanged(this, outputProvider(IfBranch), outputProvider(ElseBranch), type, portId);
+        Impl::onPortChanged(this,
+                            outputProvider(ConditionalBranchType::IfBranch),
+                            outputProvider(ConditionalBranchType::ElseBranch),
+                            type, portId);
     }
 }
 
@@ -447,10 +462,16 @@ ConditionalGroupNode::onPortDeleted(PortType type, PortIndex idx)
     Q_UNUSED(cmd);
     if (type == PortType::In)
     {
-        Impl::onPortDeleted(this, inputProvider(IfBranch), inputProvider(ElseBranch), type, idx);
+        Impl::onPortDeleted(this,
+                            inputProvider(ConditionalBranchType::IfBranch),
+                            inputProvider(ConditionalBranchType::ElseBranch),
+                            type, idx);
     }
     else
     {
-        Impl::onPortDeleted(this, outputProvider(IfBranch), outputProvider(ElseBranch), type, idx);
+        Impl::onPortDeleted(this,
+                            outputProvider(ConditionalBranchType::IfBranch),
+                            outputProvider(ConditionalBranchType::ElseBranch),
+                            type, idx);
     }
 }

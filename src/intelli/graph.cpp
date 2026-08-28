@@ -62,6 +62,7 @@ Graph::Graph(QString const& modelName, bool initProviders) :
         input->setUserHidden(!gtApp || !gtApp->devMode());
         input->setUserHidden(true);
         input->setId(nextId++);
+        synchronizePorts(*input);
         appendNode(std::move(input), NodeIdPolicy::Keep);
 
         auto output = std::make_unique<GraphOutputProvider>();
@@ -69,18 +70,19 @@ Graph::Graph(QString const& modelName, bool initProviders) :
         output->setUserHidden(!gtApp || !gtApp->devMode());
         output->setUserHidden(true);
         output->setId(nextId++);
+        synchronizePorts(*output);
         appendNode(std::move(output), NodeIdPolicy::Keep);
 
         // sync dynamic ports
-        connect(this, &Node::portInserted,
-                this, &Graph::onPortInserted,
-                Qt::DirectConnection);
-        connect(this, &Node::portChanged,
-                this, &Graph::onPortChanged,
-                Qt::DirectConnection);
-        connect(this, &Node::portAboutToBeDeleted,
-                this, &Graph::onPortDeleted,
-                Qt::DirectConnection);
+//        connect(this, &Node::portInserted,
+//                this, &Graph::onPortInserted,
+//                Qt::DirectConnection);
+//        connect(this, &Node::portChanged,
+//                this, &Graph::onPortChanged,
+//                Qt::DirectConnection);
+//        connect(this, &Node::portAboutToBeDeleted,
+//                this, &Graph::onPortDeleted,
+//                Qt::DirectConnection);
     }
 }
 
@@ -1119,10 +1121,6 @@ Graph::restoreNode(Node* node)
 #ifndef NDEBUG
         if (auto* subgraph = qobject_cast<Graph*>(node))
         {
-            gtDebug() << utils::logIds(this, node)
-                      << "MISMATCH MODELS:"
-                      << subgraph->pimpl->global
-                      << pimpl->global;
             assert(subgraph->pimpl->global == pimpl->global);
         }
 #endif
@@ -1428,7 +1426,6 @@ Graph::emitEndModification()
 void
 Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr)
 {
-    gtDebug() << utils::logIds(*this) << "UPDATING MODELS:" << (void*)ptr.get() << "vs" << (void*)pimpl->global.get();
     // merge connection models
     if (ptr != pimpl->global)
     {
@@ -1442,6 +1439,31 @@ Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const&
     {
         subgraph->updateGlobalConnectionModel(ptr);
     }
+}
+
+void
+Graph::synchronizePorts(AbstractGraphProvider& provider)
+{
+    connect(this, &Node::portInserted,
+            &provider, std::bind(Impl::onPortInserted,
+                                 this,
+                                 &provider,
+                                 std::placeholders::_1,   // type
+                                 std::placeholders::_2),  // idx
+            Qt::DirectConnection);
+    connect(this, &Node::portChanged,
+            &provider, std::bind(Impl::onPortChanged,
+                                 this,
+                                 &provider,
+                                 std::placeholders::_1),  // portId
+            Qt::DirectConnection);
+    connect(this, &Node::portDeleted,
+            &provider, std::bind(Impl::onPortDeleted,
+                                 this,
+                                 &provider,
+                                 std::placeholders::_1,   // type
+                                 std::placeholders::_2),  // idx
+            Qt::DirectConnection);
 }
 
 void
@@ -1467,11 +1489,11 @@ Graph::onPortChanged(PortId portId)
     PortType type = portType(portId);
     if (type == PortType::In)
     {
-        Impl::onPortChanged(this, inputProvider(), type, portId);
+        Impl::onPortChanged(this, inputProvider(), portId);
     }
     else
     {
-        Impl::onPortChanged(this, outputProvider(), type, portId);
+        Impl::onPortChanged(this, outputProvider(), portId);
     }
 }
 

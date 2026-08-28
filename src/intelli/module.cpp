@@ -48,6 +48,7 @@
 #include "intelli/gui/commentdata.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/guidata.h"
+#include "intelli/gui/graphui.h"
 #include "intelli/gui/nodeui.h"
 #include "intelli/gui/ui/commentui.h"
 #include "intelli/gui/ui/connectionui.h"
@@ -328,6 +329,13 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(CommentUI));
     map.insert(GT_CLASSNAME(CommentData),
                GT_METADATA(CommentUI));
+
+    map.insert(GT_CLASSNAME(Graph),
+               GT_METADATA(GraphUI));
+    map.insert(GT_CLASSNAME(GraphInputProvider),
+               GT_METADATA(GraphUI));
+    map.insert(GT_CLASSNAME(GraphOutputProvider),
+               GT_METADATA(GraphUI));
 
     map.insert(GT_CLASSNAME(LogicNode),
                GT_METADATA(LogicNodeUI));
