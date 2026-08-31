@@ -91,16 +91,6 @@ protected:
 private:
 
     PortId m_condition{};
-
-    struct Impl;
-
-private slots:
-
-    void onPortInserted(PortType type, PortIndex idx);
-
-    void onPortChanged(PortId portId);
-
-    void onPortDeleted(PortType type, PortIndex idx);
 };
 
 } // namespace intelli

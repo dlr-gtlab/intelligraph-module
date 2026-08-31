@@ -69,8 +69,6 @@ GraphEditor::~GraphEditor() = default;
 void
 GraphEditor::setData(GtObject* obj)
 {
-    gtDebug() << "GraphEditor::setData -> start!";
-
     assert(m_view);
     assert(m_sceneManager);
 
@@ -128,8 +126,6 @@ GraphEditor::setData(GtObject* obj)
 
     // destroy if graph is destroyed
     connect(graph, &QObject::destroyed, this, &QObject::deleteLater);
-
-    gtDebug() << "GraphEditor::setData -> finished!";
 }
 
 void

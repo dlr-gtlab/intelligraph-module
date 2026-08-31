@@ -657,18 +657,12 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
         mergeUserVariables(*graph);
     }
 
-    gtDebug() << utils::logIds(*this) << "appending node" << utils::logIds(node) << "into" << (void*)pimpl->global.get();
-
     // register node in local model
     pimpl->local.insert(node->id(), node);
 
     // register node in global model if not present already (avoid overwrite)
     NodeUuid const& nodeUuid = node->uuid();
     if (!pimpl->global->contains(nodeUuid)) pimpl->global->insert(nodeUuid, node);
-    else
-    {
-        gtDebug() << utils::logIds(*this) << "NODE ALREAY APPENDED TO GLOBAL MODEL" << node->uuid();
-    }
 
     // setup connections
     connect(node, &Node::portChanged,
@@ -835,14 +829,14 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionUuid conUuid)
     {
         gtError() << utils::logIds(*this)
                   <<tr("Failed to append connection, target node not found! "
-                        "(Connection: %1)").arg(conUuid.inNodeId);
+                        "(In node: %1)").arg(conUuid.inNodeId);
         return;
     }
     if (globalSourceNode == pimpl->global->end())
     {
         gtError() << utils::logIds(*this)
                   << tr("Failed to append connection, source node not found! "
-                        "(Connection: %1)").arg(conUuid.outNodeId);
+                        "(Out node: %1)").arg(conUuid.outNodeId);
         return;
     }
 
@@ -1096,20 +1090,6 @@ Graph::onObjectDataMerged()
     DynamicNode::onObjectDataMerged();
 
     restoreNodesAndConnections();
-
-    if (pimpl->resetAfterMerge)
-    {
-        pimpl->resetAfterMerge = false;
-
-        // TODO: this should be fixed with #1370 (GTlab Core)
-        // issue arises because provider nodes are added in the constructor, their
-        // uuid changes once the initial memento is applied. Thus, the connection
-        // model is outdated
-        gtTrace().verbose()
-            << utils::logIds(*this)
-            << tr("Resetting global connection model!");
-        resetGlobalConnectionModel();
-    }
 }
 
 void
@@ -1130,8 +1110,8 @@ Graph::restoreNode(Node* node)
             pimpl->resetAfterMerge = true;
             gtError().verbose()
                 << utils::logIds(*this)
-                << tr("Node '%1' changed uuid, need to reset model!")
-                       .arg(relativeNodePath(*node));
+                << tr("Node '%1' changed uuid, need to reset model! (Uuid: %2)")
+                       .arg(relativeNodePath(*node), node->uuid());
         }
         return;
     }
@@ -1246,6 +1226,20 @@ Graph::restoreNodesAndConnections()
             object->setUserHidden(true);
 #endif
         }
+    }
+
+    if (pimpl->resetAfterMerge)
+    {
+        pimpl->resetAfterMerge = false;
+
+        // TODO: this should be fixed with #1370 (GTlab Core)
+        // issue arises because provider nodes are added in the constructor, their
+        // uuid changes once the initial memento is applied. Thus, the connection
+        // model is outdated
+        gtTrace().verbose()
+            << utils::logIds(*this)
+            << tr("Resetting global connection model!");
+        resetGlobalConnectionModel();
     }
 
     for (auto* connection : connections)
@@ -1457,7 +1451,7 @@ Graph::synchronizePorts(AbstractGraphProvider& provider)
                                  &provider,
                                  std::placeholders::_1),  // portId
             Qt::DirectConnection);
-    connect(this, &Node::portDeleted,
+    connect(this, &Node::portAboutToBeDeleted,
             &provider, std::bind(Impl::onPortDeleted,
                                  this,
                                  &provider,
