@@ -13,11 +13,16 @@
 #include <intelli/gui/nodeui.h>
 #include <intelli/gui/nodepainter.h>
 #include <intelli/gui/nodegeometry.h>
+#include <QWidget>
+
+class QLCDNumber;
 
 namespace intelli
 {
 
 class LogicNode;
+class BinaryDisplayNode;
+class NodeGraphicsObject;
 /**
  * @brief The LogicNodeUI class.
  * Geometry class for the `LogicNode`. Describes the shape of the Gates shapes
@@ -73,6 +78,28 @@ public:
                   PortType type,
                   PortIndex idx,
                   uint flags) const override;
+};
+
+class BinaryDisplayNodeWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+
+    explicit BinaryDisplayNodeWidget(BinaryDisplayNode& node, QWidget* parent = nullptr);
+
+    static NodeUI::QGraphicsWidgetPtr create(Node& source, NodeGraphicsObject& object);
+
+private slots:
+
+    void updateDisplay();
+    void updateDigitCount();
+    void updateStyle(bool isDark);
+
+private:
+
+    BinaryDisplayNode* m_node{};
+    QLCDNumber* m_display{};
 };
 
 /**
