@@ -306,8 +306,6 @@ struct Graph::Impl
                                PortIndex idx,
                                bool invert = false)
     {
-        gtDebug() << __FUNCTION__ << root << provider << type << idx;
-
         assert(root);
         assert(!qobject_cast<DynamicNode*>(root) ||
                static_cast<DynamicNode*>(root)->isDynamicPort(type, idx));
@@ -351,8 +349,6 @@ struct Graph::Impl
                               PortId portId,
                               bool invert = false)
     {
-        gtDebug() << __FUNCTION__ << root << provider << portId;
-
         assert(portId.isValid());
         assert(root);
         assert(provider);
@@ -405,8 +401,6 @@ struct Graph::Impl
         assert(!qobject_cast<DynamicNode*>(root) ||
                static_cast<DynamicNode*>(root)->isDynamicPort(type, idx));
         assert(provider);
-
-        gtDebug() << __FUNCTION__ << root << provider << type << idx;
 
         if (!invert && type != provider->providerType()) return;
 
