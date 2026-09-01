@@ -671,6 +671,8 @@ protected:
 
     void synchronizePorts(AbstractGraphProvider& provider);
 
+    static void synchronizePorts(Node& source, AbstractGraphProvider& target);
+
 private:
 
     struct Impl;

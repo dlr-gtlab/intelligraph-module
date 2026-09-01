@@ -216,7 +216,12 @@ NodeUI::defaultNodeActions() const
                     gtInfo() << "###";
                 }
             }).setIcon(gt::gui::icon::bug())
-              .setVisibilityMethod(toNode);
+                .setVisibilityMethod(toNode);
+
+        actions << OtherNodeAction <<
+            makeSingleAction(tr("Force Delete"), [](GtObject* obj){
+                if (obj) obj->deleteLater();
+            }).setIcon(gt::gui::icon::delete_());
 
         actions << makeSeparator();
     }

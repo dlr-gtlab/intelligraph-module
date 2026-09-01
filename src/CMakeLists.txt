@@ -64,6 +64,7 @@ set(PUBLIC_HEADERS
     intelli/data/int.h
     intelli/data/integer.h
     intelli/data/invalid.h
+    intelli/data/list.h
     intelli/data/object.h
     intelli/data/string.h
     intelli/data/stringlist.h
@@ -89,6 +90,7 @@ set(PUBLIC_HEADERS
     intelli/node/input/objectinput.h
     intelli/node/input/stringinput.h
     intelli/node/control/conditional.h
+    intelli/node/control/accumulator.h
     intelli/property/color.h
     intelli/property/metaenum.h
     intelli/property/stringselection.h
@@ -116,6 +118,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/booldisplay.h
     intelli/node/dummy.h
     intelli/node/existingdirectorysource.h
+    intelli/node/filelinereader.h intelli/node/filelinereader.cpp
     intelli/node/filereader.h
     intelli/node/filewriter.h
     intelli/node/finddirectchild.h
@@ -217,6 +220,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/int.cpp
     intelli/data/invalid.cpp
     intelli/data/file.cpp
+    intelli/data/list.cpp
     intelli/data/object.cpp
     intelli/data/string.cpp
     intelli/data/stringlist.cpp
@@ -247,6 +251,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/input/objectinput.cpp
     intelli/node/input/stringinput.cpp
     intelli/node/control/conditional.cpp
+    intelli/node/control/accumulator.cpp
     intelli/gui/connectiongeometry.cpp
     intelli/gui/connectionpainter.cpp
     intelli/gui/commentgroup.cpp

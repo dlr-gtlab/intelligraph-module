@@ -39,12 +39,11 @@ ConditionalGroupNode::ConditionalGroupNode() :
     for (auto type : { ConditionalBranchType::IfBranch, ConditionalBranchType::ElseBranch })
     {
         Position offset{0, 100};
-        if (type == ConditionalBranchType::IfBranch) offset.ry() *= -1;
 
         auto input = std::make_unique<ConditionalInputProvider>();
         input->setCaption(type == ConditionalBranchType::IfBranch ?
                               C_NAME_IF_IN_NODE : C_NAME_ELSE_IN_NODE);
-        input->setPos(input->pos() + offset);
+        input->setPos(input->pos() - offset);
         input->setDefault(true);
         input->setId(nextId++);
         synchronizePorts(*input);
@@ -246,10 +245,4 @@ ConditionalGroupNode::eval()
             return evalFailed();
         }
     }
-}
-
-void
-ConditionalGroupNode::onObjectDataMerged()
-{
-    Graph::onObjectDataMerged();
 }

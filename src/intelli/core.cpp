@@ -16,6 +16,7 @@
 #include "intelli/data/string.h"
 #include "intelli/data/int.h"
 #include "intelli/data/file.h"
+#include "intelli/data/list.h"
 #include "intelli/data/stringlist.h"
 
 #include "intelli/node/dummy.h"
@@ -45,12 +46,14 @@
 #include "intelli/node/input/graphuservariablesinput.h"
 
 #include "intelli/node/control/conditional.h"
+#include "intelli/node/control/accumulator.h"
 
 #include "intelli/node/booldisplay.h"
 #include "intelli/node/textdisplay.h"
 
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/filereader.h"
+#include "intelli/node/filelinereader.h"
 #include "intelli/node/filewriter.h"
 #include "intelli/node/stringselection.h"
 
@@ -90,6 +93,7 @@ intelli::registerDefaultDataTypes()
         GT_INTELLI_REGISTER_DATA(BoolData);
         GT_INTELLI_REGISTER_DATA(ObjectData);
         GT_INTELLI_REGISTER_DATA(FileData);
+        GT_INTELLI_REGISTER_DATA(ListData);
 
         // register conversions
         gtTrace().verbose() << QObject::tr("Registering default conversions...");
@@ -145,6 +149,7 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(FileInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(FileReaderNode, catFile);
+        GT_INTELLI_REGISTER_NODE(FileLineReaderNode, catFile);
         GT_INTELLI_REGISTER_NODE(FileWriterNode, catFile);
 
         GT_INTELLI_REGISTER_NODE(ProjectInfoNode, catInput);
@@ -163,6 +168,11 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
 
         GT_INTELLI_REGISTER_NODE(ConditionalGroupNode, catControl);
+        GT_INTELLI_REGISTER_NODE(ConditionalInputProvider, hidden);
+        GT_INTELLI_REGISTER_NODE(ConditionalOutputProvider, hidden);
+
+        GT_INTELLI_REGISTER_NODE(AccumulatorGraphNode, catControl);
+        GT_INTELLI_REGISTER_NODE(LastIterationProvider, hidden);
 
 #ifdef GT_INTELLI_EXPERIMENTAL_NODES
         GT_INTELLI_REGISTER_NODE(BinaryDisplayNode, catDisplay);

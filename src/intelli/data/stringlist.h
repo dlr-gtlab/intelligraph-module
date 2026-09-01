@@ -19,8 +19,9 @@ class GT_INTELLI_EXPORT StringListData : public NodeData
 public:
     Q_INVOKABLE StringListData(QStringList val = {});
 
-    Q_INVOKABLE QStringList const& value() const;
+    Q_INVOKABLE QStringList value() const;
 
+    [[deprecated("use the constructor only")]]
     Q_INVOKABLE void setValue(QStringList val);
 
 private:

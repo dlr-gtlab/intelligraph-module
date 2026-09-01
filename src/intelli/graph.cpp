@@ -1443,21 +1443,42 @@ Graph::synchronizePorts(AbstractGraphProvider& provider)
                                  this,
                                  &provider,
                                  std::placeholders::_1,   // type
-                                 std::placeholders::_2),  // idx
+                                 std::placeholders::_2, false),  // idx
             Qt::DirectConnection);
     connect(this, &Node::portChanged,
             &provider, std::bind(Impl::onPortChanged,
                                  this,
                                  &provider,
-                                 std::placeholders::_1),  // portId
+                                 std::placeholders::_1, false),  // portId
             Qt::DirectConnection);
     connect(this, &Node::portAboutToBeDeleted,
             &provider, std::bind(Impl::onPortDeleted,
                                  this,
                                  &provider,
                                  std::placeholders::_1,   // type
-                                 std::placeholders::_2),  // idx
+                                 std::placeholders::_2, false),  // idx
             Qt::DirectConnection);
+}
+
+void
+Graph::synchronizePorts(Node& source, AbstractGraphProvider& target)
+{
+    gtDebug() << "HERE";
+    connect(&source, &Node::nodeAboutToBeDeleted, [ptr = &source](){ gtDebug() << ptr << "deleted"; });
+    connect(&target, &Node::nodeAboutToBeDeleted, [ptr = &target](){ gtDebug() << ptr << "deleted"; });
+
+    connect(&source, &Node::portInserted,
+            &target, [&source, &target](PortType type, PortIndex idx){
+                Impl::onPortInserted(&source, &target, (type), idx, true);
+            }, Qt::DirectConnection);
+    connect(&source, &Node::portChanged,
+            &target, [&source, &target](PortId portId){
+                Impl::onPortChanged(&source, &target, portId, true);
+            }, Qt::DirectConnection);
+    connect(&source, &Node::portAboutToBeDeleted,
+            &target, [&source, &target](PortType type, PortIndex idx){
+                Impl::onPortDeleted(&source, &target, (type), idx, true);
+            }, Qt::DirectConnection);
 }
 
 void

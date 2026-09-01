@@ -103,6 +103,12 @@ private:
     QString m_typeName;
 };
 
+
+template<typename T>
+using Ptr = std::shared_ptr<const T>;
+
+using NodeDataPtr = Ptr<NodeData>;
+
 /**
  * @brief Returns the typeid of a node data class
  * @return Typeid
@@ -111,6 +117,16 @@ template <typename T, gt::trait::enable_if_base_of<NodeData, T> = true>
 inline QString typeId()
 {
     return T::staticMetaObject.className();
+}
+
+/**
+ * @brief Returns the typeid of a node data class
+ * @return Typeid
+ */
+template <typename T, typename ...Args, gt::trait::enable_if_base_of<NodeData, T> = true>
+inline Ptr<T> makeNodeData(Args&&... args)
+{
+    return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 /**

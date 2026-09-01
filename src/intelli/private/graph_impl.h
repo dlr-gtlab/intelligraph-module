@@ -247,8 +247,12 @@ struct Graph::Impl
 
             // generate a new one
             size_t maxId = ids.empty() ?
-                             s_startingNodeId :
-                             *std::max_element(std::begin(ids), std::end(ids)) + 1;
+                               s_startingNodeId :
+                               std::max(
+                                   *std::max_element(
+                                       std::begin(ids),
+                                       std::end(ids)) + NodeId{1},
+                                   s_startingNodeId);
             node.setId(NodeId::fromValue(maxId));
             return node.id().isValid();
         }
@@ -296,16 +300,20 @@ struct Graph::Impl
         }
     }
 
-    static void onPortInserted(Graph* root,
+    static void onPortInserted(Node* root,
                                AbstractGraphProvider* provider,
                                PortType type,
-                               PortIndex idx)
+                               PortIndex idx,
+                               bool invert = false)
     {
+        gtDebug() << __FUNCTION__ << root << provider << type << idx;
+
         assert(root);
-        assert(root->isDynamicPort(type, idx));
+        assert(!qobject_cast<DynamicNode*>(root) ||
+               static_cast<DynamicNode*>(root)->isDynamicPort(type, idx));
         assert(provider);
 
-        if (type != provider->providerType()) return;
+        if (!invert && type != provider->providerType()) return;
 
         auto const makeError = [root, type, idx](){
             return relativeNodePath(*root) + QStringLiteral(": ") +
@@ -338,19 +346,23 @@ struct Graph::Impl
         assert(addedPortId == srcPort->id());
     }
 
-    static void onPortChanged(Graph* root,
+    static void onPortChanged(Node* root,
                               AbstractGraphProvider* provider,
-                              PortId portId)
+                              PortId portId,
+                              bool invert = false)
     {
+        gtDebug() << __FUNCTION__ << root << provider << portId;
+
         assert(portId.isValid());
         assert(root);
         assert(provider);
 
         PortType type = root->portType(portId);
         assert(type != PortType::NoType);
-        assert(root->isDynamicPort(type, root->portIndex(type, portId)));
+        assert(!qobject_cast<DynamicNode*>(root) ||
+               static_cast<DynamicNode*>(root)->isDynamicPort(type, root->portIndex(type, portId)));
 
-        if (type != provider->providerType()) return;
+        if (!invert && type != provider->providerType()) return;
 
         auto const makeError = [root, type, portId](){
             return relativeNodePath(*root) + QStringLiteral(": ") +
@@ -383,16 +395,20 @@ struct Graph::Impl
         emit provider->portChanged(port->id());
     }
 
-    static void onPortDeleted(Graph* root,
+    static void onPortDeleted(Node* root,
                               AbstractGraphProvider* provider,
                               PortType type,
-                              PortIndex idx)
+                              PortIndex idx,
+                              bool invert = false)
     {
         assert(root);
-        assert(root->isDynamicPort(type, idx));
+        assert(!qobject_cast<DynamicNode*>(root) ||
+               static_cast<DynamicNode*>(root)->isDynamicPort(type, idx));
         assert(provider);
 
-        if (type != provider->providerType()) return;
+        gtDebug() << __FUNCTION__ << root << provider << type << idx;
+
+        if (!invert && type != provider->providerType()) return;
 
         auto const makeError = [root, type, idx](){
             return relativeNodePath(*root) + QStringLiteral(": ") +
