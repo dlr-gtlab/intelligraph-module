@@ -52,6 +52,16 @@ NodeGeometry::vspacing() const
     return 0.5 * hspacing();
 }
 
+QString
+NodeGeometry::portDisplayText(const NodePort& port) const
+{
+    if (!port.captionVisible) return QString{};
+
+    return port.caption.isEmpty() ?
+               NodeDataFactory::instance().typeName(port.typeId) :
+               port.caption;
+}
+
 bool
 NodeGeometry::hasDisplayIcon() const
 {
@@ -353,6 +363,17 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
         height += 2 * offset + vspacing();
     }
 
+    auto* port = node.port(node.portId(type, idx));
+    assert(port);
+
+    if (NodeDataFactory::isListType(port->typeId))
+    {
+        return QRectF{
+            QPointF(width, height),
+            QSizeF{style.portRadius * 2, style.portRadius * 2 * style.listTypeMultiplier}
+        };
+    }
+
     return QRectF{
         QPointF(width, height),
         QSizeF{style.portRadius * 2, style.portRadius * 2}
@@ -383,11 +404,7 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
     int width = 0;
     if (port->captionVisible)
     {
-        auto& factory = NodeDataFactory::instance();
-
-        width += metrics.horizontalAdvance(port->caption.isEmpty() ?
-                                               factory.typeName(port->typeId) :
-                                               port->caption);
+        width += metrics.horizontalAdvance(portDisplayText(*port));
         width += (width & 1);
     }
 

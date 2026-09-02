@@ -12,6 +12,8 @@
 
 #include <intelli/exports.h>
 #include <intelli/globals.h>
+#include <intelli/nodedata.h>
+#include <intelli/data/list.h>
 
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
@@ -57,14 +59,11 @@ public:
      */
     static NodeDataFactory& instance();
 
-    /**
-     * @brief Registers the meta object in the data factory. This is necessary
-     * to create a data type object dynamically or to retrieve the type id/
-     * type name of the registered data types at runtime.
-     * @param meta Meta object of the data type
-     * @return success
-     */
-    bool registerData(QMetaObject const& meta) noexcept;
+    static bool isListType(QStringView view);
+
+    static QString innerType(QStringView view);
+
+    static QString listType(QStringView view);
 
     /**
      * @brief Overload, convenience function. Registers the data type `T` in
@@ -72,10 +71,16 @@ public:
      * @return success
      */
     template <typename T,
-             std::enable_if_t<std::is_base_of<NodeData, T>::value, bool> = true>
+             std::enable_if_t<std::is_base_of<NodeData, T>::value, bool> = true,
+             std::enable_if_t<!is_list_type<T>::value, bool> = false>
     static bool registerData()
     {
-        return instance().registerData(T::staticMetaObject);
+        bool success = instance().registerData(T::staticMetaObject);
+        if (success)
+        {
+            success = instance().registerListType(typeId<T>(), list<T>::staticMetaObject);
+        }
+        return success;
     }
 
     /**
@@ -106,7 +111,7 @@ public:
      * @param typeId Type id to retrieve the type name from
      * @return Type name. Empty if type id was not found
      */
-    TypeName const& typeName(TypeId const& typeId) const noexcept;
+    TypeName typeName(TypeId const& typeId) const noexcept;
 
     /**
      * @brief Returns whether a conversion function exists between two types.
@@ -145,6 +150,19 @@ public:
      * @return Object pointer (may be null)
      */
     NodeDataPtr makeData(TypeId const& typeId) const noexcept;
+
+protected:
+
+    /**
+     * @brief Registers the meta object in the data factory. This is necessary
+     * to create a data type object dynamically or to retrieve the type id/
+     * type name of the registered data types at runtime.
+     * @param meta Meta object of the data type
+     * @return success
+     */
+    bool registerData(QMetaObject const& meta) noexcept;
+
+    bool registerListType(TypeId typeId, QMetaObject const& meta) noexcept;
 
 private:
 

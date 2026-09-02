@@ -260,14 +260,14 @@ NodeUI::defaultPortActions() const
         actions << OtherPortAction <<
             makePortAction(tr("Port Info"), [](Node* obj, PortType type, PortIndex idx){
                 if (!obj) return;
-                gtInfo() << tr("Node '%1' (id: %2), Port id: %3")
-                                .arg(obj->caption())
-                                .arg(obj->id())
-                                .arg(toString(obj->portId(type, idx)));
+                PortId portId = obj->portId(type, idx);
+                NodePort* port = obj->port(portId);
+                gtInfo() << tr("Node '%1' (id: %2), Port: %3")
+                                .arg(obj->caption(), toString(obj->id()), port ? toString(*port) : "null");
             }).setIcon(gt::gui::icon::bug());
-
-        actions << makePortAction("", nullptr);
     }
+
+    actions << makePortSeparator();
 
     return actions;
 }

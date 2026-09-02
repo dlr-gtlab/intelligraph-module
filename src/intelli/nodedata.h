@@ -109,14 +109,36 @@ using Ptr = std::shared_ptr<const T>;
 
 using NodeDataPtr = Ptr<NodeData>;
 
+template <typename T>
+struct list_type;
+
+template <typename T>
+using list_type_t = typename list_type<T>::type;
+
+template <typename T>
+using list = list_type_t<T>;
+
+template <typename T, typename = void>
+struct is_list_type : std::false_type {};
+
+template <typename T>
+struct is_list_type<T, std::void_t<typename T::iterator>> : std::true_type {};
+
 /**
  * @brief Returns the typeid of a node data class
  * @return Typeid
  */
-template <typename T, gt::trait::enable_if_base_of<NodeData, T> = true>
+template <typename T,
+         gt::trait::enable_if_base_of<NodeData, T> = true>
 inline QString typeId()
 {
     return T::staticMetaObject.className();
+}
+
+template <typename T>
+inline QString listTypeId()
+{
+    return QStringLiteral("#list#") + typeId<T>();
 }
 
 /**

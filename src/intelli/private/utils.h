@@ -154,7 +154,7 @@ inline std::string toStdString(T const& t)
 namespace utils
 {
 
-namespace details
+namespace detail
 {
 
 template<typename ...Args>
@@ -221,10 +221,10 @@ inline gt::log::Stream& LogIdsLambda<Args...>::operator()(gt::log::Stream& s) co
 } // namespace detail
 
 template<typename ...Args>
-inline details::LogIdsLambda<Args...>
+inline detail::LogIdsLambda<Args...>
 logIds(Args&&... args)
 {
-    return details::LogIdsLambda<Args...>{args...};
+    return detail::LogIdsLambda<Args...>{args...};
 }
 
 /// Helper function that returns the path of the node as a formated string for

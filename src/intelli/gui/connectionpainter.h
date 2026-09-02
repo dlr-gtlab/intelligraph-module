@@ -52,6 +52,8 @@ public:
         // If this flag is active all other flags except `DrawDashed` and `DrawDotted`
         // are ignored depending on their priority. This flag has the lowest priority.
         DrawGradient     = 1 << 5,
+
+        DrawThick        = 1 << 6,
     };
 
     ConnectionPainter();
@@ -120,7 +122,8 @@ public:
     void drawEndPoint(QPainter& painter,
                       QPainterPath const& path,
                       double radius,
-                      PortType type = PortType::In) const;
+                      PortType type = PortType::In,
+                      PainterFlags flags = NoPainterFlag) const;
 
 private:
 

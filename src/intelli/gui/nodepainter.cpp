@@ -83,7 +83,7 @@ NodePainter::applyDropShadowConfig(QPainter& painter) const
 
 void
 NodePainter::applyPortConfig(QPainter& painter,
-                             PortInfo const& port,
+                             NodePort const& port,
                              PortType type,
                              PortIndex idx,
                              uint flags) const
@@ -141,6 +141,12 @@ NodePainter::displayIcon() const
     return object().isCollapsed() ?
                gt::gui::icon::triangleUp() :
                uiData().displayIcon();
+}
+
+QString
+NodePainter::portDisplayText(NodePort const& port) const
+{
+    return geometry().portDisplayText(port);
 }
 
 QColor
@@ -253,7 +259,7 @@ NodePainter::drawPorts(QPainter& painter) const
 
 void
 NodePainter::drawPort(QPainter& painter,
-                      PortInfo const& port,
+                      NodePort const& port,
                       PortType type,
                       PortIndex idx,
                       uint flags) const
@@ -273,18 +279,24 @@ NodePainter::drawPort(QPainter& painter,
     p.translate(offset.width() * 0.5, offset.height() * 0.5);
     p.setSize(p.size() - offset);
 
+
+    if (NodeDataFactory::isListType(port.typeId))
+    {
+        auto& style = style::currentStyle().node;
+        painter.drawRoundedRect(p, style.portRadius, style.portRadius);
+        return;
+    }
+
     painter.drawEllipse(p);
 }
 
 void
 NodePainter::drawPortCaption(QPainter& painter,
-                             PortInfo const& port,
+                             NodePort const& port,
                              PortType type,
                              PortIndex idx,
                              uint flags) const
 {
-    auto& factory = NodeDataFactory::instance();
-
     if (!(flags & UsePainterConfig))
     {
         painter.setFont(style::currentStyle().node.bodyFont);
@@ -299,9 +311,7 @@ NodePainter::drawPortCaption(QPainter& painter,
                                          QTextOption{Qt::AlignRight};
     option.setWrapMode(QTextOption::WrapMode::NoWrap);
 
-    auto const& text = port.caption.isEmpty() ? factory.typeName(port.typeId) :
-                                                port.caption;
-
+    auto const& text = portDisplayText(port);
     painter.drawText(geometry().portCaptionRect(type, idx), text, option);
 }
 

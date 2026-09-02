@@ -10,6 +10,8 @@
 #include "intelli/graphexecutor.h"
 #include "intelli/data/stringlist.h"
 #include "intelli/data/string.h"
+#include "intelli/data/list.h"
+#include "intelli/data/int.h"
 
 #include "intelli/private/utils.h"
 
@@ -29,7 +31,7 @@ AccumulatorGraphNode::AccumulatorGraphNode() :
 
     Position offset{0, 100};
 
-    m_listIn = addInPort(makePort(typeId<StringListData>()));
+    m_listIn = addInPort(makePort(typeId<list<StringData>>()));
     m_out = addOutPort(makePort(typeId<StringData>()));
 
     auto input = std::make_unique<GraphInputProvider>();
@@ -58,6 +60,9 @@ AccumulatorGraphNode::AccumulatorGraphNode() :
 
     in->addPort(PortInfo::customId(m_listIn, typeId<StringData>()));
     out->addPort(PortInfo::customId(m_out, typeId<StringData>()));
+
+    gtFatal() << typeId<list<StringData>>();
+    gtFatal() << typeId<StringListData>();
 
     setNodeEvalMode(NodeEvalMode::Blocking);
 }

@@ -87,13 +87,11 @@ intelli::registerDefaultDataTypes()
         // register data type
         GT_INTELLI_REGISTER_DATA(ByteArrayData);
         GT_INTELLI_REGISTER_DATA(StringData);
-        GT_INTELLI_REGISTER_DATA(StringListData);
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(IntData);
         GT_INTELLI_REGISTER_DATA(BoolData);
         GT_INTELLI_REGISTER_DATA(ObjectData);
         GT_INTELLI_REGISTER_DATA(FileData);
-        GT_INTELLI_REGISTER_DATA(ListData);
 
         // register conversions
         gtTrace().verbose() << QObject::tr("Registering default conversions...");
