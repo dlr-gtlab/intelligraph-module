@@ -55,13 +55,13 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
     if (!graphUuid.isEmpty()) graph->setUuid(graphUuid);
 
     // custom uuids for input and utput provider
-    auto inputPtr  = std::make_unique<GroupInputProvider>();
-    auto outputPtr = std::make_unique<GroupOutputProvider>();
+    auto inputPtr  = std::make_unique<GraphInputProvider>();
+    auto outputPtr = std::make_unique<GraphOutputProvider>();
     if (!inNodeUuid.isEmpty()) inputPtr->setUuid(inNodeUuid);
     if (!outNodeUuid.isEmpty()) outputPtr->setUuid(outNodeUuid);
-
-    GroupInputProvider* input   = graph->appendNode(std::move(inputPtr));
-    GroupOutputProvider* output = graph->appendNode(std::move(outputPtr));
+    
+    GraphInputProvider* input   = graph->appendNode(std::move(inputPtr));
+    GraphOutputProvider* output = graph->appendNode(std::move(outputPtr));
 
     if (!input || !output)
     {
@@ -158,9 +158,10 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
     if (&from != pimpl->graph->findNode(from.id()) ||
         &to   != pimpl->graph->findNode(to.id()))
     {
+        Node& errNode = (&from != pimpl->graph->findNode(from.id())) ? from : to;
         throw std::logic_error{
             buildError() +
-            ", nodes have not been added to the graph before! " +
+            ", node '" + errNode.caption().toStdString() + "' has not been added to the graph before! " +
             gt::brackets(pimpl->graph->caption().toStdString())
         };
     }

@@ -11,6 +11,8 @@
 #define GT_INTELLI_NODE_H
 
 #include <intelli/globals.h>
+#include <intelli/nodeevent.h>
+#include <intelli/nodeport.h>
 #include <intelli/exports.h>
 
 #include <gt_typetraits.h>
@@ -28,6 +30,7 @@ enum NodeFlag : size_t
     /// Indicates node caption should be hidden
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
+    // TODO: remove
     Unique      = 1 << 2,
     /// Indicates that the widget should be placed so that its size can be maximized
     MaximizeWidget = 1 << 4,
@@ -35,8 +38,10 @@ enum NodeFlag : size_t
     Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
     ResizableHOnly = 1 << 6,
+    // TODO: add ResizableVOnly?
     /// Indicates node is deprecated and should no longer be used
     Deprecated = 1 << 7,
+
     /// default node flags
     DefaultNodeFlags = NoFlag,
 
@@ -74,6 +79,7 @@ enum class NodeEvalMode : size_t
     ExclusiveBlocking = IsExclusiveMask | IsBlockingMask,
     /// Inidcates that the inputs of the node should be forwarded to the outputs
     /// of the node
+    // TODO: remove, only a hack for input output providers
     ForwardInputsToOutputs = 1 << 3 | IsBlockingMask,
     /// Default behaviour
     Default = Detached,
@@ -190,11 +196,16 @@ public:
     using NodeFlags     = intelli::NodeFlags;
     using NodeEvalMode  = intelli::NodeEvalMode;
     using NodeEvalState = intelli::NodeEvalState;
+    // TODO: rename to simply Port?
+    using NodePort      = intelli::NodePort;
+    using PortInfo      = intelli::NodePort;
     using PortType      = intelli::PortType;
     using PortId        = intelli::PortId;
     using PortIndex     = intelli::PortIndex;
     using Position      = intelli::Position;
     using NodeDataPtr   = intelli::NodeDataPtr;
+    using NodeEvent     = intelli::NodeEvent;
+    using NodeEventType = intelli::NodeEventType;
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
@@ -203,25 +214,6 @@ public:
     using WidgetFactoryNoArgs =
         std::function<std::unique_ptr<QWidget>()>;
 
-    /// Enums inidacting of node event
-    enum NodeEventType
-    {
-        UnkownEvent = 0,
-        /// Event is emitted once `nodeDataInterface` yields a valid pointer
-        /// (not emitted if `nodeDataInterface` chnages).
-        /// Can be used to initialize a node.
-        DataInterfaceAvailableEvent
-    };
-
-    /// Base class for node specific events
-    class NodeEvent
-    {
-        NodeEventType m_type = UnkownEvent;
-    public:
-        explicit NodeEvent(NodeEventType type) : m_type(type) {}
-        NodeEventType type() const { return m_type; }
-    };
-
     /// enum for defining whether a port is optional
     enum PortPolicy
     {
@@ -229,117 +221,14 @@ public:
         Optional,
         DefaultPortPolicy = Optional
     };
-
-    /// Port info struct
-    class PortInfo
-    {
-    public:
-
-        // cppcheck-suppress noExplicitConstructor
-        PortInfo(QString _typeId) : PortInfo(std::move(_typeId), {}) {}
-
-        PortInfo(QString _typeId,
-                 QString _caption,
-                 bool _captionVisible = true,
-                 bool _optional = true) :
-            typeId(std::move(_typeId)),
-            caption(std::move(_caption) ),
-            captionVisible(_captionVisible),
-            optional(_optional)
-        {}
-
-        PortInfo(PortInfo const& other) = default;
-        PortInfo(PortInfo&& other) = default;
-        PortInfo& operator=(PortInfo const& other) = delete;
-        PortInfo& operator=(PortInfo&& other) = default;
-        ~PortInfo() = default;
-
-        /// creates a PortInfo struct with a custom port id
-        template<typename ...T>
-        static PortInfo customId(PortId newPortId, T&&... args)
-        {
-            PortInfo pd(std::forward<T>(args)...);
-            pd.m_id = newPortId;
-            return pd;
-        }
-
-        /// Performs a copy assignment using `other` but keeps old id
-        void assign(PortInfo other)
-        {
-            PortInfo tmp(std::move(other));
-            tmp.m_id = m_id;
-            swap(tmp);
-        }
-
-        /// creates a copy of this object but resets the id parameter
-        PortInfo copy() const
-        {
-            PortInfo pd(*this);
-            pd.m_id = invalid<PortId>();
-            return pd;
-        }
-
-        /// swap
-        void swap(PortInfo& other) noexcept
-        {
-            using std::swap;
-            swap(typeId, other.typeId);
-            swap(caption, other.caption);
-            swap(captionVisible, other.captionVisible);
-            swap(visible, other.visible);
-            swap(optional, other.optional);
-            swap(m_isConnected, other.m_isConnected);
-            swap(m_id, other.m_id);
-        }
-
-        // setters to allow function chaining
-        PortInfo& setCaption(QString v) { caption = std::move(v); return *this; }
-        PortInfo& setToolTip(QString v) { toolTip = std::move(v); return *this; }
-        PortInfo& setCaptionVisible(bool v) { captionVisible = v; return *this; }
-        PortInfo& setVisible(bool v) { visible = v; return *this; }
-        PortInfo& setOptional(bool v) { optional = v; return *this; }
-
-        /// type id for port data (classname)
-        TypeId typeId;
-        /// custom port caption (optional)
-        QString caption;
-        /// custom tooltip
-        QString toolTip;
-        /// whether port caption should be visible
-        bool captionVisible = true;
-        /// whether the port is visible at all
-        bool visible = true;
-        /// whether the port is required for the node evaluation
-        bool optional = true;
-
-        /**
-         * @brief Returns the port id
-         * @return port id
-         */
-        inline PortId id() const { return m_id; }
-
-        /**
-         * @brief Whether port is connected
-         * @return Whether port is connected
-         */
-        inline bool isConnected() const { return m_isConnected; }
-
-    private:
-        /// whether port is connected
-        bool m_isConnected{false};
-        /// read only PortId
-        PortId m_id{};
-        
-        friend class Node;
-    };
-    using PortData [[deprecated("use PortInfo")]] = PortInfo;
     
     /**
      * @brief Helper method to create a `PortInfo` struct given a `TypeId`.
      * @param typeId TypeId
      * @return `PortInfo` struct
      */
-    static PortInfo makePort(TypeId typeId) { return PortInfo{std::move(typeId)}; }
+
+    static NodePort makePort(TypeId typeId) { return intelli::makePort(std::move(typeId)); }
 
     ~Node();
 
@@ -528,6 +417,7 @@ signals:
      * Should be triggered if the node has changed internal data and requires
      * reevaluation.
      */
+    // TODO: rename `invalidateOutputData` because it is only used for auto evaluation
     void triggerNodeEvaluation();
 
     /**
@@ -541,24 +431,11 @@ signals:
      * Data may be invalid. Should not be triggered by the "user".
      * @param portId Input port that recieved data
      */
+    // TODO: rename `inputDataUpdated` because it is triggered on disconnect too
     void inputDataRecieved(PortId portId = invalid<PortId>());
 
     /**
-     * @brief Emitted once the node evaluation has started. Will update the node
-     * flag `Evaluating` automatically.
-     */
-    [[deprecated]]
-    void computingStarted();
-    
-    /**
-     * @brief Emitted once the node evaluation has finished. Will update the node
-     * flag `Evaluating` automatically.
-     */
-    [[deprecated("use `evaluated` signal instead")]]
-    void computingFinished();
-
-    /**
-     * @brief Emitted if node specific data has changed (cpation, number of
+     * @brief Emitted if node specific data has changed (caption, number of
      * ports etc.). May be invoked by the "user" to update the graphical node
      * representation in case a port has changed for example.
      */
@@ -583,7 +460,7 @@ signals:
     void nodeAboutToBeDeleted(NodeId nodeId);
 
     /**
-     * @brief Emitted if port specific data has changed (e.g. port cpation).
+     * @brief Emitted if port specific data has changed (e.g. port caption).
      * May be invoked by the "user" to update the graphical node representation
      * @param id id of port that changed
      */
@@ -597,7 +474,7 @@ signals:
     void portAboutToBeDeleted(PortType type, PortIndex idx);
 
     /**
-     * @brief Will be emiited just after a port was deleted
+     * @brief Will be emitted just after a port was deleted
      * @param type Port type (input or output)
      * @param idx Old index
      */
@@ -859,26 +736,6 @@ relativeNodePath(Node const& node)
 }
 
 } // namespace intelli
-
-namespace gt
-{
-namespace log
-{
-
-inline Stream&
-operator<<(Stream& s, intelli::Node::PortInfo const& p)
-{
-    {
-        StreamStateSaver saver(s);
-        s.nospace()
-            << "Port[" << p.typeId << "/" << p.id() << "]";
-    }
-    return s.doLogSpace();
-}
-
-} // namespace log
-
-} // namespace gt
 
 
 #endif // GT_INTELLI_NODE_H

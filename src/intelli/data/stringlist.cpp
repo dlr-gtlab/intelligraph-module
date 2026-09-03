@@ -18,7 +18,7 @@ StringListData::StringListData(QStringList val) :
 
 }
 
-QStringList const&
+QStringList
 intelli::StringListData::value() const
 {
     return m_data;

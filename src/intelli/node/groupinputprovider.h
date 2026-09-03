@@ -7,27 +7,23 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef GT_INTELLI_GROUPINPUTPROVIDER_H
-#define GT_INTELLI_GROUPINPUTPROVIDER_H
+#ifndef GT_INTELLI_GRAPHINPUTPROVIDER_H
+#define GT_INTELLI_GRAPHINPUTPROVIDER_H
 
 #include <intelli/node/abstractgroupprovider.h>
 
 namespace intelli
 {
 
-class GroupInputProvider : public AbstractGroupProvider<PortType::In>
+class GraphInputProvider : public AbstractGraphProvider
 {
     Q_OBJECT
 
 public:
 
-    Q_INVOKABLE GroupInputProvider();
-
-protected:
-
-    void eval() override;
+    Q_INVOKABLE GraphInputProvider();
 };
 
 } // namespace intelli
 
-#endif // GT_INTELLI_GROUPINPUTPROVIDER_H
+#endif // GT_INTELLI_GRAPHINPUTPROVIDER_H

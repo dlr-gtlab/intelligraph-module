@@ -894,7 +894,7 @@ GraphScene::deleteSelectedObjects()
         });
     };
 
-    /// create popus for certain objects to notify that these are not deletable
+    /// create pop-ups for certain objects to notify that these are not deletable
     auto const createPopups = [](auto begin,
                                  auto end,
                                  GraphScene* scene,
@@ -1184,7 +1184,7 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
 
     bool areNodesSelected = !selectedNodes.empty();
     Node* selectedNode = areNodesSelected ? &selectedNodes.front()->node() : nullptr;
-    Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
+    Graph* selectedGraphNode = qobject_cast<Graph*>(selectedNode);
 
     bool allDeletable = std::all_of(selectedNodes.begin(),
                                     selectedNodes.end(),
@@ -1337,6 +1337,8 @@ GraphScene::onNodeAppended(Node* node)
     static NodeUI defaultUI;
     assert(node);
 
+//    if (node->isUserHidden()) return;
+
     NodeUI* ui = qobject_cast<NodeUI*>(gtApp->defaultObjectUI(node));
     if (!ui) ui = &defaultUI;
 
@@ -1361,6 +1363,8 @@ GraphScene::onNodeAppended(Node* node)
     connect(entity, &NodeGraphicsObject::makeDraftConnection,
             this, &GraphScene::onMakeDraftConnection,
             Qt::DirectConnection);
+
+    if (node->isUserHidden()) entity->hide();
 
     auto* ptr = entity.get();
 

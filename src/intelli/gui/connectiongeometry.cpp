@@ -137,14 +137,21 @@ ConnectionGeometry::computePath(QPointF start, QPointF end, ConnectionShape shap
 void
 ConnectionGeometry::computeShape(QPointF start, QPointF end, ConnectionShape shape)
 {
+    auto& style = style::currentStyle().node;
     QPainterPathStroker stroker;
-    stroker.setWidth(2 * style::currentStyle().node.portRadius);
+    stroker.setWidth(2 * style.portRadius);
+    if (m_isThick)
+    {
+        stroker.setWidth(stroker.width() * style.listTypeMultiplier);
+    }
     m_shape = stroker.createStroke(m_path);
 }
 
 void
 ConnectionGeometry::computeBoundingRect(QPointF start, QPointF end, ConnectionShape shape)
 {
+    auto& style = style::currentStyle().node;
+
     // (adapted)
     // SPDX-SnippetBegin
     // SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
@@ -158,8 +165,8 @@ ConnectionGeometry::computeBoundingRect(QPointF start, QPointF end, ConnectionSh
 
     QRectF commonRect = basicRect.united(c1c2Rect);
 
-    double const diam = style::currentStyle().node.portRadius * 2;
-    QPointF const cornerOffset(diam, diam);
+    double const diam = style.portRadius * 2;
+    QPointF const cornerOffset{diam, isThick() ? diam * style.listTypeMultiplier : diam};
 
     // Expand rect by port circle diameter
     commonRect.setTopLeft(commonRect.topLeft() - cornerOffset);

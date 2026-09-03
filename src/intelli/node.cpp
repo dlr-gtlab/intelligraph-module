@@ -389,6 +389,7 @@ Node::removePort(PortId id)
 NodeEvalState
 Node::nodeEvalState() const
 {
+    // TODO: remove this function from here?
     NodeDataInterface* model = pimpl->dataInterface;
     if (!model)
     {
@@ -568,7 +569,7 @@ public:
         if (!hadValue)
         {
             Node::NodeEvent e{
-                Node::DataInterfaceAvailableEvent
+                DataInterfaceAvailableEvent
             };
             node.nodeEvent(&e);
         }
@@ -587,7 +588,15 @@ public:
     triggerNodeEvaluation(Node& node)
     {
         auto evalMode = node.nodeEvalMode();
-        if (evalMode == NodeEvalMode::NoEvaluationRequired) return true;
+        if (evalMode == NodeEvalMode::NoEvaluationRequired)
+        {
+            // TODO: emit evaluated signal?
+            auto model = nodeDataInterface(node);
+            if (!model) return false;
+
+            model->nodeEvaluation(node.uuid()).finalize();
+            return true;
+        }
 
         size_t evalFlag = (size_t)node.nodeEvalMode();
         if (evalFlag & IsDetachedMask)
@@ -600,7 +609,7 @@ public:
         }
 
         gtError() << utils::logId(node)
-                  << QObject::tr("Unhandled eval mode! (%1)").arg((size_t)evalFlag);
+                  << QObject::tr("Unhandled eval mode! (%1)").arg(evalFlag);
 
         return false;
     }
@@ -665,14 +674,6 @@ intelli::exec::blockingEvaluation(Node& node, NodeDataInterface* model)
 
     auto cmd = model->nodeEvaluation(node.uuid());
     Q_UNUSED(cmd);
-
-    // cleanup routine
-    auto finally = gt::finally([&node](){
-        emit node.computingFinished();
-    });
-    Q_UNUSED(finally);
-
-    emit node.computingStarted();
 
     INode::evaluateNode(node);
 

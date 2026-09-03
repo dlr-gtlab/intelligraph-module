@@ -22,6 +22,8 @@ add_executable(IntelliGraphUnitTests
     test_globals.cpp
     test_graph.cpp
     test_graphbuilder.cpp
+    test_graphdatamodel.cpp
+    test_graphexecutor.cpp
     test_graphexecmodel.cpp
     test_graphuservariables.cpp
     test_gui.cpp

@@ -50,9 +50,11 @@ NumberMathNode::NumberMathNode() :
     updatePortCaptions();
 
     connect(&m_operation, &GtAbstractProperty::changed,
-            this, &Node::triggerNodeEvaluation);
-    connect(&m_operation, &GtAbstractProperty::changed,
-            this, [this]() { emit operationChanged(m_operation); });
+            this, [this]() {
+        updatePortCaptions();
+        emit operationChanged(m_operation);
+        emit triggerNodeEvaluation();
+    });
 }
 
 NumberMathNode::MathOperation

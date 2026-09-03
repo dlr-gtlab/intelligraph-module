@@ -11,7 +11,7 @@
 #define GT_INTELLI_GRAPHEXECMODEL_H
 
 #include <intelli/future.h>
-#include <intelli/graphdatamodel.h>
+#include <intelli/graphexecdatamodel.h>
 #include <intelli/nodedatainterface.h>
 
 #include <QPointer>
@@ -276,7 +276,7 @@ public:
      * @return Execution data
      */
     GT_NO_DISCARD
-    inline GraphDataModel const& data() const;
+    inline const GraphExecDataModel& data() const;
 
     /**
      * @brief Returns the user variables object if any exists.

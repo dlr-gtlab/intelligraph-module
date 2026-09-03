@@ -24,6 +24,7 @@ namespace intelli
 /**
  * @brief The NodeData class. Base class for all node data
  */
+// TODO: use QObject instead?
 class GT_INTELLI_EXPORT NodeData : public GtObject
 {
     Q_OBJECT
@@ -81,7 +82,7 @@ public:
                                        std::forward<Args>(args)...))
         {
             gtTraceId("IntelliGraph")
-                << tr("Invoking meber function '%1 %2(...)' failed!")
+                << tr("Invoking member function '%1 %2(...)' failed!")
                         .arg(rtypeName, methodName);
             return {};
         }
@@ -102,14 +103,52 @@ private:
     QString m_typeName;
 };
 
+
+template<typename T>
+using Ptr = std::shared_ptr<const T>;
+
+using NodeDataPtr = Ptr<NodeData>;
+
+template <typename T>
+struct list_type;
+
+template <typename T>
+using list_type_t = typename list_type<T>::type;
+
+template <typename T>
+using list = list_type_t<T>;
+
+template <typename T, typename = void>
+struct is_list_type : std::false_type {};
+
+template <typename T>
+struct is_list_type<T, std::void_t<typename T::iterator>> : std::true_type {};
+
 /**
  * @brief Returns the typeid of a node data class
  * @return Typeid
  */
-template <typename T, gt::trait::enable_if_base_of<NodeData, T> = true>
+template <typename T,
+         gt::trait::enable_if_base_of<NodeData, T> = true>
 inline QString typeId()
 {
     return T::staticMetaObject.className();
+}
+
+template <typename T>
+inline QString listTypeId()
+{
+    return QStringLiteral("#list#") + typeId<T>();
+}
+
+/**
+ * @brief Returns the typeid of a node data class
+ * @return Typeid
+ */
+template <typename T, typename ...Args, gt::trait::enable_if_base_of<NodeData, T> = true>
+inline Ptr<T> makeNodeData(Args&&... args)
+{
+    return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 /**

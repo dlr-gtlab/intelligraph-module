@@ -11,6 +11,7 @@
 
 #include <intelli/graph.h>
 #include <intelli/graphexecmodel.h>
+#include <intelli/graphexecutor.h>
 #include <intelli/gui/graphview.h>
 #include <intelli/gui/graphscene.h>
 #include <intelli/gui/guidata.h>
@@ -110,6 +111,29 @@ GraphStateManager::setupUserStates(GraphScene* scene)
         .finalize();
 
     // auto evaluation state
+#if 1
+    auto* root = graph.rootGraph();
+    assert(root);
+    bool isRoot = &graph == root;
+    if (!isRoot) return;
+
+    auto* executor = graph.findDirectChild<GraphExecutor*>();
+    if (!executor) return;
+
+    auto getAutoEvaluationEnabled =
+        std::bind(qOverload<>(&GraphExecutor::isAutoEvaluating), executor);
+
+    utils::setupState<GraphExecutor>(guardian, graph, tr("Auto Evaluation"),
+                                           getAutoEvaluationEnabled)
+        .onStateChange(executor, [executor](QVariant const& enable) {
+            bool autoEvaluate = enable.toBool();
+            if (autoEvaluate == executor->isAutoEvaluating()) return;
+
+            executor->autoEvaluate(autoEvaluate);
+        })
+        .onValueChange(executor, &GraphExecutor::autoEvaluationChanged)
+        .finalize();
+#else
     auto* model = GraphExecutionModel::accessExecModel(graph);
     if (!model) return;
 
@@ -127,7 +151,7 @@ GraphStateManager::setupUserStates(GraphScene* scene)
         })
         .onValueChange(model, &GraphExecutionModel::autoEvaluationChanged)
         .finalize();
-
+#endif
 }
 
 void

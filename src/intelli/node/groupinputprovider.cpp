@@ -11,22 +11,6 @@
 
 using namespace intelli;
 
-GroupInputProvider::GroupInputProvider() :
-    AbstractGroupProvider("Input Provider")
-{
-    setPos({-250, 0});
-}
-
-void
-GroupInputProvider::eval()
-{
-    auto const& inPorts  = ports(PortType::In);
-    auto const& outPorts = ports(PortType::Out);
-
-    assert(inPorts.size() == outPorts.size());
-
-    for (auto& port : inPorts)
-    {
-        setNodeData(mainPortId(port.id()), nodeData(port.id()));
-    }
-}
+GraphInputProvider::GraphInputProvider() :
+    AbstractGraphProvider(PortType::In, "Input Provider")
+{ }

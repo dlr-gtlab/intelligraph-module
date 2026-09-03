@@ -52,8 +52,13 @@ public:
         NoUserDynamicOutput = 1 << 3,
         /// input and output ports may only be added programmatically
         /// (no UI action for adding/deleting port is added by default)
-        NoUserDynamicInputAndOutput = NoUserDynamicInput | NoUserDynamicOutput
+        NoUserDynamicInputAndOutput = NoUserDynamicInput | NoUserDynamicOutput,
+        NoDefaultListTypes = 1 << 5
     };
+
+    QStringList inputWhitelist() const;
+
+    QStringList outputWhitelist() const;
 
     /**
      * @brief Getter for the node option used
@@ -136,6 +141,8 @@ protected:
                 QStringList outputWhiteList,
                 size_t option = DynamicInputAndOutput,
                 GtObject* parent = nullptr);
+
+    void setPortContainerVisible(PortType type, bool visible = true);
 
     /**
      * @brief Appends a static input port. Static ports are like the regular
@@ -229,7 +236,6 @@ private:
      * @return Offset to beginning of the first index of a dynamic port.
      */
     int offset(PortType type) const;
-
     /**
      * @brief Can be used to check which port tyoe the container belongs to
      * @param container Container to get port type from

@@ -58,7 +58,6 @@ IntInputNode::setValue(int value)
     if (m_value.getVal() != value)
     {
         m_value = value;
-        emit triggerNodeEvaluation();
     }
 }
 

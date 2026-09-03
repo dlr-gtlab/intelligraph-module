@@ -73,7 +73,7 @@ GraphView::GraphView(QWidget* parent) :
     setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
     // disable scale range
-    setScaleRange(0, 0);
+    setScaleRange(0.1, 50);
 
     // Sets the scene rect to its maximum possible ranges to avoid auto scene range
     // re-calculation when expanding the all QGraphicsItems common rect.
@@ -87,6 +87,7 @@ GraphView::GraphView(QWidget* parent) :
     // controls minor and major lines
     grid->setGridHeight(s_major_grid_size);
     grid->setGridWidth(s_major_grid_size);
+    grid->setScaleGrid(false);
 
     showGrid(true);
 
