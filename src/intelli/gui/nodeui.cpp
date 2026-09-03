@@ -622,7 +622,12 @@ namespace
 void
 addPort(DynamicNode& node, PortType type)
 {
-    PortEditDialog dialog{type};
+    PortEditDialog dialog{
+        type,
+        type == PortType::In ?
+            node.inputWhitelist() :
+            node.outputWhitelist()
+    };
     if (!dialog.exec()) return;
 
     Node::PortInfo portInfo{dialog.typeId()};
@@ -680,7 +685,16 @@ NodeUI::editDynamicPort(Node* node, PortType type, PortIndex idx)
     NodePort* srcPort = node->port(srcPortId);
     if(!srcPort) return;
 
-    PortEditDialog dialog{type};
+    DynamicNode* dynNode = qobject_cast<DynamicNode*>(node);
+
+    PortEditDialog dialog{
+        type,
+        dynNode ?
+            (type == PortType::In ?
+                 dynNode->inputWhitelist() :
+                 dynNode->outputWhitelist()) :
+            QStringList{}
+    };
     dialog.setTypeId(srcPort->typeId);
     dialog.setCaption(srcPort->caption);
     dialog.setCaptionVisible(srcPort->captionVisible);

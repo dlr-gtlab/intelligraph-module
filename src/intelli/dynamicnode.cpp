@@ -41,6 +41,10 @@ struct DynamicNode::Impl
     /// property container for the out ports
     GtPropertyStructContainer outPorts{"dynamicOutPorts", "Out Ports"};
 
+    QStringList inputWhitelist;
+
+    QStringList outputWhitelist;
+
     /// Node option
     size_t option = DynamicInputAndOutput;
 
@@ -87,8 +91,31 @@ DynamicNode::DynamicNode(QString const& modelName,
                                      NodeDataFactory::instance().validTypeIds() :
                                      std::move(outputWhiteList);
 
+        if (!(option & NoDefaultListTypes))
+        {
+            inputTypes.reserve(inputTypes.size() * 2);
+            outputTypes.reserve(outputTypes.size() * 2);
+
+            utils::transform_if(inputTypes, [](TypeId const& type){
+                    return !NodeDataFactory::isListType(type) && type != typeId<InvalidData>();
+                },
+                std::back_inserter(inputTypes), [](TypeId const& type){
+                    return NodeDataFactory::listType(type);
+                });
+
+            utils::transform_if(outputTypes, [](TypeId const& type){
+                    return !NodeDataFactory::isListType(type) && type != typeId<InvalidData>();
+                },
+                std::back_inserter(outputTypes), [](TypeId const& type){
+                    return NodeDataFactory::listType(type);
+                });
+        }
+
         inputTypes.sort();
         outputTypes.sort();
+
+        pimpl->inputWhitelist = inputTypes;
+        pimpl->outputWhitelist = outputTypes;
       
         GtPropertyStructDefinition portInfoIn{S_PORT_INFO_IN};
         portInfoIn.defineMember(S_PORT_TYPE, makeStringSelectionProperty(std::move(inputTypes)));
@@ -159,6 +186,18 @@ DynamicNode::setPortContainerVisible(PortType type, bool visible)
 }
 
 DynamicNode::~DynamicNode() = default;
+
+QStringList
+DynamicNode::inputWhitelist() const
+{
+    return pimpl->inputWhitelist;
+}
+
+QStringList
+DynamicNode::outputWhitelist() const
+{
+    return pimpl->outputWhitelist;
+}
 
 size_t
 DynamicNode::dynamicNodeOption() const

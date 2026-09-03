@@ -202,9 +202,10 @@ NodeDataFactory::validTypeIds() const
 TypeName
 NodeDataFactory::typeName(TypeId const& typeId) const noexcept
 {
+    if (isListType(typeId)) return gt::quoted(typeName(innerType(typeId)), "list<", ">");
+
     auto iter = pimpl->typeNames.find(typeId);
     if (iter == pimpl->typeNames.end()) return {};
-    if (isListType(typeId)) return gt::quoted(typeId, "list<", ">");
     return iter.value();
 }
 

@@ -279,11 +279,14 @@ NodePainter::drawPort(QPainter& painter,
     p.translate(offset.width() * 0.5, offset.height() * 0.5);
     p.setSize(p.size() - offset);
 
-
     if (NodeDataFactory::isListType(port.typeId))
     {
         auto& style = style::currentStyle().node;
-        painter.drawRoundedRect(p, style.portRadius, style.portRadius);
+//        painter.drawRoundedRect(p, style.portRadius, style.portRadius);
+//        painter.drawRoundedRect(p, 2, 2); //style.portRadius, style.portRadius);
+        painter.drawEllipse(p.translated(type == PortType::In ?   4 :  2, 0));
+        painter.drawEllipse(p.translated(type == PortType::In ?   1 : -1, 0));
+        painter.drawEllipse(p.translated(type == PortType::In ?  -2 : -4, 0));
         return;
     }
 

@@ -52,8 +52,13 @@ public:
         NoUserDynamicOutput = 1 << 3,
         /// input and output ports may only be added programmatically
         /// (no UI action for adding/deleting port is added by default)
-        NoUserDynamicInputAndOutput = NoUserDynamicInput | NoUserDynamicOutput
+        NoUserDynamicInputAndOutput = NoUserDynamicInput | NoUserDynamicOutput,
+        NoDefaultListTypes = 1 << 5
     };
+
+    QStringList inputWhitelist() const;
+
+    QStringList outputWhitelist() const;
 
     /**
      * @brief Getter for the node option used

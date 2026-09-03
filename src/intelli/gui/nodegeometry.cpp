@@ -366,13 +366,13 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
     auto* port = node.port(node.portId(type, idx));
     assert(port);
 
-    if (NodeDataFactory::isListType(port->typeId))
-    {
-        return QRectF{
-            QPointF(width, height),
-            QSizeF{style.portRadius * 2, style.portRadius * 2 * style.listTypeMultiplier}
-        };
-    }
+//    if (NodeDataFactory::isListType(port->typeId))
+//    {
+//        return QRectF{
+//            QPointF(width, height),
+//            QSizeF{style.portRadius * 2, style.portRadius * 2 * style.listTypeMultiplier}
+//        };
+//    }
 
     return QRectF{
         QPointF(width, height),

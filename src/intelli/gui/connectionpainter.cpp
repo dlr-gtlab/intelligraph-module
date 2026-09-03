@@ -50,10 +50,10 @@ ConnectionPainter::applyPenConfig(QPainter& painter,
         penBrush = gradient;
     }
 
-    if (flags & DrawThick)
-    {
-        penWidth *= style::currentStyle().node.listTypeMultiplier;
-    }
+//    if (flags & DrawThick)
+//    {
+//        penWidth *= style::currentStyle().node.listTypeMultiplier;
+//    }
 
     if (flags & DrawDashed) penStyle = Qt::DashLine;
     else if (flags & DrawDotted) penStyle = Qt::DotLine;
@@ -123,8 +123,8 @@ ConnectionPainter::drawEndPoint(QPainter& painter,
     painter.setPen(Qt::NoPen);
     if (flags & DrawThick)
     {
-        painter.drawRoundedRect(QRectF{path.pointAtPercent(type == PortType::Out ? 0.0 : 1.0), QSizeF{radius, radius * style::currentStyle().node.listTypeMultiplier}}, radius, radius);
-        return;
+//        painter.drawRoundedRect(QRectF{path.pointAtPercent(type == PortType::Out ? 0.0 : 1.0), QSizeF{radius, radius * style::currentStyle().node.listTypeMultiplier}}, radius, radius);
+//        return;
     }
     painter.drawEllipse(path.pointAtPercent(type == PortType::Out ? 0.0 : 1.0), radius, radius);
 }

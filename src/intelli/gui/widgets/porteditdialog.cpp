@@ -59,8 +59,8 @@ PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhite
     auto* portCaptionLabel = new QLabel{tr("Port Caption:")};
     pimpl->portCaptionCheckBox = new QCheckBox{};
     pimpl->portCaptionEdit = new QLineEdit{};
-    pimpl->portCaptionEdit->setValidator(new QRegularExpressionValidator(
-        gt::rex::onlyLettersAndNumbersAndDot(), this));
+//    pimpl->portCaptionEdit->setValidator(new QRegularExpressionValidator(
+//        gt::rex::onlyLettersAndNumbersAndDot(), this));
 
     pimpl->portTypeComboBox->setToolTip(
         tr("Select the Port Type"));
