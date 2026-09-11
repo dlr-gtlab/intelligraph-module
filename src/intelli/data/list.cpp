@@ -12,7 +12,7 @@
 using namespace intelli;
 
 ListData::ListData() :
-    NodeData("list")
+    BaseListData("list")
 {
 
 }

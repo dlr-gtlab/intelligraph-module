@@ -10,17 +10,62 @@
 #ifndef GT_INTELLI_LIST_H
 #define GT_INTELLI_LIST_H
 
+#include "intelli/graphconnectionmodel.h"
 #include <intelli/nodedata.h>
 #include <intelli/data/invalid.h>
 
 #include <gt_typetraits.h>
+#include <gt_utilities.h>
 
 #include <QVector>
 
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT ListData : public NodeData
+class GT_INTELLI_EXPORT BaseListData : public NodeData
+{
+    Q_OBJECT
+
+public:
+
+    struct NodeDataProxy
+    {
+        using Iter = gt::DynamicRange<size_t>::iterator;
+
+        using value_type = NodeDataPtr;
+        using reference  = value_type;
+        using pointer    = value_type;
+
+        BaseListData const* list{};
+
+        /// initializes the proxy
+        void init(Iter&) {}
+
+        /// returns the underlying value type of iterator
+        reference get(Iter& i) { return list->getAt(*i); }
+
+        /// advances the underlying iterator
+        void advance(Iter& i) { ++i; }
+    };
+
+    auto iterate() const
+    {
+        return makeProxy(
+            gt::range(size_t{0}, getLength()),
+            NodeDataProxy{this});
+    }
+
+protected:
+
+    BaseListData(QString typeName) : NodeData(std::move(typeName)) {}
+
+    virtual size_t getLength() const = 0;
+
+    virtual NodeDataPtr getAt(size_t idx) const = 0;
+};
+
+
+class GT_INTELLI_EXPORT ListData : public BaseListData
 {
     Q_OBJECT
 
@@ -48,9 +93,15 @@ public:
 
     const_reference at(size_type idx) const { return m_data.at(idx); }
 
+protected:
+
+    size_t getLength() const override { return size(); }
+
+    NodeDataPtr getAt(size_t idx) const override { return at(idx); }
+
 private:
 
-    container_type m_data;
+    QVector<NodeDataPtr> m_data;
 };
 
 template <typename T>

@@ -11,10 +11,12 @@
 
 #include <intelli/nodedata.h>
 #include <intelli/data/string.h>
+#include <intelli/data/list.h>
 
 namespace intelli
 {
-class GT_INTELLI_EXPORT StringListData : public NodeData
+
+class GT_INTELLI_EXPORT StringListData : public BaseListData
 {
     Q_OBJECT
 
@@ -46,6 +48,12 @@ public:
     const_reference back() const { return m_data.back(); }
 
     const_reference at(size_type idx) const { return m_data.at(idx); }
+
+protected:
+
+    size_t getLength() const override { return size(); }
+
+    NodeDataPtr getAt(size_t idx) const override { return makeNodeData<StringData>(at(idx)); }
 
 private:
 

@@ -1463,10 +1463,6 @@ Graph::synchronizePorts(AbstractGraphProvider& provider)
 void
 Graph::synchronizePorts(Node& source, AbstractGraphProvider& target)
 {
-    gtDebug() << "HERE";
-    connect(&source, &Node::nodeAboutToBeDeleted, [ptr = &source](){ gtDebug() << ptr << "deleted"; });
-    connect(&target, &Node::nodeAboutToBeDeleted, [ptr = &target](){ gtDebug() << ptr << "deleted"; });
-
     connect(&source, &Node::portInserted,
             &target, [&source, &target](PortType type, PortIndex idx){
                 Impl::onPortInserted(&source, &target, (type), idx, true);

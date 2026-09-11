@@ -76,14 +76,6 @@ DynamicNode::DynamicNode(QString const& modelName,
 {
     if (pimpl->option != NoDynamicPorts)
     {
-        auto makeReadOnly = [](auto func){
-            return [func = std::move(func)](QString const& id){
-                GtAbstractProperty* tmp = func(id);
-                tmp->setReadOnly(true);
-                return tmp;
-            };
-        };
-
         QStringList inputTypes = inputWhiteList.empty() ?
                                      NodeDataFactory::instance().validTypeIds() :
                                      std::move(inputWhiteList);
@@ -122,14 +114,14 @@ DynamicNode::DynamicNode(QString const& modelName,
         portInfoIn.defineMember(S_PORT_CAPTION, gt::makeStringProperty());
         portInfoIn.defineMember(S_PORT_CAPTION_VISIBLE, gt::makeBoolProperty(true));
         portInfoIn.defineMember(S_PORT_OPTIONAL, gt::makeBoolProperty(true));
-        portInfoIn.defineMember(S_PORT_ID, makeReadOnly(makeUIntProperty(invalid<PortId>())));
+        portInfoIn.defineMember(S_PORT_ID, gt::makeReadOnly(makeUIntProperty(invalid<PortId>())));
 
         GtPropertyStructDefinition portInfoOut{S_PORT_INFO_OUT};
         portInfoOut.defineMember(S_PORT_TYPE, makeStringSelectionProperty(std::move(outputTypes)));
         portInfoOut.defineMember(S_PORT_CAPTION, gt::makeStringProperty());
         portInfoOut.defineMember(S_PORT_CAPTION_VISIBLE, gt::makeBoolProperty(true));
         portInfoOut.defineMember(S_PORT_OPTIONAL, gt::makeBoolProperty(true));
-        portInfoOut.defineMember(S_PORT_ID, makeReadOnly(makeUIntProperty(invalid<PortId>())));
+        portInfoOut.defineMember(S_PORT_ID, gt::makeReadOnly(makeUIntProperty(invalid<PortId>())));
 
         pimpl->inPorts.registerAllowedType(portInfoIn);
         pimpl->outPorts.registerAllowedType(portInfoOut);

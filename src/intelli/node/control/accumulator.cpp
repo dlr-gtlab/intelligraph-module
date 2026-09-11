@@ -32,6 +32,7 @@ AccumulatorGraphNode::AccumulatorGraphNode() :
     Position offset{0, 100};
 
     m_listIn = addInPort(makePort(typeId<list<StringData>>()));
+    m_listIn = addInPort(makePort(listTypeId<StringListData>()));
     m_out = addOutPort(makePort(typeId<StringData>()));
 
     auto input = std::make_unique<GraphInputProvider>();
@@ -60,9 +61,6 @@ AccumulatorGraphNode::AccumulatorGraphNode() :
 
     in->addPort(PortInfo::customId(m_listIn, typeId<StringData>()));
     out->addPort(PortInfo::customId(m_out, typeId<StringData>()));
-
-    gtFatal() << typeId<list<StringData>>();
-    gtFatal() << typeId<StringListData>();
 
     setNodeEvalMode(NodeEvalMode::Blocking);
 }
@@ -95,14 +93,12 @@ AccumulatorGraphNode::eval()
     }
 
     // setup
-    auto listData = nodeData<StringListData>(m_listIn);
+    auto listData = qobject_cast<BaseListData const*>(nodeData(m_listIn).get());
     if (!listData || !port(m_listIn))
     {
         gtError() << makeError() << tr("invalid list data!");
         return evalFailed();
     }
-
-    QStringList list = listData->value();
 
     auto* inputNode = findDirectChild<GraphInputProvider*>(C_NAME_IN_NODE);
     auto* lastIterNode = findDirectChild<GraphInputProvider*>(C_NAME_LAST_ITER_NODE);
@@ -121,7 +117,7 @@ AccumulatorGraphNode::eval()
         return evalFailed();
     }
 
-    for (QString const& current : list)
+    for (NodeDataPtr const& current : listData->iterate())
     {
         // set input data
         for (NodePort const& port : { *port(m_listIn) })
@@ -134,7 +130,7 @@ AccumulatorGraphNode::eval()
                 return evalFailed();
             }
 
-            if (!dataModel->setNodeData(inputNode->uuid(), port.id(), makeNodeData<StringData>(current)))
+            if (!dataModel->setNodeData(inputNode->uuid(), port.id(), current))
             {
                 gtError() << makeError()
                           << tr("failed to set input data for port '%1'!")
