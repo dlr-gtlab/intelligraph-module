@@ -12,6 +12,7 @@
 
 #include "intelli/nodedatafactory.h"
 #include "intelli/node.h"
+#include "intelli/utilities.h"
 #include "intelli/gui/nodeuidata.h"
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
@@ -347,8 +348,6 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
     }
 
     // height
-    QFontMetrics metrcis(style.bodyFont);
-    int offset = metrcis.height() * 0.6;
     int height = body.topLeft().y() + vspacing() + style.portRadius;
 
     // height of all ports before
@@ -360,19 +359,11 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
         bool visible = port->visible;
         if (!visible) continue;
 
-        height += 2 * offset + vspacing();
+        height += 4 * vspacing();
     }
 
     auto* port = node.port(node.portId(type, idx));
     assert(port);
-
-//    if (NodeDataFactory::isListType(port->typeId))
-//    {
-//        return QRectF{
-//            QPointF(width, height),
-//            QSizeF{style.portRadius * 2, style.portRadius * 2 * style.listTypeMultiplier}
-//        };
-//    }
 
     return QRectF{
         QPointF(width, height),

@@ -78,7 +78,9 @@ public:
         bool success = instance().registerData(T::staticMetaObject);
         if (success)
         {
-            success = instance().registerListType(typeId<T>(), list<T>::staticMetaObject);
+            success = instance().registerListType(
+                typeId<T>(), list_type_t<T>::staticMetaObject
+            );
         }
         return success;
     }
@@ -149,7 +151,9 @@ public:
      * @param className Class to instantiate
      * @return Object pointer (may be null)
      */
-    NodeDataPtr makeData(TypeId const& typeId) const noexcept;
+    std::unique_ptr<NodeData> makeData(TypeId const& typeId) const noexcept;
+
+    std::unique_ptr<NodeData> makeListData(TypeId const& typeId) const noexcept;
 
 protected:
 

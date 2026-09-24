@@ -138,6 +138,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/input/numberinputnode_utils.h
     intelli/node/input/fileinput.h
     intelli/node/input/graphuservariablesinput.h
+    intelli/node/general/tolistnode.h intelli/node/general/tolistnode.cpp
+    intelli/node/number/numberaccumulatornode.h intelli/node/number/numberaccumulatornode.cpp
     intelli/gui/commentgroup.h
     intelli/gui/commentdata.h
     intelli/gui/grapheditor.h

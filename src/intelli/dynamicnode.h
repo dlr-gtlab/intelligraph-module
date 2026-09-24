@@ -35,8 +35,7 @@ public:
     {
         /// no ports can be added dynamically. Ports are not saved persistently.
         NoDynamicPorts = 0,
-        /// input ports may be added dynamically (output ports may still be
-        /// added, but wont be saved persistently)
+        /// input ports may be added dynamically
         DynamicInput = 1 << 0,
         DynamicInputOnly [[deprecated("Use `DynamicInput` or `NoUserDynamicInput` instead")]] = DynamicInput,
         /// output ports may be added dynamically

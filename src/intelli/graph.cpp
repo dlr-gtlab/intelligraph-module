@@ -635,6 +635,8 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
 
     node->updateObjectName();
 
+    gtDebug() << "APPENDED NODE:" << relativeNodePath(*node) << gt::brackets(node->uuid());
+
     // deprecation notice
     if (node->nodeFlags() & NodeFlag::Deprecated &&
         gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Medium)

@@ -170,7 +170,7 @@ private:
     void onNodeAppended(Node* node);
 
     /// Updates the model if a node was deleted
-    void onNodeDeleted(Graph* graph, NodeId nodeId);
+    void onNodeDeleted(Graph* graph, NodeId nodeId, bool propagate);
 
     /// Updates the model if a port was inserted
     void onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx);
@@ -179,7 +179,7 @@ private:
     void onNodePortDeleted(NodeId nodeId, PortType type, PortIndex idx);
 
     /// Updates the model if a graph was deleted
-    void onGraphDeleted();
+    void onGraphDeleted(Graph* graph);
 
     void onConnectionAppended(ConnectionUuid con);
 

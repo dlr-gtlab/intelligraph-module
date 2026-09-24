@@ -17,3 +17,10 @@ ListData::ListData() :
 
 }
 
+bool
+ListData::append(NodeDataPtr const& data)
+{
+    m_data.push_back(std::move(data));
+    return true;
+}
+

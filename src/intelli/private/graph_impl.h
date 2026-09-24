@@ -330,7 +330,7 @@ struct Graph::Impl
 
         if (!provider)
         {
-            gtError() << makeError() << tr("(provider not found)");
+            gtError() << makeError() << QObject::tr("(provider not found)");
             return;
         }
 
@@ -362,7 +362,7 @@ struct Graph::Impl
 
         auto const makeError = [root, type, portId](){
             return relativeNodePath(*root) + QStringLiteral(": ") +
-                   tr("Failed to update %2put port (%1)!")
+                   QObject::tr("Failed to update %2put port (%1)!")
                        .arg(toString(portId),
                             type == PortType::In ? "in":"out");
         };
@@ -370,13 +370,13 @@ struct Graph::Impl
         PortInfo* srcPort = root->port(portId);
         if (!srcPort)
         {
-            gtError() << makeError() << tr("(Source port not found)");
+            gtError() << makeError() << QObject::tr("(Source port not found)");
             return;
         }
 
         if (!provider)
         {
-            gtError() << makeError() << tr("(provider not found)");
+            gtError() << makeError() << QObject::tr("(provider not found)");
             return;
         }
 
@@ -406,7 +406,7 @@ struct Graph::Impl
 
         auto const makeError = [root, type, idx](){
             return relativeNodePath(*root) + QStringLiteral(": ") +
-                   tr("Failed to delete %3put port (%1/%2)!")
+                   QObject::tr("Failed to delete %3put port (%1/%2)!")
                        .arg(toString(idx),
                             toString(type),
                             type == PortType::In ? "in":"out");
@@ -415,13 +415,13 @@ struct Graph::Impl
         auto portId = root->portId(type, idx);
         if (!portId.isValid())
         {
-            gtError() << makeError() << tr("(Source port not found)");
+            gtError() << makeError() << QObject::tr("(Source port not found)");
             return;
         }
 
         if (!provider)
         {
-            gtError() << makeError() << tr("(provider not found)");
+            gtError() << makeError() << QObject::tr("(provider not found)");
             return;
         }
 

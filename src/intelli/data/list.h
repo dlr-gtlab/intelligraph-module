@@ -11,8 +11,9 @@
 #define GT_INTELLI_LIST_H
 
 #include "intelli/graphconnectionmodel.h"
-#include <intelli/nodedata.h>
 #include <intelli/data/invalid.h>
+#include <intelli/nodedata.h>
+#include <intelli/view.h>
 
 #include <gt_typetraits.h>
 #include <gt_utilities.h>
@@ -55,6 +56,8 @@ public:
             NodeDataProxy{this});
     }
 
+    virtual bool append(NodeDataPtr const&) = 0;
+
 protected:
 
     BaseListData(QString typeName) : NodeData(std::move(typeName)) {}
@@ -81,6 +84,12 @@ public:
     using size_type       = typename container_type::size_type;
 
     Q_INVOKABLE ListData();
+    ListData(View<NodeDataPtr> const& list) : ListData()
+    {
+        std::copy(list.begin(), list.end(), std::back_inserter(m_data));
+    }
+
+    bool append(NodeDataPtr const&  data) override;
 
     size_type size() const { return m_data.size(); }
     bool empty() const { return m_data.empty(); }
@@ -113,14 +122,6 @@ struct list_type
     static_assert(std::is_base_of<NodeData, T>::value, "T must be derived of `intelli::NodeData`");
     static_assert(!std::is_same<T, InvalidData>::value, "Cannot use `intelli::InvalidData` as list type!");
 };
-
-template <>
-inline QString typeId<ListData>()
-{
-    static_assert(is_list_type<ListData>::value, "Cannot use list type standalone!");
-    return {};
-}
-
 
 } // namespace intelli
 

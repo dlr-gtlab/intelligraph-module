@@ -21,6 +21,26 @@ namespace utils
 {
 
 /**
+ * @brief Quantizes `real` so that it is a multiple of `stepSize`.
+ * Example:
+ *     quantize(double{42.4}, 5) -> int(40)
+ * @param point Point to quantize
+ * @param stepSize Step size to use for quantization. Must not be zero.
+ * @return quantized point
+ */
+GT_NO_DISCARD
+inline int quantize(double real, int stepSize)
+{
+    assert(stepSize > 0);
+    auto div = std::div(real, stepSize);
+    double rem = div.rem;
+    double stepHalf = 0.5 * stepSize;
+    div.quot += rem > stepHalf ? 1 : rem < -stepHalf ? -1 : 0;
+
+    return div.quot * stepSize;
+};
+
+/**
  * @brief Quantizes `point` so that it is a multiple of `stepSize`.
  * Example:
  *     quantize(QPointF(42.4,9.75), 5) -> QPoint(40, 10)
@@ -31,17 +51,7 @@ namespace utils
 GT_NO_DISCARD
 inline QPoint quantize(QPointF point, int stepSize)
 {
-    assert(stepSize > 0);
-    auto divX = std::div(point.x(), stepSize);
-    auto divY = std::div(point.y(), stepSize);
-    double x = divX.rem;
-    double y = divY.rem;
-
-    double stepHalf = 0.5 * stepSize;
-    divX.quot += x > stepHalf ? 1 : x < -stepHalf ? -1 : 0;
-    divY.quot += y > stepHalf ? 1 : y < -stepHalf ? -1 : 0;
-
-    return QPoint{divX.quot * stepSize, divY.quot * stepSize};
+    return QPoint{quantize(point.x(), stepSize), quantize(point.y(), stepSize)};
 };
 
 /**

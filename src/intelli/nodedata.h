@@ -21,6 +21,8 @@
 namespace intelli
 {
 
+class BaseListData;
+
 /**
  * @brief The NodeData class. Base class for all node data
  */
@@ -106,39 +108,62 @@ private:
 
 template<typename T>
 using Ptr = std::shared_ptr<const T>;
+template<typename T>
+using NonConstPtr = std::shared_ptr<T>;
 
 using NodeDataPtr = Ptr<NodeData>;
+using NodeDataNonConstPtr = NonConstPtr<NodeData>;
 
+/// returns the corresponding list type for T
 template <typename T>
 struct list_type;
-
 template <typename T>
 using list_type_t = typename list_type<T>::type;
-
 template <typename T>
-using list = list_type_t<T>;
+using list = list_type<T>;
 
-template <typename T, typename = void>
-struct is_list_type : std::false_type {};
-
+/// returns whether a type T is a list type
 template <typename T>
-struct is_list_type<T, std::void_t<typename T::iterator>> : std::true_type {};
+struct is_list_type : std::is_base_of<BaseListData, T> {};
+
+/// returns the inner type T of a a list type
+template <typename T>
+struct inner_type;
+template <typename T>
+struct inner_type<list_type<T>> { using type = T; };
+template <typename T>
+using inner_type_t = typename inner_type<T>::type;
 
 /**
  * @brief Returns the typeid of a node data class
- * @return Typeid
+ * @return Type id
  */
 template <typename T,
-         gt::trait::enable_if_base_of<NodeData, T> = true>
+          std::enable_if_t<!is_list_type<T>::value, bool> = true,
+          gt::trait::enable_if_base_of<NodeData, T> = true>
 inline QString typeId()
 {
+    static_assert(!is_list_type<T>::value, "`T` must not be a list type!");
     return T::staticMetaObject.className();
 }
 
-template <typename T>
+/**
+ * @brief Returns the list-typeid of a node data class
+ * @return List type id
+ */
+template <typename T,
+          std::enable_if_t<!is_list_type<T>::value, bool> = true>
 inline QString listTypeId()
 {
+    static_assert(!is_list_type<T>::value, "`T` must not be a list type!");
     return QStringLiteral("#list#") + typeId<T>();
+}
+
+template <typename U,
+          typename T = inner_type_t<U>>
+inline QString typeId()
+{
+    return listTypeId<T>();
 }
 
 /**

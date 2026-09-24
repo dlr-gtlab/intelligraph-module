@@ -35,8 +35,10 @@ public:
 
     Q_INVOKABLE QStringList value() const;
 
-    [[deprecated("use the constructor only")]]
+    [[deprecated("use the constructor or `append` instead")]]
     Q_INVOKABLE void setValue(QStringList val);
+
+    bool append(NodeDataPtr const& data) override;
 
     size_type size() const { return m_data.size(); }
     bool empty() const { return m_data.empty(); }
@@ -61,26 +63,9 @@ private:
 };
 
 template <>
-struct list_type<StringData>
-{
-    using type = StringListData;
-};
-
-/**
- * @brief Returns the typeid of a node data class
- * @return Typeid
- */
+struct list_type<StringData> { using type = StringListData; };
 template <>
-inline QString typeId<StringListData>()
-{
-    return listTypeId<StringData>();
-}
-
-template <>
-inline QString listTypeId<StringListData>()
-{
-    return typeId<StringListData>();
-}
+struct inner_type<StringListData> { using type = StringData; };
 
 } // namespace intelli
 

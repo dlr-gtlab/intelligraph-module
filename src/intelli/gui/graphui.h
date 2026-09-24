@@ -21,6 +21,13 @@ class GraphUI : public NodeUI
 
 public:
 
+    enum GraphUIOption : unsigned
+    {
+        NoProviderNodeActions = NodeUI::UserOption,
+        NoProviderPortActions = NodeUI::UserOption << 1,
+        NoProviderActions = NoProviderNodeActions | NoProviderPortActions
+    };
+
     Q_INVOKABLE GraphUI(Options options = NoOption);
 
     QIcon displayIcon(Node const& node) const override;
@@ -28,22 +35,6 @@ public:
     QStringList openWith(GtObject* obj) override;
 
 protected:
-
-    enum GraphNodeAction
-    {
-        ProviderNodeAction = UserNodeAction << 0,
-        UserNodeAction = ProviderNodeAction << 1
-    };
-
-    enum GraphPortAction
-    {
-        ProviderPortAction = UserPortAction << 0,
-        UserPortAction = ProviderPortAction << 1
-    };
-
-    NodeActionList defaultNodeActions() const override;
-
-    PortActionList defaultPortActions() const override;
 
     /**
      * @brief Clears the intelli graph (i.e. removes all nodes and connections)

@@ -47,7 +47,7 @@ protected:
 
 private:
 
-    PortId m_listIn, m_out;
+    PortId m_listIn, m_out, m_index;
 };
 
 } // namespace intelli

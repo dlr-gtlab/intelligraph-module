@@ -43,7 +43,9 @@
 #include "intelli/node/input/intinput.h"
 #include "intelli/node/input/objectinput.h"
 #include "intelli/node/input/stringinput.h"
+#include "intelli/node/control/accumulator.h"
 #include "intelli/node/control/conditional.h"
+#include "intelli/node/general/tolistnode.h"
 #include "intelli/gui/commentgroup.h"
 #include "intelli/gui/commentdata.h"
 #include "intelli/gui/grapheditor.h"
@@ -383,6 +385,14 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(ConditionalGroupNodeUI));
     map.insert(GT_CLASSNAME(ConditionalOutputProvider),
                GT_METADATA(ConditionalGroupNodeUI));
+
+    map.insert(GT_CLASSNAME(AccumulatorGraphNode),
+               GT_METADATA(GraphUI));
+    map.insert(GT_CLASSNAME(LastIterationProvider),
+               GT_METADATA(GraphUI));
+
+    map.insert(GT_CLASSNAME(ToListNode),
+               GT_METADATA(NodeUI));
 
     QStringList registeredNodes = NodeFactory::instance().registeredNodes();
 

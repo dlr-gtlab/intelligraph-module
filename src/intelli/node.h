@@ -167,7 +167,7 @@ GT_INTELLI_EXPORT NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to)
  * @return Converted data of type `T` (may be null)
  */
 template <typename T>
-std::shared_ptr<T const> convert(NodeDataPtr data)
+std::shared_ptr<T const> convert(NodeDataPtr const& data)
 {
     return std::static_pointer_cast<T const>(
         convert(data, T::staticMetaObject.className())

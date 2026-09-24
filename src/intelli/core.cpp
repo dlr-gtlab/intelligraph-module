@@ -48,6 +48,9 @@
 #include "intelli/node/control/conditional.h"
 #include "intelli/node/control/accumulator.h"
 
+#include "intelli/node/number/numberaccumulatornode.h"
+#include "intelli/node/general/tolistnode.h"
+
 #include "intelli/node/booldisplay.h"
 #include "intelli/node/textdisplay.h"
 
@@ -125,6 +128,7 @@ intelli::registerDefaultNodes()
         QString catFile = QObject::tr("File");
         QString catDisplay = QObject::tr("Display");
         QString catControl = QObject::tr("Control");
+        QString catGeneral = QObject::tr("General");
 
         GT_INTELLI_REGISTER_NODE(DummyNode, hidden);
 
@@ -171,6 +175,9 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(AccumulatorGraphNode, catControl);
         GT_INTELLI_REGISTER_NODE(LastIterationProvider, hidden);
+
+        GT_INTELLI_REGISTER_NODE(ToListNode, catGeneral);
+        GT_INTELLI_REGISTER_NODE(NumberAccumulatorNode, catNumber);
 
 #ifdef GT_INTELLI_EXPERIMENTAL_NODES
         GT_INTELLI_REGISTER_NODE(BinaryDisplayNode, catDisplay);

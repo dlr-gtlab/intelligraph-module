@@ -10,6 +10,14 @@
 
 #include <gt_icons.h>
 
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
+ #define ORDER_PRIORITY(X) X
+ #define SET_ORDER_PRIORITY(X) .setOrderPriority(X)
+#else
+ #define ORDER_PRIORITY(X) void
+ #define SET_ORDER_PRIORITY(X)
+#endif
+
 using namespace intelli;
 
 using BoolObjectMethod = std::function<bool (GtObject*)>;
@@ -61,46 +69,27 @@ toDataPort(Node* obj, PortType type, PortIndex idx)
 }
 
 ConditionalGroupNodeUI::ConditionalGroupNodeUI() :
-    GraphUI(CustomOrder)
+    GraphUI(NoProviderActions)
 {
-    auto nodeActions = NodeUI::defaultNodeActions();
+    addSingleAction(tr("Add In Port"), addInPort)
+        .setIcon(gt::gui::icon::add())
+        .setVisibilityMethod(toConditionalOutputNode)
+        SET_ORDER_PRIORITY(OrderPriority::PortAction);
 
-    nodeActions.remove(ProviderNodeAction);
+    addSingleAction(tr("Add Out Port"), addOutPort)
+        .setIcon(gt::gui::icon::add())
+        .setVisibilityMethod(toConditionalInputNode)
+        SET_ORDER_PRIORITY(OrderPriority::PortAction);
 
-    nodeActions.insertAfter(
-        AddPortNodeAction,
-        makeSingleAction(tr("Add In Port"), addInPort)
-            .setIcon(gt::gui::icon::add())
-            .setVisibilityMethod(toConditionalOutputNode),
-        ProviderPortAction);
+    // port actions
 
-    nodeActions.insertAfter(
-        AddPortNodeAction,
-        makeSingleAction(tr("Add Out Port"), addOutPort)
-            .setIcon(gt::gui::icon::add())
-            .setVisibilityMethod(toConditionalInputNode),
-        ProviderNodeAction);
-
-    initializeNodeActions(nodeActions);
-
-    auto portActions = NodeUI::defaultPortActions();
-
-    portActions.remove(ProviderPortAction);
-
-    portActions.insertAfter(
-        EditPortAction,
-        makePortAction(tr("Edit Port"), editPort)
+    addPortAction(tr("Edit Port 3"), editPort)
             .setIcon(gt::gui::icon::rename())
-            .setVisibilityMethod(toDataPort),
-        ProviderPortAction);
+            .setVisibilityMethod(toDataPort);
 
-    portActions.insertAfter(
-        ProviderPortAction,
-        makePortAction(tr("Delete Port"), deletePort)
+    addPortAction(tr("Delete Port 3"), deletePort)
             .setIcon(gt::gui::icon::delete_())
-            .setVisibilityMethod(toDataPort));
-
-    initializePortActions(portActions);
+            .setVisibilityMethod(toDataPort);
 }
 
 QIcon

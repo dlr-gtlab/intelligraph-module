@@ -613,7 +613,7 @@ GraphDataModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
     if (nodeEntry == pimpl->data.end())
     {
         if (!isSilent())
-            gtError() << tr("failed to invalidate node '%1'!")
+            gtError() << tr("Failed to invalidate node '%1'!")
                              .arg(nodeUuid);
         return;
     }
@@ -647,7 +647,7 @@ GraphDataModel::setNodeEvaluationOutdated(const NodeUuid& nodeUuid)
     if (nodeEntry == pimpl->data.end())
     {
         if (!isSilent())
-            gtError() << tr("failed to update state of node '%1'!")
+            gtError() << tr("Failed to set node '%1' as outdated!")
                              .arg(nodeUuid);
         return;
     }
@@ -681,7 +681,7 @@ GraphDataModel::setNodeEvaluationSuccess(const NodeUuid& nodeUuid)
     if (nodeEntry == pimpl->data.end())
     {
         if (!isSilent())
-            gtError() << tr("failed to update state of node '%1'!")
+            gtError() << tr("Failed to set node '%1' as succeeded!")
                              .arg(nodeUuid);
         return;
     }
@@ -726,16 +726,16 @@ GraphDataModel::setupConnections(Graph& graph)
 
     graph.disconnect(this);
 
+
     connect(&graph, &Graph::graphAboutToBeDeleted,
-            this, &GraphDataModel::onGraphDeleted,
+            this, std::bind(&GraphDataModel::onGraphDeleted, this, &graph),
             Qt::DirectConnection);
     connect(&graph, &Graph::nodeAppended,
             this, &GraphDataModel::onNodeAppended,
             Qt::DirectConnection);
     connect(&graph, &Graph::childNodeAboutToBeDeleted,
-            this, [this, g = &graph](NodeId nodeId){
-                onNodeDeleted(g, nodeId);
-            }, Qt::DirectConnection);
+            this, std::bind(&GraphDataModel::onNodeDeleted, this, &graph, std::placeholders::_1, true),
+            Qt::DirectConnection);
 
     connect(&graph, &Graph::nodePortInserted,
             this, &GraphDataModel::onNodePortInserted,
@@ -820,7 +820,7 @@ GraphDataModel::onNodeAppended(Node* node)
 }
 
 void
-GraphDataModel::onNodeDeleted(Graph* graph, NodeId nodeId)
+GraphDataModel::onNodeDeleted(Graph* graph, NodeId nodeId, bool propagate)
 {
     assert(nodeId.isValid());
     assert(graph);
@@ -852,8 +852,18 @@ GraphDataModel::onNodeDeleted(Graph* graph, NodeId nodeId)
             << tr("Updated data model: deleted node '%1' (%2)")
                    .arg(relativeNodePath(*node), node->uuid());
 
-    // TODO: need to update successors?
-    Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
+    if (Graph* subgraph = qobject_cast<Graph*>(node))
+    {
+        onGraphDeleted(subgraph);
+    }
+
+    if (propagate)
+    {
+        gtDebug() << "PROPAGATING:" << relativeNodePath(*node);
+        // TODO: need to update successors?
+        Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
+        gtDebug() << "PROPAGATING DONE";
+    }
 }
 
 void
@@ -1005,16 +1015,9 @@ GraphDataModel::onNodePortDeleted(NodeId nodeId, PortType type, PortIndex idx)
 }
 
 void
-GraphDataModel::onGraphDeleted()
+GraphDataModel::onGraphDeleted(Graph* graph)
 {
-    Graph* graph = qobject_cast<Graph*>(sender());
-    if (!graph)
-    {
-        gtError()
-            << tr("Failed to update the data model,"
-                  "a graph node has been deleted but its object was not found!");
-        return;
-    }
+    assert(graph);
 
     assert(graph);
     graph->disconnect(this);
@@ -1027,19 +1030,13 @@ GraphDataModel::onGraphDeleted()
     auto const& nodes = graph->nodes();
     for (auto* node : nodes)
     {
-        onNodeDeleted(graph, node->id());
+        onNodeDeleted(graph, node->id(), false);
     }
 
     if (!isSilent())
         gtTrace().verbose()
             << tr("Updated the data model: removed graph '%1' (%2)")
                    .arg(relativeNodePath(*graph), graph->uuid());
-
-    // TODO: need to update successors?
-    if (graph->rootGraph() != &this->graph())
-    {
-        Impl::propagate(*this, graph->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
-    }
 }
 
 void

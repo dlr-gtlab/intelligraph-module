@@ -37,6 +37,9 @@ class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
 
 public:
 
+    class ActionChainOperator;
+    class PortActionChainOperator;
+
     /// pointer type for widget factory
     using QGraphicsWidgetPtr = std::unique_ptr<QGraphicsWidget>;
 
@@ -53,27 +56,37 @@ public:
     /// function signature to check if deleter is applicable
     using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
 
+    /// enum contaning the order priorities for the default node actions.
+    struct OrderPriority
+    {
+        enum Value : int
+        {
+            EvaluationAction = 0,
+            CustomAction = 5,
+            PortAction = 10,
+
+            BeforeEvaluationActions = EvaluationAction - 1,
+            AfterEvaluationActions = EvaluationAction + 1,
+
+            BeforeCustomActions = CustomAction - 1,
+            AfterCustomActions = CustomAction + 1,
+
+            BeforePortActions = PortAction - 1,
+            AfterPortActions = PortAction + 1,
+        };
+    };
+
     /// Option enum, can be used to deactivate certain default actions
     enum Option : unsigned
     {
         NoOption = 0,
-        /// Stops the object to populate the default node actions. Can use
-        /// `defaultNodeActions` and `initializeNodeActions` to customize the
-        /// order and apperance of node actions.
-        CustomNodeActionsOrder = 1 << 0,
-        /// Stops the object to populate the default port actions. Can use
-        /// `defaultPortActions` and `initializePortActions` to customize the
-        /// order and apperance of port actions.
-        CustomPortActionsOrder = 1 << 1,
-        CustomOrder = CustomNodeActionsOrder | CustomPortActionsOrder,
-
+        NoDefaultNodeActions = 1 << 0,
+        NoDefaultPortActions = 1 << 1,
+        NoDefaultActions     = NoDefaultNodeActions | NoDefaultPortActions,
+        NoRenameOption       = 1 << 2,
+        NoDynamicPortActions = 1 << 3,
         UserOption = 1 << 10,
-
-        NoDefaultNodeActions = CustomNodeActionsOrder,
-        NoDefaultPortActions = CustomPortActionsOrder,
-        NoDefaultActions     = CustomOrder,
     };
-
     using Options = UFlags<Option>;
 
     Q_INVOKABLE NodeUI(Options options = NoOption);
@@ -112,6 +125,11 @@ public:
      */
     std::unique_ptr<NodeUIData> uiData(Node const& node) const;
 
+    /**
+     * @brief Returns the custom delete action for `node`
+     * @param node Node
+     * @return Delete function for `node`
+     */
     CustomDeleteFunctor customDeleteAction(Node const& node) const;
 
     /**
@@ -180,47 +198,6 @@ public:
 
 protected:
 
-    /// enum contaning the default node actions. May be used in conjunction
-    /// with `defaultNodeActions` to customize the order of node actions.
-    enum NodeAction : unsigned
-    {
-        ExecuteNodeAction = 1 << 1,
-        SetActiveNodeAction = 1 << 2,
-        RenameNodeAction = 1 << 3,
-        CustomNodeAction = 1 << 4,
-        AddPortNodeAction = 1 << 5,
-        OtherNodeAction = 1 << 6,
-
-        UserNodeAction = 1 << 8
-    };
-
-    /// enum contaning the default port actions. May be used in conjunction
-    /// with `defaultNodeActions` to customize the order of port actions.
-    enum PortAction : unsigned
-    {
-        EditPortAction = 1 << 1,
-        DeletePortAction = 1 << 2,
-        CustomPortAction = 1 << 3,
-        OtherPortAction = 1 << 4,
-
-        UserPortAction = 1 << 8
-    };
-
-    template<typename Enum, typename ActionType>
-    class ActionList;
-
-    using NodeActionList = ActionList<NodeAction, GtObjectUIAction>;
-    using PortActionList = ActionList<PortAction, PortUIAction>;
-
-    virtual NodeActionList defaultNodeActions() const;
-
-    virtual PortActionList defaultPortActions() const;
-
-    void initializeNodeActions(NodeActionList const& actions);
-
-    void initializePortActions(PortActionList const& actions);
-
-
     /** HELPERS FOR VERFIY AND VISBILITY FOR NODE ACTIONS **/
 
     /**
@@ -249,18 +226,18 @@ protected:
     static DynamicNode* toDynamicNode(GtObject* obj);
     static DynamicNode const* toConstDynamicNode(GtObject const* obj);
 
-    /**
-     * @brief Returns whether this object is a root graph
-     * @param obj Object to check
-     * @return is object a root graph
-     */
-    static bool isRootGraph(GtObject const* obj);
+    /// chain operator to check if object is a node
+    static ActionChainOperator const isNode;
+    /// chain operator to check if object is a graph
+    static ActionChainOperator const isGraph;
+    /// chain operator to check if object is a root graph
+    static ActionChainOperator const isRootGraph;
+    /// chain operator to check if object is a dynamic node
+    static ActionChainOperator const isDynamicNode;
+    /// chain operator to check if node is active
+    static ActionChainOperator const isNodeActive;
 
     /** NODE ACTIONS **/
-
-    static GtObjectUIAction makeSeparator();
-
-    static GtObjectUIAction makeSingleAction(QString const& text, ActionFunction f);
 
     /**
      * @brief Prompts the user to rename the node
@@ -287,10 +264,10 @@ protected:
     PortUIAction& addPortAction(QString const& actionText,
                                 PortActionFunction actionMethod);
 
-    static PortUIAction makePortAction(QString const& actionText,
-                                       PortActionFunction actionMethod);
-
-    static PortUIAction makePortSeparator();
+    /**
+     * @brief Adds a separator for the port context menu
+     */
+    void addPortSeparator();
 
     /**
      * @brief Prompts the user and adds an input port to the given dynamic node
@@ -322,20 +299,9 @@ protected:
 
     /** HELPERS FOR VERFIY AND VISBILITY ON PORT ACTIONS **/
 
-    static bool isInputPort(Node* obj, PortType type, PortIndex idx);
-
-    static bool isOutputPort(Node* obj, PortType type, PortIndex idx);
-
-    /**
-     * @brief Similar to `toDynamicNode`. Can be used for validating port
-     * actions
-     * @param obj Object to cast
-     * @return node object (may be null)
-     */
-    static bool isDynamicPort(Node* obj, PortType type, PortIndex idx);
-
-    [[deprecated("use `toDynamicNode` instead")]]
-    static bool isDynamicNode(Node* obj, PortType type, PortIndex idx);
+    static PortActionChainOperator const isInputPort;
+    static PortActionChainOperator const isOutputPort;
+    static PortActionChainOperator const isDynamicPort;
 
     /** DDELETERS **/
 
@@ -389,148 +355,110 @@ private:
     static void setActive(GtObject* obj, bool state);
 };
 
-} // namespace intelli
-
-/**
- * @brief Helper class to customize the order of node and port actions.
- * Must use `makeSingleAction` or `makePortAction` to avoid adding methods
- * twice.
- */
-template<typename Enum, typename ActionType>
-class intelli::NodeUI::ActionList
+class NodeUI::ActionChainOperator
 {
-    using EnumType = std::underlying_type_t<Enum>;
-    struct Entry
-    {
-        ActionType action;
-        EnumType value;
-    };
+    using NodeActionVerifyMethod = std::function<bool(GtObject*)>;
 
-    std::vector<Entry> actions;
-    EnumType nextEnum{0};
-
-    inline auto findByEnum(EnumType value)
-    {
-        return [value](Entry const& entry){ return entry.value == value; };
-    }
-
-    inline static bool isSeparator(Entry const& entry)
-    {
-        return entry.action.text().isEmpty();
-    }
-
-    inline EnumType getNext(EnumType value, EnumType fallback)
-    {
-        return (value == 0) ? fallback : value;
-    }
+    NodeActionVerifyMethod f;
 
 public:
 
-    using iterator = typename decltype(actions)::iterator;
+    ActionChainOperator(NodeActionVerifyMethod m) : f(std::move(m)) {}
 
-    /* ITERATORS */
-    auto begin() { return actions.begin(); }
-    auto begin() const { return actions.begin(); }
-    auto cbegin() const { return actions.cbegin(); }
-    auto end() { return actions.end(); }
-    auto end() const { return actions.end(); }
-    auto cend() const { return actions.cend(); }
+    inline NodeActionVerifyMethod& get() & { return f; }
+    inline NodeActionVerifyMethod&& get() && { return std::move(f); }
+    inline NodeActionVerifyMethod const& get() const& { return f; }
 
-    void reserve(size_t size) { actions.reserve(size); }
-
-    void remove(EnumType value)
+    /// AND operator
+    template <typename Functor>
+    inline ActionChainOperator operator&&(Functor fOther) const
     {
-        actions.erase(std::remove_if(actions.begin(), actions.end(), findByEnum(value)),
-                      actions.end());
-    }
-
-    /// finds the iterator before the first action of type `value` and before any separator
-    iterator before(EnumType value)
-    {
-        return std::find_if(actions.begin(), actions.end(), findByEnum(value));
-    }
-
-    /// finds the iterator before the first action of type `value` and after any separator
-    iterator beforeSeparator(EnumType value)
-    {
-        auto iter = before(value);
-        if (iter != actions.end() && iter != actions.begin())
-        {
-            while (true)
-            {
-                auto before = std::prev(iter);
-                if (!isSeparator(*before)) break;
-                iter = before;
+        return {
+            [a = f, b = std::move(fOther)](GtObject* obj){
+                return a(obj) && b(obj);
             }
-        }
-        return iter;
+        };
     }
-
-    /// inserts `action` before the first action of type `value` and after any separator
-    iterator insertBefore(EnumType value, ActionType action, EnumType next = 0)
+    /// OR operator
+    template <typename Functor>
+    inline ActionChainOperator operator||(Functor fOther) const
     {
-        return insert(before(value), std::move(action), getNext(next, value));
+        return {
+            [a = f, b = std::move(fOther)](GtObject* obj){
+                return a(obj) || b(obj);
+            }
+        };
     }
-
-    /// inserts `action` before the first action of type `value` and before any separator
-    iterator insertBeforeSeparator(EnumType value, ActionType action, EnumType next = 0)
+    /// NOT operator
+    inline ActionChainOperator operator!() const
     {
-        return insert(beforeSeparator(value), std::move(action), getNext(next, value));
+        return {
+            [a = f](GtObject* obj){
+                return !a(obj);
+            }
+        };
     }
-
-    /// finds the iterator after the last action of type `value` and before any separator
-    iterator after(EnumType value)
-    {
-        auto riter = std::find_if(actions.rbegin(), actions.rend(), findByEnum(value));
-        if (riter == actions.rend()) return actions.end();
-        return riter.base();
-    }
-
-    /// finds the iterator after the last action of type `value` and after any separator
-    iterator afterSeparator(EnumType value)
-    {
-        auto iter = after(value);
-        while (iter != actions.end() && iter != actions.begin() && isSeparator(*iter))
-        {
-            iter = std::next(iter);
-        }
-        return iter;
-    }
-
-    /// inserts `action` after the last action of type `value` and before any separator
-    iterator insertAfter(EnumType value, ActionType action, EnumType next = 0)
-    {
-        return insert(after(value), std::move(action), getNext(next, value));
-    }
-
-    /// inserts `action` after the last action of type `value` and after any separator
-    iterator insertAfterSeparator(EnumType value, ActionType action, EnumType next = 0)
-    {
-        return insert(afterSeparator(value), std::move(action), getNext(next, value));
-    }
-
-    /// inserts `action` before the given iterator
-    iterator insert(iterator iter, ActionType action, EnumType next = 0)
-    {
-        if (nextEnum > 0)
-        {
-            next = nextEnum;
-            nextEnum = 0;
-        }
-        return actions.insert(iter, Entry{std::move(action), next});
-    }
-
-    /// appends `action` last
-    ActionList& operator<<(ActionType action) { append(std::move(action)); return *this; }
-    /// sets the enum value for the next added action under which the action
-    /// may be found
-    ActionList& operator<<(EnumType next) { nextEnum = next; return *this; }
-
-    /// appends the action last
-    iterator append(ActionType action, EnumType value = 0)
-    {
-        return insert(actions.end(), std::move(action), value);
-    }
+    /// call operator
+    inline bool operator()(GtObject* obj) const { return f(obj); }
+    /// cast operator
+    inline operator NodeActionVerifyMethod() const& { return f; }
+    inline operator NodeActionVerifyMethod&&() && { return std::move(f); }
 };
+
+class NodeUI::PortActionChainOperator
+{
+    using PortActionVerifyMethod = std::function<bool(Node*, PortType, PortIndex)>;
+
+    PortActionVerifyMethod f;
+
+public:
+
+    PortActionChainOperator(PortActionVerifyMethod m) : f(std::move(m)) {}
+
+    inline PortActionVerifyMethod& get() & { return f; }
+    inline PortActionVerifyMethod&& get() && { return std::move(f); }
+    inline PortActionVerifyMethod const& get() const& { return f; }
+
+    /// AND operator
+    template <typename Functor>
+    inline PortActionChainOperator operator&&(Functor fOther) const
+    {
+        return {
+                [a = f, b = std::move(fOther)](Node* obj, PortType type, PortIndex idx){
+                return a(obj, type, idx) && b(obj, type, idx);
+            }
+        };
+    }
+    /// OR operator
+    template <typename Functor>
+    inline PortActionChainOperator operator||(Functor fOther) const
+    {
+        return {
+                [a = f, b = std::move(fOther)](Node* obj, PortType type, PortIndex idx){
+                return a(obj, type, idx) || b(obj, type, idx);
+            }
+        };
+    }
+    /// NOT operator
+    inline PortActionChainOperator operator!() const
+    {
+        return {
+                [a = f](Node* obj, PortType type, PortIndex idx){
+                return !a(obj, type, idx);
+            }
+        };
+    }
+    /// call operator
+    inline bool operator()(Node* obj, PortType type, PortIndex idx) const
+    {
+        return f(obj, type, idx);
+    }
+
+    /// cast operator
+    inline operator PortActionVerifyMethod() const& { return f; }
+    inline operator PortActionVerifyMethod&&() && { return std::move(f); }
+};
+
+} // namespace intelli
 
 #endif // GT_INTELLI_NODEUI_H

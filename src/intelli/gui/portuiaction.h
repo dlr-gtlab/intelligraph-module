@@ -27,7 +27,7 @@ namespace intelli
 class PortUIAction
 {
 public:
-    
+
     using ActionMethod       = std::function<void (Node*, PortType, PortIndex)>;
     using VerificationMethod = std::function<bool (Node*, PortType, PortIndex)>;
     using VisibilityMethod   = std::function<bool (Node*, PortType, PortIndex)>;

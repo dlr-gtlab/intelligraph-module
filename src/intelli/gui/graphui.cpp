@@ -18,95 +18,64 @@
 #include <gt_application.h>
 #include <gt_icons.h>
 
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
+ #define ORDER_PRIORITY(X) X
+ #define SET_ORDER_PRIORITY(X) .setOrderPriority(X)
+#else
+ #define ORDER_PRIORITY(X) void
+ #define SET_ORDER_PRIORITY(X)
+#endif
+
 using namespace intelli;
 
 GraphInputProvider* toInputProvider(GtObject* obj) { return qobject_cast<GraphInputProvider*>(obj); }
 
-GraphInputProvider* toOutputProvider(GtObject* obj) { return qobject_cast<GraphInputProvider*>(obj); }
+GraphOutputProvider* toOutputProvider(GtObject* obj) { return qobject_cast<GraphOutputProvider*>(obj); }
 
 bool toProvider(GtObject* obj) { return qobject_cast<AbstractGraphProvider const*>(obj); }
 
-bool isProvider(GtObject const* obj, PortType, PortIndex) { return qobject_cast<AbstractGraphProvider const*>(obj); }
-
 GraphUI::GraphUI(Options options) :
-    NodeUI(CustomOrder)
+    NodeUI(options)
 {
-    if (!options.testFlag(Option::CustomNodeActionsOrder))
-    {
-        initializeNodeActions(GraphUI::defaultNodeActions());
-    }
-    if (!options.testFlag(Option::CustomPortActionsOrder))
-    {
-        initializePortActions(GraphUI::defaultPortActions());
-    }
-}
+    addSingleAction(tr("Clear Graph"), clearGraphNode)
+        .setIcon(gt::gui::icon::clear())
+        .setVisibilityMethod(toGraph)
+        SET_ORDER_PRIORITY(OrderPriority::CustomAction);
 
-NodeUI::NodeActionList
-GraphUI::defaultNodeActions() const
-{
-    auto nodeActions = NodeUI::defaultNodeActions();
-
-    nodeActions.insertAfter(
-        CustomNodeAction,
-        makeSingleAction(tr("Clear Graph"), clearGraphNode)
-            .setIcon(gt::gui::icon::clear())
-            .setVisibilityMethod(toGraph));
-
-    nodeActions.insertAfter(
-        CustomNodeAction,
-        makeSingleAction(tr("Duplicate Graph"), duplicateGraph)
-            .setIcon(gt::gui::icon::duplicate())
-            .setVisibilityMethod(toGraph)
-            .setShortCut(gtApp->getShortCutSequence("clone")));
-
-    nodeActions.insertAfter(
-        CustomNodeAction,
-        makeSingleAction(tr("Edit User Variables..."), editUserVariables)
-            .setIcon(gt::gui::icon::variable())
-            .setVisibilityMethod(isRootGraph));
+    addSingleAction(tr("Duplicate Graph"), duplicateGraph)
+        .setIcon(gt::gui::icon::duplicate())
+        .setVisibilityMethod(toGraph)
+        .setShortCut(gtApp->getShortCutSequence("clone"))
+        SET_ORDER_PRIORITY(OrderPriority::CustomAction);
 
     /** PROVIDER PORT ACTIONS **/
 
-    nodeActions.insertAfter(
-        AddPortNodeAction,
-        makeSingleAction(tr("Add In Port"), addOutputProviderPort)
+    if (!(options & NoProviderNodeActions))
+    {
+        addSingleAction(tr("Add In Port"), addOutputProviderPort)
             .setIcon(gt::gui::icon::add())
-            .setVisibilityMethod(toOutputProvider),
-        ProviderNodeAction);
+            .setVisibilityMethod(toOutputProvider)
+            SET_ORDER_PRIORITY(OrderPriority::PortAction);
 
-    nodeActions.insertAfter(
-        AddPortNodeAction,
-        makeSingleAction(tr("Add Out Port"), addInputProviderPort)
+        addSingleAction(tr("Add Out Port"), addInputProviderPort)
             .setIcon(gt::gui::icon::add())
-            .setVisibilityMethod(toInputProvider),
-        ProviderNodeAction);
-
-    return nodeActions;
-}
-
-NodeUI::PortActionList
-GraphUI::defaultPortActions() const
-{
-    auto portActions = NodeUI::defaultPortActions();
-
-    portActions.insertAfter(
-        EditPortAction,
-        makePortAction(tr("Edit Port"), editProviderPort)
+            .setVisibilityMethod(toInputProvider)
+            SET_ORDER_PRIORITY(OrderPriority::PortAction);
+    }
+    if (!(options & NoProviderPortActions))
+    {
+        addPortAction(tr("Edit Port"), editProviderPort)
             .setIcon(gt::gui::icon::rename())
-            .setVisibilityMethod(isProvider),
-        ProviderPortAction);
+            .setVisibilityMethod(toProvider);
 
-    portActions.insertAfter(
-        ProviderPortAction,
-        makePortAction(tr("Delete Port"), deleteProviderPort)
+        addPortAction(tr("Delete Port"), deleteProviderPort)
             .setIcon(gt::gui::icon::delete_())
-            .setVisibilityMethod(isProvider));
-
-    return portActions;
+            .setVisibilityMethod(toProvider);
+    }
 }
 
 QIcon
-GraphUI::displayIcon(const Node& node) const
+GraphUI::displayIcon(Node const& node) const
 {
     if (toConstGraph(&node))
     {

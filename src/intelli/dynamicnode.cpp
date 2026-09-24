@@ -371,7 +371,7 @@ DynamicNode::onPortChanged(PortId portId)
     GtPropertyStructContainer& dynamicPorts = this->dynamicPorts(type);
 
     size_t idx = portIdx - offset(type);
-    assert(idx < dynamicPorts.size());
+    if ((type == PortType::In ? pimpl->unsyncedInPorts : pimpl->unsyncedOutPorts) > 0) return;
 
     GtPropertyStructInstance* entry = propertyAt(&dynamicPorts, idx);
     assert(entry);

@@ -149,7 +149,7 @@ NodeDataFactory::registerListType(TypeId typeId, const QMetaObject& meta) noexce
     QString className = meta.className();
 
     gtTrace().verbose().nospace()
-        << "### Registering Data '" << className << "'...";
+        << "### Registering List Data '" << className << "' for '" << typeId << "'...";
 
     if (!meta.inherits(&NodeData::staticMetaObject))
     {
@@ -204,8 +204,8 @@ NodeDataFactory::typeName(TypeId const& typeId) const noexcept
 {
     if (isListType(typeId)) return gt::quoted(typeName(innerType(typeId)), "list<", ">");
 
-    auto iter = pimpl->typeNames.find(typeId);
-    if (iter == pimpl->typeNames.end()) return {};
+    auto iter = pimpl->typeNames.constFind(typeId);
+    if (iter == pimpl->typeNames.cend()) return {};
     return iter.value();
 }
 
@@ -213,7 +213,7 @@ bool
 NodeDataFactory::canConvert(TypeId const& from, TypeId const& to) const
 {
     return from == to ||
-           findConversion(pimpl->conversions, from, to) != pimpl->conversions.end();
+           findConversion(pimpl->conversions, from, to) != pimpl->conversions.cend();
 }
 
 bool
@@ -231,7 +231,7 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
     if (data->typeId() == to) return data;
 
     auto iter = findConversion(pimpl->conversions, from, to);
-    if (iter == pimpl->conversions.end()) return nullptr;
+    if (iter == pimpl->conversions.cend()) return nullptr;
 
     gtTrace().verbose()
         << QObject::tr("converting data from '%1' to '%2'...")
@@ -240,7 +240,7 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
     return iter->convert(data);
 }
 
-NodeDataPtr
+std::unique_ptr<NodeData>
 NodeDataFactory::makeData(TypeId const& typeId) const noexcept
 {
     std::unique_ptr<GtObject> obj{
@@ -248,5 +248,20 @@ NodeDataFactory::makeData(TypeId const& typeId) const noexcept
     };
 
     return gt::unique_qobject_cast<NodeData>(std::move(obj));
+}
+
+std::unique_ptr<NodeData>
+NodeDataFactory::makeListData(TypeId const& typeId) const noexcept
+{
+    auto entry = pimpl->listTypes.constFind(listType(typeId));
+    if (entry == pimpl->listTypes.cend())
+    {
+        return nullptr;
+    }
+
+    std::unique_ptr<QObject> rawListData{entry.value().newInstance()};
+    if (!rawListData) return nullptr;
+
+    return gt::unique_qobject_cast<NodeData>(std::move(rawListData));
 }
 
