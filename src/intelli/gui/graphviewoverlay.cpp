@@ -10,6 +10,7 @@
 #include <intelli/gui/graphviewoverlay.h>
 
 #include <intelli/graph.h>
+#include <intelli/graphexecutor.h>
 #include <intelli/graphexecmodel.h>
 #include <intelli/gui/graphview.h>
 #include <intelli/gui/graphscene.h>
@@ -84,11 +85,18 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
         GraphScene* scene = m_view->nodeScene();
         if (!scene) return;
 
+#if 1
+        auto* executor = scene->graph().findDirectChild<GraphExecutor*>();
+        if (!executor) return;
+
+        executor->autoEvaluate(autoEvaluate);
+#else
         auto* model = GraphExecutionModel::accessExecModel(scene->graph());
         if (!model) return;
 
         autoEvaluate ? (void)model->autoEvaluateGraph(scene->graph()) :
                        (void)model->stopAutoEvaluatingGraph(scene->graph());
+#endif
     };
 
     /* VIEW MENU */
@@ -233,14 +241,15 @@ GraphViewOverlay::onSceneChanged(GraphScene* scene)
 
     m_sceneSelector->setCurrentGraph(graph);
 
-    m_startAutoEvalBtn->setEnabled(true);
-    m_stopAutoEvalBtn->setEnabled(true);
+    m_startAutoEvalBtn->setEnabled(false);
+    m_stopAutoEvalBtn->setEnabled(false);
     m_snapToGridBtn->setEnabled(true);
     m_snapToGridBtn->setVisible(m_view->isGridVisible());
 
     m_viewMenu->setEnabled(true);
     m_sceneMenu->setEnabled(true);
 
+    // snap to grid
     auto onSnapToGridChanged = [this](){
         if (!m_snapToGridBtn->isVisible()) return;
         if (auto* scene = m_view->nodeScene())
@@ -249,6 +258,42 @@ GraphViewOverlay::onSceneChanged(GraphScene* scene)
         }
     };
 
+    connect(scene, &GraphScene::snapToGridChanged,
+            m_view, onSnapToGridChanged);
+
+    onSnapToGridChanged();
+
+#if 1
+    // auto evaluate
+    bool isRoot = &graph == graph.rootGraph();
+
+    auto* executor = graph.findDirectChild<GraphExecutor*>();
+    if (!executor) return;
+
+    m_startAutoEvalBtn->setVisible(false);
+    m_stopAutoEvalBtn->setVisible(false);
+
+    if (isRoot)
+    {
+        m_startAutoEvalBtn->setEnabled(true);
+        m_stopAutoEvalBtn->setEnabled(true);
+
+        auto onAutoEvaluationChanged = [this, executor](){
+            GraphScene* scene = m_view->nodeScene();
+            if (!scene) return;
+
+            bool autoEvaluate = executor->isAutoEvaluating();
+
+            m_startAutoEvalBtn->setVisible(!autoEvaluate);
+            m_stopAutoEvalBtn->setVisible(autoEvaluate);
+        };
+
+        connect(executor, &GraphExecutor::autoEvaluationChanged,
+                this, onAutoEvaluationChanged);
+
+        onAutoEvaluationChanged();
+    }
+#else
     auto* model = GraphExecutionModel::accessExecModel(graph);
     if (!model) return;
 
@@ -261,14 +306,9 @@ GraphViewOverlay::onSceneChanged(GraphScene* scene)
         m_startAutoEvalBtn->setVisible(!autoEvaluate);
         m_stopAutoEvalBtn->setVisible(autoEvaluate);
     };
-
     connect(model, &GraphExecutionModel::autoEvaluationChanged,
             this, onAutoEvaluationChanged);
 
-    connect(scene, &GraphScene::snapToGridChanged,
-            m_view, onSnapToGridChanged);
-
-    // update once
-    onSnapToGridChanged();
     onAutoEvaluationChanged();
+#endif
 }

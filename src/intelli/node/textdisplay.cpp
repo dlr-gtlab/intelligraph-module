@@ -20,7 +20,7 @@ TextDisplayNode::TextDisplayNode() :
 {
     registerProperty(m_textType);
 
-    setNodeEvalMode(NodeEvalMode::Blocking);
+    setNodeEvalMode(NodeEvalMode::NoEvaluationRequired);
     setNodeFlag(Resizable, true);
 
     addInPort(makePort(typeId<StringData>())

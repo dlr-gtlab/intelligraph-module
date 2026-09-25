@@ -17,7 +17,7 @@ using namespace intelli;
 NumberDisplayNode::NumberDisplayNode() :
     Node("Number Display")
 {
-    setNodeEvalMode(NodeEvalMode::Blocking);
+    setNodeEvalMode(NodeEvalMode::NoEvaluationRequired);
 
     addInPort(makePort(typeId<DoubleData>()).setCaptionVisible(false));
 

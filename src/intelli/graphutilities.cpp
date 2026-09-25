@@ -19,21 +19,6 @@
 #include <intelli/gui/commentdata.h>
 #include <intelli/private/utils.h>
 
-template<typename T>
-using has_gt_log_call_operator =
-    std::enable_if_t<
-        std::is_same<
-            decltype(std::declval<T const&>()
-                         .operator()(std::declval<gt::log::Stream&>())),
-            gt::log::Stream&>::value,
-        bool>;
-
-template <typename T, has_gt_log_call_operator<T> = true>
-inline gt::log::Stream& operator<<(gt::log::Stream& s, T const& f)
-{
-    return f(s);
-}
-
 template <typename T>
 struct Expected
 {

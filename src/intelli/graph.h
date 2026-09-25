@@ -10,7 +10,7 @@
 #ifndef GT_INTELLI_GRAPH_H
 #define GT_INTELLI_GRAPH_H
 
-#include <intelli/node.h>
+#include <intelli/dynamicnode.h>
 #include <intelli/graphconnectionmodel.h>
 #include <intelli/view.h>
 
@@ -23,12 +23,11 @@ namespace intelli
 {
 
 class Graph;
-class GroupInputProvider;
-class GroupOutputProvider;
+class AbstractGraphProvider;
+class GraphInputProvider;
+class GraphOutputProvider;
 class Connection;
 class ConnectionGroup;
-class DynamicNode;
-class GraphExecutionModel;
 
 /**
  * @brief Opens the graph in a graph editor. The graph object should be kept
@@ -104,7 +103,7 @@ bool containsNodeId(NodeId_t const& nodeId, NodeList const& nodes)
  * Can be appended itself to another graph. Prefer to use appendNode and
  * appendConnection functions instead of using appendChild or setParent.
  */
-class GT_INTELLI_EXPORT Graph : public Node
+class GT_INTELLI_EXPORT Graph : public DynamicNode
 {
     Q_OBJECT
 
@@ -135,11 +134,20 @@ public:
     /**
      * @brief Returns the node id for the node given its object uuid. Returned
      * node id may be invalid if the object uuid does not belong to a node
-     * belonging to this graph.
+     * of this graph.
      * @param nodeUuid Node's oobject uuid
-     * @return Node id (may be invalid)
+     * @return Node's id (may be invalid)
      */
     NodeId nodeId(NodeUuid const& nodeUuid) const;
+
+    /**
+     * @brief Returns the object uuid for the node given its node id. Returned
+     * uuid may be invalid (empty) if the node id does not belong to a node
+     * of this graph.
+     * @param nodeId Node's id
+     * @return Node's uuid (may be invalid/empty)
+     */
+    NodeUuid nodeUuid(NodeId nodeId) const;
 
     /**
      * @brief Returns the connection id matched by the given nodes and port
@@ -306,30 +314,30 @@ public:
      * graph was not yet initialized or it is the root graph.
      * @return Input provider
      */
-    GroupInputProvider* inputProvider();
-    GroupInputProvider const* inputProvider() const;
+    GraphInputProvider* inputProvider();
+    GraphInputProvider const* inputProvider() const;
 
     /**
      * @brief Returns the input provider of this graph as a plain Node object.
      * @return Input provider
      */
-    DynamicNode* inputNode();
-    DynamicNode const* inputNode() const;
+    Node* inputNode();
+    Node const* inputNode() const;
 
     /**
      * @brief Returns the output provider of this graph. May be null if the sub
      * graph was not yet initialized or it is the root graph.
      * @return Output provider
      */
-    GroupOutputProvider* outputProvider();
-    GroupOutputProvider const* outputProvider() const;
+    GraphOutputProvider* outputProvider();
+    GraphOutputProvider const* outputProvider() const;
 
     /**
      * @brief Returns the output provider of this graph as a plain Node object.
      * @return Input provider
      */
-    DynamicNode* outputNode();
-    DynamicNode const* outputNode() const;
+    Node* outputNode();
+    Node const* outputNode() const;
 
     /**
      * @brief Finds all dependencies of the node referred by `nodeId`
@@ -527,7 +535,7 @@ public:
     /**
      * @brief initializes the input and output of this graph
      */
-    void initInputOutputProviders();
+    virtual void initInputOutputProviders();
 
     /**
      * @brief Resets the global connection model. This might be necessary
@@ -554,6 +562,12 @@ public:
      */
     GT_NO_DISCARD
     Modification modify();
+
+    /**
+     * @brief Whether this model is currently undergoing modification.
+     * @return Is being modified
+     */
+    bool isBeingModified() const;
 
     /**
      * @brief Tells the graph that is about to be modifed. Should be called
@@ -644,22 +658,25 @@ signals:
      */
     void childNodeDeleted(NodeId nodeId);
 
+    void childNodeInvalidated();
+
 protected:
+
+    /// protected constructor
+    Graph(QString const& modelName, bool initProviders = false);
 
     void eval() override;
 
     void onObjectDataMerged() override;
 
+    void synchronizePorts(AbstractGraphProvider& provider);
+
+    static void synchronizePorts(Node& source, AbstractGraphProvider& target);
+
 private:
 
     struct Impl;
     std::unique_ptr<Impl> pimpl;
-
-    /**
-     * @brief Whether this model is currently undergoing modification.
-     * @return Is being modified
-     */
-    bool isBeingModified() const;
 
     /**
      * @brief Returns the group object in which all connections are stored
@@ -684,6 +701,14 @@ private:
     void updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr);
 
     void mergeUserVariables(Graph& other);
+
+private slots:
+
+    void onPortInserted(PortType type, PortIndex idx);
+
+    void onPortChanged(PortId portId);
+
+    void onPortDeleted(PortType type, PortIndex idx);
 };
 
 } // namespace intelli

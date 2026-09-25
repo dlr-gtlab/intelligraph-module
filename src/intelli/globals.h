@@ -302,6 +302,8 @@ enum class PortDataState : unsigned
 };
 
 class NodeData;
+
+// TODO: move to nodedata.h
 using NodeDataPtr = std::shared_ptr<const NodeData>;
 
 struct NodeDataSet

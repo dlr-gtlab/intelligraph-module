@@ -61,6 +61,8 @@ public:
      */
     bool isDraft() const;
 
+    bool isListType() const;
+
     /**
      * @brief Bounding rect of this object
      * @return Bounding rect

@@ -108,7 +108,7 @@ struct GraphExecutionModel::Impl
     /// scope object
     QPointer<GtObject> scope;
     /// data model for all nodes and their ports
-    GraphDataModel data;
+    GraphExecDataModel data;
     /// nodes that should be evaluated
     std::vector<NodeUuid> targetNodes;
     /// nodes that should be queued and executed at some point to evaluate
@@ -456,7 +456,7 @@ struct GraphExecutionModel::Impl
     struct DataItemHelper
     {
         const_t<IsConst, GraphExecutionModel>* execModel = {};
-        get_iterator_t<IsConst, GraphDataModel> entry = {};
+        get_iterator_t<IsConst, GraphExecDataModel> entry = {};
         const_t<IsConst, Node>* node = {};
 
         operator bool() const { return execModel; }
@@ -514,8 +514,8 @@ struct GraphExecutionModel::Impl
             return !isEvaluating() && inputsValid();
         }
 
-        get_iterator_t<IsConst, GraphDataModel> operator->() { return entry; }
-        get_iterator_t<IsConst, GraphDataModel> operator->() const { return entry; }
+        get_iterator_t<IsConst, GraphExecDataModel> operator->() { return entry; }
+        get_iterator_t<IsConst, GraphExecDataModel> operator->() const { return entry; }
     };
 
     template<bool IsConst>

@@ -33,13 +33,15 @@ set(PUBLIC_HEADERS
     intelli/core.h
     intelli/dynamicnode.h
     intelli/exports.h
+    intelli/flags.h
     intelli/future.h
     intelli/globals.h
     intelli/graph.h
     intelli/graphbuilder.h
     intelli/graphconnectionmodel.h
-    intelli/graphdatamodel.h
+    intelli/graphexecdatamodel.h
     intelli/graphexecmodel.h
+    intelli/graphexecutor.h
     intelli/graphuservariables.h
     intelli/graphutilities.h
     intelli/memory.h
@@ -47,8 +49,11 @@ set(PUBLIC_HEADERS
     intelli/nodedata.h
     intelli/nodedatafactory.h
     intelli/nodedatainterface.h
+    intelli/nodeevent.h
     intelli/nodefactory.h
+    intelli/nodeport.h
     intelli/span.h
+    intelli/graphdatamodel.h
     intelli/utilities.h
     intelli/view.h
     intelli/data/bool.h
@@ -59,12 +64,14 @@ set(PUBLIC_HEADERS
     intelli/data/int.h
     intelli/data/integer.h
     intelli/data/invalid.h
+    intelli/data/list.h
     intelli/data/object.h
     intelli/data/string.h
     intelli/data/stringlist.h
     intelli/gui/connectiongeometry.h
     intelli/gui/connectionpainter.h
     intelli/gui/icons.h
+    intelli/gui/graphui.h
     intelli/gui/graphscenedata.h
     intelli/gui/nodegeometry.h
     intelli/gui/nodepainter.h
@@ -76,6 +83,7 @@ set(PUBLIC_HEADERS
     intelli/gui/graphics/graphicsobject.h
     intelli/gui/graphics/interactableobject.h
     intelli/gui/graphics/nodeobject.h
+    intelli/gui/widgets/porteditdialog.h
     intelli/node/input/boolinput.h
     intelli/node/input/doubleinput.h
     intelli/node/input/intinput.h
@@ -108,6 +116,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/booldisplay.h
     intelli/node/dummy.h
     intelli/node/existingdirectorysource.h
+    intelli/node/filelinereader.h intelli/node/filelinereader.cpp
     intelli/node/filereader.h
     intelli/node/filewriter.h
     intelli/node/finddirectchild.h
@@ -124,8 +133,14 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/stringbuilder.h
     intelli/node/stringselection.h
     intelli/node/textdisplay.h
-    intelli/node/input/graphuservariablesinput.h
+    intelli/node/control/accumulator.h intelli/node/control/accumulator.cpp
+    intelli/node/control/conditional.h intelli/node/control/conditional.cpp
+    intelli/node/control/mapreduce.h intelli/node/control/mapreduce.cpp
+    intelli/node/input/numberinputnode_utils.h
     intelli/node/input/fileinput.h
+    intelli/node/input/graphuservariablesinput.h
+    intelli/node/general/tolistnode.h intelli/node/general/tolistnode.cpp
+    intelli/node/number/numberaccumulatornode.h intelli/node/number/numberaccumulatornode.cpp
     intelli/gui/commentgroup.h
     intelli/gui/commentdata.h
     intelli/gui/grapheditor.h
@@ -159,7 +174,8 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/ui/node/stringselectionnodeui.h
     intelli/gui/ui/node/textdisplaynodeui.h
     intelli/gui/ui/node/numberinputnodeui_utils.h
-    intelli/node/input/numberinputnode_utils.h
+    intelli/gui/ui/node/control/accumulatorgrapnodeui.h intelli/gui/ui/node/control/accumulatorgrapnodeui.cpp
+    intelli/gui/ui/node/control/conditionalgroupnodeui.h intelli/gui/ui/node/control/conditionalgroupnodeui.cpp
     intelli/gui/graphics/commentobject.h
     intelli/gui/graphics/connectionobject.h
     intelli/gui/graphics/lineobject.h
@@ -189,6 +205,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/graphbuilder.cpp
     intelli/graphcategory.cpp
     intelli/graphexecmodel.cpp
+    intelli/graphexecutor.cpp
     intelli/graphuservariables.cpp
     intelli/graphutilities.cpp
     intelli/module.cpp
@@ -197,6 +214,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/nodedatafactory.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp
+    intelli/graphdatamodel.cpp
     intelli/calculators/graphexeccalculator.cpp
     intelli/exec/detachedexecutor.cpp
     intelli/exec/dummynodedatamodel.cpp
@@ -206,6 +224,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/int.cpp
     intelli/data/invalid.cpp
     intelli/data/file.cpp
+    intelli/data/list.cpp
     intelli/data/object.cpp
     intelli/data/string.cpp
     intelli/data/stringlist.cpp
@@ -248,6 +267,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphscenemanager.cpp
     intelli/gui/graphsceneselector.cpp
     intelli/gui/graphstatemanager.cpp
+    intelli/gui/graphui.cpp
     intelli/gui/graphview.cpp
     intelli/gui/graphviewoverlay.cpp
     intelli/gui/guidata.cpp
@@ -290,6 +310,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/widgets/finddirectchildwidget.cpp
     intelli/gui/widgets/graphuservariablesdialog.cpp
     intelli/gui/widgets/intinputwidget.cpp
+    intelli/gui/widgets/porteditdialog.cpp
     intelli/gui/property_item/stringselection.cpp
     intelli/property/color.cpp
     intelli/property/metaenum.cpp

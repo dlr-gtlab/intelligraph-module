@@ -11,6 +11,7 @@
 
 #include <intelli/graph.h>
 #include <intelli/graphexecmodel.h>
+#include <intelli/graphdatamodel.h>
 #include <intelli/gui/graphscene.h>
 #include <intelli/gui/graphscenemanager.h>
 #include <intelli/gui/graphstatemanager.h>
@@ -78,7 +79,17 @@ GraphEditor::setData(GtObject* obj)
         return;
     }
 
-    // setup exec model
+    // setup data model
+    auto* root = graph->rootGraph();
+    assert(root);
+
+    auto* dataModel = root->findDirectChild<GraphDataModel*>();
+    if (!dataModel)
+    {
+        dataModel = new GraphDataModel{*root};
+        dataModel->setScope(*gtApp->currentProject());
+    }
+#if 0
     auto* model = GraphExecutionModel::make(*graph);
     if (!model)
     {
@@ -89,6 +100,7 @@ GraphEditor::setData(GtObject* obj)
     }
     model->setScope(gtApp->currentProject());
     model->reset();
+#endif
 
     // setup state manager
     GraphStateManager::make(*graph, *m_view);

@@ -21,8 +21,8 @@ using namespace intelli;
 ObjectMementoNode::ObjectMementoNode() :
     Node("To Memento")
 {
-    m_in  = addInPort(typeId<ObjectData>());
-    m_out = addOutPort({typeId<ByteArrayData>(), tr("memento")});
+    m_in  = addInPort(makePort(typeId<ObjectData>()).setOptional(false));
+    m_out = addOutPort(makePort(typeId<ByteArrayData>()).setCaption("memento"));
 }
 
 void

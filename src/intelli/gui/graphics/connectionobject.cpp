@@ -14,6 +14,7 @@
 #include <intelli/gui/nodegeometry.h>
 #include <intelli/graph.h>
 #include <intelli/node.h>
+#include <intelli/nodedatafactory.h>
 
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
@@ -92,6 +93,8 @@ ConnectionGraphicsObject::ConnectionGraphicsObject(QGraphicsScene& scene,
         connect(nodeObj, &NodeGraphicsObject::opacityChanged, this, [this](){ update(); });
         updateEndPoint();
     }
+
+    m_geometry.setIsThick(isListType());
 }
 
 std::unique_ptr<ConnectionGraphicsObject>
@@ -137,6 +140,13 @@ bool
 ConnectionGraphicsObject::isDraft() const
 {
     return connectionId().isDraft();
+}
+
+bool
+ConnectionGraphicsObject::isListType() const
+{
+    return NodeDataFactory::isListType(m_inType) ||
+           NodeDataFactory::isListType(m_outType);
 }
 
 QRectF
@@ -229,8 +239,9 @@ ConnectionGraphicsObject::paint(QPainter* painter,
 
     painter->setClipRect(option->exposedRect);
 
-    bool const isDraft  = this->isDraft();
+    bool const isDraft    = this->isDraft();
     bool const isInactive = m_inactive;
+    bool const isList     = m_geometry.isThick();
 
     PortType const draftType = connectionId().draftType();
     assert(!isDraft == (draftType == PortType::NoType)); // NoType if not draft
@@ -240,6 +251,7 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     if (isSelected()) flags |= ConnectionPainter::ObjectIsSelected;
     if (isDraft)      flags |= ConnectionPainter::DrawDashed;
     if (isInactive)   flags |= ConnectionPainter::ObjectIsInactive;
+    if (isList)       flags |= ConnectionPainter::DrawThick;
 
     auto const& style = style::currentStyle();
     auto const& cstyle = style.connection;
@@ -259,12 +271,12 @@ ConnectionGraphicsObject::paint(QPainter* painter,
     if (draftType == PortType::In  || m_outNode->opacity() < 1)
     {
         double const portRadius = style.node.portRadius;
-        p.drawEndPoint(*painter, path, portRadius, PortType::Out);
+        p.drawEndPoint(*painter, path, portRadius, PortType::Out, flags);
     }
     if (draftType == PortType::Out || m_inNode->opacity() < 1)
     {
         double const portRadius = style.node.portRadius;
-        p.drawEndPoint(*painter, path, portRadius, PortType::In);
+        p.drawEndPoint(*painter, path, portRadius, PortType::In, flags);
     }
 
 #ifdef GT_INTELLI_DEBUG_CONNECTION_GRAPHICS

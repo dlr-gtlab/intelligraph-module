@@ -20,7 +20,7 @@ BoolDisplayNode::BoolDisplayNode() :
 {
     registerProperty(m_displayMode);
 
-    setNodeEvalMode(NodeEvalMode::Blocking);
+    setNodeEvalMode(NodeEvalMode::NoEvaluationRequired);
 
     m_in = addInPort(makePort(typeId<BoolData>())
                          .setCaptionVisible(false));

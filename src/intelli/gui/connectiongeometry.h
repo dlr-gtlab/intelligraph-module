@@ -43,6 +43,9 @@ public:
      */
     void recomputeGeometry(QPointF start, QPointF end, ConnectionShape shape);
 
+    void setIsThick(bool isThick = true) { m_isThick = isThick; }
+    bool isThick() const { return m_isThick; }
+
 private:
 
     QRectF m_rect;
@@ -50,6 +53,8 @@ private:
     QPainterPath m_path;
     /// Path denoting connection hitbox
     QPainterPath m_shape;
+
+    bool m_isThick = false;
 
     void computePath(QPointF start, QPointF end, ConnectionShape shape);
 

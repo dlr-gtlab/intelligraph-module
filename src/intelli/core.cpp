@@ -16,7 +16,6 @@
 #include "intelli/data/string.h"
 #include "intelli/data/int.h"
 #include "intelli/data/file.h"
-#include "intelli/data/stringlist.h"
 
 #include "intelli/node/dummy.h"
 
@@ -44,11 +43,19 @@
 #include "intelli/node/input/stringinput.h"
 #include "intelli/node/input/graphuservariablesinput.h"
 
+#include "intelli/node/control/accumulator.h"
+#include "intelli/node/control/conditional.h"
+#include "intelli/node/control/mapreduce.h"
+
+#include "intelli/node/number/numberaccumulatornode.h"
+#include "intelli/node/general/tolistnode.h"
+
 #include "intelli/node/booldisplay.h"
 #include "intelli/node/textdisplay.h"
 
 #include "intelli/node/genericcalculatorexec.h"
 #include "intelli/node/filereader.h"
+#include "intelli/node/filelinereader.h"
 #include "intelli/node/filewriter.h"
 #include "intelli/node/stringselection.h"
 
@@ -82,7 +89,6 @@ intelli::registerDefaultDataTypes()
         // register data type
         GT_INTELLI_REGISTER_DATA(ByteArrayData);
         GT_INTELLI_REGISTER_DATA(StringData);
-        GT_INTELLI_REGISTER_DATA(StringListData);
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(IntData);
         GT_INTELLI_REGISTER_DATA(BoolData);
@@ -111,21 +117,23 @@ intelli::registerDefaultNodes()
         gtTrace().verbose() << QObject::tr("Registering default nodes...");
 
         char const* hidden = "";
-        QString catOther = QObject::tr("Other");
-        QString catNumber = QObject::tr("Number");
-        QString catLogic = QObject::tr("Logic");
-        QString catObject = QObject::tr("Object");
-        QString catString = QObject::tr("String");
-        QString catInput = QObject::tr("Input");
+        QString catOther   = QObject::tr("Other");
+        QString catNumber  = QObject::tr("Number");
+        QString catLogic   = QObject::tr("Logic");
+        QString catObject  = QObject::tr("Object");
+        QString catString  = QObject::tr("String");
+        QString catInput   = QObject::tr("Input");
         QString catProcess = QObject::tr("Process");
-        QString catFile = QObject::tr("File");
+        QString catFile    = QObject::tr("File");
         QString catDisplay = QObject::tr("Display");
+        QString catControl = QObject::tr("Control");
+        QString catGeneral = QObject::tr("General");
 
         GT_INTELLI_REGISTER_NODE(DummyNode, hidden);
 
         GT_INTELLI_REGISTER_NODE(Graph, catOther);
-        GT_INTELLI_REGISTER_NODE(GroupInputProvider, hidden);
-        GT_INTELLI_REGISTER_NODE(GroupOutputProvider, hidden);
+        GT_INTELLI_REGISTER_NODE(GraphInputProvider, hidden);
+        GT_INTELLI_REGISTER_NODE(GraphOutputProvider, hidden);
 
         GT_INTELLI_REGISTER_NODE(NumberDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(NumberMathNode, catNumber);
@@ -142,6 +150,7 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(FileInputNode, catInput);
         GT_INTELLI_REGISTER_NODE(FileReaderNode, catFile);
+        GT_INTELLI_REGISTER_NODE(FileLineReaderNode, catFile);
         GT_INTELLI_REGISTER_NODE(FileWriterNode, catFile);
 
         GT_INTELLI_REGISTER_NODE(ProjectInfoNode, catInput);
@@ -159,9 +168,22 @@ intelli::registerDefaultNodes()
 
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
 
+        GT_INTELLI_REGISTER_NODE(ConditionalGroupNode, catControl);
+        GT_INTELLI_REGISTER_NODE(ConditionalInputProvider, hidden);
+        GT_INTELLI_REGISTER_NODE(ConditionalOutputProvider, hidden);
+
+        GT_INTELLI_REGISTER_NODE(AccumulatorGraphNode, catControl);
+        GT_INTELLI_REGISTER_NODE(AccumulatorLastIterationProvider, hidden);
+
+        GT_INTELLI_REGISTER_NODE(MapReduceGroupNode, catControl);
+
+        GT_INTELLI_REGISTER_NODE(ToListNode, catGeneral);
+        GT_INTELLI_REGISTER_NODE(NumberAccumulatorNode, catNumber);
+
 #ifdef GT_INTELLI_EXPERIMENTAL_NODES
         GT_INTELLI_REGISTER_NODE(BinaryDisplayNode, catDisplay);
 #endif
+
         return true;
     }();
 
