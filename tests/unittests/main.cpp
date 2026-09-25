@@ -21,7 +21,7 @@
 
 #include <gt_logging.h>
 
-#include <QCoreApplication>
+#include <QApplication>
 
 auto init_log_once = [](){
     auto& logger = gt::log::Logger::instance();
@@ -34,6 +34,10 @@ auto init_log_once = [](){
 int
 main(int argc, char** argv)
 {
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
+    {
+        qputenv("QT_QPA_PLATFORM", "offscreen");
+    }
     [](){
         TestDynamicNode::registerOnce();
         TestDynamicWhiteListNode::registerOnce();
@@ -44,7 +48,7 @@ main(int argc, char** argv)
         gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
     }();
 
-    QCoreApplication a(argc, argv);
+    QApplication a(argc, argv);
 
     ::testing::InitGoogleTest(&argc, argv);
 
