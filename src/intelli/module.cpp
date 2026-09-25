@@ -74,6 +74,7 @@
 #include "intelli/gui/ui/node/intinputnodeui.h"
 #include "intelli/gui/ui/node/objectinputnodeui.h"
 #include "intelli/gui/ui/node/stringinputnodeui.h"
+#include "intelli/gui/ui/node/control/accumulatorgrapnodeui.h"
 #include "intelli/gui/ui/node/control/conditionalgroupnodeui.h"
 #include "intelli/gui/property_item/stringselection.h"
 
@@ -387,9 +388,9 @@ GtIntelliGraphModule::uiItems()
                GT_METADATA(ConditionalGroupNodeUI));
 
     map.insert(GT_CLASSNAME(AccumulatorGraphNode),
-               GT_METADATA(GraphUI));
-    map.insert(GT_CLASSNAME(LastIterationProvider),
-               GT_METADATA(GraphUI));
+               GT_METADATA(AccumulatorGrapNodeUI));
+    map.insert(GT_CLASSNAME(AccumulatorLastIterationProvider),
+               GT_METADATA(AccumulatorGrapNodeUI));
 
     map.insert(GT_CLASSNAME(ToListNode),
                GT_METADATA(NodeUI));

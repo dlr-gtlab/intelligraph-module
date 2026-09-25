@@ -1,16 +1,14 @@
-/* GTlab - Gas Turbine laboratory
- *
- * SPDX-License-Identifier: MPL-2.0+
- * SPDX-FileCopyrightText: 2026 German Aerospace Center (DLR)
- */
 
-#include "intelli/node/control/accumulator.h"
-
-#include "intelli/graphdatamodel.h"
-#include "intelli/graphexecutor.h"
+#include "intelli/node/control/mapreduce.h"
+#include "intelli/node/groupinputprovider.h"
+#include "intelli/node/groupoutputprovider.h"
 #include "intelli/data/list.h"
 #include "intelli/data/double.h"
 #include "intelli/nodedatafactory.h"
+#include "intelli/graphdatamodel.h"
+#include "intelli/graphexecutor.h"
+#include "intelli/graphdatamodel.h"
+#include "intelli/graphexecutor.h"
 #include "intelli/private/utils.h"
 
 #include <gt_utilities.h>
@@ -20,23 +18,18 @@ using namespace intelli;
 
 constexpr const char* C_NAME_IN_NODE = "Input";
 constexpr const char* C_NAME_OUT_NODE = "Output";
-constexpr const char* C_NAME_LAST_ITER_NODE = "Last Iteration";
 constexpr const char* C_NAME_INDEX_NODE = "Index";
 
 namespace
 {
 
-static void onPortInserted(AccumulatorGraphNode* root,
+static void onPortInserted(MapReduceGroupNode* root,
                            AbstractGraphProvider* provider,
                            PortType type,
                            PortIndex idx,
                            bool invert = false)
 {
-    if (type != PortType::In)
-    {
-        gtDebug() << QObject::tr("ACC PORT INSERTING (SKIPPING)") << *root->port(root->portId(type, idx));
-        return;
-    }
+    if (type != PortType::In) return;
 
     assert(root);
     assert(root->isDynamicPort(type, idx));
@@ -51,8 +44,6 @@ static void onPortInserted(AccumulatorGraphNode* root,
     };
 
     PortInfo* srcPort = root->port(root->portId(type, idx));
-
-    gtDebug() << QObject::tr("ACC PORT INSERTING") << *srcPort << idx;
 
     if (!srcPort)
     {
@@ -82,7 +73,7 @@ static void onPortInserted(AccumulatorGraphNode* root,
     assert(addedPortId == srcPort->id());
 }
 
-static void onPortChanged(AccumulatorGraphNode* root,
+static void onPortChanged(MapReduceGroupNode* root,
                           AbstractGraphProvider* provider,
                           PortId portId)
 {
@@ -133,7 +124,7 @@ static void onPortChanged(AccumulatorGraphNode* root,
     emit provider->portChanged(port->id());
 }
 
-static void onPortDeleted(AccumulatorGraphNode* root,
+static void onPortDeleted(MapReduceGroupNode* root,
                           AbstractGraphProvider* provider,
                           PortType type,
                           PortIndex idx)
@@ -175,32 +166,35 @@ static void onPortDeleted(AccumulatorGraphNode* root,
 
 } // namespace
 
-AccumulatorGraphNode::AccumulatorGraphNode() :
-    Graph(QStringLiteral("Accumulator"), false)
+MapReduceGroupNode::MapReduceGroupNode() :
+    Graph(QStringLiteral("Map Redeuce"), false),
+    m_operation("reduceOperation", tr("Reduce Operation"), tr("Reduce Operation"))
 {
     setNodeEvalMode(NodeEvalMode::Blocking);
+
+    registerProperty(m_operation);
 
     NodeId nextId{0};
     Position offset{0, 100};
 
     auto input = std::make_unique<GraphInputProvider>();
     input->setCaption(C_NAME_IN_NODE);
-    input->setPos(input->pos());
+    input->setPos(input->pos() - offset);
     input->setDefault(true);
     input->setId(nextId++);
 
     connect(this, &Node::portInserted,
-            input.get(), [this, node = input.get()](PortType type, PortIndex idx){
-        ::onPortInserted(this, node, type, idx);
-    }, Qt::DirectConnection);
+        input.get(), [this, node = input.get()](PortType type, PortIndex idx){
+            ::onPortInserted(this, node, type, idx);
+        }, Qt::DirectConnection);
     connect(this, &Node::portChanged,
-            input.get(), [this, node = input.get()](PortId portId){
-        ::onPortChanged(this, node, portId);
-    }, Qt::DirectConnection);
+        input.get(), [this, node = input.get()](PortId portId){
+            ::onPortChanged(this, node, portId);
+        }, Qt::DirectConnection);
     connect(this, &Node::portAboutToBeDeleted,
-            input.get(), [this, node = input.get()](PortType type, PortIndex idx){
-        ::onPortDeleted(this, node, (type), idx);
-    }, Qt::DirectConnection);
+        input.get(), [this, node = input.get()](PortType type, PortIndex idx){
+            ::onPortDeleted(this, node, (type), idx);
+        }, Qt::DirectConnection);
 
     auto output = std::make_unique<GraphOutputProvider>();
     output->setCaption(C_NAME_OUT_NODE);
@@ -209,23 +203,15 @@ AccumulatorGraphNode::AccumulatorGraphNode() :
     output->setId(nextId++);
     synchronizePorts(*output);
 
-    auto lastIter = std::make_unique<AccumulatorLastIterationProvider>();
-    lastIter->setCaption(C_NAME_LAST_ITER_NODE);
-    lastIter->setPos(lastIter->pos() + offset);
-    lastIter->setDefault(true);
-    lastIter->setId(nextId++);
-    synchronizePorts(*output, *lastIter);
-
     auto indexNode = std::make_unique<GraphInputProvider>();
     indexNode->setCaption(C_NAME_INDEX_NODE);
-    indexNode->setPos(indexNode->pos() + (2 * offset));
+    indexNode->setPos(indexNode->pos() + offset);
     indexNode->setDefault(true);
     indexNode->setId(nextId++);
     m_index = indexNode->addPort(makePort(typeId<IntData>()).setCaption("index"));
 
     appendNode(std::move(input), NodeIdPolicy::Keep);
     appendNode(std::move(output), NodeIdPolicy::Keep);
-    appendNode(std::move(lastIter), NodeIdPolicy::Keep);
     appendNode(std::move(indexNode), NodeIdPolicy::Keep);
 
     m_listIn = addInPort(makePort(typeId<list<DoubleData>>()));
@@ -233,7 +219,7 @@ AccumulatorGraphNode::AccumulatorGraphNode() :
 }
 
 void
-AccumulatorGraphNode::eval()
+MapReduceGroupNode::eval()
 {
     auto makeError = [this](){
         return gt::quoted(relativeNodePath(*this), "[", "] ") +
@@ -268,21 +254,12 @@ AccumulatorGraphNode::eval()
     }
 
     auto* inputNode = findDirectChild<GraphInputProvider*>(C_NAME_IN_NODE);
-    auto* lastIterNode = findDirectChild<GraphInputProvider*>(C_NAME_LAST_ITER_NODE);
     auto* outputNode = findDirectChild<GraphOutputProvider*>(C_NAME_OUT_NODE);
     auto* indexNode = findDirectChild<GraphInputProvider*>(C_NAME_INDEX_NODE);
 
-    if (!inputNode || !outputNode || !lastIterNode || !indexNode)
+    if (!inputNode || !outputNode || !outputNode || !indexNode)
     {
         gtError() << makeError() << tr("input/ouput providers not found!");
-        return evalFailed();
-    }
-
-    gtDebug() << "RESSETING DATA";
-    if (!dataModel->setNodeData(lastIterNode->uuid(), m_out, nullptr))
-    {
-        gtError() << makeError()
-                  << tr("failed to reset last iter data for port '%1'!");
         return evalFailed();
     }
 
@@ -309,6 +286,9 @@ AccumulatorGraphNode::eval()
             return evalFailed();
         }
     }
+
+    QVector<NodeDataPtr> accumulated;
+    accumulated.reserve(listData->iterate().size());
 
     int index = {0};
     for (NodeDataPtr const& current : listData->iterate())
@@ -359,32 +339,100 @@ AccumulatorGraphNode::eval()
             return evalFailed();
         }
 
-        gtDebug() << "SETTING NEXT ITERATION DATA";
-        // set output data
-        for (NodePort const& port : ports(PortType::Out))
+        gtDebug() << "NEXT";
+        // set output
+        for (NodePort const& port : { *port(m_out) })
         {
-            if (!lastIterNode->port(port.id()))
+            if (!outputNode->port(port.id()))
             {
                 gtError() << makeError()
-                          << tr("port '%1' in last iter provider not found!")
+                          << tr("port '%1' in output provider not found!")
                                  .arg(toString(port));
                 return evalFailed();
             }
 
-            gtDebug() << "->" << port << dataModel->nodeData(outputNode->uuid(), port.id()).ptr;
-            if (!dataModel->setNodeData(lastIterNode->uuid(), port.id(), dataModel->nodeData(outputNode->uuid(), port.id())))
-            {
-                gtError() << makeError()
-                          << tr("failed to set last iter data for port '%1'!")
-                                 .arg(toString(port));
-                return evalFailed();
-            }
+            accumulated.append(dataModel->nodeData(outputNode->uuid(), port.id()).ptr);
         }
     }
 
-    gtDebug() << "SETTING OUTPUT DATA";
+    gtDebug() << "REDUCING";
+
+    NodeDataPtr outputData;
+
+    switch (m_operation)
+    {
+    case ReduceAdd:
+    {
+        QVector<double> tmp;
+        std::transform(accumulated.begin(),
+                       accumulated.end(),
+                       std::back_inserter(tmp), [](NodeDataPtr const& data){
+                           auto converted = convert<DoubleData>(data);
+                           return converted ? converted->value() : 0.0;
+                       });
+        double sum = std::accumulate(tmp.begin(), tmp.end(), 0.0, std::plus<double>{});
+        outputData = makeNodeData<DoubleData>(sum);
+        break;
+    }
+    case ReduceSubstract:
+    {
+        QVector<double> tmp;
+        std::transform(accumulated.begin(),
+                       accumulated.end(),
+                       std::back_inserter(tmp), [](NodeDataPtr const& data){
+                           auto converted = convert<DoubleData>(data);
+                           return converted ? converted->value() : 0.0;
+                       });
+        double sum = std::accumulate(tmp.begin(), tmp.end(), 0.0, std::minus<double>{});
+        outputData = makeNodeData<DoubleData>(sum);
+        break;
+    }
+    case ReduceMultiply:
+    {
+        QVector<double> tmp;
+        std::transform(accumulated.begin(),
+                       accumulated.end(),
+                       std::back_inserter(tmp), [](NodeDataPtr const& data){
+                           auto converted = convert<DoubleData>(data);
+                           return converted ? converted->value() : 0.0;
+                       });
+        double sum = std::accumulate(tmp.begin(), tmp.end(), 0.0, std::multiplies<double>{});
+        outputData = makeNodeData<DoubleData>(sum);
+        break;
+    }
+    case ReduceMax:
+    {
+        QVector<double> tmp;
+        std::transform(accumulated.begin(),
+                       accumulated.end(),
+                       std::back_inserter(tmp), [](NodeDataPtr const& data){
+                           auto converted = convert<DoubleData>(data);
+                           return converted ? converted->value() : std::numeric_limits<double>::min();
+                       });
+        auto max = std::max_element(tmp.begin(), tmp.end());
+        if (max == tmp.end() || *max == std::numeric_limits<double>::min()) outputData = nullptr;
+        else outputData = makeNodeData<DoubleData>(*max);
+        break;
+    }
+    case ReduceMin:
+    {
+        QVector<double> tmp;
+        std::transform(accumulated.begin(),
+                       accumulated.end(),
+                       std::back_inserter(tmp), [](NodeDataPtr const& data){
+                           auto converted = convert<DoubleData>(data);
+                           return converted ? converted->value() : std::numeric_limits<double>::max();
+                       });
+        auto min = std::min_element(tmp.begin(), tmp.end());
+        if (min == tmp.end() || *min == std::numeric_limits<double>::max()) outputData = nullptr;
+        else outputData = makeNodeData<DoubleData>(*min);
+        break;
+    }
+    }
+
+    gtDebug() << "SETTING OUTPUT DATA" << outputData;
     // set output
-    for (NodePort const& port : ports(PortType::Out))
+    for (NodePort const& port : { *port(m_out) })
     {
         if (!outputNode->port(port.id()))
         {
@@ -394,8 +442,7 @@ AccumulatorGraphNode::eval()
             return evalFailed();
         }
 
-        gtDebug() << "->" << port << dataModel->nodeData(lastIterNode->uuid(), port.id());
-        if (!setNodeData(port.id(), dataModel->nodeData(lastIterNode->uuid(), port.id())))
+        if (!setNodeData(port.id(), outputData))
         {
             gtError() << makeError()
                       << tr("failed to set output data for port '%1'!")

@@ -128,6 +128,8 @@ struct NodeUI::Impl
 NodeUI::NodeUI(Options options) :
     pimpl(std::make_unique<Impl>())
 {
+    addSeparator(ORDER_PRIORITY(gt::gui::OrderPriority::AfterDeleteAction));
+
     addCustomDeleteAction(tr("Delete Dummy Node"), deleteDummyNode, toConstDummyNode);
 
     if (!(options & NoDefaultNodeActions))
@@ -416,14 +418,15 @@ NodeUI::addCustomDeleteAction(QString const& text,
 {
     pimpl->deleteActions.push_back({ deleteFunctor, enableDeleteFunctor });
 
-    auto& action = addSingleAction(text, [f = std::move(deleteFunctor)](GtObject* obj) {
-        f(qobject_cast<Node*>(obj));
-    });
-    action.setIcon(gt::gui::icon::delete_());
-    action.setShortCut(gtApp->getShortCutSequence("delete"));
-    action.setVisibilityMethod([f = std::move(enableDeleteFunctor)](GtObject* obj) {
-        return f(qobject_cast<Node*>(obj));
-    });
+    addSingleAction(text, [f = std::move(deleteFunctor)](GtObject* obj) {
+            f(qobject_cast<Node*>(obj));
+        })
+        SET_ORDER_PRIORITY(gt::gui::OrderPriority::DeleteAction)
+        .setIcon(gt::gui::icon::delete_())
+        .setShortCut(gtApp->getShortCutSequence("delete"))
+        .setVisibilityMethod([f = std::move(enableDeleteFunctor)](GtObject* obj) {
+            return f(qobject_cast<Node const*>(obj));
+        });
 }
 
 void

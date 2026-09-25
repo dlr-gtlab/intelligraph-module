@@ -48,7 +48,7 @@ public:
     ConditionalBranchType branchType() const { return m_type; }
 };
 
-class GT_INTELLI_EXPORT ConditionalGroupNode : public Graph
+class GT_INTELLI_TEST_EXPORT ConditionalGroupNode : public Graph
 {
     Q_OBJECT
 

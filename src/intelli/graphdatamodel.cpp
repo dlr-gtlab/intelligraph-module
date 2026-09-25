@@ -859,10 +859,7 @@ GraphDataModel::onNodeDeleted(Graph* graph, NodeId nodeId, bool propagate)
 
     if (propagate)
     {
-        gtDebug() << "PROPAGATING:" << relativeNodePath(*node);
-        // TODO: need to update successors?
         Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
-        gtDebug() << "PROPAGATING DONE";
     }
 }
 
@@ -925,7 +922,6 @@ GraphDataModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex idx)
 
     nodeEntry->outputPortData.append(PortDataItem{portId, NodeDataSet{}});
 
-    // TODO: need to update successors?
     nodeEntry->state = NodeEvalState::Outdated;
     Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
 
@@ -1007,7 +1003,6 @@ GraphDataModel::onNodePortDeleted(NodeId nodeId, PortType type, PortIndex idx)
             << tr("Updated data model: removed port '%3' from node '%1' (%2)")
                    .arg(relativeNodePath(*node), node->uuid(), toString(*node->port(portId)));
 
-    // TODO: need to update successors?
     nodeEntry->state = NodeEvalState::Outdated;
     Impl::propagate(*this, node->uuid(), &GraphDataModel::setNodeEvaluationOutdated);
 

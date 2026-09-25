@@ -236,6 +236,8 @@ protected:
     static ActionChainOperator const isDynamicNode;
     /// chain operator to check if node is active
     static ActionChainOperator const isNodeActive;
+    template <typename T>
+    static ActionChainOperator isDerivedOf();
 
     /** NODE ACTIONS **/
 
@@ -458,6 +460,17 @@ public:
     inline operator PortActionVerifyMethod() const& { return f; }
     inline operator PortActionVerifyMethod&&() && { return std::move(f); }
 };
+
+template<typename T>
+NodeUI::ActionChainOperator
+NodeUI::isDerivedOf()
+{
+    return {
+        [](GtObject* object){
+            return qobject_cast<T>(object);
+        }
+    };
+}
 
 } // namespace intelli
 

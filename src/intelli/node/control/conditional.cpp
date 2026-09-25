@@ -206,7 +206,7 @@ ConditionalGroupNode::eval()
         }
     }
 
-    GtEventLoop loop{std::chrono::seconds{10}};
+    GtEventLoop loop{std::chrono::seconds{60}};
 
     // evaluate branch
     GraphExecutor executor{*this, *dataModel};

@@ -14,13 +14,13 @@
 namespace intelli
 {
 
-class LastIterationProvider : public GraphInputProvider
+class AccumulatorLastIterationProvider : public GraphInputProvider
 {
     Q_OBJECT
 
 public:
-
-    Q_INVOKABLE LastIterationProvider() {}
+    
+    Q_INVOKABLE AccumulatorLastIterationProvider() {}
 };
 
 class AccumulatorGraphNode : public Graph

@@ -12,7 +12,7 @@
 namespace intelli
 {
 
-class ConditionalGroupNodeUI : public GraphUI
+class ConditionalGroupNodeUI final : public GraphUI
 {
     Q_OBJECT
 

@@ -83,11 +83,11 @@ ConditionalGroupNodeUI::ConditionalGroupNodeUI() :
 
     // port actions
 
-    addPortAction(tr("Edit Port 3"), editPort)
+    addPortAction(tr("Edit Port"), editPort)
             .setIcon(gt::gui::icon::rename())
             .setVisibilityMethod(toDataPort);
 
-    addPortAction(tr("Delete Port 3"), deletePort)
+    addPortAction(tr("Delete Port"), deletePort)
             .setIcon(gt::gui::icon::delete_())
             .setVisibilityMethod(toDataPort);
 }
@@ -99,7 +99,7 @@ ConditionalGroupNodeUI::displayIcon(Node const& node)  const
     {
         return gt::gui::icon::objectFreestyleComponent();
     }
-    return NodeUI::displayIcon(node);
+    return GraphUI::displayIcon(node);
 }
 
 void
