@@ -59,12 +59,6 @@ public:
      */
     static NodeDataFactory& instance();
 
-    static bool isListType(QStringView view);
-
-    static QString innerType(QStringView view);
-
-    static QString listType(QStringView view);
-
     /**
      * @brief Overload, convenience function. Registers the data type `T` in
      * the factory. `T` must be derived fo the common data type class.
@@ -116,6 +110,29 @@ public:
     TypeName typeName(TypeId const& typeId) const noexcept;
 
     /**
+     * @brief Returns whether the given type id is a list type
+     * @param typeIdView Type id to check
+     * @return Returns true if the given type id is a list type
+     */
+    bool isListType(QStringView typeIdView) const;
+
+    /**
+     * @brief Returns the inner type in case the given type id is a list type
+     * @param typeIdView List type id
+     * @return Returns inner type. Returns empty string if the given type has
+     * no inner type
+     */
+    TypeId innerType(QStringView typeIdView) const;
+
+    /**
+     * @brief Returns the given type as a list type
+     * @param typeIdView Type id
+     * @return Returns the corresponding list type. Returns empty string if
+     * the type id has no valid list type
+     */
+    TypeId listType(QStringView typeIdView) const;
+
+    /**
      * @brief Returns whether a conversion function exists between two types.
      * Some conversions may only be allowed in one directional.
      * @param from Source type
@@ -147,13 +164,19 @@ public:
     NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to) const;
 
     /**
-     * @brief Instantiates a new node of type className.
-     * @param className Class to instantiate
-     * @return Object pointer (may be null)
+     * @brief Instantiates a data type for the given type id
+     * @param typeId Type to instantiate
+     * @return New type (may be null)
      */
     std::unique_ptr<NodeData> makeData(TypeId const& typeId) const noexcept;
 
-    std::unique_ptr<NodeData> makeListData(TypeId const& typeId) const noexcept;
+    /**
+     * @brief Instantiates a new list data type for the given type id
+     * @param typeId Type to instantiate a list type from. Must no be a list
+     * type.
+     * @return New list type (may be null)
+     */
+    std::unique_ptr<BaseListData> makeListData(TypeId const& typeId) const noexcept;
 
 protected:
 

@@ -88,18 +88,19 @@ DynamicNode::DynamicNode(QString const& modelName,
             inputTypes.reserve(inputTypes.size() * 2);
             outputTypes.reserve(outputTypes.size() * 2);
 
-            utils::transform_if(inputTypes, [](TypeId const& type){
-                    return !NodeDataFactory::isListType(type) && type != typeId<InvalidData>();
+            auto& factory = NodeDataFactory::instance();
+            utils::transform_if(inputTypes, [&factory](TypeId const& type){
+                    return !factory.isListType(type) && type != typeId<InvalidData>();
                 },
-                std::back_inserter(inputTypes), [](TypeId const& type){
-                    return NodeDataFactory::listType(type);
+                std::back_inserter(inputTypes), [&factory](TypeId const& type){
+                    return factory.listType(type);
                 });
 
-            utils::transform_if(outputTypes, [](TypeId const& type){
-                    return !NodeDataFactory::isListType(type) && type != typeId<InvalidData>();
+            utils::transform_if(outputTypes, [&factory](TypeId const& type){
+                    return !factory.isListType(type) && type != typeId<InvalidData>();
                 },
-                std::back_inserter(outputTypes), [](TypeId const& type){
-                    return NodeDataFactory::listType(type);
+                std::back_inserter(outputTypes), [&factory](TypeId const& type){
+                    return factory.listType(type);
                 });
         }
 
@@ -171,13 +172,13 @@ DynamicNode::DynamicNode(QString const& modelName,
 
 DynamicNode::~DynamicNode() = default;
 
-QStringList
+QStringList const&
 DynamicNode::inputWhitelist() const
 {
     return pimpl->inputWhitelist;
 }
 
-QStringList
+QStringList const&
 DynamicNode::outputWhitelist() const
 {
     return pimpl->outputWhitelist;
@@ -362,6 +363,7 @@ DynamicNode::onPortChanged(PortId portId)
 
     GtPropertyStructContainer& dynamicPorts = this->dynamicPorts(type);
 
+    // port may not have been added to port entry yet
     size_t idx = portIdx - offset(type);
     if ((type == PortType::In ? pimpl->unsyncedInPorts : pimpl->unsyncedOutPorts) > 0) return;
 

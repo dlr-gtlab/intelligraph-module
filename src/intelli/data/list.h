@@ -23,6 +23,10 @@
 namespace intelli
 {
 
+/**
+ * @brief Interface class for list types, able to access individual indicies
+ * of a list type.
+ */
 class GT_INTELLI_EXPORT BaseListData : public NodeData
 {
     Q_OBJECT
@@ -67,7 +71,9 @@ protected:
     virtual NodeDataPtr getAt(size_t idx) const = 0;
 };
 
-
+/**
+ * @brief Generic list data class able to hold any node data ptr
+ */
 class GT_INTELLI_EXPORT ListData : public BaseListData
 {
     Q_OBJECT

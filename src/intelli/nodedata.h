@@ -21,6 +21,7 @@
 namespace intelli
 {
 
+class InvalidData;
 class BaseListData;
 
 /**
@@ -122,9 +123,17 @@ using list_type_t = typename list_type<T>::type;
 template <typename T>
 using list = list_type<T>;
 
+// helper to check if T is list_type<U>
+template<typename T, typename = void>
+struct is_wraper_list_type : std::false_type {};
+template<typename T>
+struct is_wraper_list_type<T, std::void_t<typename T::type>> : std::is_base_of<NodeData, typename T::type> {};
+
 /// returns whether a type T is a list type
-template <typename T>
-struct is_list_type : std::is_base_of<BaseListData, T> {};
+template<typename T>
+struct is_list_type : std::disjunction<
+                                std::is_base_of<BaseListData, T>,
+                                is_wraper_list_type<T>> {};
 
 /// returns the inner type T of a a list type
 template <typename T>
@@ -156,6 +165,7 @@ template <typename T,
 inline QString listTypeId()
 {
     static_assert(!is_list_type<T>::value, "`T` must not be a list type!");
+    static_assert(!std::is_same<T, InvalidData>::value, "Cannot use `intelli::InvalidData` as list type!");
     return QStringLiteral("#list#") + typeId<T>();
 }
 
@@ -163,6 +173,8 @@ template <typename U,
           typename T = inner_type_t<U>>
 inline QString typeId()
 {
+    static_assert(std::is_base_of<NodeData, T>::value, "T must be derived of `intelli::NodeData`");
+    static_assert(!std::is_same<T, InvalidData>::value, "Cannot use `intelli::InvalidData` as list type!");
     return listTypeId<T>();
 }
 

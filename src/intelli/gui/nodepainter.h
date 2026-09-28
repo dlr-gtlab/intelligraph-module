@@ -39,10 +39,11 @@ class GT_INTELLI_EXPORT NodePainter
 {
 public:
 
-    using NodePort = NodePort;
-
-    using PortInfo [[deprecated("Use NodePort")]] = NodePort;
-    using PortData [[deprecated("Use NodePort")]] = NodePort;
+    using PortInfo [[deprecated("Use NodePort")]] = intelli::NodePort;
+    using NodePort  = intelli::NodePort;
+    using PortType  = intelli::PortType;
+    using PortIndex = intelli::PortIndex;
+    using PortId    = intelli::PortId;
 
     /// Flags to tell the painter the state of the port
     enum RenderFlag : uint
