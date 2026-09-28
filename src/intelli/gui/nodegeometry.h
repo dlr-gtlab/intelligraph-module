@@ -23,6 +23,7 @@ class QGraphicsWidget;
 namespace intelli
 {
 
+class NodePort;
 class Node;
 class NodeUIData;
 class NodeGraphicsObject;
@@ -46,6 +47,8 @@ class NodeGraphicsObject;
 class GT_INTELLI_EXPORT NodeGeometry
 {
 public:
+
+    using NodePort = NodePort;
 
     friend class NodeGraphicsObject;
 
@@ -82,6 +85,14 @@ public:
      * @return Vertical spacing
      */
     int vspacing() const;
+
+    /**
+     * @brief Display text of the given port. Depens on the caption or the
+     * typeId the port is set to
+     * @param port Port
+     * @return Display text
+     */
+    QString portDisplayText(NodePort const& port) const;
 
     /**
      * @brief Returns whether the node should draw a display icon.
