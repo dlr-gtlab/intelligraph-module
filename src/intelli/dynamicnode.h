@@ -55,9 +55,17 @@ public:
         NoDefaultListTypes = 1 << 5
     };
 
-    QStringList inputWhitelist() const;
+    /**
+     * @brief Returns the whitelist used for the input ports
+     * @return Whitelist for the input ports.
+     */
+    QStringList const& inputWhitelist() const;
 
-    QStringList outputWhitelist() const;
+    /**
+     * @brief Returns the whitelist used for the output ports
+     * @return Whitelist for the output ports.
+     */
+    QStringList const& outputWhitelist() const;
 
     /**
      * @brief Getter for the node option used

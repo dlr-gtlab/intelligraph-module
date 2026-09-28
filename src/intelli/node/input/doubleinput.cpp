@@ -58,7 +58,6 @@ DoubleInputNode::setValue(double value)
     if (m_value.getVal() != value)
     {
         m_value = value;
-//        emit triggerNodeEvaluation();
     }
 }
 

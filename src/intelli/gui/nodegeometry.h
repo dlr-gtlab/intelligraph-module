@@ -48,9 +48,12 @@ class GT_INTELLI_EXPORT NodeGeometry
 {
 public:
 
-    using NodePort = NodePort;
-
     friend class NodeGraphicsObject;
+
+    using NodePort  = intelli::NodePort;
+    using PortType  = intelli::PortType;
+    using PortIndex = intelli::PortIndex;
+    using PortId    = intelli::PortId;
 
     /**
      * @brief Constructor.

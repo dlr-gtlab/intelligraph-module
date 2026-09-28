@@ -113,33 +113,32 @@ static StyleData& styleInstance()
 QColor
 StyleData::ConnectionData::typeColor(TypeId const& typeId) const
 {
-    if (NodeDataFactory::isListType(typeId))
+    auto const rawTypeColor = [this](const TypeId& typeId){
+        if (typeId.isEmpty() || !useCustomTypeColors)
+        {
+            return defaultOutline;
+        }
+
+        auto iter = customTypeColors.find(typeId);
+        if (iter != customTypeColors.end())
+        {
+            return *iter;
+        }
+
+        if (!generateMissingTypeColors)
+        {
+            return defaultOutline;
+        }
+
+        return generateTypeColor(typeId);
+    };
+
+    auto& factory = NodeDataFactory::instance();
+    if (factory.isListType(typeId))
     {
-        return rawTypeColor(NodeDataFactory::innerType(typeId));
+        return rawTypeColor(factory.innerType(typeId));
     }
     return rawTypeColor(typeId);
-}
-
-QColor
-StyleData::ConnectionData::rawTypeColor(const TypeId& typeId) const
-{
-    if (typeId.isEmpty() || !useCustomTypeColors)
-    {
-        return defaultOutline;
-    }
-
-    auto iter = customTypeColors.find(typeId);
-    if (iter != customTypeColors.end())
-    {
-        return *iter;
-    }
-
-    if (!generateMissingTypeColors)
-    {
-        return defaultOutline;
-    }
-
-    return generateTypeColor(typeId);
 }
 
 void
