@@ -10,7 +10,8 @@
 #ifndef GT_INTELLI_NODEPAINTER_H
 #define GT_INTELLI_NODEPAINTER_H
 
-#include <intelli/node.h>
+#include <intelli/globals.h>
+#include <intelli/exports.h>
 
 class QColor;
 class QPainter;
@@ -19,6 +20,8 @@ class QGraphicsItem;
 namespace intelli
 {
 
+class NodePort;
+class Node;
 class NodeUIData;
 class NodeGeometry;
 class NodeGraphicsObject;
@@ -36,8 +39,10 @@ class GT_INTELLI_EXPORT NodePainter
 {
 public:
 
-    using PortInfo = Node::PortInfo;
-    using PortData [[deprecated("Use PortInfo")]] = PortInfo;
+    using NodePort = NodePort;
+
+    using PortInfo [[deprecated("Use NodePort")]] = NodePort;
+    using PortData [[deprecated("Use NodePort")]] = NodePort;
 
     /// Flags to tell the painter the state of the port
     enum RenderFlag : uint
@@ -119,7 +124,7 @@ public:
      * @param painter Painter to configure
      */
     void applyPortConfig(QPainter& painter,
-                         PortInfo const& port,
+                         NodePort const& port,
                          PortType type,
                          PortIndex idx,
                          uint flags) const;
@@ -140,6 +145,14 @@ public:
      * @return Whether a display icon should be drawn
      */
     QIcon displayIcon() const;
+
+    /**
+     * @brief Display text of the given port. Depens on the caption or the
+     * typeId the port is set to
+     * @param port Port
+     * @return Display text
+     */
+    QString portDisplayText(NodePort const& port) const;
 
     /**
      * @brief Draws the background and outline of the node. Will also call
@@ -166,7 +179,7 @@ public:
      * node render flags by defualt.
      */
     virtual void drawPort(QPainter& painter,
-                          PortInfo const& port,
+                          NodePort const& port,
                           PortType type,
                           PortIndex idx,
                           uint flags) const;
@@ -181,7 +194,7 @@ public:
      * node render flags by defualt.
      */
     virtual void drawPortCaption(QPainter& painter,
-                                 PortInfo const& port,
+                                 NodePort const& port,
                                  PortType type,
                                  PortIndex idx,
                                  uint flags) const;

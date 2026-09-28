@@ -36,6 +36,8 @@
 
 #include "intelli/node/stringbuilder.h"
 
+#include "intelli/node/general/tolist.h"
+
 #include "intelli/node/input/boolinput.h"
 #include "intelli/node/input/doubleinput.h"
 #include "intelli/node/input/fileinput.h"
@@ -82,7 +84,6 @@ intelli::registerDefaultDataTypes()
         // register data type
         GT_INTELLI_REGISTER_DATA(ByteArrayData);
         GT_INTELLI_REGISTER_DATA(StringData);
-        GT_INTELLI_REGISTER_DATA(StringListData);
         GT_INTELLI_REGISTER_DATA(DoubleData);
         GT_INTELLI_REGISTER_DATA(IntData);
         GT_INTELLI_REGISTER_DATA(BoolData);
@@ -111,15 +112,16 @@ intelli::registerDefaultNodes()
         gtTrace().verbose() << QObject::tr("Registering default nodes...");
 
         char const* hidden = "";
-        QString catOther = QObject::tr("Other");
-        QString catNumber = QObject::tr("Number");
-        QString catLogic = QObject::tr("Logic");
-        QString catObject = QObject::tr("Object");
-        QString catString = QObject::tr("String");
-        QString catInput = QObject::tr("Input");
+        QString catOther   = QObject::tr("Other");
+        QString catNumber  = QObject::tr("Number");
+        QString catLogic   = QObject::tr("Logic");
+        QString catObject  = QObject::tr("Object");
+        QString catString  = QObject::tr("String");
+        QString catInput   = QObject::tr("Input");
         QString catProcess = QObject::tr("Process");
-        QString catFile = QObject::tr("File");
+        QString catFile    = QObject::tr("File");
         QString catDisplay = QObject::tr("Display");
+        QString catGeneral = QObject::tr("General");
 
         GT_INTELLI_REGISTER_NODE(DummyNode, hidden);
 
@@ -158,6 +160,8 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(StringSelectionNode, catString);
 
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
+
+        GT_INTELLI_REGISTER_NODE(ToListNode, catGeneral);
 
 #ifdef GT_INTELLI_EXPERIMENTAL_NODES
         GT_INTELLI_REGISTER_NODE(BinaryDisplayNode, catDisplay);
