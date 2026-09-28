@@ -1,3 +1,11 @@
+/*
+ * GTlab IntelliGraph
+ *
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2026 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
+ */
 
 #include "intelli/node/general/tolist.h"
 #include "gt_qtutilities.h"
@@ -17,7 +25,9 @@ ToListNode::ToListNode() :
     auto updatePort = [this](PortType type, PortIndex idx){
         TypeId const typeId = (type != PortType::Out) ?
             m_selectedTypeId.get() :
-            NodeDataFactory::listType(m_selectedTypeId.get());
+            NodeDataFactory::instance().listType(m_selectedTypeId.get());
+
+        if (typeId.isEmpty()) return;
 
         PortId const portId = this->portId(type, idx);
         NodePort* port = this->port(portId);
@@ -39,7 +49,7 @@ ToListNode::ToListNode() :
     };
 
     auto updatePorts = [this, updatePort](){
-        if (NodeDataFactory::isListType(m_selectedTypeId.get())) return;
+        if (NodeDataFactory::instance().isListType(m_selectedTypeId.get())) return;
 
         PortIndex idx{0};
         for (NodePort const& _ : ports(PortType::In))
@@ -68,9 +78,8 @@ ToListNode::ToListNode() :
 void
 ToListNode::eval()
 {
-    NonConstPtr<BaseListData> outputData = gt::unique_qobject_cast<BaseListData>(
-        NodeDataFactory::instance().makeListData(m_selectedTypeId)
-    );
+    NonConstPtr<BaseListData> outputData =
+        NodeDataFactory::instance().makeListData(m_selectedTypeId);
     if (!outputData) return evalFailed();
 
     for (NodePort const& port : ports(PortType::In))

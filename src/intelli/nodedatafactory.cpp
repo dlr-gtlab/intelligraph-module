@@ -8,8 +8,8 @@
  */
 
 #include "intelli/nodedatafactory.h"
-#include "intelli/nodedata.h"
 #include "intelli/data/invalid.h"
+#include "intelli/data/stringlist.h"
 
 #include "gt_utilities.h"
 #include "gt_qtutilities.h"
@@ -70,24 +70,6 @@ NodeDataFactory::instance()
 {
     static NodeDataFactory self;
     return self;
-}
-
-bool
-NodeDataFactory::isListType(QStringView view)
-{
-    return view.startsWith(QStringLiteral("#list#"));
-}
-
-QString
-NodeDataFactory::innerType(QStringView view)
-{
-    return (isListType(view)) ? view.mid(6).toString() : QString{};
-}
-
-QString
-NodeDataFactory::listType(QStringView view)
-{
-    return QStringLiteral("#list#") + view.toString();
 }
 
 bool
@@ -210,6 +192,39 @@ NodeDataFactory::typeName(TypeId const& typeId) const noexcept
 }
 
 bool
+NodeDataFactory::isListType(QStringView typeIdView) const
+{
+    // for seamless backwards compatibility
+    if (typeIdView == GT_CLASSNAME(StringListData))
+    {
+        gtLogOnce(Warning).verbose()
+            << QObject::tr("use intelli::typeId<T>() instead of GT_CLASSNAME(T)!");
+        return true;
+    }
+    return typeIdView.startsWith(QStringLiteral("#list#"));
+}
+
+TypeId
+NodeDataFactory::innerType(QStringView typeIdView) const
+{
+    // for seamless backwards compatibility
+    if (typeIdView == GT_CLASSNAME(StringListData))
+    {
+        return typeId<StringData>();
+    }
+    return (isListType(typeIdView)) ? typeIdView.mid(6).toString() : QString{};
+}
+
+TypeId
+NodeDataFactory::listType(QStringView typeIdView) const
+{
+    if (typeIdView == typeId<InvalidData>()) return {};
+    if (isListType(typeIdView)) return {};
+
+    return QStringLiteral("#list#") + typeIdView.toString();
+}
+
+bool
 NodeDataFactory::canConvert(TypeId const& from, TypeId const& to) const
 {
     return from == to ||
@@ -250,7 +265,7 @@ NodeDataFactory::makeData(TypeId const& typeId) const noexcept
     return gt::unique_qobject_cast<NodeData>(std::move(obj));
 }
 
-std::unique_ptr<NodeData>
+std::unique_ptr<BaseListData>
 NodeDataFactory::makeListData(TypeId const& typeId) const noexcept
 {
     auto entry = pimpl->listTypes.constFind(listType(typeId));
@@ -262,6 +277,6 @@ NodeDataFactory::makeListData(TypeId const& typeId) const noexcept
     std::unique_ptr<QObject> rawListData{entry.value().newInstance()};
     if (!rawListData) return nullptr;
 
-    return gt::unique_qobject_cast<NodeData>(std::move(rawListData));
+    return gt::unique_qobject_cast<BaseListData>(std::move(rawListData));
 }
 

@@ -30,7 +30,7 @@ enum NodeFlag : size_t
     /// Indicates node caption should be hidden
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
-    // TODO: remove
+    // TODO: remove once executor is reworked
     Unique      = 1 << 2,
     /// Indicates that the widget should be placed so that its size can be maximized
     MaximizeWidget = 1 << 4,
@@ -161,14 +161,16 @@ GT_INTELLI_EXPORT NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to)
 
 /**
  * @brief Convenience function that performs a conversion of `data` into the
- * desired type `T`. If
- * no conversion exists or the conversion fails, a nullptr is returned.
+ * desired type `T`. If no conversion exists or the conversion fails, a
+ * nullptr is returned.
  * @param data Data to convert
  * @return Converted data of type `T` (may be null)
  */
 template <typename T>
 std::shared_ptr<T const> convert(NodeDataPtr const& data)
 {
+    if (auto converted = qobject_pointer_cast<T const>(data)) return converted;
+
     return std::static_pointer_cast<T const>(
         convert(data, T::staticMetaObject.className())
     );
@@ -196,7 +198,6 @@ public:
     using NodeFlags     = intelli::NodeFlags;
     using NodeEvalMode  = intelli::NodeEvalMode;
     using NodeEvalState = intelli::NodeEvalState;
-    // TODO: rename to simply Port?
     using NodePort      = intelli::NodePort;
     using PortInfo      = intelli::NodePort;
     using PortType      = intelli::PortType;
@@ -214,6 +215,8 @@ public:
     using WidgetFactoryNoArgs =
         std::function<std::unique_ptr<QWidget>()>;
 
+    ~Node();
+
     /// enum for defining whether a port is optional
     enum PortPolicy
     {
@@ -221,16 +224,16 @@ public:
         Optional,
         DefaultPortPolicy = Optional
     };
-    
+
     /**
      * @brief Helper method to create a `PortInfo` struct given a `TypeId`.
      * @param typeId TypeId
      * @return `PortInfo` struct
      */
-
-    static NodePort makePort(TypeId typeId) { return intelli::makePort(std::move(typeId)); }
-
-    ~Node();
+    static inline NodePort makePort(TypeId typeId)
+    {
+        return intelli::makePort(std::move(typeId));
+    }
 
     /**
      * @brief Setter for the automatic node evaluation flag
