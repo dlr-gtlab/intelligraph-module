@@ -12,6 +12,7 @@
 
 #include "intelli/nodedatafactory.h"
 #include "intelli/node.h"
+#include "intelli/utilities.h"
 #include "intelli/gui/nodeuidata.h"
 #include "intelli/gui/style.h"
 #include "intelli/gui/graphics/nodeobject.h"
@@ -50,6 +51,16 @@ int
 NodeGeometry::vspacing() const
 {
     return 0.5 * hspacing();
+}
+
+QString
+NodeGeometry::portDisplayText(const NodePort& port) const
+{
+    if (!port.captionVisible) return QString{};
+
+    return port.caption.isEmpty() ?
+               NodeDataFactory::instance().typeName(port.typeId) :
+               port.caption;
 }
 
 bool
@@ -337,8 +348,6 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
     }
 
     // height
-    QFontMetrics metrcis(style.bodyFont);
-    int offset = metrcis.height() * 0.6;
     int height = body.topLeft().y() + vspacing() + style.portRadius;
 
     // height of all ports before
@@ -350,8 +359,11 @@ NodeGeometry::portRect(PortType type, PortIndex idx) const
         bool visible = port->visible;
         if (!visible) continue;
 
-        height += 2 * offset + vspacing();
+        height += 4 * vspacing();
     }
+
+    auto* port = node.port(node.portId(type, idx));
+    assert(port);
 
     return QRectF{
         QPointF(width, height),
@@ -383,11 +395,7 @@ NodeGeometry::portCaptionRect(PortType type, PortIndex idx) const
     int width = 0;
     if (port->captionVisible)
     {
-        auto& factory = NodeDataFactory::instance();
-
-        width += metrics.horizontalAdvance(port->caption.isEmpty() ?
-                                               factory.typeName(port->typeId) :
-                                               port->caption);
+        width += metrics.horizontalAdvance(portDisplayText(*port));
         width += (width & 1);
     }
 

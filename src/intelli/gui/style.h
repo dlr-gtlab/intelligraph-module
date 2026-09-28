@@ -154,6 +154,7 @@ struct StyleData
          * @return Color of the type id
          */
         GT_INTELLI_EXPORT QColor typeColor(TypeId const& typeId) const;
+        QColor rawTypeColor(TypeId const& typeId) const;
 
     private:
         alignas(8) uint8_t __padding[16];
