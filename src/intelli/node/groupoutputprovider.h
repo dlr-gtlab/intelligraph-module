@@ -10,12 +10,13 @@
 #ifndef GT_INTELLI_GROUPOUTPUTPROVIDER_H
 #define GT_INTELLI_GROUPOUTPUTPROVIDER_H
 
+#include <intelli/exports.h>
 #include <intelli/node/abstractgroupprovider.h>
 
 namespace intelli
 {
 
-class GroupOutputProvider : public AbstractGroupProvider<PortType::Out>
+class GT_INTELLI_EXPORT GroupOutputProvider : public AbstractGroupProvider<PortType::Out>
 {
     Q_OBJECT
 
