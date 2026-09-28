@@ -15,6 +15,7 @@
 
 namespace
 {
+
 static const int meta_math_operation = [](){
     // DetachedExecutor connects signals by signature strings that can vary.
     // Register common spellings to keep queued connections valid.
@@ -25,9 +26,8 @@ static const int meta_math_operation = [](){
     return qRegisterMetaType<intelli::NumberMathNode::MathOperation>(
         "intelli::NumberMathNode::MathOperation");
 }();
+
 } // namespace
-
-
 
 using namespace intelli;
 
@@ -50,9 +50,11 @@ NumberMathNode::NumberMathNode() :
     updatePortCaptions();
 
     connect(&m_operation, &GtAbstractProperty::changed,
-            this, &Node::triggerNodeEvaluation);
-    connect(&m_operation, &GtAbstractProperty::changed,
-            this, [this]() { emit operationChanged(m_operation); });
+            this, [this]() {
+        updatePortCaptions();
+        emit operationChanged(m_operation);
+        emit triggerNodeEvaluation();
+    });
 }
 
 NumberMathNode::MathOperation

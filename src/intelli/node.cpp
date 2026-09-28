@@ -568,7 +568,7 @@ public:
         if (!hadValue)
         {
             Node::NodeEvent e{
-                Node::DataInterfaceAvailableEvent
+                DataInterfaceAvailableEvent
             };
             node.nodeEvent(&e);
         }

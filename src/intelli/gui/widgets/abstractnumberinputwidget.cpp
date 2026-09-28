@@ -263,22 +263,13 @@ AbstractNumberInputWidget::setRange(QVariant const& valueV,
                                     QVariant const& minV,
                                     QVariant const& maxV)
 {
-    {
-        QSignalBlocker blocker(*this);
-
-        applyRange(valueV, minV, maxV);
-    }
-
     if (inputMode() != LineEditUnbound)
     {
         m_low->setVisible(this->useBounds());
         m_high->setVisible(this->useBounds());
     }
 
-    emit minChanged();
-    emit maxChanged();
-    emit valueChanged();
-    emit valueComitted();
+    applyRange(valueV, minV, maxV);
 }
 
 QString

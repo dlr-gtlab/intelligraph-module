@@ -30,7 +30,7 @@ public:
 
     bool value() const;
 
-    void setValue(bool value);
+    Q_INVOKABLE void setValue(bool value);
 
 protected:
 

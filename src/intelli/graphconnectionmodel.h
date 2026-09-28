@@ -121,7 +121,7 @@ struct DefaultProxy
 };
 
 /**
- * @brief Helper struct to instantiates a begin and end iterator for a
+ * @brief Helper struct to instantiate a begin and end iterator for a
  * given range and installs the proxy object. Adds methods for accessing the
  * size of the range and allows reverting iterator directions if its supported
  * by proxy object.
