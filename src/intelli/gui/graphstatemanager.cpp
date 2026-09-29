@@ -38,8 +38,8 @@ GraphStateManager::GraphStateManager(Graph& graph, GraphView& view) :
 
     connect(m_view, &GraphView::sceneChanged,
             this, &GraphStateManager::onSceneChanged);
-
-    if (GraphScene* scene = m_view->nodeScene())
+    
+    if (GraphScene* scene = m_view->graphScene())
     {
         onSceneChanged(scene);
     }

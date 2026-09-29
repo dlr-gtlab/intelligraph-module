@@ -12,6 +12,7 @@
 
 #include <intelli/gui/portuiaction.h>
 #include <intelli/exports.h>
+#include <intelli/flags.h>
 
 #include <gt_objectui.h>
 
@@ -36,6 +37,10 @@ class GT_INTELLI_EXPORT NodeUI : public GtObjectUI
 
 public:
 
+    class ActionChainOperator;
+    class PortActionChainOperator;
+
+    /// pointer type for widget factory
     using QGraphicsWidgetPtr = std::unique_ptr<QGraphicsWidget>;
 
     /// central widget factory, see `NodeUI::centralWidgetFactory` for more
@@ -43,22 +48,48 @@ public:
     using WidgetFactoryFunction =
         std::function<std::unique_ptr<QGraphicsWidget> (Node& source, NodeGraphicsObject& object)>;
 
-    using CustomDeleteFunctor = std::function<bool (Node*)>;
-    using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
-
-    /// Option enum, can be used to deactive certain default actions
-    enum Option
-    {
-        NoOption = 0,
-        /// Deactivates all default actions
-        NoDefaultActions,
-        /// Deactivates the default port actions for dynamic nodes
-        NoDefaultPortActions,
-    };
-
+    /// forward action method for port action
     using PortActionFunction = typename PortUIAction::ActionMethod;
 
-    Q_INVOKABLE NodeUI(Option option = NoOption);
+    /// custom deleter signature
+    using CustomDeleteFunctor = std::function<bool (Node*)>;
+    /// function signature to check if deleter is applicable
+    using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
+
+    /// enum contaning the order priorities for the default node actions.
+    struct OrderPriority
+    {
+        enum Value : int
+        {
+            EvaluationAction = 0,
+            CustomAction = 5,
+            PortAction = 10,
+
+            BeforeEvaluationActions = EvaluationAction - 1,
+            AfterEvaluationActions = EvaluationAction + 1,
+
+            BeforeCustomActions = CustomAction - 1,
+            AfterCustomActions = CustomAction + 1,
+
+            BeforePortActions = PortAction - 1,
+            AfterPortActions = PortAction + 1,
+        };
+    };
+
+    /// Option enum, can be used to deactivate certain default actions
+    enum Option : unsigned
+    {
+        NoOption = 0,
+        NoDefaultNodeActions = 1 << 0,
+        NoDefaultPortActions = 1 << 1,
+        NoDefaultActions     = NoDefaultNodeActions | NoDefaultPortActions,
+        NoRenameOption       = 1 << 2,
+        NoDynamicPortActions = 1 << 3,
+        UserOption = 1 << 10,
+    };
+    using Options = UFlags<Option>;
+
+    Q_INVOKABLE NodeUI(Options options = NoOption);
     NodeUI(NodeUI const&) = delete;
     NodeUI(NodeUI&&) = delete;
     NodeUI& operator=(NodeUI const&) = delete;
@@ -94,6 +125,11 @@ public:
      */
     std::unique_ptr<NodeUIData> uiData(Node const& node) const;
 
+    /**
+     * @brief Returns the custom delete action for `node`
+     * @param node Node
+     * @return Delete function for `node`
+     */
     CustomDeleteFunctor customDeleteAction(Node const& node) const;
 
     /**
@@ -149,6 +185,22 @@ public:
     QStringList openWith(GtObject* obj) override;
 
     /**
+     * @brief Returns the list of all port actions registered
+     * @return
+     */
+    QList<PortUIAction> const& portActions() const;
+
+    /**
+     * @brief Opens the Edit-User-Variables-Dialog for the root graph `obj`.
+     * @param obj Object must be root graph.
+     */
+    static void editUserVariables(GtObject* obj);
+
+protected:
+
+    /** HELPERS FOR VERFIY AND VISBILITY FOR NODE ACTIONS **/
+
+    /**
      * @brief Casts the object to a node object. Can be used for validation
      * @param obj Object to cast
      * @return node object (may be null)
@@ -174,12 +226,20 @@ public:
     static DynamicNode* toDynamicNode(GtObject* obj);
     static DynamicNode const* toConstDynamicNode(GtObject const* obj);
 
-    /**
-     * @brief Returns whether this object is a root graph
-     * @param obj Object to check
-     * @return is object a root graph
-     */
-    static bool isRootGraph(GtObject const* obj);
+    /// chain operator to check if object is a node
+    static ActionChainOperator const isNode;
+    /// chain operator to check if object is a graph
+    static ActionChainOperator const isGraph;
+    /// chain operator to check if object is a root graph
+    static ActionChainOperator const isRootGraph;
+    /// chain operator to check if object is a dynamic node
+    static ActionChainOperator const isDynamicNode;
+    /// chain operator to check if node is active
+    static ActionChainOperator const isNodeActive;
+    template <typename T>
+    static ActionChainOperator isDerivedOf();
+
+    /** NODE ACTIONS **/
 
     /**
      * @brief Prompts the user to rename the node
@@ -193,53 +253,7 @@ public:
      */
     static void executeNode(GtObject* obj);
 
-    /**
-     * @brief Adds an input port to a dynamic node
-     * @param obj
-     */
-    static void addInPort(GtObject* obj);
-
-    /**
-     * @brief Adds an output port to a dynamic node
-     * @param obj
-     */
-    static void addOutPort(GtObject* obj);
-
     /** PORT ACTIONS **/
-
-    /**
-     * @brief Deletes a dynamic port
-     * @param obj
-     * @param type
-     * @param idx
-     */
-    static void deleteDynamicPort(Node* obj, PortType type, PortIndex idx);
-
-    static bool isInputPort(Node* obj, PortType type, PortIndex idx);
-    static bool isOutputPort(Node* obj, PortType type, PortIndex idx);
-
-    /**
-     * @brief Similar to `toDynamicNode`. Can be used for validating port
-     * actions
-     * @param obj Object to cast
-     * @return node object (may be null)
-     */
-    static bool isDynamicPort(Node* obj, PortType type, PortIndex idx);
-    static bool isDynamicNode(Node* obj, PortType type, PortIndex idx);
-
-    /**
-     * @brief Opens the Edit-User-Variables-Dialog for the root graph `obj`.
-     * @param obj Object must be root graph.
-     */
-    static void editUserVariables(GtObject* obj);
-
-    /**
-     * @brief Returns the list of all port actions registered
-     * @return
-     */
-    QList<PortUIAction> const& portActions() const;
-
-protected:
 
     /**
      * @brief Adds a port action and returns a reference to the added action,
@@ -251,6 +265,47 @@ protected:
      */
     PortUIAction& addPortAction(QString const& actionText,
                                 PortActionFunction actionMethod);
+
+    /**
+     * @brief Adds a separator for the port context menu
+     */
+    void addPortSeparator();
+
+    /**
+     * @brief Prompts the user and adds an input port to the given dynamic node
+     * @param obj
+     */
+    static void addDynamicInPort(GtObject* obj);
+
+    /**
+     * @brief Prompts the user and adds an output port to the given dynamic node
+     * @param obj
+     */
+    static void addDynamicOutPort(GtObject* obj);
+
+    /**
+     * @brief Prompts the user to edit the given dynamic port
+     * @param obj
+     * @param type
+     * @param idx
+     */
+    static void editDynamicPort(Node* obj, PortType type, PortIndex idx);
+
+    /**
+     * @brief Deletes a dynamic port
+     * @param obj
+     * @param type
+     * @param idx
+     */
+    static void deleteDynamicPort(Node* obj, PortType type, PortIndex idx);
+
+    /** HELPERS FOR VERFIY AND VISBILITY ON PORT ACTIONS **/
+
+    static PortActionChainOperator const isInputPort;
+    static PortActionChainOperator const isOutputPort;
+    static PortActionChainOperator const isDynamicPort;
+
+    /** DDELETERS **/
 
     /**
      * @brief Allows to register a dedicated delete action that will be called
@@ -278,15 +333,7 @@ private:
     struct Impl;
     std::unique_ptr<Impl> pimpl;
 
-    /**
-     * @brief Clears the intelli graph (i.e. removes all nodes and connections)
-     * @param obj Intelli graph to clear
-     */
-    static void clearGraphNode(GtObject* obj);
-
     static bool deleteDummyNode(Node* node);
-
-    static void duplicateGraph(GtObject* obj);
 
     /**
      * @brief Checks if node can be renamed (i.e. node should be valid but not unique)
@@ -309,6 +356,121 @@ private:
      */
     static void setActive(GtObject* obj, bool state);
 };
+
+class NodeUI::ActionChainOperator
+{
+    using NodeActionVerifyMethod = std::function<bool(GtObject*)>;
+
+    NodeActionVerifyMethod f;
+
+public:
+
+    ActionChainOperator(NodeActionVerifyMethod m) : f(std::move(m)) {}
+
+    inline NodeActionVerifyMethod& get() & { return f; }
+    inline NodeActionVerifyMethod&& get() && { return std::move(f); }
+    inline NodeActionVerifyMethod const& get() const& { return f; }
+
+    /// AND operator
+    template <typename Functor>
+    inline ActionChainOperator operator&&(Functor fOther) const
+    {
+        return {
+            [a = f, b = std::move(fOther)](GtObject* obj){
+                return a(obj) && b(obj);
+            }
+        };
+    }
+    /// OR operator
+    template <typename Functor>
+    inline ActionChainOperator operator||(Functor fOther) const
+    {
+        return {
+            [a = f, b = std::move(fOther)](GtObject* obj){
+                return a(obj) || b(obj);
+            }
+        };
+    }
+    /// NOT operator
+    inline ActionChainOperator operator!() const
+    {
+        return {
+            [a = f](GtObject* obj){
+                return !a(obj);
+            }
+        };
+    }
+    /// call operator
+    inline bool operator()(GtObject* obj) const { return f(obj); }
+    /// cast operator
+    inline operator NodeActionVerifyMethod() const& { return f; }
+    inline operator NodeActionVerifyMethod&&() && { return std::move(f); }
+};
+
+class NodeUI::PortActionChainOperator
+{
+    using PortActionVerifyMethod = std::function<bool(Node*, PortType, PortIndex)>;
+
+    PortActionVerifyMethod f;
+
+public:
+
+    PortActionChainOperator(PortActionVerifyMethod m) : f(std::move(m)) {}
+
+    inline PortActionVerifyMethod& get() & { return f; }
+    inline PortActionVerifyMethod&& get() && { return std::move(f); }
+    inline PortActionVerifyMethod const& get() const& { return f; }
+
+    /// AND operator
+    template <typename Functor>
+    inline PortActionChainOperator operator&&(Functor fOther) const
+    {
+        return {
+                [a = f, b = std::move(fOther)](Node* obj, PortType type, PortIndex idx){
+                return a(obj, type, idx) && b(obj, type, idx);
+            }
+        };
+    }
+    /// OR operator
+    template <typename Functor>
+    inline PortActionChainOperator operator||(Functor fOther) const
+    {
+        return {
+                [a = f, b = std::move(fOther)](Node* obj, PortType type, PortIndex idx){
+                return a(obj, type, idx) || b(obj, type, idx);
+            }
+        };
+    }
+    /// NOT operator
+    inline PortActionChainOperator operator!() const
+    {
+        return {
+                [a = f](Node* obj, PortType type, PortIndex idx){
+                return !a(obj, type, idx);
+            }
+        };
+    }
+    /// call operator
+    inline bool operator()(Node* obj, PortType type, PortIndex idx) const
+    {
+        return f(obj, type, idx);
+    }
+
+    /// cast operator
+    inline operator PortActionVerifyMethod() const& { return f; }
+    inline operator PortActionVerifyMethod&&() && { return std::move(f); }
+};
+
+template<typename T>
+NodeUI::ActionChainOperator
+NodeUI::isDerivedOf()
+{
+    return {
+        [](GtObject* object){
+            return qobject_cast<T>(object);
+        }
+    };
+}
 
 } // namespace intelli
 

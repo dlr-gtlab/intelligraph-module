@@ -12,26 +12,12 @@
 #include <intelli/graph.h>
 #include <intelli/nodedatafactory.h>
 #include <intelli/utilities.h>
-#include <intelli/node/groupinputprovider.h>
-#include <intelli/node/groupoutputprovider.h>
+#include <intelli/node/graphinputprovider.h>
+#include <intelli/node/graphoutputprovider.h>
 #include <intelli/gui/guidata.h>
 #include <intelli/gui/commentgroup.h>
 #include <intelli/gui/commentdata.h>
 #include <intelli/private/utils.h>
-
-template<typename T>
-using has_gt_log_call_operator =
-    std::enable_if_t<
-        std::is_same<
-            decltype(std::declval<T const&>()
-                         .operator()(std::declval<gt::log::Stream&>())),
-            gt::log::Stream&>::value>;
-
-template <typename T, typename = has_gt_log_call_operator<T>>
-inline gt::log::Stream& operator<<(gt::log::Stream& s, T const& f)
-{
-    return f(s);
-}
 
 template <typename T>
 struct Expected
