@@ -7,35 +7,33 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef GT_INTELLI_TOLISTNODE_H
-#define GT_INTELLI_TOLISTNODE_H
+#ifndef GT_INTELLI_LISTGETINDEXNODE_H
+#define GT_INTELLI_LISTGETINDEXNODE_H
 
-#include <intelli/dynamicnode.h>
-
+#include <intelli/node.h>
 #include <intelli/property/stringselection.h>
 
 namespace intelli
 {
 
-class ToListNode : public DynamicNode
+class ListGetIndexNode : public Node
 {
     Q_OBJECT
+
 public:
 
-    Q_INVOKABLE ToListNode();
+    Q_INVOKABLE ListGetIndexNode();
 
 protected:
 
     void eval() override;
 
-    PortId insertPort(PortOption option, PortType type, PortInfo port, int idx = -1) override;
-
 private:
 
-    PortId m_out;
+    PortId m_in, m_index, m_out;
     StringSelectionProperty m_typeId;
 };
 
 } // namespace intelli
 
-#endif // GT_INTELLI_TOLISTNODE_H
+#endif // GT_INTELLI_LISTGETINDEXNODE_H
