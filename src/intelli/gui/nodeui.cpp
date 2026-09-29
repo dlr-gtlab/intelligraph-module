@@ -13,7 +13,7 @@
 #include "intelli/node.h"
 #include "intelli/graph.h"
 #include "intelli/graphdatamodel.h"
-#include "intelli/graphexecutor.h"
+#include "intelli/graphexecmodel.h"
 
 #include "intelli/node/dummy.h"
 #include "intelli/node/input/graphuservariablesinput.h"
@@ -524,7 +524,7 @@ NodeUI::executeNode(GtObject* obj)
     auto* graph = toGraph(node->parentObject());
     if (!graph) return;
 
-#if 1
+#if 0
     auto* executor = graph->findDirectChild<GraphExecutor*>();
     if (!executor) return;
 

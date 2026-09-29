@@ -33,6 +33,7 @@ set(PUBLIC_HEADERS
     intelli/core.h
     intelli/dynamicnode.h
     intelli/exports.h
+    intelli/flags.h
     intelli/future.h
     intelli/globals.h
     intelli/graph.h
@@ -70,6 +71,7 @@ set(PUBLIC_HEADERS
     intelli/gui/connectionpainter.h
     intelli/gui/icons.h
     intelli/gui/graphscenedata.h
+    intelli/gui/graphui.h
     intelli/gui/nodegeometry.h
     intelli/gui/nodepainter.h
     intelli/gui/nodeui.h
@@ -80,6 +82,7 @@ set(PUBLIC_HEADERS
     intelli/gui/graphics/graphicsobject.h
     intelli/gui/graphics/interactableobject.h
     intelli/gui/graphics/nodeobject.h
+    intelli/gui/widgets/porteditdialog.h
     intelli/node/abstractgroupprovider.h
     intelli/node/groupinputprovider.h
     intelli/node/groupoutputprovider.h
@@ -255,6 +258,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphscenemanager.cpp
     intelli/gui/graphsceneselector.cpp
     intelli/gui/graphstatemanager.cpp
+    intelli/gui/graphui.cpp
     intelli/gui/graphview.cpp
     intelli/gui/graphviewoverlay.cpp
     intelli/gui/guidata.cpp
@@ -291,6 +295,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/gui/graphics/nodeevalstateobject.cpp
     intelli/gui/graphics/nodeobject.cpp
     intelli/gui/graphics/popupitem.cpp
+    intelli/gui/widgets/porteditdialog.cpp
     intelli/gui/widgets/abstractnumberinputwidget.cpp
     intelli/gui/widgets/doubleinputwidget.cpp
     intelli/gui/widgets/editablelabel.cpp

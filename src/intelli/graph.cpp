@@ -10,7 +10,7 @@
 #include "intelli/graph.h"
 #include "intelli/graphdatamodel.h"
 #include "intelli/graphexecmodel.h"
-#include "intelli/graphexecutor.h"
+//#include "intelli/graphexecutor.h"
 #include "intelli/graphuservariables.h"
 #include "intelli/private/graph_impl.h"
 
@@ -21,7 +21,6 @@
 #include "intelli/node/groupinputprovider.h"
 #include "intelli/node/groupoutputprovider.h"
 #include "intelli/gui/guidata.h"
-#include "gt_eventloop.h"
 
 #include <gt_qtutilities.h>
 #include <gt_algorithms.h>
@@ -1275,6 +1274,8 @@ Graph::resetGlobalConnectionModel()
 void
 Graph::eval()
 {
+    return evalFailed();
+
     auto* interface = exec::nodeDataInterface(*this);
     if (qobject_cast<GraphExecutionModel*>(interface))
     {
@@ -1303,7 +1304,7 @@ Graph::eval()
         return evalFailed();
     }
 
-    auto* dataModel = qobject_cast<GraphDataModel*>(exec::nodeDataInterface(*this));
+    auto* dataModel = exec::nodeDataInterface(*this);
     if (!dataModel)
     {
         gtError() << makeError() << tr("data model not found!");
@@ -1333,20 +1334,15 @@ Graph::eval()
         }
     }
 
-    GtEventLoop loop{std::chrono::seconds{10}};
-
     // evaluate branch
-    GraphExecutor executor{*this, *dataModel};
+    GraphExecutionModel executor{*this};
 
-    loop.connectSuccess(&executor, &GraphExecutor::targetNodesEvaluated);
-    loop.connectAbort(this, &Graph::graphAboutToBeDeleted);
-    // TODO: evaluate branch only
+    auto future = executor.evaluateGraph(*this);
 
-    auto future = executor.evaluateGraph();
-    // TODO: cannot block main thread here
-
-    if (loop.exec() != GtEventLoop::Success)
+    if (future.wait(std::chrono::seconds{60}))
     {
+        gtError() << makeError()
+                  << tr("timeout!");
         return evalFailed();
     }
 
