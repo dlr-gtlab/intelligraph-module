@@ -11,12 +11,14 @@
 
 using namespace intelli;
 
-StringListData::StringListData(QStringList val) :
+StringListData::StringListData(QStringList values) :
     BaseListData(QStringLiteral("stringlist")),
-    m_data(std::move(val))
-{
+    m_data(std::move(values))
+{ }
 
-}
+StringListData::StringListData(View<QString> view) :
+    StringListData(QStringList{view.begin(), view.end()})
+{ }
 
 QStringList
 intelli::StringListData::value() const
