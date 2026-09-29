@@ -62,6 +62,7 @@ set(PUBLIC_HEADERS
     intelli/data/object.h
     intelli/data/string.h
     intelli/data/stringlist.h
+    intelli/exec/dummynodedatamodel.h
     intelli/gui/connectiongeometry.h
     intelli/gui/connectionpainter.h
     intelli/gui/icons.h
@@ -77,6 +78,9 @@ set(PUBLIC_HEADERS
     intelli/gui/graphics/graphicsobject.h
     intelli/gui/graphics/interactableobject.h
     intelli/gui/graphics/nodeobject.h
+    intelli/node/abstractgroupprovider.h
+    intelli/node/groupinputprovider.h
+    intelli/node/groupoutputprovider.h
     intelli/node/input/boolinput.h
     intelli/node/input/doubleinput.h
     intelli/node/input/intinput.h
@@ -103,8 +107,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/package.h
     intelli/calculators/graphexeccalculator.h
     intelli/exec/detachedexecutor.h
-    intelli/exec/dummynodedatamodel.h
-    intelli/node/abstractgroupprovider.h
     intelli/node/binarydisplay.h intelli/node/binarydisplay.cpp
     intelli/node/booldisplay.h
     intelli/node/dummy.h
@@ -113,8 +115,6 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/filewriter.h
     intelli/node/finddirectchild.h
     intelli/node/genericcalculatorexec.h
-    intelli/node/groupinputprovider.h
-    intelli/node/groupoutputprovider.h
     intelli/node/logicoperation.h
     intelli/node/numberdisplay.h
     intelli/node/numbermath.h

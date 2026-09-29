@@ -10,6 +10,7 @@
 #ifndef GT_INTELLI_DUMMYNODEDATAMODEL_H
 #define GT_INTELLI_DUMMYNODEDATAMODEL_H
 
+#include <intelli/exports.h>
 #include <intelli/nodedatainterface.h>
 #include <intelli/graphdatamodel.h>
 #include <intelli/graphuservariables.h>
@@ -25,7 +26,7 @@ class Node;
  * @brief The DummyDataModel class.
  * Helper class to set and access data of a single node
  */
-class DummyNodeDataModel : public NodeDataInterface
+class GT_INTELLI_EXPORT DummyNodeDataModel : public NodeDataInterface
 {
 public:
 
