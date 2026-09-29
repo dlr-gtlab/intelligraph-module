@@ -367,6 +367,9 @@ private:
     std::unique_ptr<Impl> pimpl;
     std::atomic_bool m_isShuttingDown{false};
 
+    Impl* impl();
+    Impl const* impl() const;
+
     void beginReset();
 
     void endReset();

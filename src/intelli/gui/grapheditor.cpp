@@ -89,6 +89,7 @@ GraphEditor::setData(GtObject* obj)
     }
     model->setScope(gtApp->currentProject());
     model->reset();
+    graph->initInputData();
 
     // setup state manager
     GraphStateManager::make(*graph, *m_view);

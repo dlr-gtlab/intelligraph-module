@@ -201,21 +201,26 @@ Node::isValid() const
 void
 Node::setNodeFlag(NodeFlag flag, bool enable)
 {
-    switch (flag)
+    if (flag & Deprecated && toolTip().isEmpty())
     {
-    case Deprecated:
-        if (toolTip().isEmpty())
-        {
-            setToolTip(tr("This node is deprecated and will "
-                          "be removed in a future relase."));
-        }
-        break;
-    default:
-        break;
+        setToolTip(tr("This node is deprecated and will "
+                      "be removed in a future relase."));
     }
 
     enable ? pimpl->flags |= flag :
              pimpl->flags &= ~flag;
+}
+
+void
+Node::setNodeFlags(NodeFlags flags)
+{
+    if (flags.testFlag(Deprecated) && toolTip().isEmpty())
+    {
+        setToolTip(tr("This node is deprecated and will "
+                      "be removed in a future relase."));
+    }
+
+    pimpl->flags = flags;
 }
 
 void
@@ -582,6 +587,11 @@ public:
         if (evalMode == NodeEvalMode::NoEvaluationRequired) return true;
 
         size_t evalFlag = (size_t)node.nodeEvalMode();
+        if (evalFlag == (size_t)NodeEvalMode::Custom)
+        {
+            evaluateNode(node);
+            return true;
+        }
         if (evalFlag & IsDetachedMask)
         {
             return exec::detachedEvaluation(node);
@@ -657,14 +667,6 @@ intelli::exec::blockingEvaluation(Node& node, NodeDataInterface* model)
 
     auto cmd = model->nodeEvaluation(node.uuid());
     Q_UNUSED(cmd);
-
-    // cleanup routine
-    auto finally = gt::finally([&node](){
-        emit node.computingFinished();
-    });
-    Q_UNUSED(finally);
-
-    emit node.computingStarted();
 
     INode::evaluateNode(node);
 

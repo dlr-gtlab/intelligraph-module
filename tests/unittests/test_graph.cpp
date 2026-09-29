@@ -49,12 +49,12 @@ TEST(Graph, input_and_output_provider)
 
     GraphBuilder builder(graph);
     auto sub = builder.addGraph({}, {});
-    PortId inPort1  = sub.inNode.addOutPort(typeId<DoubleData>());
-    PortId inPort2  = sub.inNode.addOutPort(typeId<DoubleData>());
+    PortId inPort1  = sub.inNode.addPort(typeId<DoubleData>());
+    PortId inPort2  = sub.inNode.addPort(typeId<DoubleData>());
     EXPECT_TRUE(inPort1.isValid());
     EXPECT_TRUE(inPort2.isValid());
 
-    PortId outPort1 = sub.outNode.addInPort(typeId<DoubleData>());
+    PortId outPort1 = sub.outNode.addPort(typeId<DoubleData>());
     EXPECT_TRUE(outPort1.isValid());
 
     EXPECT_EQ(sub.inNode.ports( PortType::In).size(),
