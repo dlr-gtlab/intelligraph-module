@@ -10,22 +10,63 @@
 #define GT_INTELLI_STRINGLISTDATA_H
 
 #include <intelli/nodedata.h>
+#include <intelli/data/string.h>
+#include <intelli/data/list.h>
+
+#include <QStringList>
 
 namespace intelli
 {
-class GT_INTELLI_EXPORT StringListData : public NodeData
+
+class GT_INTELLI_EXPORT StringListData : public BaseListData
 {
     Q_OBJECT
+
+    using container_type = QStringList;
+
 public:
-    Q_INVOKABLE StringListData(QStringList val = {});
 
-    Q_INVOKABLE QStringList const& value() const;
+    using value_type      = gt::trait::value_t<container_type>;
+    using reference       = typename container_type::reference;
+    using const_reference = typename container_type::const_reference;
+    using iterator        = typename container_type::iterator;
+    using const_iterator  = typename container_type::const_iterator;
+    using size_type       = typename container_type::size_type;
 
+    Q_INVOKABLE StringListData(QStringList values = {});
+    StringListData(View<QString> view);
+
+    Q_INVOKABLE QStringList value() const;
+
+    [[deprecated("use the constructor or `append` instead")]]
     Q_INVOKABLE void setValue(QStringList val);
 
+    bool append(NodeDataPtr const& data) override;
+
+    size_type size() const { return m_data.size(); }
+    bool empty() const { return m_data.empty(); }
+
+    const_iterator begin() const { return m_data.begin(); }
+    const_iterator end() const { return m_data.end(); }
+
+    const_reference front() const { return m_data.front(); }
+    const_reference back() const { return m_data.back(); }
+
+    const_reference at(size_type idx) const { return m_data.at(idx); }
+
+protected:
+
+    size_t getLength() const override { return size(); }
+
+    NodeDataPtr getAt(size_t idx) const override { return makeNodeData<StringData>(at(idx)); }
+
 private:
+
     QStringList m_data;
 };
 
+GT_INTELLI_DECLARE_LIST_TYPE(StringData, StringListData);
+
 } // namespace intelli
+
 #endif // GT_INTELLI_STRINGLISTDATA_H

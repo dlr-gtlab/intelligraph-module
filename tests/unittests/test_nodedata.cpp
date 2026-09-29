@@ -13,6 +13,11 @@
 
 #include <intelli/nodedatafactory.h>
 #include <intelli/data/file.h>
+#include <intelli/data/list.h>
+#include <intelli/data/string.h>
+#include <intelli/data/stringlist.h>
+#include <intelli/data/double.h>
+#include <intelli/data/invalid.h>
 
 #include <QFileInfo>
 
@@ -60,7 +65,7 @@ TEST(NodeData, invoke_getter_QFileInfo)
     ASSERT_TRUE(res.has_value());
 }
 
-/// check that QFileInfo can be recieved using invoke method
+/// check that conversion for the same types is supported
 TEST(NodeData, convert_same_type)
 {
     auto doubleData = std::make_shared<DoubleData>(42);
@@ -76,6 +81,7 @@ TEST(NodeData, convert_same_type)
     EXPECT_TRUE(intelli::convert<DoubleData>(doubleDataPtr));
 }
 
+/// check that conversion for incompatible types fails
 TEST(NodeData, convert_incompatible_type)
 {
     auto doubleData = std::make_shared<DoubleData>(42);
@@ -93,6 +99,7 @@ TEST(NodeData, convert_incompatible_type)
     EXPECT_FALSE(intelli::convert<TestNodeData>(doubleDataPtr));
 }
 
+/// check that conversion for compatible types succeeds
 TEST(NodeData, convert_compatible_type)
 {
     auto doubleData = std::make_shared<DoubleData>(42);
@@ -119,4 +126,65 @@ TEST(NodeData, convert_compatible_type)
     ASSERT_TRUE(intelli::convert<TestNodeData>(doubleData));
 
     EXPECT_EQ(intelli::convert<TestNodeData>(doubleDataPtr)->myDouble(), doubleData->value());
+}
+
+/// check that conversion for incompatible types fails
+TEST(NodeData, list_types)
+{
+    static_assert(is_list_type<BaseListData>::value,     "expected list type");
+    static_assert(is_list_type<ListData>::value,         "expected list type");
+    static_assert(is_list_type<list<StringData>>::value, "expected list type");
+    static_assert(is_list_type<list<DoubleData>>::value, "expected list type");
+    static_assert(is_list_type<StringListData>::value,   "expected list type");
+    static_assert(!is_list_type<DoubleData>::value,      "expected non-list type");
+    static_assert(!is_list_type<StringData>::value,      "expected non-list type");
+
+    static_assert(std::is_same_v<inner_type_t<StringListData>, StringData>,
+                  "expected string type");
+    static_assert(std::is_same_v<inner_type_t<list<StringData>>, StringData>,
+                  "expected string type");
+    static_assert(std::is_same_v<inner_type_t<list<DoubleData>>, DoubleData>,
+                  "expected double type");
+    static_assert(std::is_same_v<inner_type_t<list<FileData>>, FileData>,
+                  "expected file type");
+
+    auto& factory = NodeDataFactory::instance();
+    // double
+    EXPECT_EQ(typeId<list<DoubleData>>(), listTypeId<DoubleData>());
+    EXPECT_TRUE(factory.isListType(typeId<list<DoubleData>>()));
+    EXPECT_FALSE(factory.isListType(typeId<DoubleData>()));
+    EXPECT_EQ(factory.innerType(typeId<list<DoubleData>>()), typeId<DoubleData>());
+    EXPECT_TRUE(factory.innerType(typeId<DoubleData>()).isEmpty());
+    EXPECT_TRUE(factory.listType(typeId<list<DoubleData>>()).isEmpty());
+    EXPECT_EQ(factory.listType(typeId<DoubleData>()), typeId<list<DoubleData>>());
+
+    // string
+    EXPECT_EQ(typeId<list<StringData>>(), listTypeId<StringData>());
+    EXPECT_EQ(typeId<list<StringData>>(), typeId<StringListData>());
+    EXPECT_TRUE(factory.isListType(typeId<list<StringData>>()));
+    EXPECT_FALSE(factory.isListType(typeId<StringData>()));
+    EXPECT_EQ(factory.innerType(typeId<list<StringData>>()), typeId<StringData>());
+    EXPECT_EQ(factory.innerType(typeId<StringListData>()), typeId<StringData>());
+    EXPECT_TRUE(factory.innerType(typeId<StringData>()).isEmpty());
+    EXPECT_TRUE(factory.listType(typeId<list<StringData>>()).isEmpty());
+    EXPECT_EQ(factory.listType(typeId<StringData>()), typeId<list<StringData>>());
+
+    // file
+    EXPECT_EQ(typeId<list<FileData>>(), listTypeId<FileData>());
+    EXPECT_TRUE(factory.isListType(typeId<list<FileData>>()));
+    EXPECT_FALSE(factory.isListType(typeId<FileData>()));
+    EXPECT_EQ(factory.innerType(typeId<list<FileData>>()), typeId<FileData>());
+    EXPECT_TRUE(factory.innerType(typeId<FileData>()).isEmpty());
+    EXPECT_TRUE(factory.listType(typeId<list<FileData>>()).isEmpty());
+    EXPECT_EQ(factory.listType(typeId<FileData>()), typeId<list<FileData>>());
+
+    // invalid node data
+    // cannot use typeId<list<InvalidData>>() -> produces compiler error
+    // cannot use listTypeId<InvalidData>()   -> produces compiler error
+    EXPECT_TRUE(factory.isListType(u"#list#intelli::InvalidData"));
+    EXPECT_FALSE(factory.isListType(typeId<InvalidData>()));
+    EXPECT_EQ(factory.innerType(u"#list#intelli::InvalidData"), typeId<InvalidData>());
+    EXPECT_TRUE(factory.innerType(typeId<InvalidData>()).isEmpty());
+    EXPECT_TRUE(factory.listType(u"#list#intelli::InvalidData").isEmpty());
+    EXPECT_TRUE(factory.listType(typeId<InvalidData>()).isEmpty());
 }

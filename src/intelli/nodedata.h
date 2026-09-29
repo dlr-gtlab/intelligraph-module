@@ -21,9 +21,13 @@
 namespace intelli
 {
 
+class InvalidData;
+class BaseListData;
+
 /**
  * @brief The NodeData class. Base class for all node data
  */
+// TODO: use QObject instead?
 class GT_INTELLI_EXPORT NodeData : public GtObject
 {
     Q_OBJECT
@@ -81,7 +85,7 @@ public:
                                        std::forward<Args>(args)...))
         {
             gtTraceId("IntelliGraph")
-                << tr("Invoking meber function '%1 %2(...)' failed!")
+                << tr("Invoking member function '%1 %2(...)' failed!")
                         .arg(rtypeName, methodName);
             return {};
         }
@@ -102,14 +106,92 @@ private:
     QString m_typeName;
 };
 
+
+template<typename T>
+using Ptr = std::shared_ptr<const T>;
+template<typename T>
+using NonConstPtr = std::shared_ptr<T>;
+
+using NodeDataPtr = Ptr<NodeData>;
+using NodeDataNonConstPtr = NonConstPtr<NodeData>;
+
+/// returns the corresponding list type for T
+template <typename T>
+struct list_type;
+template <typename T>
+using list_type_t = typename list_type<T>::type;
+template <typename T>
+using list = list_type<T>;
+
+/// returns the inner type T of a a list type
+template <typename T>
+struct inner_type { using type = void; };
+template <typename T>
+struct inner_type<list_type<T>> { using type = T; };
+template <typename T>
+using inner_type_t = typename inner_type<T>::type;
+
+/// returns whether a type T is a list type
+template<typename T>
+struct is_list_type
+    : std::disjunction<
+          // either derived of `BaseListData`
+          std::is_base_of<BaseListData, T>,
+          // or a wrapper type whose inner type is derived of `NodeData`
+          std::conjunction<
+              std::negation<std::is_same<inner_type_t<T>, void>>,
+              std::is_base_of<NodeData, inner_type_t<T>>
+          >
+      > {};
+
+/**
+ * @brief Returns the typeid of a node data class
+ * @return Type id
+ */
+template <typename T,
+          std::enable_if_t<!is_list_type<T>::value, bool> = true,
+          gt::trait::enable_if_base_of<NodeData, T> = true>
+inline QString typeId()
+{
+    static_assert(!is_list_type<T>::value, "`T` must not be a list type!");
+    return T::staticMetaObject.className();
+}
+
+/**
+ * @brief Returns the list-typeid of a node data class
+ * @return List type id
+ */
+template <typename T>
+inline QString listTypeId()
+{
+    static_assert(!is_list_type<T>::value, "`T` must not be a list type!");
+    static_assert(!std::is_same<T, InvalidData>::value, "Cannot use `intelli::InvalidData` as list type!");
+    return QStringLiteral("#list#") + typeId<T>();
+}
+
+/**
+ * @brief Overload. Returns the list-typeid of a list node data class
+ * @return List type id
+ */
+template <typename T,
+          std::enable_if_t<is_list_type<T>::value, bool> = true>
+inline QString typeId()
+{
+    using U = inner_type_t<T>;
+    static_assert(!std::is_same<U, void>::value,        "Could not interfer inner type of `T`!");
+    static_assert(!std::is_same<U, InvalidData>::value, "Cannot use `intelli::InvalidData` as list type!");
+    static_assert(std::is_base_of<NodeData, U>::value,  "T::type must be derived of `intelli::NodeData`!");
+    return listTypeId<U>();
+}
+
 /**
  * @brief Returns the typeid of a node data class
  * @return Typeid
  */
-template <typename T, gt::trait::enable_if_base_of<NodeData, T> = true>
-inline QString typeId()
+template <typename T, typename ...Args, gt::trait::enable_if_base_of<NodeData, T> = true>
+inline Ptr<T> makeNodeData(Args&&... args)
 {
-    return T::staticMetaObject.className();
+    return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 /**

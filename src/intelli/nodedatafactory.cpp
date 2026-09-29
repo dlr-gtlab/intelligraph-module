@@ -8,9 +8,10 @@
  */
 
 #include "intelli/nodedatafactory.h"
-#include "intelli/nodedata.h"
 #include "intelli/data/invalid.h"
+#include "intelli/data/stringlist.h"
 
+#include "gt_utilities.h"
 #include "gt_qtutilities.h"
 #include "gt_logging.h"
 
@@ -22,7 +23,9 @@ namespace
 /// Struct to store a conversion between two types.
 struct Conversion
 {
+    /// target type id
     QString targetTypeId;
+    /// conversion function
     ConversionFunction convert = nullptr;
 };
 
@@ -50,6 +53,8 @@ struct NodeDataFactory::Impl
     QHash<TypeId, TypeName> typeNames;
     /// registered conversion functions
     QMultiHash<TypeId, Conversion> conversions;
+    /// list-type-ids to type-names (class names)
+    QHash<TypeId, QMetaObject> listTypes;
 };
 
 NodeDataFactory::NodeDataFactory() :
@@ -68,7 +73,7 @@ NodeDataFactory::instance()
 }
 
 bool
-NodeDataFactory::registerData(const QMetaObject& meta) noexcept
+NodeDataFactory::registerData(QMetaObject const& meta) noexcept
 {
     QString className = meta.className();
 
@@ -121,6 +126,40 @@ NodeDataFactory::registerData(const QMetaObject& meta) noexcept
 }
 
 bool
+NodeDataFactory::registerListType(TypeId typeId, const QMetaObject& meta) noexcept
+{
+    QString className = meta.className();
+
+    gtTrace().verbose().nospace()
+        << "### Registering List Data '" << className << "' for '" << typeId << "'...";
+
+    if (!meta.inherits(&NodeData::staticMetaObject))
+    {
+        gtError()
+            << QObject::tr("Failed to register data list type '%1'! "
+                           "(not derived of intelli::NodeData)")
+                   .arg(className);
+        return false;
+    }
+
+    QString listTypeId = listType(typeId);
+    assert(isListType(listTypeId));
+
+    pimpl->listTypes.insert(listTypeId, meta);
+
+    // register conversion for invalid data type
+    registerConversion(listTypeId, intelli::typeId<InvalidData>(), [](NodeDataPtr const&){
+        return nullptr;
+    });
+    registerConversion(intelli::typeId<InvalidData>(), listTypeId, [](NodeDataPtr const&){
+        return nullptr;
+    });
+
+    return true;
+
+}
+
+bool
 NodeDataFactory::registerConversion(TypeId const& from,
                                     TypeId const& to,
                                     ConversionFunction conversion) noexcept
@@ -142,21 +181,54 @@ NodeDataFactory::validTypeIds() const
     return list;
 }
 
-TypeName const&
+TypeName
 NodeDataFactory::typeName(TypeId const& typeId) const noexcept
 {
-    static QString dummy{};
+    if (isListType(typeId)) return gt::quoted(typeName(innerType(typeId)), "list<", ">");
 
-    auto iter = pimpl->typeNames.find(typeId);
-    if (iter == pimpl->typeNames.end()) return dummy;
+    auto iter = pimpl->typeNames.constFind(typeId);
+    if (iter == pimpl->typeNames.cend()) return {};
     return iter.value();
+}
+
+bool
+NodeDataFactory::isListType(QStringView typeIdView) const
+{
+    // for seamless backwards compatibility
+    if (typeIdView == QString{GT_CLASSNAME(StringListData)})
+    {
+        gtLogOnce(Warning).verbose()
+            << QObject::tr("use intelli::typeId<T>() instead of GT_CLASSNAME(T)!");
+        return true;
+    }
+    return typeIdView.startsWith(QStringLiteral("#list#"));
+}
+
+TypeId
+NodeDataFactory::innerType(QStringView typeIdView) const
+{
+    // for seamless backwards compatibility
+    if (typeIdView == QString{GT_CLASSNAME(StringListData)})
+    {
+        return typeId<StringData>();
+    }
+    return (isListType(typeIdView)) ? typeIdView.mid(6).toString() : QString{};
+}
+
+TypeId
+NodeDataFactory::listType(QStringView typeIdView) const
+{
+    if (typeIdView == typeId<InvalidData>()) return {};
+    if (isListType(typeIdView)) return {};
+
+    return QStringLiteral("#list#") + typeIdView.toString();
 }
 
 bool
 NodeDataFactory::canConvert(TypeId const& from, TypeId const& to) const
 {
     return from == to ||
-           findConversion(pimpl->conversions, from, to) != pimpl->conversions.end();
+           findConversion(pimpl->conversions, from, to) != pimpl->conversions.cend();
 }
 
 bool
@@ -174,7 +246,7 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
     if (data->typeId() == to) return data;
 
     auto iter = findConversion(pimpl->conversions, from, to);
-    if (iter == pimpl->conversions.end()) return nullptr;
+    if (iter == pimpl->conversions.cend()) return nullptr;
 
     gtTrace().verbose()
         << QObject::tr("converting data from '%1' to '%2'...")
@@ -183,7 +255,7 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
     return iter->convert(data);
 }
 
-NodeDataPtr
+std::unique_ptr<NodeData>
 NodeDataFactory::makeData(TypeId const& typeId) const noexcept
 {
     std::unique_ptr<GtObject> obj{
@@ -191,5 +263,20 @@ NodeDataFactory::makeData(TypeId const& typeId) const noexcept
     };
 
     return gt::unique_qobject_cast<NodeData>(std::move(obj));
+}
+
+std::unique_ptr<BaseListData>
+NodeDataFactory::makeListData(TypeId const& typeId) const noexcept
+{
+    auto entry = pimpl->listTypes.constFind(listType(typeId));
+    if (entry == pimpl->listTypes.cend())
+    {
+        return nullptr;
+    }
+
+    std::unique_ptr<QObject> rawListData{entry.value().newInstance()};
+    if (!rawListData) return nullptr;
+
+    return gt::unique_qobject_cast<BaseListData>(std::move(rawListData));
 }
 

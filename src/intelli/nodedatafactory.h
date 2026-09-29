@@ -12,6 +12,8 @@
 
 #include <intelli/exports.h>
 #include <intelli/globals.h>
+#include <intelli/nodedata.h>
+#include <intelli/data/list.h>
 
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
@@ -58,24 +60,23 @@ public:
     static NodeDataFactory& instance();
 
     /**
-     * @brief Registers the meta object in the data factory. This is necessary
-     * to create a data type object dynamically or to retrieve the type id/
-     * type name of the registered data types at runtime.
-     * @param meta Meta object of the data type
-     * @return success
-     */
-    bool registerData(QMetaObject const& meta) noexcept;
-
-    /**
      * @brief Overload, convenience function. Registers the data type `T` in
      * the factory. `T` must be derived fo the common data type class.
      * @return success
      */
     template <typename T,
-             std::enable_if_t<std::is_base_of<NodeData, T>::value, bool> = true>
+             std::enable_if_t<std::is_base_of<NodeData, T>::value, bool> = true,
+             std::enable_if_t<!is_list_type<T>::value, bool> = false>
     static bool registerData()
     {
-        return instance().registerData(T::staticMetaObject);
+        bool success = instance().registerData(T::staticMetaObject);
+        if (success)
+        {
+            success = instance().registerListType(
+                typeId<T>(), list_type_t<T>::staticMetaObject
+            );
+        }
+        return success;
     }
 
     /**
@@ -106,7 +107,30 @@ public:
      * @param typeId Type id to retrieve the type name from
      * @return Type name. Empty if type id was not found
      */
-    TypeName const& typeName(TypeId const& typeId) const noexcept;
+    TypeName typeName(TypeId const& typeId) const noexcept;
+
+    /**
+     * @brief Returns whether the given type id is a list type
+     * @param typeIdView Type id to check
+     * @return Returns true if the given type id is a list type
+     */
+    bool isListType(QStringView typeIdView) const;
+
+    /**
+     * @brief Returns the inner type in case the given type id is a list type
+     * @param typeIdView List type id
+     * @return Returns inner type. Returns empty string if the given type has
+     * no inner type
+     */
+    TypeId innerType(QStringView typeIdView) const;
+
+    /**
+     * @brief Returns the given type as a list type
+     * @param typeIdView Type id
+     * @return Returns the corresponding list type. Returns empty string if
+     * the type id has no valid list type
+     */
+    TypeId listType(QStringView typeIdView) const;
 
     /**
      * @brief Returns whether a conversion function exists between two types.
@@ -140,11 +164,32 @@ public:
     NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to) const;
 
     /**
-     * @brief Instantiates a new node of type className.
-     * @param className Class to instantiate
-     * @return Object pointer (may be null)
+     * @brief Instantiates a data type for the given type id
+     * @param typeId Type to instantiate
+     * @return New type (may be null)
      */
-    NodeDataPtr makeData(TypeId const& typeId) const noexcept;
+    std::unique_ptr<NodeData> makeData(TypeId const& typeId) const noexcept;
+
+    /**
+     * @brief Instantiates a new list data type for the given type id
+     * @param typeId Type to instantiate a list type from. Must no be a list
+     * type.
+     * @return New list type (may be null)
+     */
+    std::unique_ptr<BaseListData> makeListData(TypeId const& typeId) const noexcept;
+
+protected:
+
+    /**
+     * @brief Registers the meta object in the data factory. This is necessary
+     * to create a data type object dynamically or to retrieve the type id/
+     * type name of the registered data types at runtime.
+     * @param meta Meta object of the data type
+     * @return success
+     */
+    bool registerData(QMetaObject const& meta) noexcept;
+
+    bool registerListType(TypeId typeId, QMetaObject const& meta) noexcept;
 
 private:
 
