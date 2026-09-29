@@ -20,11 +20,18 @@
 
 #include <QVector>
 
+/// Helper macro to register a list type for a scalar type
+#define GT_INTELLI_DECLARE_LIST_TYPE(SCALAR, LIST) \
+    template <> \
+    struct intelli::list_type<SCALAR> { using type = LIST; }; \
+    template <> \
+    struct intelli::inner_type<LIST> { using type = SCALAR; };
+
 namespace intelli
 {
 
 /**
- * @brief Interface class for list types, able to access individual indicies
+ * @brief Interface class for list types, enables to access individual indicies
  * of a list type.
  */
 class GT_INTELLI_EXPORT BaseListData : public NodeData

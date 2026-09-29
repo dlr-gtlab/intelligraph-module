@@ -169,6 +169,10 @@ inline QString listTypeId()
     return QStringLiteral("#list#") + typeId<T>();
 }
 
+/**
+ * @brief Overload. Returns the list-typeid of a list node data class
+ * @return List type id
+ */
 template <typename U,
           typename T = inner_type_t<U>>
 inline QString typeId()

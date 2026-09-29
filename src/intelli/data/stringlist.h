@@ -33,7 +33,8 @@ public:
     using const_iterator  = typename container_type::const_iterator;
     using size_type       = typename container_type::size_type;
 
-    Q_INVOKABLE StringListData(QStringList val = {});
+    Q_INVOKABLE StringListData(QStringList values = {});
+    StringListData(View<QString> view);
 
     Q_INVOKABLE QStringList value() const;
 
@@ -64,10 +65,7 @@ private:
     QStringList m_data;
 };
 
-template <>
-struct list_type<StringData> { using type = StringListData; };
-template <>
-struct inner_type<StringListData> { using type = StringData; };
+GT_INTELLI_DECLARE_LIST_TYPE(StringData, StringListData);
 
 } // namespace intelli
 
