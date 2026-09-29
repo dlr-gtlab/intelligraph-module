@@ -37,6 +37,8 @@
 #include "intelli/node/stringbuilder.h"
 
 #include "intelli/node/general/tolist.h"
+#include "intelli/node/general/listgetindex.h"
+#include "intelli/node/general/listgetsize.h"
 
 #include "intelli/node/input/boolinput.h"
 #include "intelli/node/input/doubleinput.h"
@@ -162,6 +164,8 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
 
         GT_INTELLI_REGISTER_NODE(ToListNode, catGeneral);
+        GT_INTELLI_REGISTER_NODE(ListGetIndexNode, catGeneral);
+        GT_INTELLI_REGISTER_NODE(ListGetSizeNode, catGeneral);
 
 #ifdef GT_INTELLI_EXPERIMENTAL_NODES
         GT_INTELLI_REGISTER_NODE(BinaryDisplayNode, catDisplay);

@@ -33,7 +33,7 @@ protected:
 private:
 
     PortId m_out;
-    StringSelectionProperty m_selectedTypeId;
+    StringSelectionProperty m_typeId;
 };
 
 } // namespace intelli
