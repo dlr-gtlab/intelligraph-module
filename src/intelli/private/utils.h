@@ -34,6 +34,21 @@ intelli::Profiler profiler__{__FUNCTION__}; (void)profiler__;
 #define GT_INTELLI_PROFILE_C(X) \
 intelli::Profiler profiler__{X}; (void)profiler__;
 
+template<typename T>
+using has_gt_log_call_operator =
+    std::enable_if_t<
+        std::is_same<
+            decltype(std::declval<T const&>()
+                         .operator()(std::declval<gt::log::Stream&>())),
+            gt::log::Stream&>::value,
+        bool>;
+
+template <typename T, has_gt_log_call_operator<T> = true>
+inline gt::log::Stream& operator<<(gt::log::Stream& s, T const& f)
+{
+    return f(s);
+}
+
 // TODO: For debugging purposes only
 inline gt::log::Stream&
 operator<<(gt::log::Stream& s, std::shared_ptr<intelli::NodeData const> const& data)

@@ -151,6 +151,9 @@ NodeGraphicsObject::NodeGraphicsObject(QGraphicsScene& scene,
     connect(this, &QGraphicsObject::opacityChanged, shadow, [this, shadow](){
         shadow->setVisible(!(opacity() < 1.0));
     });
+    connect(this, &QGraphicsObject::visibleChanged, shadow, [this, shadow](){
+        shadow->setVisible(this->isVisible());
+    });
 }
 
 NodeGraphicsObject::~NodeGraphicsObject() = default;
@@ -221,6 +224,7 @@ NodeGraphicsObject::deleteObject()
     {
         return uiData().customDeleteFunction()(&node());
     }
+    assert(this);
     delete pimpl->node;
     return true;
 }

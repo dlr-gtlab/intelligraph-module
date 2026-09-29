@@ -63,13 +63,13 @@ public:
     void drawBackground(QPainter& painter, uint flags = DefaultNodeRenderFlags) const override;
 
     void drawPortCaption(QPainter& painter,
-                         NodePort const& port,
+                         PortInfo const& port,
                          PortType type,
                          PortIndex idx,
                          uint flags) const override;
 
     void drawPort(QPainter& painter,
-                  NodePort const& port,
+                  PortInfo const& port,
                   PortType type,
                   PortIndex idx,
                   uint flags) const override;
