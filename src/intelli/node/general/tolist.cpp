@@ -8,7 +8,7 @@
  */
 
 #include "intelli/node/general/tolist.h"
-#include "gt_qtutilities.h"
+
 #include "intelli/data/double.h"
 #include "intelli/data/list.h"
 #include "intelli/nodedatafactory.h"
@@ -17,15 +17,15 @@ using namespace intelli;
 
 ToListNode::ToListNode() :
     DynamicNode("To List", DynamicInput | NoDefaultListTypes),
-    m_selectedTypeId("typeId",
-                     tr("Type Id"),
-                     NodeDataFactory::instance().validTypeIds(),
-                     intelli::typeId<DoubleData>())
+    m_typeId("typeId",
+             tr("Type Id"),
+             NodeDataFactory::instance().validTypeIds(),
+             typeId<DoubleData>())
 {
     auto updatePort = [this](PortType type, PortIndex idx){
         TypeId const typeId = (type != PortType::Out) ?
-            m_selectedTypeId.get() :
-            NodeDataFactory::instance().listType(m_selectedTypeId.get());
+                                  m_typeId.get() :
+                                  NodeDataFactory::instance().listType(m_typeId.get());
 
         if (typeId.isEmpty()) return;
 
@@ -49,7 +49,7 @@ ToListNode::ToListNode() :
     };
 
     auto updatePorts = [this, updatePort](){
-        if (NodeDataFactory::instance().isListType(m_selectedTypeId.get())) return;
+        if (NodeDataFactory::instance().isListType(m_typeId.get())) return;
 
         PortIndex idx{0};
         for (NodePort const& _ : ports(PortType::In))
@@ -66,20 +66,20 @@ ToListNode::ToListNode() :
         }
     };
 
-    connect(&m_selectedTypeId, &StringSelectionProperty::changed, this, updatePorts);
+    connect(&m_typeId, &StringSelectionProperty::changed, this, updatePorts);
     connect(this, &DynamicNode::portInserted, this, updatePort);
 
     m_out = addStaticOutPort(makePort(listTypeId<DoubleData>()).setCaption("out"));
     addStaticInPort(makePort(typeId<DoubleData>()));
 
-    registerProperty(m_selectedTypeId);
+    registerProperty(m_typeId);
 }
 
 void
 ToListNode::eval()
 {
     NonConstPtr<BaseListData> outputData =
-        NodeDataFactory::instance().makeListData(m_selectedTypeId);
+        NodeDataFactory::instance().makeListData(m_typeId);
     if (!outputData) return evalFailed();
 
     for (NodePort const& port : ports(PortType::In))
@@ -93,7 +93,7 @@ ToListNode::eval()
 Node::PortId
 ToListNode::insertPort(PortOption option, PortType type, PortInfo port, int idx)
 {
-    port.typeId = m_selectedTypeId;
+    port.typeId = m_typeId;
     return DynamicNode::insertPort(option, type, std::move(port), idx);
 }
 

@@ -195,7 +195,7 @@ bool
 NodeDataFactory::isListType(QStringView typeIdView) const
 {
     // for seamless backwards compatibility
-    if (typeIdView == GT_CLASSNAME(StringListData))
+    if (typeIdView == QString{GT_CLASSNAME(StringListData)})
     {
         gtLogOnce(Warning).verbose()
             << QObject::tr("use intelli::typeId<T>() instead of GT_CLASSNAME(T)!");
@@ -208,7 +208,7 @@ TypeId
 NodeDataFactory::innerType(QStringView typeIdView) const
 {
     // for seamless backwards compatibility
-    if (typeIdView == GT_CLASSNAME(StringListData))
+    if (typeIdView == QString{GT_CLASSNAME(StringListData)})
     {
         return typeId<StringData>();
     }

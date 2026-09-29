@@ -131,15 +131,22 @@ TEST(NodeData, convert_compatible_type)
 /// check that conversion for incompatible types fails
 TEST(NodeData, list_types)
 {
+    static_assert(is_list_type<BaseListData>::value,     "expected list type");
+    static_assert(is_list_type<ListData>::value,         "expected list type");
+    static_assert(is_list_type<list<StringData>>::value, "expected list type");
     static_assert(is_list_type<list<DoubleData>>::value, "expected list type");
-    static_assert(!is_list_type<DoubleData>::value, "expected non-list type");
-    static_assert(is_list_type<BaseListData>::value, "expected list type");
-    static_assert(is_list_type<ListData>::value, "expected list type");
-    static_assert(is_list_type<StringListData>::value, "expected list type");
-    static_assert(std::is_same_v<inner_type_t<StringListData>, StringData>, "expected string type");
-    static_assert(std::is_same_v<inner_type_t<list<StringData>>, StringData>, "expected string type");
-    static_assert(std::is_same_v<inner_type_t<list<DoubleData>>, DoubleData>, "expected double type");
-    static_assert(std::is_same_v<inner_type_t<list<FileData>>, FileData>, "expected file type");
+    static_assert(is_list_type<StringListData>::value,   "expected list type");
+    static_assert(!is_list_type<DoubleData>::value,      "expected non-list type");
+    static_assert(!is_list_type<StringData>::value,      "expected non-list type");
+
+    static_assert(std::is_same_v<inner_type_t<StringListData>, StringData>,
+                  "expected string type");
+    static_assert(std::is_same_v<inner_type_t<list<StringData>>, StringData>,
+                  "expected string type");
+    static_assert(std::is_same_v<inner_type_t<list<DoubleData>>, DoubleData>,
+                  "expected double type");
+    static_assert(std::is_same_v<inner_type_t<list<FileData>>, FileData>,
+                  "expected file type");
 
     auto& factory = NodeDataFactory::instance();
     // double
@@ -173,7 +180,7 @@ TEST(NodeData, list_types)
 
     // invalid node data
     // cannot use typeId<list<InvalidData>>() -> produces compiler error
-    // cannot use listTypeId<InvalidData>() -> produces compiler error
+    // cannot use listTypeId<InvalidData>()   -> produces compiler error
     EXPECT_TRUE(factory.isListType(u"#list#intelli::InvalidData"));
     EXPECT_FALSE(factory.isListType(typeId<InvalidData>()));
     EXPECT_EQ(factory.innerType(u"#list#intelli::InvalidData"), typeId<InvalidData>());
