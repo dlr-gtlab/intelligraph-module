@@ -123,25 +123,26 @@ using list_type_t = typename list_type<T>::type;
 template <typename T>
 using list = list_type<T>;
 
-// helper to check if T is list_type<U>
-template<typename T, typename = void>
-struct is_wraper_list_type : std::false_type {};
-template<typename T>
-struct is_wraper_list_type<T, std::void_t<typename T::type>> : std::is_base_of<NodeData, typename T::type> {};
-
-/// returns whether a type T is a list type
-template<typename T>
-struct is_list_type : std::disjunction<
-                                std::is_base_of<BaseListData, T>,
-                                is_wraper_list_type<T>> {};
-
 /// returns the inner type T of a a list type
 template <typename T>
-struct inner_type;
+struct inner_type { using type = void; };
 template <typename T>
 struct inner_type<list_type<T>> { using type = T; };
 template <typename T>
 using inner_type_t = typename inner_type<T>::type;
+
+/// returns whether a type T is a list type
+template<typename T>
+struct is_list_type
+    : std::disjunction<
+          // either derived of `BaseListData`
+          std::is_base_of<BaseListData, T>,
+          // or a wrapper type whose inner type is derived of `NodeData`
+          std::conjunction<
+              std::negation<std::is_same<inner_type_t<T>, void>>,
+              std::is_base_of<NodeData, inner_type_t<T>>
+          >
+      > {};
 
 /**
  * @brief Returns the typeid of a node data class
@@ -160,8 +161,7 @@ inline QString typeId()
  * @brief Returns the list-typeid of a node data class
  * @return List type id
  */
-template <typename T,
-          std::enable_if_t<!is_list_type<T>::value, bool> = true>
+template <typename T>
 inline QString listTypeId()
 {
     static_assert(!is_list_type<T>::value, "`T` must not be a list type!");
@@ -173,13 +173,15 @@ inline QString listTypeId()
  * @brief Overload. Returns the list-typeid of a list node data class
  * @return List type id
  */
-template <typename U,
-          typename T = inner_type_t<U>>
+template <typename T,
+          std::enable_if_t<is_list_type<T>::value, bool> = true>
 inline QString typeId()
 {
-    static_assert(std::is_base_of<NodeData, T>::value, "T must be derived of `intelli::NodeData`");
-    static_assert(!std::is_same<T, InvalidData>::value, "Cannot use `intelli::InvalidData` as list type!");
-    return listTypeId<T>();
+    using U = inner_type_t<T>;
+    static_assert(!std::is_same<U, void>::value,        "Could not interfer inner type of `T`!");
+    static_assert(!std::is_same<U, InvalidData>::value, "Cannot use `intelli::InvalidData` as list type!");
+    static_assert(std::is_base_of<NodeData, U>::value,  "T::type must be derived of `intelli::NodeData`!");
+    return listTypeId<U>();
 }
 
 /**
