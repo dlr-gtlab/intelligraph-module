@@ -9,9 +9,32 @@
 #define GT_INTELLI_FINDDIRECTCHILDNODEUI_H
 
 #include <intelli/gui/nodeui.h>
+#include <intelli/gui/widgets/finddirectchildwidget.h>
 
 namespace intelli
 {
+
+class FindDirectChildNode;
+class NodeGraphicsObject;
+
+class FindDirectChildNodeWidget : public FindDirectChildWidget
+{
+    Q_OBJECT
+
+public:
+
+    explicit FindDirectChildNodeWidget(FindDirectChildNode& node);
+
+    static NodeUI::QGraphicsWidgetPtr create(Node& source, NodeGraphicsObject& object);
+
+private slots:
+
+    void updateNameCompleterFromNode();
+
+private:
+
+    FindDirectChildNode* m_node{};
+};
 
 class FindDirectChildNodeUI : public NodeUI
 {

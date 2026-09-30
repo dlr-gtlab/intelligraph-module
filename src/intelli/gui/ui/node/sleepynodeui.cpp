@@ -24,7 +24,7 @@ SleepyNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<SleepyNode const*>(&n)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
+    return [this](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
         auto* node = qobject_cast<SleepyNode*>(&source);
         if (!node) return nullptr;
 

@@ -9,9 +9,36 @@
 #define GT_INTELLI_OBJECTINPUTNODEUI_H
 
 #include <intelli/gui/nodeui.h>
+#include <QWidget>
+
+class GtPropertyObjectLinkEditor;
 
 namespace intelli
 {
+
+class ObjectInputNode;
+class NodeGraphicsObject;
+
+class ObjectInputNodeWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+
+    explicit ObjectInputNodeWidget(ObjectInputNode& node, QWidget* parent = nullptr);
+
+    static NodeUI::QGraphicsWidgetPtr create(Node& source, NodeGraphicsObject& object);
+
+private slots:
+
+    void updateScope();
+    void updateText();
+
+private:
+
+    ObjectInputNode* m_node{};
+    GtPropertyObjectLinkEditor* m_editor{};
+};
 
 class ObjectInputNodeUI : public NodeUI
 {
