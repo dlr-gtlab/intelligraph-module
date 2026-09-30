@@ -30,6 +30,7 @@
 #include <intelli/gui/graphics/popupitem.h>
 #include <intelli/private/utils.h>
 #include <intelli/private/gui_utils.h>
+#include <intelli/private/graphselectionactionmenu.h>
 
 #include <gt_application.h>
 #include <gt_command.h>
@@ -47,6 +48,7 @@
 
 #include <QMenu>
 #include <QGraphicsItem>
+#include <QGraphicsView>
 #include <QGraphicsSceneMouseEvent>
 #include <QClipboard>
 #include <QApplication>
@@ -55,6 +57,7 @@
 #include <QWidgetAction>
 #include <QMenuBar>
 #include <QLineEdit>
+#include <QPointer>
 #include <QTreeWidget>
 #include <QHeaderView>
 
@@ -1158,13 +1161,27 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
     auto selected = Impl::findSelectedItems<InteractableGraphicsObject*>(*this);
     assert(!selected.empty());
 
+    QVector<ObjectUuid> selection;
+    std::transform(selected.begin(), selected.end(), std::back_inserter(selection),
+                   [](InteractableGraphicsObject* selectedObject) {
+        assert(selectedObject);
+        return selectedObject->objectUuid();
+    });
+
     auto selectedNodes =
         graphics_cast<NodeGraphicsObject*>(object) ?
             Impl::findItems<NodeGraphicsObject*>(*this, selected) :
             QVector<NodeGraphicsObject*>{};
 
     // create menu
-    QMenu menu;
+    auto const attachedViews = views();
+    QWidget* menuParent = attachedViews.isEmpty() ?
+                              QApplication::activeWindow() :
+                              attachedViews.front();
+    auto menu = detail::createGraphSelectionMenu(menuParent);
+    auto deleteMenu = gt::finally([menu]() {
+        if (menu) delete menu.data();
+    });
 
     bool someCollapsed = std::any_of(selected.begin(),
                                      selected.end(),
@@ -1174,11 +1191,11 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
                                        selected.end(),
                                        Impl::negate(Impl::isCollapsed));
 
-    QAction* collapseAction = menu.addAction(tr("Collapse selected Objects"));
+    QAction* collapseAction = menu->addAction(tr("Collapse selected Objects"));
     collapseAction->setIcon(gt::gui::icon::triangleUp());
     collapseAction->setVisible(someUncollapsed);
 
-    QAction* uncollapseAction = menu.addAction(tr("Uncollapse selected Objects"));
+    QAction* uncollapseAction = menu->addAction(tr("Uncollapse selected Objects"));
     uncollapseAction->setIcon(gt::gui::icon::triangleDown());
     uncollapseAction->setVisible(someCollapsed);
 
@@ -1190,19 +1207,27 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
                                     selectedNodes.end(),
                                     Impl::isDefaultDeletable);
 
-    QAction* ungroupAction = menu.addAction(tr("Expand Subgraph"));
+    QAction* ungroupAction = menu->addAction(tr("Expand Subgraph"));
     ungroupAction->setIcon(gt::gui::icon::stretch());
     ungroupAction->setEnabled(allDeletable);
     ungroupAction->setVisible(selectedGraphNode && selectedNodes.size() == 1);
 
-    QAction* groupAction = menu.addAction(tr("Group selected Nodes"));
+    QAction* groupAction = menu->addAction(tr("Group selected Nodes"));
     groupAction->setIcon(gt::gui::icon::select());
     groupAction->setEnabled(allDeletable);
     groupAction->setVisible(areNodesSelected);
 
-    menu.addSeparator();
+    QPointer<GraphScene> scenePointer = this;
+    if (!detail::addGraphSelectionActionsToMenu(
+            *menu, graph(), std::move(selection)) ||
+        !scenePointer || !menu)
+    {
+        return;
+    }
 
-    QAction* deleteAction = menu.addAction(tr("Delete selected Objects"));
+    menu->addSeparator();
+
+    QAction* deleteAction = menu->addAction(tr("Delete selected Objects"));
     deleteAction->setIcon(gt::gui::icon::delete_());
     deleteAction->setEnabled(allDeletable);
     deleteAction->setShortcut(QKeySequence::Delete);
@@ -1211,10 +1236,11 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
     if (selected.size() == 1)
     {
         deleteAction->setVisible(false);
-        selected.front()->setupContextMenu(menu);
+        selected.front()->setupContextMenu(*menu);
     }
 
-    QAction* triggered = menu.exec(QCursor::pos());
+    QAction* triggered = menu->exec(QCursor::pos());
+    if (!menu) return;
     if (triggered == deleteAction)
     {
         return deleteSelectedObjects();
