@@ -724,7 +724,7 @@ struct GraphExecutionModel::Impl
     propagateNodeEvalautionStatus(GraphExecutionModel& model, Graph* graph)
     {
         assert(graph);
-        if (graph == graph->rootGraph()) return;
+        if (graph == &model.graph()) return;
 
         auto item = Impl::findData(model, *graph, graph, graph->uuid());
         assert(item);
@@ -962,9 +962,9 @@ struct GraphExecutionModel::Impl
             assert(graph);
             findLeafNodes(*graph, targets);
 
-            // append the graph node itself
-            bool isRootGraph = model.pimpl->graph == graph;
-            if (!isRootGraph) targets.push_back(graphUuid);
+//            // append the graph node itself
+//            bool isRootGraph = model.pimpl->graph == graph;
+//            if (!isRootGraph) targets.push_back(graphUuid);
         }
 
         if (targets.empty()) return false;
@@ -1133,9 +1133,10 @@ struct GraphExecutionModel::Impl
         QVarLengthArray<NodeUuid, 10> targets;
         findLeafNodes(graph, targets);
 
-        // append the graph node itself
-        bool isRootGraph = model.pimpl->graph == &graph;
-        if (!isRootGraph) targets.push_back(graph.uuid());
+        // TODO: not needed anymore?
+//        // append the graph node itself
+//        bool isRootGraph = model.pimpl->graph == &graph;
+//        if (!isRootGraph) targets.push_back(graph.uuid());
 
         // evaluate pending nodes
         ExecFuture future{model};
@@ -1149,7 +1150,7 @@ struct GraphExecutionModel::Impl
             if (!model.pimpl->data.contains(nodeUuid))
             {
                 INTELLI_LOG_WARN(model)
-                    << QObject::tr("node not found!");
+                    << QObject::tr("-> node not found!");
                 // should make future fail
                 return ExecFuture{model};
             }

@@ -1241,8 +1241,6 @@ Graph::resetGlobalConnectionModel()
 void
 Graph::eval()
 {
-    return evalFailed();
-
     auto makeError = [this](){
         return gt::quoted(relativeNodePath(*this), "[", "] ") +
                tr("evaluation failed!");
@@ -1293,7 +1291,7 @@ Graph::eval()
 
     auto future = executor.evaluateGraph(*this);
 
-    if (future.wait(std::chrono::seconds{60}))
+    if (!future.wait(std::chrono::seconds{60}))
     {
         gtError() << makeError()
                   << tr("timeout!");

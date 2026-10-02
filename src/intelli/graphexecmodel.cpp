@@ -28,15 +28,6 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 {
     if (gtApp) pimpl->scope = gtApp->currentProject();
 
-    if (graph.parentGraph())
-    {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("graph %1 is not a root graph!")
-                         .arg(graph.objectName());
-        pimpl->modificationCount++; // deactivate this exec model
-    }
-
     if (auto* exec = graph.findDirectChild<GraphExecutionModel*>())
     if (exec != this)
     {
@@ -143,10 +134,10 @@ GraphExecutionModel::isShuttingDown() const
 GraphExecutionModel*
 GraphExecutionModel::accessExecModel(Graph& graph)
 {
-    auto* root = graph.rootGraph();
-    if (!root) return {};
+//    auto* root = graph.rootGraph();
+//    if (!root) return {};
 
-    return root->findDirectChild<GraphExecutionModel*>();
+    return graph.findDirectChild<GraphExecutionModel*>();
 }
 
 GraphExecutionModel const*
@@ -158,13 +149,10 @@ GraphExecutionModel::accessExecModel(const Graph& graph)
 GraphExecutionModel*
 GraphExecutionModel::make(Graph& graph)
 {
-    auto* root = &graph;
-    assert(root);
-
-    auto* model = accessExecModel(*root);
+    auto* model = accessExecModel(graph);
     if (!model)
     {
-        model = new GraphExecutionModel(*root);
+        model = new GraphExecutionModel(graph);
     }
     return model;
 }
@@ -219,7 +207,6 @@ GraphExecutionModel::setupConnections(Graph& graph)
             this, &GraphExecutionModel::onEndGraphModification,
             Qt::DirectConnection);
 }
-
 
 void
 GraphExecutionModel::reset()
