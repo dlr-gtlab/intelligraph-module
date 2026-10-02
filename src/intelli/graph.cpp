@@ -18,8 +18,8 @@
 #include "intelli/connectiongroup.h"
 #include "intelli/data/invalid.h"
 #include "intelli/node/dummy.h"
-#include "intelli/node/groupinputprovider.h"
-#include "intelli/node/groupoutputprovider.h"
+#include "intelli/node/graphinputprovider.h"
+#include "intelli/node/graphoutputprovider.h"
 #include "intelli/gui/guidata.h"
 
 #include <gt_qtutilities.h>
@@ -63,7 +63,7 @@ Graph::Graph(QString const& modelName, bool initProviders) :
         input->setId(nextId++);
         synchronizePorts(*input);
         appendNode(std::move(input), NodeIdPolicy::Keep);
-
+        
         auto output = std::make_unique<GraphOutputProvider>();
         output->setDefault(true);
         output->setUserHidden(!gtApp || !gtApp->devMode());
@@ -71,25 +71,12 @@ Graph::Graph(QString const& modelName, bool initProviders) :
         output->setId(nextId++);
         synchronizePorts(*output);
         appendNode(std::move(output), NodeIdPolicy::Keep);
-
-        // sync dynamic ports
-//        connect(this, &Node::portInserted,
-//                this, &Graph::onPortInserted,
-//                Qt::DirectConnection);
-//        connect(this, &Node::portChanged,
-//                this, &Graph::onPortChanged,
-//                Qt::DirectConnection);
-//        connect(this, &Node::portAboutToBeDeleted,
-//                this, &Graph::onPortDeleted,
-//                Qt::DirectConnection);
     }
 }
 
 Graph::Graph() :
     Graph(QStringLiteral("Graph"), true)
-{
-    pimpl->forwardInvalidation = true;
-}
+{ }
 
 Graph::~Graph()
 {
@@ -136,7 +123,6 @@ Graph::rootGraph() const
 {
     return const_cast<Graph*>(this)->rootGraph();
 }
-
 
 QList<Node*>
 Graph::nodes()
@@ -296,8 +282,7 @@ Graph::findNode(NodeId nodeId)
             << gt::log::nospace
             << utils::logIds(this)
             << "::findNode(" << nodeId << ")\n"
-            << "-> found node: " << utils::logIds(iter->node) << "\n"
-            << "-> invalid node id: '" << iter->node->id() << "'";
+            << "-> node not found";
         return nullptr;
     }
     if (iter->node->id() != nodeId)
@@ -658,11 +643,18 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
         mergeUserVariables(*graph);
     }
 
+    NodeUuid const& nodeUuid = node->uuid();
+
+    if (node->isDefault())
+    {
+        assert(!pimpl->defaultNodes.contains(node));
+        pimpl->defaultNodes[node] = nodeUuid;
+    }
+
     // register node in local model
     pimpl->local.insert(node->id(), node);
 
     // register node in global model if not present already (avoid overwrite)
-    NodeUuid const& nodeUuid = node->uuid();
     if (!pimpl->global->contains(nodeUuid)) pimpl->global->insert(nodeUuid, node);
 
     // setup connections
@@ -687,13 +679,6 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
     connect(node, &Node::nodeAboutToBeDeleted,
             this, Impl::NodeDeleted(this),
             Qt::DirectConnection);
-
-//    if (pimpl->forwardInvalidation)
-//    {
-//        connect(node, &Node::triggerNodeEvaluation,
-//                this, &Graph::childNodeInvalidated,
-//                Qt::DirectConnection);
-//    }
 
     // notify
     emit nodeAppended(node);
@@ -782,40 +767,6 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
     assert(conUuid.isValid());
 
     appendGlobalConnection(guard, conUuid);
-
-//    // forwards inputs of graph node to subgraph
-//    if (auto* graph = qobject_cast<Graph*>(&targetNode))
-//    if (graph->metaObject()->className() == GT_CLASSNAME(Graph))
-//    {
-//        auto* inputProvider = graph->inputProvider();
-//        assert(inputProvider);
-
-//        conUuid.inNodeId = inputProvider->uuid();
-//        conUuid.inPort   = GroupInputProvider::virtualPortId(conId.inPort);
-
-//        appendGlobalConnection(guard, conUuid);
-//    }
-
-//    // forwards outputs of subgraph to graph node
-//    if (auto* output = qobject_cast<GroupOutputProvider*>(&targetNode))
-//    if (output->parent()->metaObject()->className() == GT_CLASSNAME(Graph))
-//    {
-//        NodeUuid const& graphUuid = uuid();
-
-//        // graph is being restored (memento diff)
-//        if (!pimpl->global->contains(graphUuid))
-//        {
-//            assert(isBeingModified());
-//            pimpl->global->insert(graphUuid, this);
-//        }
-
-//        conUuid.outNodeId = output->uuid();
-//        conUuid.outPort   = GroupOutputProvider::virtualPortId(conUuid.inPort);
-//        conUuid.inNodeId  = graphUuid;
-//        conUuid.inPort    = conUuid.outPort;
-
-//        appendGlobalConnection(nullptr, std::move(conUuid));
-//    }
 }
 
 void
@@ -1106,13 +1057,43 @@ Graph::restoreNode(Node* node)
         }
 #endif
         // TODO: this should be fixed with #1370 (GTlab Core)
+        // issue arises because provider nodes are added in the constructor, their
+        // uuid changes once the initial memento is applied. Thus, the connection
+        // model is outdated
         if (pimpl->global->node(node->uuid()) != node)
         {
-            pimpl->resetAfterMerge = true;
-            gtError().verbose()
+            assert(pimpl->defaultNodes.contains(node));
+            assert(pimpl->global->node(node->uuid()) == nullptr);
+
+            if (!pimpl->defaultNodes.contains(node))
+            {
+                gtError().verbose()
+                    << utils::logIds(*this)
+                    << tr("Node '%1' changed uuid but node was not found in cache! (uuid: %2)")
+                           .arg(relativeNodePath(*node), node->uuid());
+                return;
+            }
+
+            NodeUuid const& oldUuid = pimpl->defaultNodes[node];
+
+            auto iter = pimpl->global->find(oldUuid);
+            if (iter == pimpl->global->end())
+            {
+                gtError().verbose()
+                    << utils::logIds(*this)
+                    << tr("Node '%1' changed uuid, cannot find entry for old uuid (old: %2, now: %3")
+                           .arg(relativeNodePath(*node), oldUuid, node->uuid());
+                return;
+            }
+
+            gtTrace().verbose()
                 << utils::logIds(*this)
-                << tr("Node '%1' changed uuid, need to reset model! (Uuid: %2)")
-                       .arg(relativeNodePath(*node), node->uuid());
+                << tr("Updated connection model for node '%1', uuid changed (old: %2, now: %3)")
+                       .arg(relativeNodePath(*node), oldUuid, node->uuid());
+
+            ConnectionData<NodeUuid> copy = *iter;
+            pimpl->global->erase(iter);
+            pimpl->global->insert(node->uuid(), copy);
         }
         return;
     }
@@ -1229,20 +1210,6 @@ Graph::restoreNodesAndConnections()
         }
     }
 
-    if (pimpl->resetAfterMerge)
-    {
-        pimpl->resetAfterMerge = false;
-
-        // TODO: this should be fixed with #1370 (GTlab Core)
-        // issue arises because provider nodes are added in the constructor, their
-        // uuid changes once the initial memento is applied. Thus, the connection
-        // model is outdated
-        gtTrace().verbose()
-            << utils::logIds(*this)
-            << tr("Resetting global connection model!");
-        resetGlobalConnectionModel();
-    }
-
     for (auto* connection : connections)
     {
         restoreConnection(connection);
@@ -1275,19 +1242,6 @@ void
 Graph::eval()
 {
     return evalFailed();
-
-    auto* interface = exec::nodeDataInterface(*this);
-    if (qobject_cast<GraphExecutionModel*>(interface))
-    {
-        for (auto& port : ports(PortType::Out))
-        {
-            if (port.visible)
-            {
-                setNodeData(port.id(), nodeData(port.id() + PortId(2)));
-            }
-        }
-        return;
-    }
 
     auto makeError = [this](){
         return gt::quoted(relativeNodePath(*this), "[", "] ") +

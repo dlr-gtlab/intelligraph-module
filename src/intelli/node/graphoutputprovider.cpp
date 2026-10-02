@@ -7,10 +7,13 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include <intelli/node/groupoutputprovider.h>
+#include <intelli/node/graphoutputprovider.h>
 
 using namespace intelli;
 
-GraphOutputProvider::GraphOutputProvider() :
-    AbstractGraphProvider(PortType::Out, "Output Provider")
-{ }
+
+
+void GraphOutputProvider::inte()
+{
+
+}

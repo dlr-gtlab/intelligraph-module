@@ -18,8 +18,8 @@
 
 #include <exception>
 
-#include <intelli/node/groupinputprovider.h>
-#include <intelli/node/groupoutputprovider.h>
+#include <intelli/node/graphinputprovider.h>
+#include <intelli/node/graphoutputprovider.h>
 
 using namespace intelli;
 

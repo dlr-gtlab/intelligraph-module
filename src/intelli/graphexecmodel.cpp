@@ -12,8 +12,8 @@
 #include <intelli/graphuservariables.h>
 #include <intelli/exec/detachedexecutor.h>
 #include <intelli/private/graphexecmodel_impl.h>
-#include <intelli/node/groupoutputprovider.h>
-#include <intelli/node/groupinputprovider.h>
+#include <intelli/node/graphoutputprovider.h>
+#include <intelli/node/graphinputprovider.h>
 
 #include <intelli/connection.h>
 

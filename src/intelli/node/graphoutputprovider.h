@@ -20,11 +20,15 @@ class GT_INTELLI_EXPORT GraphOutputProvider : public AbstractGraphProvider
     Q_OBJECT
 
 public:
+    
+    Q_INVOKABLE GraphOutputProvider() :
+        AbstractGraphProvider(PortType::Out, "Output Provider")
+    { }
 
-    Q_INVOKABLE GraphOutputProvider();
+    void inte();
 };
 
-using GroupOutputProvider = GraphOutputProvider;
+//using GroupOutputProvider = GraphOutputProvider;
 
 } // namespace intelli
 

@@ -12,8 +12,8 @@
 #include <intelli/graph.h>
 #include <intelli/nodedatafactory.h>
 #include <intelli/utilities.h>
-#include <intelli/node/groupinputprovider.h>
-#include <intelli/node/groupoutputprovider.h>
+#include <intelli/node/graphinputprovider.h>
+#include <intelli/node/graphoutputprovider.h>
 #include <intelli/gui/guidata.h>
 #include <intelli/gui/commentgroup.h>
 #include <intelli/gui/commentdata.h>

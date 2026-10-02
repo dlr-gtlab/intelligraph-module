@@ -13,8 +13,8 @@
 #include "intelli/memory.h"
 #include "intelli/graphexecmodel.h"
 #include "intelli/data/double.h"
-#include "intelli/node/groupinputprovider.h"
-#include "intelli/node/groupoutputprovider.h"
+#include "intelli/node/graphinputprovider.h"
+#include "intelli/node/graphoutputprovider.h"
 
 #include <gt_objectmemento.h>
 #include <gt_objectmementodiff.h>

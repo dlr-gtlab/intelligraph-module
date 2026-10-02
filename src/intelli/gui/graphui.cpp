@@ -10,8 +10,8 @@
 #include "intelli/gui/graphui.h"
 #include "intelli/graph.h"
 #include "intelli/graphutilities.h"
-#include "intelli/node/groupinputprovider.h"
-#include "intelli/node/groupoutputprovider.h"
+#include "intelli/node/graphinputprovider.h"
+#include "intelli/node/graphoutputprovider.h"
 #include "intelli/gui/grapheditor.h"
 #include "intelli/gui/icons.h"
 

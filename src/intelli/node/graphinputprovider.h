@@ -24,7 +24,7 @@ public:
     Q_INVOKABLE GraphInputProvider();
 };
 
-using GroupInputProvider = GraphInputProvider;
+//using GroupInputProvider = GraphInputProvider;
 
 } // namespace intelli
 

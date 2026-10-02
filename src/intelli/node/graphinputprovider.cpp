@@ -7,7 +7,7 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include <intelli/node/groupinputprovider.h>
+#include <intelli/node/graphinputprovider.h>
 
 using namespace intelli;
 

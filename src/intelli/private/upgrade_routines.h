@@ -1,0 +1,1204 @@
+/*
+ * GTlab IntelliGraph
+ *
+ *  SPDX-License-Identifier: BSD-3-Clause
+ *  SPDX-FileCopyrightText: 2026 German Aerospace Center
+ *
+ *  Author: Marius Bröcker <marius.broecker@dlr.de>
+ */
+
+#ifndef GT_INTELLI_UPGRADE_ROUTINES_H
+#define GT_INTELLI_UPGRADE_ROUTINES_H
+
+#include "intelli/globals.h"
+#include "intelli/package.h"
+
+#include "gt_xmlexpr.h"
+#include "gt_xmlutilities.h"
+#include "gt_utilities.h"
+
+#include <QFileInfo>
+#include <QDir>
+#include <QDirIterator>
+#include <QDomDocument>
+#include <QDomNodeList>
+
+#include <gt_logging.h>
+
+namespace intelli
+{
+
+bool upgrade_to_0_3_0(QDomElement& root, QString const& file);
+bool upgrade_to_0_3_1(QDomElement& root, QString const& file);
+bool upgrade_to_0_5_0(QDomElement& root, QString const& file);
+bool upgrade_to_0_8_0(QDomElement& root, QString const& file);
+bool upgrade_to_0_10_1(QDomElement& root, QString const& file);
+bool upgrade_to_0_12_0(QDomElement& root, QString const& file);
+bool upgrade_to_0_13_0(QDomElement& root, QString const& file);
+bool upgrade_to_0_16_0_dev(QDomElement& root, QString const& file);
+
+using ConverterFunction = std::function<bool(QDomElement&, QString const&)>;
+using ConverterFunctions = std::initializer_list<ConverterFunction>;
+
+using ConversionStrategy = std::function<void(QDomElement&, int)>;
+
+bool upgradeModuleFiles(QDomElement&, QString const&, std::initializer_list<ConverterFunction>);
+bool upgradeModuleFiles(QDomElement& d, QString const& s, ConverterFunction f);
+
+template <typename Predicate>
+void
+find_elements_recursively(QDomElement const& elem,
+                          Predicate&& func,
+                          QList<QDomElement>& foundElements)
+{
+    if (func(elem))
+    {
+        foundElements.append(elem);
+    }
+
+    QDomElement child = elem.firstChildElement();
+    while(!child.isNull())
+    {
+        find_elements_recursively(child, func, foundElements);
+        child = child.nextSiblingElement();
+    }
+}
+
+QList<QDomElement>
+get_all_property_containers(QDomElement const& root)
+{
+    QList<QDomElement> result;
+    find_elements_recursively(root, [&](const QDomElement& elem) {
+            return elem.tagName() == gt::xml::S_PROPERTYCONT_TAG;
+        }, result);
+
+    return result;
+}
+
+QList<QDomElement>
+get_child_property_containers(QDomElement const& root)
+{
+    QList<QDomElement> result;
+
+    QDomElement child = root.firstChildElement(gt::xml::S_PROPERTYCONT_TAG);
+    while(!child.isNull())
+    {
+        result.append(child);
+        child = child.nextSiblingElement();
+    }
+
+    return result;
+}
+
+
+QList<QDomElement>
+get_child_property_elements(QDomElement const& root)
+{
+    QList<QDomElement> result;
+
+    QDomElement child = root.firstChildElement(gt::xml::S_PROPERTY_TAG);
+    while(!child.isNull())
+    {
+        result.append(child);
+        child = child.nextSiblingElement();
+    }
+
+    return result;
+}
+
+QDomElement
+get_parent_object(QDomElement& object)
+{
+    return object
+        .parentNode() // tag = objectlist
+        .parentNode().toElement(); // tag = object
+}
+
+QString
+get_property_text(QDomElement& root,
+                  QString const& propertyName)
+{
+    auto objects = get_child_property_elements(root);
+    if (objects.empty()) return {};
+
+    for (auto& object : objects)
+    {
+        if (object.attribute(gt::xml::S_NAME_TAG) == propertyName)
+        {
+            auto text = object.firstChild().toText();
+            return text.data();
+        }
+    }
+
+    return {};
+}
+
+QString
+get_text_of_property(QDomElement& property)
+{
+    auto text = property.firstChild().toText();
+    return text.data();
+}
+
+template<typename T> T
+get_property_value(QDomElement& root,
+                   QString const& propertyName)
+{
+    bool ok = true;
+    auto value = get_property_text(root, propertyName).toUInt(&ok);
+    return ok ? T{value} : T{};
+}
+
+bool
+rename_class_from_to(QDomElement& root,
+                     QString const& file,
+                     QString const& from,
+                     QString const& to,
+                     int indent = 0,
+                     ConversionStrategy func = {})
+{
+    auto objects = gt::xml::findObjectElementsByClassName(root, from);
+
+    if (objects.empty()) return true;
+
+    gtInfo() << gt::log::nospace
+             << QStringLiteral(" ").repeated(indent)
+             << QObject::tr("Renaming %4 object%5 from '%1' to '%2'... (file: %3")
+                    .arg(from, to, file,
+                         QString::number(objects.size()),
+                         QString{objects.size() > 1 ? "s":""});
+
+    for (auto& object : objects)
+    {
+        object.setAttribute(gt::xml::S_CLASS_TAG, to);
+
+        if (func) func(object, indent + 1);
+    }
+
+    return true;
+}
+
+bool
+rename_class_from_to_v0(QDomElement& root,
+                        QString const& from,
+                        QString const& to,
+                        int indent = 0,
+                        ConversionStrategy func = {})
+{
+    return rename_class_from_to(root, {}, from, to, indent, std::move(func));
+}
+
+// updates the ident of all properties from `oldIdent` to `newIdent`
+bool
+replace_property_idents_of_class(QDomElement& root,
+                                 QString const& file,
+                                 QString const& className,
+                                 QString const& oldIdent,
+                                 QString const& newIdent,
+                                 int indent = 0)
+{
+    auto objects = gt::xml::findObjectElementsByClassName(root, className);
+
+    if (objects.empty()) return true;
+
+    gtInfo() << gt::log::nospace
+             << QStringLiteral(" ").repeated(indent)
+             << QObject::tr("Updating properties indents for class '%1'... (file: %2)")
+                    .arg(className, file);
+
+    indent++;
+
+    for (auto& object : objects)
+    {
+        auto properties = get_child_property_elements(object);
+
+        for (auto& property : properties)
+        {
+            if (property.attribute(gt::xml::S_NAME_TAG) == oldIdent)
+            {
+                property.setAttribute(gt::xml::S_NAME_TAG, newIdent);
+                break; // property ident should only exists once
+            }
+        }
+    }
+
+    return true;
+}
+
+// replaces all properties with `to` that contain `from` as a value
+bool
+replace_all_property_values(QDomElement& root,
+                            QString const& from,
+                            QString const& to)
+{
+    auto properties = gt::xml::propertyElements(root);
+    if (properties.empty()) return true;
+
+    for (auto& property : properties)
+    {
+        auto text = property.firstChild().toText();
+        if (text.isNull()) continue;
+
+        if (text.data() == from)
+        {
+            text.setNodeValue(to);
+        }
+    }
+
+    return true;
+}
+
+// replaces the `property`'s value with `value`
+void
+replace_value_of_property(QDomElement& property,
+                          QString const& value)
+{
+    auto text = property.firstChild().toText();
+    text.setNodeValue(value);
+}
+
+// replaces the value of all properties named `propertyName` with `newValue`
+bool
+replace_value_of_property(QDomElement& root,
+                          QString const& propertyName,
+                          QString const& newValue)
+{
+    auto properties = get_child_property_elements(root);
+    if (properties.empty()) return true;
+
+    for (auto& property : properties)
+    {
+        if (property.attribute(gt::xml::S_NAME_TAG) == propertyName)
+        {
+            auto text = property.firstChild().toText();
+            if (text.isNull()) continue;
+
+            text.setNodeValue(newValue);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/// appends a property to `root` with the id `propertyId` and the default value
+/// of `defaultValue`
+void
+add_property(QDomElement& root,
+             QString const& propertyId,
+             QString const& defaultValue,
+             int indent = 0)
+{
+    Q_UNUSED(indent);
+
+    gtInfo() << gt::log::nospace
+             << QStringLiteral(" ").repeated(indent)
+             << QObject::tr("Adding property '%1'...")
+                    .arg(propertyId);
+
+    auto doc = root.ownerDocument();
+
+    auto property = gt::xml::createStringPropertyElement(doc, propertyId, defaultValue);
+    root.appendChild(property);
+}
+
+bool
+replace_mode_property_of_class(QDomElement& root,
+                               QString const& file,
+                               QString const& className,
+                               QString const& propertyId,
+                               QMap<QString, QString> const& map,
+                               QString const& defaultValue,
+                               int indent = 0)
+{
+    auto objects = gt::xml::findObjectElementsByClassName(root, className);
+
+    if (objects.empty()) return true;
+
+    gtInfo() << gt::log::nospace
+             << QStringLiteral(" ").repeated(indent)
+             << QObject::tr("Updating mode properties for class '%1'... (file: %2)")
+                    .arg(className, file);
+
+    indent++;
+
+    for (auto& object : objects)
+    {
+        auto properties = get_child_property_elements(object);
+
+        for (auto& property : properties)
+        {
+            if (property.attribute(gt::xml::S_NAME_TAG) == propertyId)
+            {
+                QString oldValue = get_text_of_property(property);
+                QString newValue = map.value(oldValue, defaultValue);
+
+                gtInfo() << QStringLiteral(" ").repeated(indent)
+                         << QObject::tr("Replacing '%1' with '%2'")
+                                .arg(oldValue, newValue);
+
+                replace_value_of_property(property, newValue);
+                break; // property ident should only exists once
+            }
+        }
+    }
+
+    return true;
+}
+
+bool
+remove_objects_of_class(QDomElement& root,
+                        QString const& className,
+                        int indent = 0)
+{
+    auto objects = gt::xml::findObjectElementsByClassName(root, className);
+    if (objects.empty()) return true;
+
+    gtInfo() << gt::log::nospace
+             << QStringLiteral(" ").repeated(indent)
+             << QObject::tr("Removing %3 objects of type '%1'").arg(className).arg(objects.size());
+
+    for (auto& object : objects)
+    {
+        object.parentNode().removeChild(object);
+    }
+
+    return true;
+}
+
+bool
+replace_port_ids_in_connections(QDomElement& graph,
+                                NodeId nodeId,
+                                PortId oldPortId,
+                                PortId newPortId,
+                                int indent = 0)
+{
+    gtInfo() << gt::log::nospace
+             << QStringLiteral(" ").repeated(indent)
+             << QObject::tr("Updating connections for graph '%1'")
+                    .arg(graph.toElement().attribute(gt::xml::S_NAME_TAG));
+
+    indent++;
+
+    // update connections in subgraph
+    auto connectionGroup = graph
+                               .firstChildElement(gt::xml::S_OBJECTLIST_TAG)
+                               .firstChildElement(gt::xml::S_OBJECT_TAG);
+
+    while (connectionGroup.attribute(gt::xml::S_CLASS_TAG) != "intelli::ConnectionGroup")
+    {
+        connectionGroup = connectionGroup.nextSiblingElement(gt::xml::S_OBJECT_TAG);
+    }
+
+    auto connections = gt::xml::findObjectElementsByClassName(connectionGroup, "intelli::Connection");
+    for (auto connection : qAsConst(connections))
+    {
+        if (!connection.attribute(gt::xml::S_NAME_TAG).contains("updatedIn") &&
+            get_property_value<NodeId>(connection, "inNodeId") == nodeId &&
+            get_property_value<PortId>(connection, "inPort") == oldPortId)
+        {
+            gtInfo() << gt::log::nospace
+                     << QStringLiteral(" ").repeated(indent)
+                     << QObject::tr("Updating connection '%1' for node '%2'")
+                            .arg(connection.attribute(gt::xml::S_NAME_TAG))
+                            .arg(nodeId);
+
+            replace_value_of_property(connection, "inPort", QString::number(newPortId));
+            // hacky way to avoid updating the same connection twice. Name is regenerated once loaded
+            connection.setAttribute(gt::xml::S_NAME_TAG, connection.attribute(gt::xml::S_NAME_TAG) + "updatedIn");
+        }
+        else if (!connection.attribute(gt::xml::S_NAME_TAG).contains("updatedOut") &&
+                 get_property_value<NodeId>(connection, "outNodeId") == nodeId &&
+                 get_property_value<PortId>(connection, "outPort") == oldPortId)
+        {
+            gtInfo() << gt::log::nospace
+                     << QStringLiteral(" ").repeated(indent)
+                     << QObject::tr("Updating connection '%1' for node '%2'")
+                            .arg(connection.attribute(gt::xml::S_NAME_TAG))
+                            .arg(nodeId);
+
+            replace_value_of_property(connection, "outPort", QString::number(newPortId));
+            // hacky way to avoid updating the same connection twice. Name is regenerated once loaded
+            connection.setAttribute(gt::xml::S_NAME_TAG, connection.attribute(gt::xml::S_NAME_TAG) + "updatedOut");
+        }
+    }
+
+    return true;
+}
+
+bool
+replace_port_ids_in_connections_by_class(QDomElement& root,
+                                         QString const& file,
+                                         QString const& className,
+                                         PortId oldPortId,
+                                         PortId newPortId,
+                                         int indent = 0)
+{
+    auto objects = gt::xml::findObjectElementsByClassName(root, className);
+    if (objects.empty()) return true;
+
+    gtInfo() << gt::log::nospace
+             << QStringLiteral(" ").repeated(indent)
+             << QObject::tr("Updating connections for class '%1'... (file: %2)")
+                    .arg(className, file);
+
+    for (auto& object : objects)
+    {
+        auto graph = get_parent_object(object);
+        if (graph.isNull()) continue;
+
+        // access node id
+        NodeId nodeId = get_property_value<NodeId>(object, "id");
+        assert(nodeId.isValid());
+
+        replace_port_ids_in_connections(graph, nodeId, oldPortId, newPortId, indent + 1);
+    }
+
+    return true;
+}
+
+bool
+replace_node_ids_in_connections(QDomElement& graph,
+                                NodeId oldNodeId,
+                                NodeId newNodeId,
+                                int indent = 0)
+{
+    // update connections in subgraph
+    auto connectionGroup = graph
+                               .firstChildElement(gt::xml::S_OBJECTLIST_TAG)
+                               .firstChildElement(gt::xml::S_OBJECT_TAG);
+
+    while (connectionGroup.attribute(gt::xml::S_CLASS_TAG) != "intelli::ConnectionGroup")
+    {
+        connectionGroup = connectionGroup.nextSiblingElement(gt::xml::S_OBJECT_TAG);
+    }
+
+    auto connections = gt::xml::findObjectElementsByClassName(connectionGroup, "intelli::Connection");
+    for (auto connection : qAsConst(connections))
+    {
+        if (get_property_value<NodeId>(connection, "inNodeId") == oldNodeId)
+        {
+            gtInfo() << gt::log::nospace
+                     << QStringLiteral(" ").repeated(indent)
+                     << QObject::tr("Updating the input node id in connection '%1' to '%2'")
+                            .arg(connection.attribute(gt::xml::S_NAME_TAG))
+                            .arg(newNodeId);
+
+            replace_value_of_property(connection, "inNodeId", QString::number(newNodeId));
+        }
+        else if (get_property_value<NodeId>(connection, "outNodeId") == oldNodeId)
+        {
+            gtInfo() << gt::log::nospace
+                     << QStringLiteral(" ").repeated(indent)
+                     << QObject::tr("Updating the output node id connection '%1' to '%2'")
+                            .arg(connection.attribute(gt::xml::S_NAME_TAG))
+                            .arg(newNodeId);
+
+            replace_value_of_property(connection, "outNodeId", QString::number(newNodeId));
+        }
+    }
+
+    return true;
+}
+
+bool
+move_dynamic_ports_to_graph_for_0_16_0(QDomElement& root,
+                                       QString const& file)
+{
+    auto inputProviders = gt::xml::findObjectElementsByClassName(
+        root, QStringLiteral("intelli::GraphInputProvider"));
+    auto outputProviders = gt::xml::findObjectElementsByClassName(
+        root, QStringLiteral("intelli::GraphOutputProvider"));
+
+    if (inputProviders.empty() && outputProviders.empty()) return true;
+
+    gtInfo() << QObject::tr("Moving provider ports to parent graph... (file: %1)")
+                    .arg(file);
+
+    if (inputProviders.size() != outputProviders.size())
+    {
+        gtError() << QObject::tr("Different number of input and output providers found!")
+                  << inputProviders.size() << "vs" << outputProviders.size();
+        return false;
+    }
+
+    QDomDocument dom = root.ownerDocument();
+
+    int indent = 0;
+    for (auto providerIdx : gt::range<int>(0, inputProviders.size()))
+    {
+        indent++;
+
+        auto inputProvider = inputProviders.at(providerIdx);
+        auto outputProvider = outputProviders.at(providerIdx);
+
+        auto parentGraph = get_parent_object(inputProvider);
+        assert(get_parent_object(outputProvider) == parentGraph);
+
+        size_t nInPorts = 0, nOutPorts = 0;
+
+        for (PortType type : { PortType::In, PortType::Out })
+        {
+            auto containers = get_child_property_containers(
+                type == PortType::In ? inputProvider : outputProvider
+                );
+            QString newName = type == PortType::In ?
+                                  QStringLiteral("dynamicInPorts") :
+                                  QStringLiteral("dynamicOutPorts");
+            QString oldName = type == PortType::In ?
+                                  QStringLiteral("dynamicOutPorts") :
+                                  QStringLiteral("dynamicInPorts");
+
+            QDomElement newContainer = dom.createElement(gt::xml::S_PROPERTYCONT_TAG);
+            newContainer.setAttribute(gt::xml::S_NAME_TAG, newName);
+
+            for (auto& container : containers)
+            {
+                if (container.attribute(gt::xml::S_NAME_TAG) != oldName) continue;
+
+                QDomNodeList ports = container.childNodes();
+                int nports = ports.size();
+                for (int portIdx = 0; portIdx < nports; portIdx++)
+                {
+                    auto port = ports.at(portIdx);
+                    auto newPort = newContainer.appendChild(port.cloneNode()).toElement();
+                    newPort.setAttribute(gt::xml::S_TYPE_TAG,
+                                         type == PortType::In ?
+                                             QStringLiteral("PortInfoIn") :
+                                             QStringLiteral("PortInfoOut"));
+
+                    type == PortType::In ? nInPorts++ : nOutPorts++;
+                }
+            }
+
+            gtInfo() << gt::log::nospace
+                     << QStringLiteral(" ").repeated(indent)
+                     << QObject::tr("Moved %1 input and %2 output ports to graph '%3'")
+                            .arg(QString::number(nInPorts),
+                                 QString::number(nOutPorts),
+                                 parentGraph.attribute(gt::xml::S_NAME_TAG));
+
+            auto objlist = parentGraph.firstChildElement(gt::xml::S_OBJECTLIST_TAG);
+            parentGraph.insertBefore(newContainer, objlist);
+        }
+        indent--;
+    }
+
+    return true;
+}
+
+// reserve first node ids from 0-8 in a graph to allow adding "default" nodes
+// (like input providers and output providers) more easily in the future
+bool
+update_node_ids_for_0_16_0(QDomElement& root,
+                           QString const& file)
+{
+    constexpr NodeId reservedInputNodeId{0};
+    constexpr NodeId reservedOutputNodeId{1};
+    constexpr NodeId reservedUpperNodeId{8};
+
+    auto graphs = gt::xml::findObjectElementsByClassName(
+        root, QStringLiteral("intelli::Graph")
+        );
+
+    if (graphs.empty()) return true;
+
+    gtInfo() << QObject::tr("Updating reservered node ids... (file: %1)")
+                    .arg(file);
+
+    int indent = 0;
+    for (auto graph : graphs)
+    {
+        gtInfo() << gt::log::nospace
+                 << QStringLiteral(" ").repeated(indent)
+                 << QObject::tr("Updating reserved node ids in graph '%1'")
+                        .arg(graph.attribute(gt::xml::S_NAME_TAG));
+
+        NodeId maxNodeId = reservedUpperNodeId;
+
+        indent++;
+
+        // find max node id
+        {
+            QDomElement child = graph.firstChildElement(gt::xml::S_OBJECTLIST_TAG)
+                                    .firstChildElement(gt::xml::S_OBJECT_TAG);
+
+            while (!child.isNull())
+            {
+                auto next = gt::finally([&child](){
+                    child = child.nextSiblingElement();
+                });
+                Q_UNUSED(next);
+
+                NodeId nodeId = get_property_value<NodeId>(child, "id");
+                if (!nodeId.isValid()) continue;
+
+                maxNodeId = std::max(nodeId + NodeId{1}, maxNodeId);
+            }
+        }
+
+        QDomElement inputProvider, outputProvider;
+
+        // check if node ids must be updated and update
+        {
+            QDomElement child = graph.firstChildElement(gt::xml::S_OBJECTLIST_TAG)
+                                    .firstChildElement(gt::xml::S_OBJECT_TAG);
+
+            while (!child.isNull())
+            {
+                auto next = gt::finally([&child](){
+                    child = child.nextSiblingElement();
+                });
+                Q_UNUSED(next);
+
+                NodeId nodeId = get_property_value<NodeId>(child, "id");
+                if (!nodeId.isValid()) continue;
+
+                // providers must be handled with care
+                if (child.attribute(gt::xml::S_CLASS_TAG) == QStringLiteral("intelli::GraphInputProvider"))
+                {
+                    if (nodeId == reservedInputNodeId) continue;
+                    assert(inputProvider.isNull());
+                    inputProvider = child;
+                    continue;
+                }
+
+                if (child.attribute(gt::xml::S_CLASS_TAG) == QStringLiteral("intelli::GraphOutputProvider"))
+                {
+                    if (nodeId == reservedOutputNodeId) continue;
+                    assert(outputProvider.isNull());
+                    outputProvider = child;
+                    continue;
+                }
+
+                // update node id
+                if (nodeId < reservedUpperNodeId)
+                {
+                    NodeId newNodeId = maxNodeId++;
+
+                    gtInfo() << gt::log::nospace
+                             << QStringLiteral(" ").repeated(indent)
+                             << QObject::tr("Updating node id of '%1' from %2 to %3 (class: %4)")
+                                    .arg(child.attribute(gt::xml::S_NAME_TAG),
+                                         QString::number(nodeId),
+                                         QString::number(newNodeId),
+                                         child.attribute(gt::xml::S_CLASS_TAG));
+
+                    replace_value_of_property(child, "id", QString::number(newNodeId));
+                    replace_node_ids_in_connections(graph, nodeId, newNodeId, indent + 1);
+                }
+            }
+        }
+
+        // may need to update providers
+        if (!inputProvider.isNull())
+        {
+            NodeId oldNodeId = get_property_value<NodeId>(inputProvider, "id");
+            assert(oldNodeId.isValid());
+            NodeId newNodeId = reservedInputNodeId;
+
+            gtInfo() << gt::log::nospace
+                     << QStringLiteral(" ").repeated(indent)
+                     << QObject::tr("Updating node id of '%1' from %2 to %3 (clas: %4)")
+                            .arg(inputProvider.attribute(gt::xml::S_NAME_TAG),
+                                 QString::number(oldNodeId),
+                                 QString::number(newNodeId),
+                                 inputProvider.attribute(gt::xml::S_CLASS_TAG));
+            replace_value_of_property(inputProvider, "id", QString::number(newNodeId));
+            replace_node_ids_in_connections(graph, oldNodeId, newNodeId, indent + 1);
+        }
+        if (!outputProvider.isNull())
+        {
+            NodeId oldNodeId = get_property_value<NodeId>(outputProvider, "id");
+            assert(oldNodeId.isValid());
+            NodeId newNodeId = reservedOutputNodeId;
+
+            replace_value_of_property(inputProvider, "id", QString::number(newNodeId));
+            replace_node_ids_in_connections(graph, oldNodeId, newNodeId, indent + 1);
+        }
+        indent--;
+    }
+
+    return true;
+}
+
+
+bool
+update_provider_ports_for_0_12_0(QDomElement& root,
+                                 QString const& file,
+                                 QString const& className,
+                                 PortType portType)
+{
+    auto objects = gt::xml::findObjectElementsByClassName(root, className);
+    if (objects.empty()) return true;
+
+    gtInfo() << QObject::tr("Updating dynamic ports... (file: %1")
+                    .arg(file);
+
+    int indent = 0;
+    for (auto& provider : objects)
+    {
+        indent++;
+
+        // access node id
+        NodeId nodeId = get_property_value<NodeId>(provider, "id");
+        assert(nodeId.isValid());
+
+        gtInfo() << gt::log::nospace
+                 << QStringLiteral(" ").repeated(indent)
+                 << QObject::tr("Updating dynamic ports for '%1' (Node: %2)")
+                        .arg(className).arg(nodeId);
+
+        // iterate over all dynamic ports
+        auto containers = get_child_property_containers(provider);
+        for (auto& container : containers)
+        {
+            indent++;
+            PortId newPortId = PortId::fromValue((size_t)portType + 1);
+
+            // update ports
+            QDomNodeList ports = container.childNodes();
+            int nports = ports.size();
+            for (int i = 0; i < nports; i++)
+            {
+                auto port = ports.at(i).toElement();
+
+                // access  old port id
+                PortId oldPortId = get_property_value<PortId>(port, "PortId");
+                assert(oldPortId.isValid());
+
+                gtInfo() << gt::log::nospace
+                         << QStringLiteral(" ").repeated(indent)
+                         << QObject::tr("Updating portId from '%1' to '%2'")
+                                .arg(oldPortId)
+                                .arg(newPortId);
+
+                // update port id
+                port.setAttribute("name", newPortId);
+                replace_value_of_property(port, "PortId", QString::number(newPortId));
+
+                // update connections in subgraph
+                auto subgraph = get_parent_object(provider);
+                assert(!subgraph.isNull());
+                replace_port_ids_in_connections(subgraph, nodeId, oldPortId, newPortId, indent + 1);
+
+                // update connections in parent graph
+                auto rootgraph = get_parent_object(subgraph);
+                assert(!rootgraph.isNull());
+
+                NodeId subgraphId = get_property_value<NodeId>(subgraph, "id");
+                // calculate port id of graph port
+                PortId subgraphPortId = PortId::fromValue((size_t)(oldPortId << 1) | (size_t)invert(portType));
+
+                replace_port_ids_in_connections(rootgraph, subgraphId, subgraphPortId, newPortId, indent + 1);
+
+                // increment port id
+                newPortId += PortId{4};
+            }
+
+            indent--;
+        }
+
+        indent--;
+    }
+
+    return true;
+}
+
+// update dynamic input/output container types
+bool
+// cppcheck-suppress constParameterCallback
+rename_dynamic_ports_for_0_8_0(QDomElement& root,
+                               QString const& file,
+                               QString const& typeIn,
+                               QString const& typeOut)
+{
+    auto containers = get_all_property_containers(root);
+    if (containers.empty()) return true;
+
+    gtInfo() << QObject::tr("Renaming dynamic ports... (file: %1)")
+                    .arg(file);
+
+    for (auto& container : containers)
+    {
+        QString const* newType = &typeIn;
+
+        // check for dynamic node containers
+        auto const& name = container.attribute(gt::xml::S_NAME_TAG);
+        if (name == QStringLiteral("dynamicOutPorts"))
+        {
+            newType = &typeOut;
+        }
+        else if (name != QStringLiteral("dynamicInPorts"))
+        {
+            continue;
+        }
+
+        QDomNodeList childs = container.childNodes();
+        int size = childs.size();
+        for (int i = 0; i < size; ++i)
+        {
+            auto child = childs.at(i).toElement();
+            child.setAttribute(gt::xml::S_TYPE_TAG, *newType);
+        }
+    }
+
+    return true;
+}
+
+
+// 1. renamed groupproviders to graphproviders
+// 2. each graph now has a input/output provider (id 0 and 1)
+bool upgrade_to_0_16_0_dev(QDomElement& root, QString const& file)
+{
+    constexpr int indent = 0;
+
+    return upgradeModuleFiles(
+        root,
+        file,
+        {
+            // GroupInputProvider replaced with GraphInputProvider
+            std::bind(rename_class_from_to,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::GroupInputProvider"),
+                      QStringLiteral("intelli::GraphInputProvider"),
+                      indent,
+                      nullptr),
+            // GroupOutputProvider replaced with GraphOutputProvider
+            std::bind(rename_class_from_to,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::GroupOutputProvider"),
+                      QStringLiteral("intelli::GraphOutputProvider"),
+                      indent,
+                      nullptr),
+            std::bind(move_dynamic_ports_to_graph_for_0_16_0,
+                      std::placeholders::_1,
+                      std::placeholders::_2),
+            std::bind(update_node_ids_for_0_16_0,
+                      std::placeholders::_1,
+                      std::placeholders::_2)
+        }
+        );
+}
+
+// removed redundant input nodes
+bool upgrade_to_0_13_0(QDomElement& root, QString const& file)
+{
+    constexpr int indent = 0;
+
+    // mapping of mode types for double/int input nodes
+    QMap<QString, QString> map;
+    map.insert(QStringLiteral("Text"),    QStringLiteral("LineEditBound"));
+    map.insert(QStringLiteral("dial"),    QStringLiteral("Dial"));
+    map.insert(QStringLiteral("sliderH"), QStringLiteral("SliderH"));
+    map.insert(QStringLiteral("sliderV"), QStringLiteral("SliderV"));
+
+    return upgradeModuleFiles(
+        root,
+        file,
+        {
+            // ObjectSourceNode replaced with ObjectInputNode, output id changed
+            std::bind(replace_port_ids_in_connections_by_class,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::ObjectSourceNode"),
+                      PortId(1),
+                      PortId(0),
+                      indent),
+            // ObjectSourceNode replaced with ObjectInputNode
+            std::bind(rename_class_from_to,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::ObjectSourceNode"),
+                      QStringLiteral("intelli::ObjectInputNode"),
+                      indent,
+                      nullptr),
+            // property name of ObjectInputNode replaced
+            std::bind(replace_property_idents_of_class,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::ObjectInputNode"),
+                      QStringLiteral("value"),
+                      QStringLiteral("target"),
+                      indent),
+            // logic source replaced by bool input node
+            std::bind(rename_class_from_to,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::LogicSourceNode"),
+                      QStringLiteral("intelli::BoolInputNode"),
+                      indent,
+                      // make bool input node use button as a widget
+                      ConversionStrategy(std::bind(add_property,
+                                                   std::placeholders::_1,
+                                                   QStringLiteral("displayMode"),
+                                                   QStringLiteral("Button"),
+                                                   std::placeholders::_2))),
+            // logic display replaced by bool display node
+            std::bind(rename_class_from_to,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::LogicDisplayNode"),
+                      QStringLiteral("intelli::BoolDisplayNode"),
+                      indent,
+                      // make bool display node use button as a widget
+                      ConversionStrategy(std::bind(add_property,
+                                                   std::placeholders::_1,
+                                                   QStringLiteral("displayMode"),
+                                                   QStringLiteral("Button"),
+                                                   std::placeholders::_2))),
+            // logic display replaced by bool display node
+            std::bind(rename_class_from_to,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::NumberSourceNode"),
+                      QStringLiteral("intelli::DoubleInputNode"),
+                      indent,
+                      nullptr),
+            // mode values of of input type changed
+            std::bind(replace_mode_property_of_class,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::DoubleInputNode"),
+                      QStringLiteral("type"),
+                      map,
+                      QStringLiteral("LineEditBound"),
+                      indent),
+            std::bind(replace_mode_property_of_class,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::IntInputNode"),
+                      QStringLiteral("type"),
+                      map,
+                      QStringLiteral("LineEditBound"),
+                      indent),
+            // property name of input type changed
+            std::bind(replace_property_idents_of_class,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::DoubleInputNode"),
+                      QStringLiteral("type"),
+                      QStringLiteral("mode"),
+                      indent),
+            std::bind(replace_property_idents_of_class,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::IntInputNode"),
+                      QStringLiteral("type"),
+                      QStringLiteral("mode"),
+                      indent)
+        });
+}
+
+// remove dynamic ports since port id generation has changed
+bool upgrade_to_0_12_0(QDomElement& root, QString const& file)
+{
+    return upgradeModuleFiles(
+        root,
+        file,
+        {
+            std::bind(update_provider_ports_for_0_12_0,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::GroupInputProvider"),
+                      PortType::In),
+            std::bind(update_provider_ports_for_0_12_0,
+                      std::placeholders::_1,
+                      std::placeholders::_2,
+                      QStringLiteral("intelli::GroupOutputProvider"),
+                      PortType::Out)
+        });
+}
+
+// rename dynamic port structs
+bool upgrade_to_0_10_1(QDomElement& root, QString const& file)
+{
+    return upgradeModuleFiles(root, file, std::bind(rename_dynamic_ports_for_0_8_0,
+                                                    std::placeholders::_1,
+                                                    std::placeholders::_2,
+                                                    QStringLiteral("PortInfoIn"),
+                                                    QStringLiteral("PortInfoOut")));
+}
+
+// rename dynamic port structs
+bool upgrade_to_0_8_0(QDomElement& root, QString const& file)
+{
+    return upgradeModuleFiles(root, file, std::bind(rename_dynamic_ports_for_0_8_0,
+                                                    std::placeholders::_1,
+                                                    std::placeholders::_2,
+                                                    QStringLiteral("PortDataIn"),
+                                                    QStringLiteral("PortDataOut")));
+}
+
+// connections no longer store indicies but port ids -> remove connections
+bool upgrade_to_0_5_0(QDomElement& root, QString const& file)
+{
+    if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseInsensitive)) return true;
+
+    return remove_objects_of_class(root, QStringLiteral("intelli::Connection"));
+}
+
+// fix typo in class name :(
+bool upgrade_to_0_3_1(QDomElement& root, QString const& file)
+{
+    if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseInsensitive)) return true;
+
+    return rename_class_from_to_v0(root, QStringLiteral("intelli::NubmerDisplayNode"), QStringLiteral("intelli::NumberDisplayNode"));
+}
+
+// major refactoring of class names and namespaces
+bool upgrade_to_0_3_0(QDomElement& root, QString const& file)
+{
+    if (!file.contains(QStringLiteral("intelligraph"), Qt::CaseInsensitive)) return true;
+
+    int indent = 0;
+    rename_class_from_to_v0(root, QStringLiteral("GtIntelliGraphCategory"), QStringLiteral("intelli::GraphCategory"), indent, [](QDomElement& root, int indent){
+        rename_class_from_to_v0(root, QStringLiteral("GtIntelliGraph"), QStringLiteral("intelli::Graph"), indent, [](QDomElement& root, int indent){
+
+            // connections
+            rename_class_from_to_v0(root, QStringLiteral("GtIntellIGraphConnectionGroup"), QStringLiteral("intelli::ConnectionGroup"), indent, [](QDomElement& root, int indent){
+                rename_class_from_to_v0(root, QStringLiteral("GtIntelliGraphConnection"), QStringLiteral("intelli::Connection"), indent);
+            });
+
+            // nodes
+            rename_class_from_to_v0(root, QStringLiteral("GtIgGroupInputProvider"), QStringLiteral("intelli::GroupInputProvider"), indent);
+            rename_class_from_to_v0(root, QStringLiteral("GtIgGroupOutputProvider"), QStringLiteral("intelli::GroupOutputProvider"), indent);
+            rename_class_from_to_v0(root, QStringLiteral("GtIgNubmerDisplayNode"), QStringLiteral("intelli::NubmerDisplayNode"), indent);
+            rename_class_from_to_v0(root, QStringLiteral("GtIgNumberSourceNode"), QStringLiteral("intelli::NumberSourceNode"), indent);
+            rename_class_from_to_v0(root, QStringLiteral("GtIgFindDirectChildNode"), QStringLiteral("intelli::FindDirectChildNode"), indent);
+            rename_class_from_to_v0(root, QStringLiteral("GtIgObjectSourceNode"), QStringLiteral("intelli::ObjectSourceNode"), indent);
+            rename_class_from_to_v0(root, QStringLiteral("GtIgObjectMementoNode"), QStringLiteral("intelli::ObjectMementoNode"), indent);
+            rename_class_from_to_v0(root, QStringLiteral("GtIgStringListInputNode"), QStringLiteral("intelli::StringListInputNode"), indent);
+
+            // dp
+            rename_class_from_to_v0(root, QStringLiteral("GtIgConditionalNode"), QStringLiteral("intelli::ConditionalNode"), indent);
+            rename_class_from_to_v0(root, QStringLiteral("GtIgCheckDoubleNode"), QStringLiteral("intelli::CheckDoubleNode"), indent);
+            rename_class_from_to_v0(root, QStringLiteral("GtIgSleepyNode"), QStringLiteral("intelli::SleepyNode"), indent);
+
+            // update dynamic in/out ports type ids
+            replace_all_property_values(root, QStringLiteral("GtIgDoubleData"), QStringLiteral("intelli::DoubleData"));
+            replace_all_property_values(root, QStringLiteral("GtIgStringListData"), QStringLiteral("intelli::StringListData"));
+            replace_all_property_values(root, QStringLiteral("GtIgObjectData"), QStringLiteral("intelli::ObjectData"));
+            replace_all_property_values(root, QStringLiteral("GtIgBoolData"), QStringLiteral("intelli::BoolData"));
+        });
+    });
+
+    return true;
+}
+
+bool upgradeModuleFiles(QDomElement& d, QString const& s, ConverterFunction f)
+{
+    return upgradeModuleFiles(d, s, {f});
+}
+
+bool upgradeModuleFiles(QDomElement& /*root*/,
+                        QString const& moduleFilePath,
+                        std::initializer_list<ConverterFunction> funcs)
+{
+    if (!moduleFilePath.contains(QStringLiteral("intelligraph"), Qt::CaseSensitive)) return true;
+
+    auto const makeError = [](){
+        return QObject::tr("Failed to update intelligraph module data!");
+    };
+
+    QFileInfo info{moduleFilePath};
+    QDir dir = info.absoluteDir();
+    if (!dir.cd(Package::MODULE_DIR))
+    {
+        gtError() << makeError()
+                  << QObject::tr("(Project directory '%1' does not exist)")
+                         .arg(Package::MODULE_DIR);
+        return false;
+    }
+
+    QDirIterator iter{
+        dir.path(),
+        QStringList{QStringLiteral("*")},
+        QDir::Dirs | QDir::NoDotAndDotDot,
+        QDirIterator::NoIteratorFlags
+    };
+
+    bool retVal = true;
+
+    while (iter.hasNext())
+    {
+        if (!dir.cd(iter.next()))
+        {
+            gtWarning() << makeError()
+                        << QObject::tr("(Category directory '%1' does not exist)")
+                               .arg(iter.path());
+            continue;
+        }
+
+        QDirIterator fileIter{
+            dir.path(),
+            QStringList{'*' + Package::FILE_SUFFIX},
+            QDir::Files,
+            QDirIterator::NoIteratorFlags
+        };
+
+        while (fileIter.hasNext())
+        {
+            QString filePath = dir.absoluteFilePath(fileIter.next());
+            QFile file{filePath};
+
+            // see Module Upgrader implementation
+            QDomDocument document;
+            QString errorStr;
+            int errorLine;
+            int errorColumn;
+
+            if (!gt::xml::readDomDocumentFromFile(file, document, true,
+                                                  &errorStr,
+                                                  &errorLine,
+                                                  &errorColumn))
+            {
+                gtError()
+                    << makeError()
+                    << "(XML ERROR: line:" << errorLine
+                    << "- column:" << errorColumn << "->" << errorStr;
+                retVal = false;
+                continue;
+            }
+
+            QDomElement root = document.documentElement();
+
+            bool const success = std::all_of(funcs.begin(), funcs.end(),
+                                             [&](auto const& f){
+                                                 return f(root, filePath);
+                                             });
+
+            if (!success)
+            {
+                retVal = false;
+                gtError()
+                    << makeError()
+                    << "(XML ERROR: line:" << errorLine
+                    << "- column:" << errorColumn << "->" << errorStr;
+                continue;
+            }
+
+            // save file
+            // new ordered attribute stream writer algorithm
+            if (!gt::xml::writeDomDocumentToFile(filePath, document, true))
+            {
+                gtError()
+                    << makeError()
+                    << QObject::tr("(Failed to save graph flow '%1'!)")
+                           .arg(file.fileName());
+                retVal = false;
+                continue;
+            }
+        }
+
+        dir.cdUp();
+    }
+
+    return retVal;
+}
+
+} // namespace intelli
+
+#endif // GT_INTELLI_UPGRADE_ROUTINES_H

@@ -22,8 +22,7 @@
 namespace intelli
 {
 
-/// NOTE: starting id may not be enforced in old GTlab projects yet
-/// (not guranteed to be free)
+/// Offset starting id of new nodes to allow adding default nodes
 constexpr static NodeId s_startingNodeId{8};
 
 /// Helper struct to "hide" implementation details and template functions
@@ -39,9 +38,11 @@ struct Graph::Impl
     /// the graph is no longer being modified
     bool resetAfterModification = false;
 
-    bool resetAfterMerge = false;
-
-    bool forwardInvalidation = false;
+    // TODO: this should be fixed with #1370 (GTlab Core)
+    // Default nodes may update their uuid when merging mementos.
+    // Since there is no way of reacting to a node uuid changes we'll record
+    // the uuids of the default nodes here and update the graph on the fly
+    QHash<Node*, NodeUuid> defaultNodes;
 
     template <typename MakeError = QString(*)()>
     static inline bool
@@ -562,6 +563,8 @@ struct Graph::Impl
             }
             Node* node = localIter->node;
             assert(node);
+            graph->pimpl->defaultNodes.remove(node);
+
             auto const& nodeUuid = node->uuid();
 
             auto globalIter = graph->pimpl->global->find(nodeUuid);

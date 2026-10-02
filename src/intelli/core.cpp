@@ -21,8 +21,8 @@
 #include "intelli/node/dummy.h"
 
 #include "intelli/graph.h"
-#include "intelli/node/groupinputprovider.h"
-#include "intelli/node/groupoutputprovider.h"
+#include "intelli/node/graphinputprovider.h"
+#include "intelli/node/graphoutputprovider.h"
 
 #include "intelli/node/numberdisplay.h"
 #include "intelli/node/numbermath.h"
@@ -128,8 +128,8 @@ intelli::registerDefaultNodes()
         GT_INTELLI_REGISTER_NODE(DummyNode, hidden);
 
         GT_INTELLI_REGISTER_NODE(Graph, catOther);
-        GT_INTELLI_REGISTER_NODE(GroupInputProvider, hidden);
-        GT_INTELLI_REGISTER_NODE(GroupOutputProvider, hidden);
+        GT_INTELLI_REGISTER_NODE(GraphInputProvider, hidden);
+        GT_INTELLI_REGISTER_NODE(GraphOutputProvider, hidden);
 
         GT_INTELLI_REGISTER_NODE(NumberDisplayNode, catDisplay);
         GT_INTELLI_REGISTER_NODE(NumberMathNode, catNumber);
