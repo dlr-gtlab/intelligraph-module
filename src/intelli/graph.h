@@ -537,6 +537,8 @@ public:
      */
     virtual void initInputOutputProviders();
 
+    virtual void initInputData();
+
     /**
      * @brief Resets the global connection model. This might be necessary
      * because NodeUuids have changed.

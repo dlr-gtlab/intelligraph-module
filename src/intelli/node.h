@@ -23,7 +23,7 @@
 namespace intelli
 {
 
-enum NodeFlag : size_t
+enum NodeFlag : unsigned
 {
     /// no flag
     NoFlag      = 0,
@@ -49,7 +49,7 @@ enum NodeFlag : size_t
     UserFlag = 1 << 16
 };
 
-using NodeFlags = size_t;
+using NodeFlags = unsigned;
 
 /// mask to check if node is resizable
 constexpr size_t IsResizableMask =
@@ -62,7 +62,7 @@ constexpr size_t IsBlockingMask = 1 << 1;
 /// mask to check if node should be evaluated exclusively
 constexpr size_t IsExclusiveMask = 1 << 2;
 
-enum class NodeEvalMode : size_t
+enum class NodeEvalMode : unsigned
 {
     NoEvaluationRequired = 0,
     /// Indicates that the node will be evaluated non blockingly in a separate
@@ -77,10 +77,12 @@ enum class NodeEvalMode : size_t
     /// Indicates that the node should be evaluated exclusively to other nodes in
     /// the main thread
     ExclusiveBlocking = IsExclusiveMask | IsBlockingMask,
+    /// Indicates that the node has entire control over how it is executed
+    Custom = 1 << 3 | IsBlockingMask,
     /// Inidcates that the inputs of the node should be forwarded to the outputs
     /// of the node
     // TODO: remove, only a hack for input output providers
-    ForwardInputsToOutputs = 1 << 3 | IsBlockingMask,
+    ForwardInputsToOutputs [[deprecated("Obsolete, use `Blocking` instead")]] = 1 << 4 | IsBlockingMask,
     /// Default behaviour
     Default = Detached,
 
@@ -436,20 +438,6 @@ signals:
      */
     // TODO: rename `inputDataUpdated` because it is triggered on disconnect too
     void inputDataRecieved(PortId portId = invalid<PortId>());
-
-    /**
-     * @brief Emitted once the node evaluation has started. Will update the node
-     * flag `Evaluating` automatically.
-     */
-    [[deprecated]]
-    void computingStarted();
-
-    /**
-     * @brief Emitted once the node evaluation has finished. Will update the node
-     * flag `Evaluating` automatically.
-     */
-    [[deprecated("use `evaluated` signal instead")]]
-    void computingFinished();
 
     /**
      * @brief Emitted if node specific data has changed (caption, number of

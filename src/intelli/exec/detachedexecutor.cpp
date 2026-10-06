@@ -231,11 +231,6 @@ DetachedExecutor::onResultReady(int result)
         return;
     }
 
-    auto finally = gt::finally([this](){
-        if (m_node) emit m_node->computingFinished();
-    });
-    Q_UNUSED(finally);
-
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
     gtTrace().verbose()
         << utils::logId(this)
@@ -264,8 +259,6 @@ DetachedExecutor::onResultReady(int result)
         gtError() << utils::logId(this)
                   << tr("Failed to transfer node data!");
     }
-
-    finally.finalize();
 
     model->nodeEvaluationFinished(nodeUuid);
 }
@@ -300,7 +293,6 @@ DetachedExecutor::evaluateNode(Node& node)
     m_node = &node;
     m_model = model;
     m_collected = false;
-    emit m_node->computingStarted();
 
     NodeUuid const& nodeUuid = node.uuid();
 

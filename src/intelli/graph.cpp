@@ -54,6 +54,8 @@ Graph::Graph(QString const& modelName, bool initProviders) :
 
     if (initProviders)
     {
+        setNodeEvalMode(NodeEvalMode::Custom);
+
         NodeId nextId{0};
 
         auto input = std::make_unique<GraphInputProvider>();
@@ -62,7 +64,7 @@ Graph::Graph(QString const& modelName, bool initProviders) :
         input->setUserHidden(true);
         input->setId(nextId++);
         synchronizePorts(*input);
-        appendNode(std::move(input), NodeIdPolicy::Keep);
+        auto inputProvider = appendNode(std::move(input), NodeIdPolicy::Keep);
         
         auto output = std::make_unique<GraphOutputProvider>();
         output->setDefault(true);
@@ -71,6 +73,28 @@ Graph::Graph(QString const& modelName, bool initProviders) :
         output->setId(nextId++);
         synchronizePorts(*output);
         appendNode(std::move(output), NodeIdPolicy::Keep);
+
+        // forward input data of graph to input provider
+        connect(this, &Node::inputDataRecieved, this, [this, inputProvider](PortId portId){
+            Graph* parent = parentGraph();
+            if (!parent) return;
+
+            if (portType(portId) != PortType::In) return;
+
+            auto* dataInterface = exec::nodeDataInterface(*inputProvider);
+            if (!dataInterface) return;
+
+            if (!portId.isValid())
+            {
+                for (auto const& port : ports(PortType::In))
+                {
+                    dataInterface->setNodeData(inputProvider->uuid(), port.id(), nodeData(port.id()));
+                }
+                return;
+            }
+
+            dataInterface->setNodeData(inputProvider->uuid(), portId, nodeData(portId));
+        });
     }
 }
 
@@ -1229,6 +1253,26 @@ Graph::initInputOutputProviders()
 }
 
 void
+Graph::initInputData()
+{
+    Graph* parent = parentGraph();
+    if (!parent) return;
+
+    parent->initInputData();
+
+    auto* inputProvider = this->inputProvider();
+    if (!inputProvider) return;
+
+    auto* dataInterface = exec::nodeDataInterface(*inputProvider);
+    if (!dataInterface) return;
+
+    for (auto const& port : ports(PortType::In))
+    {
+        dataInterface->setNodeData(inputProvider->uuid(), port.id(), nodeData(port.id()));
+    }
+}
+
+void
 Graph::resetGlobalConnectionModel()
 {
     Modification cmd = modify();
@@ -1241,6 +1285,11 @@ Graph::resetGlobalConnectionModel()
 void
 Graph::eval()
 {
+    NodeDataInterface* parentDataModel = exec::nodeDataInterface(*this);
+    assert(parentDataModel);
+
+    auto evaluation = std::make_shared<NodeDataInterface::ScopedEvaluation>(parentDataModel->nodeEvaluation(uuid()));
+
     auto makeError = [this](){
         return gt::quoted(relativeNodePath(*this), "[", "] ") +
                tr("evaluation failed!");
@@ -1256,7 +1305,11 @@ Graph::eval()
         return evalFailed();
     }
 
-    auto* dataModel = exec::nodeDataInterface(*this);
+    // evaluate branch
+    auto* executor = GraphExecutionModel::make(*this);
+    executor->reset();
+
+    NodeDataInterface* dataModel = executor;
     if (!dataModel)
     {
         gtError() << makeError() << tr("data model not found!");
@@ -1266,8 +1319,7 @@ Graph::eval()
     // set input data
     for (NodePort const& port : ports(PortType::In))
     {
-        // TODO: remove invisible ports
-        if (!port.visible) continue;
+        assert(port.visible);
 
         if (!inputNode->port(port.id()))
         {
@@ -1286,40 +1338,46 @@ Graph::eval()
         }
     }
 
-    // evaluate branch
-    GraphExecutionModel executor{*this};
+    auto future = executor->evaluateGraph(*this);
 
-    auto future = executor.evaluateGraph(*this);
+    future.then([this,
+                 makeError,
+                 evaluation = std::move(evaluation),
+                 self = QPointer<Graph>{this},
+                 outputNode = QPointer<GraphOutputProvider>{outputNode}](bool success) mutable {
+        assert(self);
+        assert(outputNode);
 
-    if (!future.wait(std::chrono::seconds{60}))
-    {
-        gtError() << makeError()
-                  << tr("timeout!");
-        return evalFailed();
-    }
-
-    // set output data
-    for (NodePort const& port : ports(PortType::Out))
-    {
-        // TODO: remove invisible ports
-        if (!port.visible) continue;
-
-        if (!outputNode->port(port.id()))
+        if (!success)
         {
-            gtError() << makeError()
-                      << tr("port '%1' in output provider not found!")
-                             .arg(toString(port));
             return evalFailed();
         }
 
-        if (!setNodeData(port.id(), dataModel->nodeData(outputNode->uuid(), port.id())))
+        NodeDataInterface* dataModel = GraphExecutionModel::accessExecModel(*this);
+
+        // set output data
+        for (NodePort const& port : ports(PortType::Out))
         {
-            gtError() << makeError()
-                      << tr("failed to set output data for port '%1'!")
-                             .arg(toString(port));
-            return evalFailed();
+            // TODO: remove invisible ports
+            if (!port.visible) continue;
+
+            if (!outputNode->port(port.id()))
+            {
+                gtError() << makeError()
+                          << tr("port '%1' in output provider not found!")
+                                 .arg(toString(port));
+                return evalFailed();
+            }
+
+            if (!setNodeData(port.id(), dataModel->nodeData(outputNode->uuid(), port.id())))
+            {
+                gtError() << makeError()
+                          << tr("failed to set output data for port '%1'!")
+                                 .arg(toString(port));
+                return evalFailed();
+            }
         }
-    }
+    }, std::chrono::seconds{60});
 }
 
 Graph::Modification

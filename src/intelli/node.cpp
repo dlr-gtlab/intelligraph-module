@@ -590,6 +590,11 @@ public:
         if (evalMode == NodeEvalMode::NoEvaluationRequired) return true;
 
         size_t evalFlag = (size_t)node.nodeEvalMode();
+        if (evalFlag == (size_t)NodeEvalMode::Custom)
+        {
+            evaluateNode(node);
+            return true;
+        }
         if (evalFlag & IsDetachedMask)
         {
             return exec::detachedEvaluation(node);
@@ -665,14 +670,6 @@ intelli::exec::blockingEvaluation(Node& node, NodeDataInterface* model)
 
     auto cmd = model->nodeEvaluation(node.uuid());
     Q_UNUSED(cmd);
-
-    // cleanup routine
-    auto finally = gt::finally([&node](){
-        emit node.computingFinished();
-    });
-    Q_UNUSED(finally);
-
-    emit node.computingStarted();
 
     INode::evaluateNode(node);
 
