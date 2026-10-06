@@ -1455,8 +1455,6 @@ GraphScene::onMakeDraftConnection(NodeGraphicsObject* object,
                                   PortType type,
                                   PortId portId)
 {
-    Profiler profiler{__FUNCTION__};
-
     assert(object);
 
     Impl::CutOperation::instance().clear();

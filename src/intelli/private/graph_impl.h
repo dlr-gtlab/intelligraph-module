@@ -399,8 +399,6 @@ struct Graph::Impl
                               bool invert = false)
     {
         assert(root);
-        assert(!qobject_cast<DynamicNode*>(root) ||
-               static_cast<DynamicNode*>(root)->isDynamicPort(type, idx));
         assert(provider);
 
         if (!invert && type != provider->providerType()) return;

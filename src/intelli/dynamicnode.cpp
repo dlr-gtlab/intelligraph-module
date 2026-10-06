@@ -48,8 +48,8 @@ struct DynamicNode::Impl
     /// Node option
     size_t option = DynamicInputAndOutput;
 
-    size_t unsyncedInPorts  = 0;
-    size_t unsyncedOutPorts = 0;
+    int unsyncedInPorts  = 0;
+    int unsyncedOutPorts = 0;
 
     auto beginInsertPort(PortType type)
     {
