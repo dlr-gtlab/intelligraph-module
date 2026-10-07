@@ -39,7 +39,7 @@ public:
     constexpr UFlags() noexcept {}
     constexpr UFlags(Enum _flags) noexcept : flags(value_type(_flags)) {}
     constexpr UFlags(value_type _flags) noexcept : flags(_flags) {}
-    constexpr UFlags(std::initializer_list<Enum> _flags) noexcept : flags(recursive_initializer(_flags)) {}
+    constexpr UFlags(std::initializer_list<Enum> _flags) noexcept : flags(recursive_initializer(_flags.begin(), _flags.end())) {}
 
     constexpr inline UFlags& operator&=(UFlags mask) noexcept { flags &= mask.flags; return *this; }
     constexpr inline UFlags& operator&=(Enum mask) noexcept { flags &= value_type{mask}; return *this; }
@@ -50,6 +50,7 @@ public:
     constexpr inline UFlags operator~() const noexcept { return {~flags}; }
 
     constexpr inline operator value_type() const noexcept { return flags; }
+    constexpr inline value_type value() const noexcept { return flags; }
 
     constexpr inline bool testFlag(Enum flag) const noexcept
     {

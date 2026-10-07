@@ -11,6 +11,7 @@
 #define GT_INTELLI_NODE_H
 
 #include <intelli/globals.h>
+#include <intelli/flags.h>
 #include <intelli/nodeevent.h>
 #include <intelli/nodeport.h>
 #include <intelli/exports.h>
@@ -45,15 +46,14 @@ enum NodeFlag : unsigned
     /// default node flags
     DefaultNodeFlags = NoFlag,
 
+    /// mask to check if node is resizable
+    IsResizableMask = Resizable | ResizableHOnly,
+
     /// base flag for user defined node flags
     UserFlag = 1 << 16
 };
 
-using NodeFlags = unsigned;
-
-/// mask to check if node is resizable
-constexpr size_t IsResizableMask =
-    Resizable | ResizableHOnly;
+using NodeFlags = UFlags<NodeFlag>;
 
 /// mask to check if node should be evaluated in separate thread
 constexpr size_t IsDetachedMask = 1 << 0;
@@ -573,15 +573,18 @@ protected:
      */
     void setNodeFlag(NodeFlag flag, bool enable = true);
 
+    [[deprecated("Use `Node::setNodeFlags` or `Node::setNodeFlag` instead.")]]
+    void setNodeFlag(NodeFlags flags, bool enable = true)
+    {
+        setNodeFlag(static_cast<NodeFlag>(flags.value()), enable);
+    }
+
     /**
      * @brief Overload, that accepts a custom node flag
      * @param flag Flag(s) to set
      * @param enable Whether to enable or disable the flag(s)
      */
-    inline void setNodeFlag(size_t flag, bool enable = true)
-    {
-        return setNodeFlag((NodeFlag)flag, enable);
-    }
+    void setNodeFlags(NodeFlags flags);
 
     /**
      * @brief Sets the node evaluation mode

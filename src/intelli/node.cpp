@@ -209,21 +209,26 @@ Node::isValid() const
 void
 Node::setNodeFlag(NodeFlag flag, bool enable)
 {
-    switch (flag)
+    if (flag & Deprecated && toolTip().isEmpty())
     {
-    case Deprecated:
-        if (toolTip().isEmpty())
-        {
-            setToolTip(tr("This node is deprecated and will "
-                          "be removed in a future relase."));
-        }
-        break;
-    default:
-        break;
+        setToolTip(tr("This node is deprecated and will "
+                      "be removed in a future relase."));
     }
 
     enable ? pimpl->flags |= flag :
              pimpl->flags &= ~flag;
+}
+
+void
+Node::setNodeFlags(NodeFlags flags)
+{
+    if (flags.testFlag(Deprecated) && toolTip().isEmpty())
+    {
+        setToolTip(tr("This node is deprecated and will "
+                      "be removed in a future relase."));
+    }
+
+    pimpl->flags = flags;
 }
 
 void
