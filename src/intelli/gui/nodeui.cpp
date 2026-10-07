@@ -551,28 +551,38 @@ namespace
 void
 addPort(DynamicNode& node, PortType type)
 {
+    PortEditDialog::Option option{PortEditDialog::AllowListTypes};
+
+    auto dynOptions = node.dynamicNodeOptions();
+    if (dynOptions.testFlag(DynamicNode::NoDefaultListTypes) ||
+        dynOptions.testFlag(DynamicNode::ListTypesOnly))
+    {
+        option = PortEditDialog::NoOption;
+    }
+
     PortEditDialog dialog{
         type,
+        option,
         type == PortType::In ?
-            node.inputWhitelist() :
-            node.outputWhitelist()
+            node.inputWhitelist() : node.outputWhitelist()
     };
     if (!dialog.exec()) return;
 
-    Node::PortInfo portInfo{dialog.typeId()};
-    portInfo.caption = dialog.caption();
-    portInfo.captionVisible = dialog.captionVisible();
+    Node::PortInfo newPort{dialog.typeId()};
+    newPort.caption = dialog.caption();
+    newPort.captionVisible = dialog.captionVisible();
+    newPort.optional = dialog.optional();
 
-    // TODO: undo/redo command not working, since multiple nodes are updated in parallel
-    auto cmd = gtApp->makeCommand(&node,
-                                  QStringLiteral("Adding an %1put port to conditional node '%2'")
-                                      .arg(type == PortType::In ? "in" : "out",
-                                           relativeNodePath(node)));
+    auto cmd = gtApp->makeCommand(
+        &node,
+        QStringLiteral("Adding an %1put port to conditional node '%2'")
+            .arg(type == PortType::In ? "in" : "out",
+                 relativeNodePath(node)));
     Q_UNUSED(cmd);
 
     auto id = (type == PortType::In) ?
-                  node.addInPort(std::move(portInfo)) :
-                  node.addOutPort(std::move(portInfo));
+                  node.addInPort(std::move(newPort)) :
+                  node.addOutPort(std::move(newPort));
 
     auto* port = node.port(id);
     if (!port)
@@ -583,6 +593,46 @@ addPort(DynamicNode& node, PortType type)
     }
     gtInfo().verbose() << QObject::tr("Added dynamic port '%1'")
                               .arg(port ? toString(*port) : "N/A");
+}
+
+void
+editPort(DynamicNode& node, PortType type, NodePort& srcPort)
+{
+    PortEditDialog::Option option{PortEditDialog::AllowListTypes};
+
+    auto dynOptions = node.dynamicNodeOptions();
+    if (dynOptions.testFlag(DynamicNode::NoDefaultListTypes) ||
+        dynOptions.testFlag(DynamicNode::ListTypesOnly))
+    {
+        option = PortEditDialog::NoOption;
+    }
+
+    PortEditDialog dialog{
+        type,
+        option,
+        type == PortType::In ?
+            node.inputWhitelist() : node.outputWhitelist()
+    };
+    dialog.setTypeId(srcPort.typeId);
+    dialog.setCaption(srcPort.caption);
+    dialog.setCaptionVisible(srcPort.captionVisible);
+    dialog.setOptional(srcPort.optional);
+    if (!dialog.exec()) return;
+
+    auto cmd = gtApp->makeCommand(
+        &node,
+        QStringLiteral("Edited port '%1' of node '%2'")
+            .arg(toString(srcPort), relativeNodePath(node)));
+    Q_UNUSED(cmd);
+
+    auto port = srcPort;
+    port.typeId = dialog.typeId();
+    port.caption = dialog.caption();
+    port.captionVisible = dialog.captionVisible();
+    port.optional = dialog.optional();
+    srcPort.assign(port);
+    assert(srcPort.id() == srcPort.id());
+    emit node.portChanged(srcPort.id());
 }
 
 } // namespace
@@ -614,37 +664,10 @@ NodeUI::editDynamicPort(Node* node, PortType type, PortIndex idx)
     NodePort* srcPort = node->port(srcPortId);
     if(!srcPort) return;
 
-    DynamicNode* dynNode = qobject_cast<DynamicNode*>(node);
+    DynamicNode* dynNode = toDynamicNode(node);
+    if (!dynNode) return;
 
-    PortEditDialog dialog{
-        type,
-        dynNode ?
-            (type == PortType::In ?
-                 dynNode->inputWhitelist() :
-                 dynNode->outputWhitelist()) :
-            QStringList{}
-    };
-    dialog.setTypeId(srcPort->typeId);
-    dialog.setCaption(srcPort->caption);
-    dialog.setCaptionVisible(srcPort->captionVisible);
-    if (!dialog.exec()) return;
-
-    // TODO: undo/redo command not working, since multiple nodes are updated in parallel
-    auto cmd = gtApp->makeCommand(
-        node,
-        QStringLiteral("Edited port '%1' of node '%2'")
-            .arg(toString(*srcPort),
-                 relativeNodePath(*node))
-    );
-    Q_UNUSED(cmd);
-
-    auto port = *srcPort;
-    port.typeId = dialog.typeId();
-    port.caption = dialog.caption();
-    port.captionVisible = dialog.captionVisible();
-    srcPort->assign(port);
-    assert(srcPort->id() == srcPortId);
-    emit node->portChanged(srcPort->id());
+    editPort(*dynNode, type, *srcPort);
 }
 
 void

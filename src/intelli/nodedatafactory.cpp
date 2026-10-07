@@ -156,7 +156,6 @@ NodeDataFactory::registerListType(TypeId typeId, const QMetaObject& meta) noexce
     });
 
     return true;
-
 }
 
 bool
@@ -184,7 +183,10 @@ NodeDataFactory::validTypeIds() const
 TypeName
 NodeDataFactory::typeName(TypeId const& typeId) const noexcept
 {
-    if (isListType(typeId)) return gt::quoted(typeName(innerType(typeId)), "list<", ">");
+    if (isListType(typeId))
+    {
+        return QStringLiteral("%1_list").arg(typeName(innerType(typeId)));
+    }
 
     auto iter = pimpl->typeNames.constFind(typeId);
     if (iter == pimpl->typeNames.cend()) return {};
@@ -204,6 +206,15 @@ NodeDataFactory::isListType(QStringView typeIdView) const
     return typeIdView.startsWith(QStringLiteral("#list#"));
 }
 
+bool
+NodeDataFactory::hasListType(QStringView typeIdView) const
+{
+    if (isListType(typeIdView)) return false;
+    if (typeIdView == typeId<InvalidData>()) return false;
+
+    return pimpl->listTypes.contains(listType(typeIdView));
+}
+
 TypeId
 NodeDataFactory::innerType(QStringView typeIdView) const
 {
@@ -218,8 +229,10 @@ NodeDataFactory::innerType(QStringView typeIdView) const
 TypeId
 NodeDataFactory::listType(QStringView typeIdView) const
 {
-    if (typeIdView == typeId<InvalidData>()) return {};
     if (isListType(typeIdView)) return {};
+    if (typeIdView == typeId<InvalidData>()) return {};
+    // type not registered
+    if (!pimpl->typeNames.contains(typeIdView)) return {};
 
     return QStringLiteral("#list#") + typeIdView.toString();
 }

@@ -117,6 +117,13 @@ public:
     bool isListType(QStringView typeIdView) const;
 
     /**
+     * @brief Returns whether the given type id has a list type associated
+     * @param typeIdView Type id to check
+     * @return Returns true if the given type id has a list type associated
+     */
+    bool hasListType(QStringView typeIdView) const;
+
+    /**
      * @brief Returns the inner type in case the given type id is a list type
      * @param typeIdView List type id
      * @return Returns inner type. Returns empty string if the given type has

@@ -42,33 +42,37 @@ protected:
      */
     static void clearGraphNode(GtObject* obj);
 
+    /**
+     * @brief Duplicates the graph
+     * @param obj Intelli graph to duplicate
+     */
     static void duplicateGraph(GtObject* obj);
 
     /**
-     * @brief Prompts the user and adds an input port to the given dynamic node
+     * @brief Prompts the user and adds an input port to the parent graph node
      * @param obj
      */
     static void addInputProviderPort(GtObject* obj);
 
     /**
-     * @brief Prompts the user and adds an output port to the given dynamic node
+     * @brief Prompts the user and adds an output port to the parent graph node
      * @param obj
      */
     static void addOutputProviderPort(GtObject* obj);
 
     /**
-     * @brief Prompts the user to edit the given dynamic port
-     * @param obj
-     * @param type
-     * @param idx
+     * @brief Prompts the user to edit the given port of the parent graph node
+     * @param obj Provider
+     * @param type Port Type
+     * @param idx Port Index
      */
     static void editProviderPort(Node* obj, PortType type, PortIndex idx);
 
     /**
-     * @brief Deletes a dynamic port
-     * @param obj
-     * @param type
-     * @param idx
+     * @brief Deletes the port in the parent graph node
+     * @param obj Provider
+     * @param type Port Type
+     * @param idx Port Index
      */
     static void deleteProviderPort(Node* obj, PortType type, PortIndex idx);
 };

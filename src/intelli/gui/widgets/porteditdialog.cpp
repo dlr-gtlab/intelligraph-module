@@ -22,32 +22,72 @@
 #include <QComboBox>
 #include <QCheckBox>
 #include <QPushButton>
-#include <QRegularExpressionValidator>
+#include <QTimer>
 
 using namespace intelli;
 
 struct PortEditDialog::Impl
 {
-    QCheckBox* portCaptionCheckBox{};
+    /// maps type-id to type names, used for displaying easy to read type names
+    /// instead of raw type id
+    QHash<TypeId, TypeName> typeToName;
+
+    QPushButton* portCaptionVisibleBtn{};
     QLineEdit* portCaptionEdit{};
     QComboBox* portTypeComboBox{};
+    QPushButton* listTypeBtn{};
+    QCheckBox* portOptionalCheckBox{};
 
     TypeId typeId{};
     QString caption{};
     bool captionVisible = true;
+    bool allowLists = false;
 };
 
-PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhiteList) :
+PortEditDialog::PortEditDialog(PortType portType,
+                               Option option,
+                               QStringList const& typeIdWhiteList) :
     pimpl(std::make_unique<Impl>())
 {
+
     setWindowTitle(portType == PortType::In ?
                        tr("Edit Input Port") : tr("Edit Output Port"));
     setWindowIcon(gt::gui::icon::config());
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
 
+    auto& factory = NodeDataFactory::instance();
+
     QStringList typeIds = typeIdWhiteList.empty() ?
-                                 NodeDataFactory::instance().validTypeIds() :
+                                 factory.validTypeIds() :
                                  std::move(typeIdWhiteList);
+
+    if (option == AllowListTypes)
+    {
+        pimpl->allowLists = true;
+
+        if (!typeIdWhiteList.isEmpty())
+        {
+            // remove list types
+            auto isListType = std::bind(
+                &NodeDataFactory::isListType, &factory, std::placeholders::_1);
+            typeIds.erase(std::remove_if(typeIds.begin(),
+                                         typeIds.end(),
+                                         isListType),
+                          typeIds.end());
+        }
+    }
+
+    for (auto typeId : typeIds)
+    {
+        TypeName typeName = NodeDataFactory::instance().typeName(typeId);
+        if (pimpl->typeToName.find(typeName) != pimpl->typeToName.end())
+        {
+            typeName = QStringLiteral("%1 (%2)").arg(typeName, typeId);
+        }
+        pimpl->typeToName.insert(typeId, typeName);
+    };
+
+    typeIds = pimpl->typeToName.values();
     typeIds.sort();
 
     auto* layout = new QGridLayout();
@@ -57,32 +97,52 @@ PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhite
     pimpl->portTypeComboBox->addItems(typeIds);
 
     auto* portCaptionLabel = new QLabel{tr("Port Caption:")};
-    pimpl->portCaptionCheckBox = new QCheckBox{};
+    pimpl->portCaptionVisibleBtn = new QPushButton{};
+    pimpl->listTypeBtn = new QPushButton{};
     pimpl->portCaptionEdit = new QLineEdit{};
-//    pimpl->portCaptionEdit->setValidator(new QRegularExpressionValidator(
-//        gt::rex::onlyLettersAndNumbersAndDot(), this));
 
     pimpl->portTypeComboBox->setToolTip(
         tr("Select the Port Type"));
+
     pimpl->portCaptionEdit->setToolTip(
         tr("Enter Port Caption: %1")
             .arg(gt::rex::onlyLettersAndNumbersAndDotHint()));
-    pimpl->portCaptionCheckBox->setToolTip(
-        tr("Toggle whether the caption should be displayed"));
+
+    pimpl->portCaptionVisibleBtn->setCheckable(true);
+    pimpl->portCaptionVisibleBtn->setChecked(true);
+    pimpl->portCaptionVisibleBtn->setFlat(true);
+
+    pimpl->listTypeBtn->setCheckable(true);
+    pimpl->listTypeBtn->setChecked(false);
+    pimpl->listTypeBtn->setIcon(gt::gui::icon::list());
+    pimpl->listTypeBtn->setToolTip(tr("Activate to generate list variant"));
+    pimpl->listTypeBtn->setFlat(true);
+    pimpl->listTypeBtn->setVisible(pimpl->allowLists);
+
+    auto* portOptionalLabel = new QLabel{tr("Port Optional:")};
+    pimpl->portOptionalCheckBox = new QCheckBox{};
+    pimpl->portOptionalCheckBox->setChecked(true);
+    pimpl->portOptionalCheckBox->setToolTip(
+        tr("Denotes whether the node may start evaluation if "
+           "the port is not connected"));
 
     constexpr int rowSpan = 1;
-    constexpr int colSpan = 2;
+    constexpr int colSpan = 3;
 
     auto* captionLayout = new QHBoxLayout;
     captionLayout->setContentsMargins(0, 0, 0, 0);
     captionLayout->addWidget(pimpl->portCaptionEdit);
-    captionLayout->addWidget(pimpl->portCaptionCheckBox);
+    captionLayout->addWidget(pimpl->portCaptionVisibleBtn);
 
     int row = 1;
     layout->addWidget(portTypeLabel, row, 1);
-    layout->addWidget(pimpl->portTypeComboBox, row++, 2);
+    layout->addWidget(pimpl->portTypeComboBox, row, 2, rowSpan, 1 + !pimpl->allowLists);
+    layout->addWidget(pimpl->listTypeBtn, row++, 3);
     layout->addWidget(portCaptionLabel, row, 1);
-    layout->addLayout(captionLayout, row++, 2);
+    layout->addWidget(pimpl->portCaptionEdit, row, 2);
+    layout->addWidget(pimpl->portCaptionVisibleBtn, row++, 3);
+    layout->addWidget(portOptionalLabel, row, 1);
+    layout->addWidget(pimpl->portOptionalCheckBox, row++, 2);
 
     // dialog buttons
     auto applyButton = new QPushButton{tr("Apply")};
@@ -101,11 +161,11 @@ PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhite
     layout->addWidget(line, row++, 1, rowSpan, colSpan);
 
     auto* buttonsLayout = new QHBoxLayout();
-    buttonsLayout->setContentsMargins(4, 4, 4, 4);
+    buttonsLayout->setContentsMargins(0, 0, 0, 0);
     buttonsLayout->addStretch(1);
     buttonsLayout->addWidget(closeButton);
     buttonsLayout->addWidget(applyButton);
-    layout->addLayout(buttonsLayout, row++, 1, rowSpan, colSpan);
+    layout->addLayout(buttonsLayout, row++, 2, rowSpan, colSpan - 1);
 
     setLayout(layout);
     layout->setSizeConstraint(QLayout::SetFixedSize);
@@ -114,10 +174,15 @@ PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhite
     connect(applyButton, &QPushButton::clicked, this, &QDialog::accept);
 
     auto updateTypeId = [this](QString const& currentText){
-        pimpl->typeId = currentText;
+        auto& factory = NodeDataFactory::instance();
 
-        QString typeName = NodeDataFactory::instance()
-                               .typeName(currentText);
+        pimpl->typeId = pimpl->typeToName.key(currentText);
+        if (pimpl->listTypeBtn->isChecked())
+        {
+            pimpl->typeId = factory.listType(pimpl->typeId);
+        }
+
+        TypeName typeName = factory.typeName(pimpl->typeId);
         pimpl->portCaptionEdit->setPlaceholderText(typeName);
 
         if (pimpl->portCaptionEdit->text().isEmpty())
@@ -127,34 +192,49 @@ PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhite
     };
 
     auto updateCaption = [this](QString const& currentText){
+        auto& factory = NodeDataFactory::instance();
+
         pimpl->caption = currentText;
         if (currentText.isEmpty())
         {
-            QString typeName = NodeDataFactory::instance()
-                                   .typeName(pimpl->portTypeComboBox->currentText());
+            TypeName typeName = factory.typeName(pimpl->typeId);
             pimpl->caption = std::move(typeName);
         }
     };
 
     auto updateCaptionVisibility = [this](bool checked){
         pimpl->captionVisible = checked;
+        pimpl->portCaptionVisibleBtn->setIcon(
+            checked ? gt::gui::icon::eye() : gt::gui::icon::eyeOff());
+        pimpl->portCaptionVisibleBtn->setToolTip(
+            checked ? tr("Port caption is visible") : tr("Port caption is hidden"));
+    };
+
+    auto updatePortOptional = [=](bool checked){
+        pimpl->portOptionalCheckBox->setText(
+            checked ? tr("optional") : tr("required"));
     };
 
     connect(pimpl->portTypeComboBox, &QComboBox::currentTextChanged,
             this, updateTypeId);
     connect(pimpl->portCaptionEdit, &QLineEdit::textChanged,
             this, updateCaption);
-    connect(pimpl->portCaptionCheckBox, &QCheckBox::clicked,
+    connect(pimpl->portCaptionVisibleBtn, &QPushButton::clicked,
             this, updateCaptionVisibility);
+    connect(pimpl->listTypeBtn, &QPushButton::clicked,
+            this, [=](){ updateTypeId(pimpl->portTypeComboBox->currentText()); });
+    connect(pimpl->portOptionalCheckBox, &QPushButton::clicked,
+            this, updatePortOptional);
 
-    pimpl->portTypeComboBox->setCurrentText(intelli::typeId<DoubleData>());
-    pimpl->portCaptionCheckBox->setChecked(true);
+    pimpl->portTypeComboBox->setCurrentText(pimpl->typeToName[intelli::typeId<DoubleData>()]);
+    updateCaptionVisibility(pimpl->portCaptionVisibleBtn->isChecked());
+    updatePortOptional(true);
 
     // invalid inputs -> abort dialog
     if (typeIds.empty())
     {
         gtWarning() << tr("Failed to edit port data, invalid type ids!");
-        reject();
+        QTimer::singleShot(0, this, &QDialog::reject);
     }
     // nothing to select
     if (typeIds.size() == 1)
@@ -166,29 +246,53 @@ PortEditDialog::PortEditDialog(PortType portType, QStringList const& typeIdWhite
 PortEditDialog::~PortEditDialog() = default;
 
 void
-PortEditDialog::setTypeId(const TypeId& typeId)
+PortEditDialog::setTypeId(TypeId const& typeId)
 {
-    pimpl->portTypeComboBox->setCurrentText(typeId);
+    auto& factory = NodeDataFactory::instance();
+    TypeId tmpTypeId = typeId;
+    if (pimpl->allowLists && factory.isListType(typeId))
+    {
+        tmpTypeId = factory.innerType(tmpTypeId);
+        pimpl->listTypeBtn->setChecked(true);
+    }
+
+    pimpl->portTypeComboBox->setCurrentText(pimpl->typeToName[tmpTypeId]);
+    emit pimpl->portTypeComboBox->currentTextChanged(pimpl->portTypeComboBox->currentText());
     setCaption(pimpl->caption);
 }
 
 void
 PortEditDialog::setCaption(const QString& caption)
 {
-    QString typeName = NodeDataFactory::instance()
-                           .typeName(pimpl->portTypeComboBox->currentText());
+    auto& factory = NodeDataFactory::instance();
+
+    TypeId typeId = pimpl->typeToName.key(pimpl->portTypeComboBox->currentText());
+    if (pimpl->listTypeBtn->isChecked())
+    {
+        typeId = factory.listType(typeId);
+    }
+
+    TypeName typeName = factory.typeName(typeId);
     if (typeName == caption)
     {
-        pimpl->portCaptionEdit->setText({});
+        pimpl->portCaptionEdit->clear();
         return;
     }
+
     pimpl->portCaptionEdit->setText(caption);
 }
 
 void
 PortEditDialog::setCaptionVisible(bool visible)
 {
-    pimpl->portCaptionCheckBox->setChecked(visible);
+    pimpl->portCaptionVisibleBtn->setChecked(visible);
+    emit pimpl->portCaptionVisibleBtn->clicked(visible);
+}
+
+void
+PortEditDialog::setOptional(bool optional)
+{
+    pimpl->portOptionalCheckBox->setChecked(optional);
 }
 
 TypeId
@@ -209,3 +313,8 @@ PortEditDialog::captionVisible() const
     return pimpl->captionVisible;
 }
 
+bool
+PortEditDialog::optional() const
+{
+    return pimpl->portOptionalCheckBox->isChecked();
+}

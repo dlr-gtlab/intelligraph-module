@@ -46,7 +46,7 @@ struct DynamicNode::Impl
     QStringList outputWhitelist;
 
     /// Node option
-    size_t option = DynamicInputAndOutput;
+    DynamicNodeOptions option = DynamicInputAndOutput;
 
     int unsyncedInPorts  = 0;
     int unsyncedOutPorts = 0;
@@ -61,53 +61,62 @@ struct DynamicNode::Impl
 };
 
 DynamicNode::DynamicNode(QString const& modelName,
-                         size_t option,
+                         DynamicNodeOptions options,
                          GtObject* parent) :
-    DynamicNode(modelName, QStringList{}, QStringList{}, option, parent)
+    DynamicNode(modelName, QStringList{}, QStringList{}, options, parent)
 { }
 
 DynamicNode::DynamicNode(QString const& modelName,
                          QStringList inputWhiteList,
                          QStringList outputWhiteList,
-                         size_t option,
+                         DynamicNodeOptions options,
                          GtObject* parent) :
     Node(modelName, parent),
-    pimpl(std::make_unique<Impl>(option))
+    pimpl(std::make_unique<Impl>(options))
 {
     if (pimpl->option != NoDynamicPorts)
     {
-        QStringList inputTypes = inputWhiteList.empty() ?
+        QStringList inputTypes  = inputWhiteList.empty() ?
                                      NodeDataFactory::instance().validTypeIds() :
                                      std::move(inputWhiteList);
         QStringList outputTypes = outputWhiteList.empty() ?
                                      NodeDataFactory::instance().validTypeIds() :
                                      std::move(outputWhiteList);
 
-        if (!(option & NoDefaultListTypes))
+        auto& factory = NodeDataFactory::instance();
+
+        auto hasListType = std::bind(
+            &NodeDataFactory::hasListType, &factory, std::placeholders::_1);
+        auto getListType = std::bind(
+            &NodeDataFactory::listType, &factory, std::placeholders::_1);
+
+        if (!options.testFlag(NoDefaultListTypes))
         {
             inputTypes.reserve(inputTypes.size() * 2);
             outputTypes.reserve(outputTypes.size() * 2);
 
-            auto& factory = NodeDataFactory::instance();
-            utils::transform_if(inputTypes, [&factory](TypeId const& type){
-                    return !factory.isListType(type) && type != typeId<InvalidData>();
-                },
-                std::back_inserter(inputTypes), [&factory](TypeId const& type){
-                    return factory.listType(type);
-                });
+            utils::transform_if(inputTypes, hasListType,
+                                std::back_inserter(inputTypes), getListType);
 
-            utils::transform_if(outputTypes, [&factory](TypeId const& type){
-                    return !factory.isListType(type) && type != typeId<InvalidData>();
-                },
-                std::back_inserter(outputTypes), [&factory](TypeId const& type){
-                    return factory.listType(type);
-                });
+            utils::transform_if(outputTypes, hasListType,
+                                std::back_inserter(outputTypes), getListType);
+        }
+        if (options.testFlag(ListTypesOnly))
+        {
+            inputTypes.erase(std::remove_if(inputTypes.begin(),
+                                            inputTypes.end(),
+                                            hasListType),
+                             inputTypes.end());
+            outputTypes.erase(std::remove_if(outputTypes.begin(),
+                                             outputTypes.end(),
+                                             hasListType),
+                              outputTypes.end());
         }
 
         inputTypes.sort();
         outputTypes.sort();
 
-        pimpl->inputWhitelist = inputTypes;
+        pimpl->inputWhitelist  = inputTypes;
         pimpl->outputWhitelist = outputTypes;
       
         GtPropertyStructDefinition portInfoIn{S_PORT_INFO_IN};
@@ -150,23 +159,18 @@ DynamicNode::DynamicNode(QString const& modelName,
     }
 
     connect(this, &Node::portAboutToBeDeleted,
-            this, &DynamicNode::onPortDeleted,
-            Qt::UniqueConnection);
+            this, &DynamicNode::onPortDeleted);
     connect(this, &Node::portChanged,
-            this, &DynamicNode::onPortChanged,
-            Qt::UniqueConnection);
+            this, &DynamicNode::onPortChanged);
 
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
     {
         connect(ports, &GtPropertyStructContainer::entryAdded,
-                this, &DynamicNode::onPortEntryAdded,
-                Qt::UniqueConnection);
+                this, &DynamicNode::onPortEntryAdded);
         connect(ports, &GtPropertyStructContainer::entryChanged,
-                this, &DynamicNode::onPortEntryChanged,
-                Qt::UniqueConnection);
+                this, &DynamicNode::onPortEntryChanged);
         connect(ports, &GtPropertyStructContainer::entryRemoved,
-                this, &DynamicNode::onPortEntryRemoved,
-                Qt::UniqueConnection);
+                this, &DynamicNode::onPortEntryRemoved);
     }
 }
 
@@ -184,8 +188,8 @@ DynamicNode::outputWhitelist() const
     return pimpl->outputWhitelist;
 }
 
-size_t
-DynamicNode::dynamicNodeOption() const
+DynamicNode::DynamicNodeOptions
+DynamicNode::dynamicNodeOptions() const
 {
     return pimpl->option;
 }
