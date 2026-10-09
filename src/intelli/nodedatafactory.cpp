@@ -57,6 +57,7 @@ findConversion(QMultiHash<TypeId, Conversion> const& hash,
 struct Entry
 {
     /// registered meta objects
+    // cppcheck-suppress unusedStructMember
     QMetaObject const* metaObject;
 
     /// module id associated with the registered class
@@ -69,6 +70,7 @@ struct Entry
 struct ListEntry
 {
     /// registered meta objects
+    // cppcheck-suppress unusedStructMember
     QMetaObject const* metaObject;
 
     /// registered scalar type

@@ -399,6 +399,8 @@ private:
      */
     void setupConnections(Graph& graph);
 
+    void shutdown();
+
 private slots:
 
     /// Called once a node finishes its evalaution. Triggers the evaluation of
