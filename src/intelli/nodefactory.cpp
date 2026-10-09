@@ -95,7 +95,11 @@ NodeFactory::registerNode(QMetaObject const& meta, QString category, QString mod
         << "### Registering Node '" << className
         << "' (Category: " << category << ", Module: " << moduleId << ")...";
 
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
     if (!registerClass(meta, moduleId)) return false;
+#else
+    if (!registerClass(meta)) return false;
+#endif
 
     // add node to object factory
     if (!gtObjectFactory->knownClass(className) &&

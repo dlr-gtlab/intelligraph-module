@@ -112,8 +112,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 
 GraphExecutionModel::~GraphExecutionModel()
 {
-    gtDebug() << "HERE DESTRUCTOR";
-    assert(m_isShuttingDown);
+    shutdown();
 }
 
 bool
@@ -200,6 +199,33 @@ GraphExecutionModel::setupConnections(Graph& graph)
     connect(&graph, &Graph::endModification,
             this, &GraphExecutionModel::onEndGraphModification,
             Qt::DirectConnection);
+}
+
+void GraphExecutionModel::shutdown()
+{
+    if (m_isShuttingDown) return;
+
+    m_isShuttingDown = true;
+
+    // Make any still-running detached executors observe a null data interface
+    // instead of a dangling execution model pointer.
+    beginReset();
+
+    if (pimpl->graph)
+    {
+        auto const nodes = pimpl->graph->nodes();
+        for (auto* node : nodes)
+        {
+        if (auto* executor = node->findChild<DetachedExecutor*>())
+        {
+            executor->deleteLater();
+        }
+        }
+    }
+
+    QMutexLocker locker{&Impl::s_sync.mutex};
+    Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
+    return;
 }
 
 
@@ -1002,26 +1028,7 @@ GraphExecutionModel::onGraphDeleted()
 
     if (graph == &this->graph())
     {
-        m_isShuttingDown = true;
-
-        // Make any still-running detached executors observe a null data interface
-        // instead of a dangling execution model pointer.
-        beginReset();
-
-        if (pimpl->graph)
-        {
-            auto const nodes = pimpl->graph->nodes();
-            for (auto* node : nodes)
-            {
-                if (auto* executor = node->findChild<DetachedExecutor*>())
-                {
-                    executor->deleteLater();
-                }
-            }
-        }
-
-        QMutexLocker locker{&Impl::s_sync.mutex};
-        Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
+        shutdown();
         return;
     }
 
