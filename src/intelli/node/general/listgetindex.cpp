@@ -58,7 +58,7 @@ ListGetIndexNode::eval()
     Ptr<IntData> indexData = nodeData<IntData>(m_index);
     if (!indexData) return evalFailed();
 
-    Ptr<BaseListData> listData = nodeData<BaseListData>(m_in);
+    Ptr<ListData> listData = nodeData<ListData>(m_in);
     if (!listData) return evalFailed();
 
     int index = indexData->value();

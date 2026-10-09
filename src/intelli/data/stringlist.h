@@ -18,7 +18,7 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT StringListData : public BaseListData
+class GT_INTELLI_EXPORT StringListData final : public ListData
 {
     Q_OBJECT
 

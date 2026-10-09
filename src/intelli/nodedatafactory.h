@@ -17,6 +17,7 @@
 
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
+#include <gt_globals.h>
 
 /// Helper macro for registering a node class. The node class does should not be
 /// registered additionally as a "data" object of your module
@@ -46,9 +47,12 @@ namespace intelli
 using ConversionFunction = std::function<NodeDataPtr(NodeDataPtr const&)>;
 
 class NodeData;
-class GT_INTELLI_EXPORT NodeDataFactory : public GtAbstractObjectFactory
-{
 
+/**
+ * @brief NodeDataFactory class. Protected inheritance to constrain public API
+ */
+class GT_INTELLI_EXPORT NodeDataFactory : protected GtAbstractObjectFactory
+{
 public:
 
     ~NodeDataFactory();
@@ -67,9 +71,9 @@ public:
     template <typename T,
              std::enable_if_t<std::is_base_of<NodeData, T>::value, bool> = true,
              std::enable_if_t<!is_list_type<T>::value, bool> = false>
-    static bool registerData()
+    inline static bool registerData()
     {
-        bool success = instance().registerData(T::staticMetaObject);
+        bool success = instance().registerData(T::staticMetaObject, GT_MODULENAME());
         if (success)
         {
             success = instance().registerListType(
@@ -91,10 +95,18 @@ public:
                             ConversionFunction conversion) noexcept;
 
     /**
+     * @brief Returns true if `typeId` is registered
+     * @param typeId Tpye id to check
+     * @return Is known type id
+     */
+    bool isKnownType(QStringView typeId) const;
+
+    /**
      * @brief Returns a list of all registered type ids
      * @return List of registered type ids
      */
-    TypeIdList registeredTypeIds() const { return knownClasses(); }
+    [[deprecated("use `validTypeIds` instead")]]
+    TypeIdList registeredTypeIds() const;
 
     /**
      * @brief Returns a list of all registered and valid type ids
@@ -115,6 +127,13 @@ public:
      * @return Returns true if the given type id is a list type
      */
     bool isListType(QStringView typeIdView) const;
+
+    /**
+     * @brief Returns whether the given type id has a list type associated
+     * @param typeIdView Type id to check
+     * @return Returns true if the given type id has a list type associated
+     */
+    bool hasListType(QStringView typeIdView) const;
 
     /**
      * @brief Returns the inner type in case the given type id is a list type
@@ -176,7 +195,7 @@ public:
      * type.
      * @return New list type (may be null)
      */
-    std::unique_ptr<BaseListData> makeListData(TypeId const& typeId) const noexcept;
+    std::unique_ptr<ListData> makeListData(TypeId const& typeId) const noexcept;
 
 protected:
 
@@ -187,7 +206,7 @@ protected:
      * @param meta Meta object of the data type
      * @return success
      */
-    bool registerData(QMetaObject const& meta) noexcept;
+    bool registerData(QMetaObject const& meta, QString const& moduleId) noexcept;
 
     bool registerListType(TypeId typeId, QMetaObject const& meta) noexcept;
 
@@ -195,10 +214,6 @@ private:
 
     struct Impl;
     std::unique_ptr<Impl> pimpl;
-
-    // hide some functions
-    using GtAbstractObjectFactory::newObject;
-    using GtAbstractObjectFactory::registerClass;
 
     /// private constructor
     NodeDataFactory();

@@ -13,7 +13,8 @@
 #include <intelli/exports.h>
 
 #include <gt_logging.h>
-#include <gt_object.h>
+#include <gt_typetraits.h>
+
 #include <tl/optional.hpp>
 
 #include <QMetaMethod>
@@ -22,13 +23,12 @@ namespace intelli
 {
 
 class InvalidData;
-class BaseListData;
+class ListData;
 
 /**
  * @brief The NodeData class. Base class for all node data
  */
-// TODO: use QObject instead?
-class GT_INTELLI_EXPORT NodeData : public GtObject
+class GT_INTELLI_EXPORT NodeData : public QObject
 {
     Q_OBJECT
 
@@ -134,14 +134,14 @@ using inner_type_t = typename inner_type<T>::type;
 /// returns whether a type T is a list type
 template<typename T>
 struct is_list_type
-    : std::disjunction<
-          // either derived of `BaseListData`
-          std::is_base_of<BaseListData, T>,
+    : std::bool_constant<
+          // either derived of `ListData`
+          std::is_base_of<ListData, T>::value ||
           // or a wrapper type whose inner type is derived of `NodeData`
-          std::conjunction<
-              std::negation<std::is_same<inner_type_t<T>, void>>,
-              std::is_base_of<NodeData, inner_type_t<T>>
-          >
+          (
+              std::negation<std::is_same<inner_type_t<T>, void>>::value &&
+              std::is_base_of<NodeData, inner_type_t<T>>::value
+          )
       > {};
 
 /**
@@ -164,8 +164,11 @@ inline QString typeId()
 template <typename T>
 inline QString listTypeId()
 {
-    static_assert(!is_list_type<T>::value, "`T` must not be a list type!");
-    static_assert(!std::is_same<T, InvalidData>::value, "Cannot use `intelli::InvalidData` as list type!");
+    static_assert(!is_list_type<T>::value,
+                  "`T` must not be a list type!");
+    static_assert(!std::is_same<T, InvalidData>::value,
+                  "Cannot use `intelli::InvalidData` as list type!");
+
     return QStringLiteral("#list#") + typeId<T>();
 }
 
@@ -178,9 +181,13 @@ template <typename T,
 inline QString typeId()
 {
     using U = inner_type_t<T>;
-    static_assert(!std::is_same<U, void>::value,        "Could not interfer inner type of `T`!");
-    static_assert(!std::is_same<U, InvalidData>::value, "Cannot use `intelli::InvalidData` as list type!");
-    static_assert(std::is_base_of<NodeData, U>::value,  "T::type must be derived of `intelli::NodeData`!");
+    static_assert(!std::is_same<U, void>::value,
+                  "Could not interfer inner type of `T`!");
+    static_assert(!std::is_same<U, InvalidData>::value,
+                  "Cannot use `intelli::InvalidData` as list type!");
+    static_assert(std::is_base_of<NodeData, U>::value,
+                  "T::type must be derived of `intelli::NodeData`!");
+
     return listTypeId<U>();
 }
 
@@ -188,7 +195,9 @@ inline QString typeId()
  * @brief Returns the typeid of a node data class
  * @return Typeid
  */
-template <typename T, typename ...Args, gt::trait::enable_if_base_of<NodeData, T> = true>
+template <typename T,
+         typename ...Args,
+         gt::trait::enable_if_base_of<NodeData, T> = true>
 inline Ptr<T> makeNodeData(Args&&... args)
 {
     return std::make_shared<T>(std::forward<Args>(args)...);

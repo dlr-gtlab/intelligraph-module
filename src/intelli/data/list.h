@@ -34,7 +34,7 @@ namespace intelli
  * @brief Interface class for list types, enables to access individual indicies
  * of a list type.
  */
-class GT_INTELLI_EXPORT BaseListData : public NodeData
+class GT_INTELLI_EXPORT ListData : public NodeData
 {
     Q_OBJECT
 
@@ -48,7 +48,7 @@ public:
         using reference  = value_type;
         using pointer    = value_type;
 
-        BaseListData const* list{};
+        ListData const* list{};
 
         /// initializes the proxy
         void init(Iter&) {}
@@ -71,7 +71,7 @@ public:
 
 protected:
 
-    BaseListData(QString typeName) : NodeData(std::move(typeName)) {}
+    ListData(QString typeName) : NodeData(std::move(typeName)) {}
 
     virtual size_t getLength() const = 0;
 
@@ -81,7 +81,7 @@ protected:
 /**
  * @brief Generic list data class able to hold any node data ptr
  */
-class GT_INTELLI_EXPORT ListData : public BaseListData
+class GT_INTELLI_EXPORT GenericListData final : public ListData
 {
     Q_OBJECT
 
@@ -96,10 +96,12 @@ public:
     using const_iterator  = typename container_type::const_iterator;
     using size_type       = typename container_type::size_type;
 
-    Q_INVOKABLE ListData();
-    ListData(View<NodeDataPtr> const& list) : ListData()
+    Q_INVOKABLE GenericListData();
+    GenericListData(View<NodeDataPtr> const& list) : GenericListData()
     {
-        std::copy(list.begin(), list.end(), std::back_inserter(m_data));
+        std::for_each(list.begin(), list.end(), [this](NodeDataPtr const& d) {
+            return this->append(d);
+        });
     }
 
     bool append(NodeDataPtr const&  data) override;
@@ -129,7 +131,7 @@ private:
 template <typename T>
 struct list_type
 {
-    using type = ListData;
+    using type = GenericListData;
 
     static_assert(!is_list_type<T>::value, "T is already a list type!");
     static_assert(std::is_base_of<NodeData, T>::value, "T must be derived of `intelli::NodeData`");

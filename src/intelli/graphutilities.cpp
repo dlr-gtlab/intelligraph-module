@@ -543,7 +543,7 @@ Graph* groupObjects(Graph& source,
             auto* port = node->port(conId.inPort);
             assert(port);
 
-            if (!NodeDataFactory::instance().knownClass(port->typeId))
+            if (!NodeDataFactory::instance().isKnownType(port->typeId))
             {
                 gtError() << makeError
                           << QObject::tr("Unkown node datatype '%1', id: %2, port: %3!")
