@@ -11,13 +11,15 @@
 #define GT_INTELLI_NODEDATA_H
 
 #include <intelli/exports.h>
+#include <intelli/globals.h>
 
 #include <gt_logging.h>
-#include <gt_typetraits.h>
 
 #include <tl/optional.hpp>
 
 #include <QMetaMethod>
+
+#include <type_traits>
 
 namespace intelli
 {
@@ -44,6 +46,7 @@ public:
      * @brief Type id of the node data. Is guranteed to be unique.
      * @return
      */
+    [[deprecated("use `typeId<T>` instead")]]
     QString typeId() const;
 
     /**
@@ -59,7 +62,7 @@ public:
      * @param args Additional optional arguments (use `Q_ARG(type, value), ...`)
      * @return `tl::optional` of T
      */
-    template <typename T, typename... Args>
+    template<typename T, typename... Args>
     std::enable_if_t<!std::is_void<T>::value, tl::optional<T>>
     invoke(QString const& methodName, Args&&... args) const
     {
@@ -131,6 +134,14 @@ struct inner_type<list_type<T>> { using type = T; };
 template <typename T>
 using inner_type_t = typename inner_type<T>::type;
 
+/// unwraps list_type
+template <typename T>
+struct unwrap_type { using type = T; };
+template <typename T>
+struct unwrap_type<list_type<T>> { using type = list_type_t<T>; };
+template <typename T>
+using unwrap_type_t = typename unwrap_type<T>::type;
+
 /// returns whether a type T is a list type
 template<typename T>
 struct is_list_type
@@ -149,11 +160,10 @@ struct is_list_type
  * @return Type id
  */
 template <typename T,
-          std::enable_if_t<!is_list_type<T>::value, bool> = true,
-          gt::trait::enable_if_base_of<NodeData, T> = true>
+          typename = std::enable_if_t<!is_list_type<T>::value>,
+          typename = std::enable_if_t<std::is_base_of<NodeData, T>::value>>
 inline QString typeId()
 {
-    static_assert(!is_list_type<T>::value, "`T` must not be a list type!");
     return T::staticMetaObject.className();
 }
 
@@ -177,7 +187,7 @@ inline QString listTypeId()
  * @return List type id
  */
 template <typename T,
-          std::enable_if_t<is_list_type<T>::value, bool> = true>
+          typename = std::enable_if_t<is_list_type<T>::value>>
 inline QString typeId()
 {
     using U = inner_type_t<T>;
@@ -192,15 +202,41 @@ inline QString typeId()
 }
 
 /**
- * @brief Returns the typeid of a node data class
- * @return Typeid
+ * @brief Constructs NodeData of type T:
+ *
+ * makeNodeData<IntData>(...);
+ *
+ * @param args Arguments to initialize node data
+ * @return Node data
  */
 template <typename T,
-         typename ...Args,
-         gt::trait::enable_if_base_of<NodeData, T> = true>
-inline Ptr<T> makeNodeData(Args&&... args)
+          typename ...Args,
+          typename = std::enable_if_t<std::is_base_of<NodeData, T>::value ||
+                                      std::is_base_of<NodeData, inner_type_t<T>>::value>>
+inline Ptr<unwrap_type_t<T>> makeNodeData(Args&&... args)
 {
-    return std::make_shared<T>(std::forward<Args>(args)...);
+    return std::make_shared<unwrap_type_t<T> const>(std::forward<Args>(args)...);
+}
+
+/**
+ * @brief Wrapper around `typeId<T>()` that returns the associated type-id if
+ * it exists or an empty string if no compatible function call exists.
+ * @return type-id (may be empty)
+ */
+template <typename T>
+inline QString safeTypeId()
+{
+    using U = inner_type_t<T>;
+    if constexpr ((is_list_type<T>::value && ( std::is_same<U, InvalidData>::value   ||
+                                              !std::is_base_of<NodeData, U>::value)) ||
+                  !std::is_base_of<NodeData, T>::value)
+    {
+        return QString{};
+    }
+    else
+    {
+        return typeId<T>();
+    }
 }
 
 /**
