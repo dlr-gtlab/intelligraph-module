@@ -25,9 +25,9 @@ template <typename T>
 struct container_data
 {
     template <typename C,
-             std::enable_if_t<
-                 std::is_convertible<decltype(std::declval<C&>().data()),
-                                     T*>::value, bool> = true>
+              typename = std::enable_if_t<
+                      std::is_convertible<decltype(std::declval<C&>().data()),
+                                          T*>::value>>
     static T* get(C& c) { return c.data(); }
 };
 
@@ -37,9 +37,9 @@ template <typename size_type>
 struct container_size
 {
     template <typename C,
-             std::enable_if_t<
-                 std::is_convertible<decltype(std::declval<C&>().size()),
-                                     size_type>::value, bool> = true>
+              typename = std::enable_if_t<
+                      std::is_convertible<decltype(std::declval<C&>().size()),
+                                          size_type>::value>>
     static size_type get(C& c) { return c.size(); }
 };
 
@@ -92,9 +92,9 @@ public:
 
     template<template<class...> class Container,
              typename... U,
-             std::enable_if_t<
-                std::is_convertible<typename Container<U...>::value_type,
-                                    T>::value, bool> = true>
+             typename = std::enable_if_t<
+                     std::is_convertible<typename Container<U...>::value_type,
+                                         T>::value>>
     Span(Container<U...>& vector) :
         Span(detail::container_data<T>::get(vector),
              detail::container_size<size_type>::get(vector))

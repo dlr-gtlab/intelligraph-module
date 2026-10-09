@@ -13,6 +13,8 @@
 #include <intelli/nodedata.h>
 #include <intelli/memory.h>
 
+#include <gt_object.h>
+
 namespace intelli
 {
 

@@ -37,10 +37,10 @@ public:
      * @param allowedValues Allowed values for selection
      */
     StringSelectionProperty(QString const& ident,
-                                QString const& name,
-                                QString const& brief,
-                                QStringList const& allowedValues,
-                                QString const& _default = S_INVALID);
+                            QString const& name,
+                            QString const& brief,
+                            QStringList const& allowedValues,
+                            QString const& _default = S_INVALID);
 
     /**
      * @brief constructor
@@ -49,9 +49,9 @@ public:
      * @param allowedValues Allowed values for selection
      */
     StringSelectionProperty(QString const& ident,
-                                QString const& name,
-                                QStringList const& allowedValues,
-                                QString _default = S_INVALID) :
+                            QString const& name,
+                            QStringList const& allowedValues,
+                            QString _default = S_INVALID) :
         StringSelectionProperty(ident, name, name, allowedValues, _default)
     {}
 

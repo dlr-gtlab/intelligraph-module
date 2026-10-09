@@ -112,26 +112,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 
 GraphExecutionModel::~GraphExecutionModel()
 {
-    m_isShuttingDown = true;
-
-    // Make any still-running detached executors observe a null data interface
-    // instead of a dangling execution model pointer.
-    beginReset();
-
-    if (pimpl->graph)
-    {
-        auto const nodes = pimpl->graph->nodes();
-        for (auto* node : nodes)
-        {
-            if (auto* executor = node->findChild<DetachedExecutor*>())
-            {
-                executor->waitForFinished();
-            }
-        }
-    }
-
-    QMutexLocker locker{&Impl::s_sync.mutex};
-    Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
+    shutdown();
 }
 
 bool
@@ -172,7 +153,7 @@ GraphExecutionModel::make(Graph& graph)
 Graph&
 GraphExecutionModel::graph()
 {
-    assert(pimpl->graph);
+//    assert(pimpl->graph);
     return *pimpl->graph;
 }
 
@@ -220,6 +201,33 @@ GraphExecutionModel::setupConnections(Graph& graph)
             Qt::DirectConnection);
 }
 
+void GraphExecutionModel::shutdown()
+{
+    if (m_isShuttingDown) return;
+
+    m_isShuttingDown = true;
+
+    // Make any still-running detached executors observe a null data interface
+    // instead of a dangling execution model pointer.
+    beginReset();
+
+    if (pimpl->graph)
+    {
+        auto const nodes = pimpl->graph->nodes();
+        for (auto* node : nodes)
+        {
+        if (auto* executor = node->findChild<DetachedExecutor*>())
+        {
+            executor->deleteLater();
+        }
+        }
+    }
+
+    QMutexLocker locker{&Impl::s_sync.mutex};
+    Impl::s_sync.entries.removeAt(Impl::s_sync.indexOf(*this));
+    return;
+}
+
 
 void
 GraphExecutionModel::reset()
@@ -242,8 +250,6 @@ GraphExecutionModel::resetTargetNodes()
 void
 GraphExecutionModel::beginReset()
 {
-    if (!pimpl->graph) return;
-
     pimpl->autoEvaluatingGraphs.clear();
 
     auto iter = pimpl->data.keyBegin();
@@ -255,6 +261,7 @@ GraphExecutionModel::beginReset()
         for (auto& e : entry.portsIn ) e.data.state = PortDataState::Outdated;
         for (auto& e : entry.portsOut) e.data.state = PortDataState::Outdated;
 
+        if (pimpl->graph)
         if (Node* node = pimpl->graph->findNodeByUuid(*iter))
         {
             exec::setNodeDataInterface(*node, nullptr);
@@ -1016,6 +1023,14 @@ GraphExecutionModel::onGraphDeleted()
 
     assert(graph);
     graph->disconnect(this);
+
+    if (m_isShuttingDown) return;
+
+    if (graph == &this->graph())
+    {
+        shutdown();
+        return;
+    }
 
     auto const& nodes = graph->nodes();
     for (auto* node : nodes)
