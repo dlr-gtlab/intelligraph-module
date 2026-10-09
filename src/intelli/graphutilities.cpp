@@ -25,10 +25,9 @@ using has_gt_log_call_operator =
         std::is_same<
             decltype(std::declval<T const&>()
                          .operator()(std::declval<gt::log::Stream&>())),
-            gt::log::Stream&>::value,
-        bool>;
+            gt::log::Stream&>::value>;
 
-template <typename T, has_gt_log_call_operator<T> = true>
+template <typename T, typename = has_gt_log_call_operator<T>>
 inline gt::log::Stream& operator<<(gt::log::Stream& s, T const& f)
 {
     return f(s);

@@ -10,10 +10,11 @@
 #ifndef GT_INTELLI_NODE_H
 #define GT_INTELLI_NODE_H
 
+#include <intelli/exports.h>
 #include <intelli/globals.h>
 #include <intelli/nodeevent.h>
 #include <intelli/nodeport.h>
-#include <intelli/exports.h>
+#include <intelli/nodedata.h>
 
 #include <gt_typetraits.h>
 #include <gt_object.h>
@@ -167,12 +168,13 @@ GT_INTELLI_EXPORT NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to)
  * @return Converted data of type `T` (may be null)
  */
 template <typename T>
-std::shared_ptr<T const> convert(NodeDataPtr const& data)
+inline std::shared_ptr<unwrap_type_t<T> const>
+convert(NodeDataPtr const& data)
 {
-    if (auto converted = qobject_pointer_cast<T const>(data)) return converted;
+    if (auto converted = qobject_pointer_cast<unwrap_type_t<T> const>(data)) return converted;
 
-    return std::static_pointer_cast<T const>(
-        convert(data, T::staticMetaObject.className())
+    return std::static_pointer_cast<unwrap_type_t<T> const>(
+        convert(data, safeTypeId<unwrap_type_t<T>>())
     );
 }
 
@@ -678,7 +680,7 @@ protected:
      */
     template <typename T,
               typename U = std::remove_pointer_t<T>,
-              std::enable_if_t<std::is_pointer<T>::value, bool> = true>
+              typename = std::enable_if_t<std::is_pointer<T>::value>>
     [[deprecated("remove pointer from template type: `nodeData<T>`")]]
     U const* nodeData(PortId id) const
     {
@@ -692,8 +694,8 @@ protected:
      * @return Port data
      */
     template <typename T,
-              std::enable_if_t<!std::is_pointer<T>::value, bool> = true>
-    std::shared_ptr<T const> nodeData(PortId id) const
+              typename = std::enable_if_t<!std::is_pointer<T>::value>>
+    Ptr<unwrap_type_t<T>> nodeData(PortId id) const
     {
         return convert<T>(nodeData(id));
     }

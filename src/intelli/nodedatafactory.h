@@ -28,17 +28,18 @@
 /// takes the converted NodeDataPtr `FROM` as an argument and should return a
 /// NodeDataPtr of type `TO`.
 #define GT_INTELLI_REGISTER_CONVERSION(FROM, TO, FUNC) \
-    intelli::NodeDataFactory::instance().registerConversion(GT_CLASSNAME(FROM), GT_CLASSNAME(TO), \
-        [](intelli::NodeDataPtr const& data_) -> intelli::NodeDataPtr { \
-            assert(data_);\
-            return std::static_pointer_cast<TO const>(FUNC( \
-                std::static_pointer_cast<FROM const>(data_))); \
-        });
+    intelli::NodeDataFactory::instance() \
+        .registerConversion(intelli::typeId<FROM>(), intelli::typeId<TO>(), \
+            [](intelli::NodeDataPtr const& data_) -> intelli::NodeDataPtr { \
+                assert(data_);\
+                return std::static_pointer_cast<intelli::unwrap_type_t<TO> const>(FUNC( \
+                    std::static_pointer_cast<intelli::unwrap_type_t<FROM> const>(data_))); \
+            });
 
 /// Helper macro to register a simple conversion between two types
 #define GT_INTELLI_REGISTER_INLINE_CONVERSION(FROM, TO, HOW) \
     GT_INTELLI_REGISTER_CONVERSION(FROM, TO, [](auto const& data){ \
-        return std::make_shared<TO const>(HOW); });
+        return intelli::makeNodeData<TO>(HOW); });
 
 namespace intelli
 {
@@ -49,9 +50,9 @@ using ConversionFunction = std::function<NodeDataPtr(NodeDataPtr const&)>;
 class NodeData;
 
 /**
- * @brief NodeDataFactory class. Protected inheritance to constrain public API
+ * @brief NodeDataFactory class.
  */
-class GT_INTELLI_EXPORT NodeDataFactory : protected GtAbstractObjectFactory
+class GT_INTELLI_EXPORT NodeDataFactory
 {
 public:
 
@@ -69,8 +70,8 @@ public:
      * @return success
      */
     template <typename T,
-             std::enable_if_t<std::is_base_of<NodeData, T>::value, bool> = true,
-             std::enable_if_t<!is_list_type<T>::value, bool> = false>
+              typename = std::enable_if_t<std::is_base_of<NodeData, T>::value>,
+              typename = std::enable_if_t<!is_list_type<T>::value>>
     inline static bool registerData()
     {
         bool success = instance().registerData(T::staticMetaObject, GT_MODULENAME());
@@ -105,7 +106,6 @@ public:
      * @brief Returns a list of all registered type ids
      * @return List of registered type ids
      */
-    [[deprecated("use `validTypeIds` instead")]]
     TypeIdList registeredTypeIds() const;
 
     /**
@@ -191,13 +191,19 @@ public:
 
     /**
      * @brief Instantiates a new list data type for the given type id
-     * @param typeId Type to instantiate a list type from. Must no be a list
-     * type.
+     * @param typeId Type to instantiate a list type from. May be a list type
+     * already.
      * @return New list type (may be null)
      */
     std::unique_ptr<ListData> makeListData(TypeId const& typeId) const noexcept;
 
-protected:
+private:
+
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
+
+    /// private constructor
+    NodeDataFactory();
 
     /**
      * @brief Registers the meta object in the data factory. This is necessary
@@ -210,13 +216,7 @@ protected:
 
     bool registerListType(TypeId typeId, QMetaObject const& meta) noexcept;
 
-private:
-
-    struct Impl;
-    std::unique_ptr<Impl> pimpl;
-
-    /// private constructor
-    NodeDataFactory();
+    QMetaObject const* findMetaObject(QStringView anyTypeId) const noexcept;
 };
 
 } // namespace intelli

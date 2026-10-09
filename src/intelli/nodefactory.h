@@ -14,6 +14,7 @@
 
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
+#include <gt_globals.h>
 
 /// Helper macro for registering a node class. The node class does should not be
 /// listed as a "data" object of your module. Use an empty string to "hide"
@@ -53,12 +54,12 @@ public:
      * the node in the viewer.
      * @return Success
      */
-    bool registerNode(QMetaObject const& meta, QString category) noexcept;
+    bool registerNode(QMetaObject const& meta, QString category, QString moduleId = {}) noexcept;
 
     template <typename T>
-    static bool registerNode(QString const& category)
+    static inline bool registerNode(QString const& category)
     {
-        return instance().registerNode(T::staticMetaObject, category);
+        return instance().registerNode(T::staticMetaObject, category, GT_MODULENAME());
     }
 
     /**

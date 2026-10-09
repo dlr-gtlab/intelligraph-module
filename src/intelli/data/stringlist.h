@@ -38,7 +38,6 @@ public:
 
     Q_INVOKABLE QStringList value() const;
 
-    [[deprecated("use the constructor or `append` instead")]]
     Q_INVOKABLE void setValue(QStringList val);
 
     bool append(NodeDataPtr const& data) override;

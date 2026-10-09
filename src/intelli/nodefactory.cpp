@@ -87,15 +87,15 @@ NodeFactory::nodeModelName(const QString& className) const noexcept
 }
 
 bool
-NodeFactory::registerNode(QMetaObject const& meta, QString category) noexcept
+NodeFactory::registerNode(QMetaObject const& meta, QString category, QString moduleId) noexcept
 {
     QString className = meta.className();
 
     gtTrace().verbose().nospace()
         << "### Registering Node '" << className
-        << "' (Category: " << category << ")...";
+        << "' (Category: " << category << ", Module: " << moduleId << ")...";
 
-    if (!registerClass(meta)) return false;
+    if (!registerClass(meta, moduleId)) return false;
 
     // add node to object factory
     if (!gtObjectFactory->knownClass(className) &&

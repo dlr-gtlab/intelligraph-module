@@ -228,7 +228,7 @@ inline QString logId()
 /// string for logging
 template<typename T,
          typename U = std::remove_cv_t<std::remove_reference_t<std::remove_pointer_t<T>>>,
-         std::enable_if_t<!std::is_base_of<Node, U>::value, bool> = true>
+         typename = std::enable_if_t<!std::is_base_of<Node, U>::value>>
 inline QString logId(T const&) { return logId<U>(); }
 
 /// helper struct to make state creation more explicit and ledgible

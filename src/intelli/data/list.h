@@ -97,7 +97,15 @@ public:
     using size_type       = typename container_type::size_type;
 
     Q_INVOKABLE GenericListData();
-    GenericListData(View<NodeDataPtr> const& list) : GenericListData()
+    template <typename List>
+    GenericListData(List const& list) : GenericListData()
+    {
+        std::for_each(list.begin(), list.end(), [this](NodeDataPtr const& d) {
+            return this->append(d);
+        });
+    }
+    template <typename T>
+    GenericListData(std::initializer_list<T> const& list) : GenericListData()
     {
         std::for_each(list.begin(), list.end(), [this](NodeDataPtr const& d) {
             return this->append(d);

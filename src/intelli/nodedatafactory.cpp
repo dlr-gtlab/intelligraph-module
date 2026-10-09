@@ -14,6 +14,7 @@
 #include "gt_utilities.h"
 #include "gt_qtutilities.h"
 #include "gt_logging.h"
+#include "gt_coreapplication.h"
 
 using namespace intelli;
 
@@ -53,22 +54,44 @@ findConversion(QMultiHash<TypeId, Conversion> const& hash,
 
 } // namespace
 
+struct Entry
+{
+    /// registered meta objects
+    QMetaObject const* metaObject;
+
+    /// module id associated with the registered class
+    QString moduleId;
+
+    /// registered type name (used for port captions)
+    TypeName typeName;
+};
+
+struct ListEntry
+{
+    /// registered meta objects
+    QMetaObject const* metaObject;
+
+    /// registered scalar type
+    TypeId scalar;
+};
+
 struct NodeDataFactory::Impl
 {
-    /// registered type names (used as default port captions)
-    QHash<TypeId, TypeName> typeNames;
+    /// registered types
+    QHash<TypeId, Entry> types;
+    /// registered list types
+    QHash<TypeId, ListEntry> listTypes;
     /// registered conversion functions
     QMultiHash<TypeId, Conversion> conversions;
-    /// list-type-ids to type-names (class names)
-    QHash<TypeId, QMetaObject> listTypes;
-    /// list-type-ids to normal type-ids
-    QHash<TypeId, TypeId> listToScalar;
 };
 
 NodeDataFactory::NodeDataFactory() :
     pimpl(std::make_unique<Impl>())
 {
     registerData(GT_METADATA(InvalidData), GT_MODULENAME());
+
+    // for seamless backwards compatibility
+    pimpl->listTypes.insert(GT_CLASSNAME(StringListData), ListEntry{&StringListData::staticMetaObject, typeId<StringData>()});
 }
 
 NodeDataFactory::~NodeDataFactory() = default;
@@ -97,30 +120,43 @@ NodeDataFactory::registerData(QMetaObject const& meta, QString const& moduleId) 
         return false;
     }
 
-    if (!registerClass(meta, moduleId)) return false;
+    if (pimpl->types.contains(className))
+    {
+        gtError()
+            << QObject::tr("Failed to register node data '%1'! "
+                           "(duplicate entry)")
+                   .arg(className);
+        return false;
+    }
 
-    auto obj = std::unique_ptr<GtObject>(newObject(className));
-    auto tmp = gt::unique_qobject_cast<NodeData>(std::move(obj));
+    auto iter = pimpl->types.insert(className, Entry{&meta, moduleId, TypeId{}});
+
+    auto removeOnFailure = gt::finally([&className, this](){
+        bool success = pimpl->types.remove(className);
+        assert(success);
+    });
+
+    auto tmp = makeData(className);
     if (!tmp)
     {
         gtError()
             << QObject::tr("Failed to register node data '%1'! "
-                           "(not invokable?)")
-                         .arg(className);
-        unregisterClass(meta);
+                           "(not default-invokable?)")
+                   .arg(className);
         return false;
     }
 
-    QString const& typeName = tmp->typeName();
-    if (typeName.isEmpty())
+    iter->typeName = tmp->typeName();
+    if (iter->typeName.isEmpty())
     {
-        gtError() << QObject::tr("Failed to register node data '%1'! (invalid type name)")
-                         .arg(className);
-        unregisterClass(meta);
+        gtError()
+            << QObject::tr("Failed to register node data '%1'! "
+                           "(invalid type name)")
+                   .arg(className);
         return false;
     }
 
-    pimpl->typeNames.insert(className, typeName);
+    removeOnFailure.clear();
 
     // register conversion for invalid data type
     registerConversion(className, typeId<InvalidData>(), [](NodeDataPtr const&){
@@ -141,7 +177,7 @@ NodeDataFactory::registerListType(TypeId typeId, const QMetaObject& meta) noexce
     gtTrace().verbose().nospace()
         << "### Registering List Data '" << className << "' for '" << typeId << "'...";
 
-    if (!meta.inherits(&NodeData::staticMetaObject))
+    if (!meta.inherits(&ListData::staticMetaObject))
     {
         gtError()
             << QObject::tr("Failed to register data list type '%1'! "
@@ -151,7 +187,7 @@ NodeDataFactory::registerListType(TypeId typeId, const QMetaObject& meta) noexce
     }
 
     QString listTypeId = generateListType(typeId);
-    if (pimpl->listToScalar.contains(listTypeId))
+    if (pimpl->listTypes.contains(listTypeId))
     {
         gtError()
             << QObject::tr("Failed to register data list type '%1'! "
@@ -160,8 +196,7 @@ NodeDataFactory::registerListType(TypeId typeId, const QMetaObject& meta) noexce
         return false;
     }
 
-    pimpl->listTypes.insert(listTypeId, meta);
-    pimpl->listToScalar.insert(listTypeId, typeId);
+    pimpl->listTypes.insert(listTypeId, ListEntry{&meta, typeId});
 
     // register conversion for invalid data type
     registerConversion(listTypeId, intelli::typeId<InvalidData>(), [](NodeDataPtr const&){
@@ -179,34 +214,74 @@ NodeDataFactory::registerConversion(TypeId const& from,
                                     TypeId const& to,
                                     ConversionFunction conversion) noexcept
 {
-    if (from.isEmpty() || to.isEmpty() || !conversion) return false;
-
     gtTrace().verbose().nospace()
         << "### Registering Conversion from '"<< from << "' to '" << to << "'...";
+
+    if (!isKnownType(from))
+    {
+        gtError()
+            << QObject::tr("Failed to register conversion from '%1' to '%2'! "
+                           "(Unknown type '%1')")
+                   .arg(from, to);
+        return false;
+    }
+    if (!isKnownType(to))
+    {
+        gtError()
+            << QObject::tr("Failed to register conversion from '%1' to '%2'! "
+                           "(Unknown type '%2')")
+                   .arg(from, to);
+        return false;
+    }
+    if (!conversion)
+    {
+        gtError()
+            << QObject::tr("Failed to register conversion from '%1' to '%2'! "
+                           "(Invalid conversion)")
+                   .arg(from, to);
+        return false;
+    }
 
     pimpl->conversions.insert(from, {to, conversion});
     return true;
 }
 
+QMetaObject const*
+NodeDataFactory::findMetaObject(QStringView anyTypeId) const noexcept
+{
+    auto iter = pimpl->types.find(anyTypeId);
+    if (iter != pimpl->types.end())
+    {
+        return iter->metaObject;
+    }
+
+    auto listIter = pimpl->listTypes.find(anyTypeId);
+    if (listIter != pimpl->listTypes.end())
+    {
+        return listIter->metaObject;
+    }
+    return nullptr;
+}
+
 bool
 NodeDataFactory::isKnownType(QStringView typeId) const
 {
-    return typeId != intelli::typeId<InvalidData>() &&
-           (pimpl->typeNames.contains(typeId) || isListType(typeId));
+    return (pimpl->types.contains(typeId) || isListType(typeId));
 }
 
 TypeIdList
 intelli::NodeDataFactory::registeredTypeIds() const
 {
-    return knownClasses();
+    TypeIdList types;
+    std::copy(pimpl->types.keyBegin(), pimpl->types.keyEnd(), std::back_inserter(types));
+    types.removeOne(typeId<InvalidData>());
+    return types;
 }
 
 TypeIdList
 NodeDataFactory::validTypeIds() const
 {
-    TypeIdList list = knownClasses();
-    list.removeOne(typeId<InvalidData>());
-    return list;
+    return registeredTypeIds();
 }
 
 TypeName
@@ -217,20 +292,19 @@ NodeDataFactory::typeName(TypeId const& typeId) const noexcept
         return QStringLiteral("%1_list").arg(typeName(innerType(typeId)));
     }
 
-    auto iter = pimpl->typeNames.constFind(typeId);
-    if (iter == pimpl->typeNames.cend()) return {};
-    return iter.value();
+    auto iter = pimpl->types.constFind(typeId);
+    if (iter == pimpl->types.cend()) return {};
+    return iter->typeName;
 }
 
 bool
 NodeDataFactory::isListType(QStringView typeIdView) const
 {
-    // for seamless backwards compatibility
-    if (typeIdView == QString{GT_CLASSNAME(StringListData)})
+    // emit warning if accessing GT_CLASSNAME(StringListData)
+    if (typeIdView == QString{GT_CLASSNAME(StringListData)} && gtApp && gtApp->devMode())
     {
-        gtLogOnce(Warning).verbose()
+        gtLogOnce(Warning)
             << QObject::tr("use intelli::typeId<T>() instead of GT_CLASSNAME(T)!");
-        return true;
     }
     return pimpl->listTypes.contains(typeIdView);
 }
@@ -241,19 +315,15 @@ NodeDataFactory::hasListType(QStringView typeIdView) const
     if (isListType(typeIdView)) return false;
     if (typeIdView == typeId<InvalidData>()) return false;
 
-    return pimpl->typeNames.contains(typeIdView) &&
-           pimpl->listTypes.contains(generateListType(typeIdView));
+    return pimpl->listTypes.contains(generateListType(typeIdView));
 }
 
 TypeId
 NodeDataFactory::innerType(QStringView typeIdView) const
 {
-    // for seamless backwards compatibility
-    if (typeIdView == QString{GT_CLASSNAME(StringListData)})
-    {
-        return typeId<StringData>();
-    }
-    return pimpl->listToScalar.value(typeIdView, QString{});
+    auto iter = pimpl->listTypes.constFind(typeIdView);
+    if (iter == pimpl->listTypes.cend()) return {};
+    return iter->scalar;
 }
 
 TypeId
@@ -282,15 +352,52 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
 {
     if (!data) return nullptr;
 
-    TypeId const& from = data->typeId();
-    if (data->typeId() == to) return data;
+    QMetaObject const* srcMetaObject =  data->metaObject();
+    if (!srcMetaObject) return nullptr;
+
+    QMetaObject const* targetMetaObject = findMetaObject(to);
+    if (!targetMetaObject) return nullptr;
+
+    if (srcMetaObject->inherits(targetMetaObject)) return data;
+
+    TypeId from = srcMetaObject->className();
+
+    // find "from" based on metaObject for list types instead
+    if (srcMetaObject->inherits(&ListData::staticMetaObject))
+    {
+        auto isSrcMetaObject =
+            [srcMetaObject](std::pair<TypeId, ListEntry> const& entry){
+                return entry.second.metaObject->className() == srcMetaObject->className();
+            };
+
+        bool isGenericList = std::count_if(pimpl->listTypes.keyValueBegin(),
+                                           pimpl->listTypes.keyValueEnd(),
+                                           isSrcMetaObject) > 1;
+        // currently not supporting converting from generic list data
+        if (isGenericList)
+        {
+            if (from != typeId<InvalidData>() && to != typeId<InvalidData>())
+            {
+                gtLogOnce(Error).verbose()
+                    << QObject::tr("generic conversion not supported "
+                                   "(from '%1' to '%2')").arg(from, to);
+            }
+            return nullptr;
+        }
+
+        auto iter = std::find_if(pimpl->listTypes.keyValueBegin(),
+                                 pimpl->listTypes.keyValueEnd(),
+                                 isSrcMetaObject);
+        if (iter == pimpl->listTypes.keyValueEnd()) return nullptr;
+
+        from = iter->first;
+    }
 
     auto iter = findConversion(pimpl->conversions, from, to);
     if (iter == pimpl->conversions.cend()) return nullptr;
 
     gtTrace().verbose()
-        << QObject::tr("converting data from '%1' to '%2'...")
-               .arg(from, to);
+        << QObject::tr("converting data from '%1' to '%2'...").arg(from, to);
 
     return iter->convert(data);
 }
@@ -298,23 +405,38 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
 std::unique_ptr<NodeData>
 NodeDataFactory::makeData(TypeId const& typeId) const noexcept
 {
-    std::unique_ptr<GtObject> obj{
-        const_cast<NodeDataFactory*>(this)->newObject(typeId)
-    };
+    if (isListType(typeId)) return makeListData(typeId);
 
-    return gt::unique_qobject_cast<NodeData>(std::move(obj));
+    auto iter = pimpl->types.constFind(typeId);
+    if (iter == pimpl->types.cend())
+    {
+        gtError() << QObject::tr("Failed to instantiate NodeData '%1'! "
+                                 "(unknown type)").arg(typeId);
+        return {};
+    }
+
+    auto object = std::unique_ptr<QObject>(iter->metaObject->newInstance());
+    if (!object)
+    {
+        gtError() << QObject::tr("Failed to instantiate NodeData '%1'! "
+                                 "(not invokable?)").arg(typeId);
+        return {};
+    }
+
+    return gt::unique_qobject_cast<NodeData>(std::move(object));
 }
 
 std::unique_ptr<ListData>
 NodeDataFactory::makeListData(TypeId const& typeId) const noexcept
 {
-    auto entry = pimpl->listTypes.constFind(listType(typeId));
+    auto entry = pimpl->listTypes.constFind(isListType(typeId) ?
+                                                typeId : listType(typeId));
     if (entry == pimpl->listTypes.cend())
     {
         return nullptr;
     }
 
-    std::unique_ptr<QObject> rawListData{entry.value().newInstance()};
+    std::unique_ptr<QObject> rawListData{entry->metaObject->newInstance()};
     if (!rawListData) return nullptr;
 
     return gt::unique_qobject_cast<ListData>(std::move(rawListData));
