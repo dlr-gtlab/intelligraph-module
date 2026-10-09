@@ -12,6 +12,7 @@
 #include "intelli/data/double.h"
 #include "intelli/data/list.h"
 #include "intelli/nodedatafactory.h"
+#include "intelli/private/utils.h"
 
 using namespace intelli;
 
@@ -31,6 +32,8 @@ ToListNode::ToListNode() :
 
         PortId const portId = this->portId(type, idx);
         NodePort* port = this->port(portId);
+        assert(port);
+        port->optional = false;
 
         bool update = false;
         if (port->typeId != typeId)
@@ -78,13 +81,32 @@ ToListNode::ToListNode() :
 void
 ToListNode::eval()
 {
-    NonConstPtr<BaseListData> outputData =
+    NonConstPtr<ListData> outputData =
         NodeDataFactory::instance().makeListData(m_typeId);
-    if (!outputData) return evalFailed();
+    if (!outputData)
+    {
+        gtError() << utils::logId(*this)
+                  << tr("Failed to generate list type for '%1'!").arg(m_typeId);
+        return evalFailed();
+    }
 
     for (NodePort const& port : ports(PortType::In))
     {
-        outputData->append(nodeData(port.id()));
+        auto data = nodeData(port.id());
+        if (!data)
+        {
+            gtError() << utils::logId(*this)
+                      << tr("Data at input port %1 is null!").arg(port.id());
+            return evalFailed();
+        }
+        outputData->append(std::move(data));
+    }
+
+    if (outputData->iterate().size() != ports(PortType::In).size())
+    {
+        gtError() << utils::logId(*this)
+                  << tr("Failed to append data!");
+        return evalFailed();
     }
 
     setNodeData(m_out, outputData);

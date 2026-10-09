@@ -11,15 +11,14 @@
 
 using namespace intelli;
 
-ListData::ListData() :
-    BaseListData("list")
-{
-
-}
+GenericListData::GenericListData() :
+    ListData("list")
+{ }
 
 bool
-ListData::append(NodeDataPtr const& data)
+GenericListData::append(NodeDataPtr const& data)
 {
+    if (!data) return false;
     m_data.push_back(std::move(data));
     return true;
 }

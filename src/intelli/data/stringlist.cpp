@@ -12,7 +12,7 @@
 using namespace intelli;
 
 StringListData::StringListData(QStringList values) :
-    BaseListData(QStringLiteral("stringlist")),
+    ListData(QStringLiteral("stringlist")),
     m_data(std::move(values))
 { }
 

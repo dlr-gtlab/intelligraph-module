@@ -49,7 +49,7 @@ ListGetSizeNode::eval()
 {
     int size = 0;
 
-    Ptr<BaseListData> listData = nodeData<BaseListData>(m_in);
+    Ptr<ListData> listData = nodeData<ListData>(m_in);
     if (listData)
     {
         size = listData->iterate().size();

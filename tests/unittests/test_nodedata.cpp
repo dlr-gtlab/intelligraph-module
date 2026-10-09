@@ -131,8 +131,8 @@ TEST(NodeData, convert_compatible_type)
 /// check that conversion for incompatible types fails
 TEST(NodeData, list_types)
 {
-    static_assert(is_list_type<BaseListData>::value,     "expected list type");
-    static_assert(is_list_type<ListData>::value,         "expected list type");
+    static_assert(is_list_type<ListData>::value,     "expected list type");
+    static_assert(is_list_type<GenericListData>::value,         "expected list type");
     static_assert(is_list_type<list<StringData>>::value, "expected list type");
     static_assert(is_list_type<list<DoubleData>>::value, "expected list type");
     static_assert(is_list_type<StringListData>::value,   "expected list type");
