@@ -90,7 +90,7 @@ template <typename T,
           typename U,
           typename T_decay = std::remove_pointer_t<T>,
           typename U_decay = std::remove_pointer_t<U>,
-          typename std::enable_if_t<!std::is_const<T_decay>::value, bool> = true>
+          typename = std::enable_if_t<!std::is_const<T_decay>::value>>
 T_decay const* graphics_cast(U const* u)
 {
     return graphics_cast<T_decay const*>(u);

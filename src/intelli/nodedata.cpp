@@ -25,6 +25,4 @@ NodeData::typeId() const
 
 NodeData::NodeData(QString typeName) :
     m_typeName(std::move(typeName))
-{
-
-}
+{ }

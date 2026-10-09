@@ -316,6 +316,10 @@ target_link_libraries(GTlabIntelliGraph
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 
+target_compile_features(GTlabIntelliGraph PUBLIC
+    cxx_std_17
+)
+
 target_compile_definitions(GTlabIntelliGraph PRIVATE
     GT_LOG_USE_QT_BINDINGS # enable Qt operator<< for logging
 )

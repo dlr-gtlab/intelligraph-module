@@ -17,6 +17,7 @@
 
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
+#include <gt_globals.h>
 
 /// Helper macro for registering a node class. The node class does should not be
 /// registered additionally as a "data" object of your module
@@ -27,17 +28,18 @@
 /// takes the converted NodeDataPtr `FROM` as an argument and should return a
 /// NodeDataPtr of type `TO`.
 #define GT_INTELLI_REGISTER_CONVERSION(FROM, TO, FUNC) \
-    intelli::NodeDataFactory::instance().registerConversion(GT_CLASSNAME(FROM), GT_CLASSNAME(TO), \
-        [](intelli::NodeDataPtr const& data_) -> intelli::NodeDataPtr { \
-            assert(data_);\
-            return std::static_pointer_cast<TO const>(FUNC( \
-                std::static_pointer_cast<FROM const>(data_))); \
-        });
+    intelli::NodeDataFactory::instance() \
+        .registerConversion(intelli::typeId<FROM>(), intelli::typeId<TO>(), \
+            [](intelli::NodeDataPtr const& data_) -> intelli::NodeDataPtr { \
+                assert(data_);\
+                return std::static_pointer_cast<intelli::unwrap_type_t<TO> const>(FUNC( \
+                    std::static_pointer_cast<intelli::unwrap_type_t<FROM> const>(data_))); \
+            });
 
 /// Helper macro to register a simple conversion between two types
 #define GT_INTELLI_REGISTER_INLINE_CONVERSION(FROM, TO, HOW) \
     GT_INTELLI_REGISTER_CONVERSION(FROM, TO, [](auto const& data){ \
-        return std::make_shared<TO const>(HOW); });
+        return intelli::makeNodeData<TO>(HOW); });
 
 namespace intelli
 {
@@ -46,9 +48,12 @@ namespace intelli
 using ConversionFunction = std::function<NodeDataPtr(NodeDataPtr const&)>;
 
 class NodeData;
-class GT_INTELLI_EXPORT NodeDataFactory : public GtAbstractObjectFactory
-{
 
+/**
+ * @brief NodeDataFactory class.
+ */
+class GT_INTELLI_EXPORT NodeDataFactory
+{
 public:
 
     ~NodeDataFactory();
@@ -65,11 +70,11 @@ public:
      * @return success
      */
     template <typename T,
-             std::enable_if_t<std::is_base_of<NodeData, T>::value, bool> = true,
-             std::enable_if_t<!is_list_type<T>::value, bool> = false>
-    static bool registerData()
+              typename = std::enable_if_t<std::is_base_of<NodeData, T>::value>,
+              typename = std::enable_if_t<!is_list_type<T>::value>>
+    inline static bool registerData()
     {
-        bool success = instance().registerData(T::staticMetaObject);
+        bool success = instance().registerData(T::staticMetaObject, GT_MODULENAME());
         if (success)
         {
             success = instance().registerListType(
@@ -91,10 +96,17 @@ public:
                             ConversionFunction conversion) noexcept;
 
     /**
+     * @brief Returns true if `typeId` is registered
+     * @param typeId Tpye id to check
+     * @return Is known type id
+     */
+    bool isKnownType(TypeId const& typeId) const;
+
+    /**
      * @brief Returns a list of all registered type ids
      * @return List of registered type ids
      */
-    TypeIdList registeredTypeIds() const { return knownClasses(); }
+    TypeIdList registeredTypeIds() const;
 
     /**
      * @brief Returns a list of all registered and valid type ids
@@ -111,26 +123,33 @@ public:
 
     /**
      * @brief Returns whether the given type id is a list type
-     * @param typeIdView Type id to check
+     * @param typeId Type id to check
      * @return Returns true if the given type id is a list type
      */
-    bool isListType(QStringView typeIdView) const;
+    bool isListType(TypeId const& typeId) const;
+
+    /**
+     * @brief Returns whether the given type id has a list type associated
+     * @param typeId Type id to check
+     * @return Returns true if the given type id has a list type associated
+     */
+    bool hasListType(TypeId const& typeId) const;
 
     /**
      * @brief Returns the inner type in case the given type id is a list type
-     * @param typeIdView List type id
+     * @param typeId List type id
      * @return Returns inner type. Returns empty string if the given type has
      * no inner type
      */
-    TypeId innerType(QStringView typeIdView) const;
+    TypeId innerType(TypeId const& typeId) const;
 
     /**
      * @brief Returns the given type as a list type
-     * @param typeIdView Type id
+     * @param typeId Type id
      * @return Returns the corresponding list type. Returns empty string if
      * the type id has no valid list type
      */
-    TypeId listType(QStringView typeIdView) const;
+    TypeId listType(TypeId const& typeId) const;
 
     /**
      * @brief Returns whether a conversion function exists between two types.
@@ -172,13 +191,19 @@ public:
 
     /**
      * @brief Instantiates a new list data type for the given type id
-     * @param typeId Type to instantiate a list type from. Must no be a list
-     * type.
+     * @param typeId Type to instantiate a list type from. May be a list type
+     * already.
      * @return New list type (may be null)
      */
-    std::unique_ptr<BaseListData> makeListData(TypeId const& typeId) const noexcept;
+    std::unique_ptr<ListData> makeListData(TypeId const& typeId) const noexcept;
 
-protected:
+private:
+
+    struct Impl;
+    std::unique_ptr<Impl> pimpl;
+
+    /// private constructor
+    NodeDataFactory();
 
     /**
      * @brief Registers the meta object in the data factory. This is necessary
@@ -187,21 +212,11 @@ protected:
      * @param meta Meta object of the data type
      * @return success
      */
-    bool registerData(QMetaObject const& meta) noexcept;
+    bool registerData(QMetaObject const& meta, QString const& moduleId) noexcept;
 
     bool registerListType(TypeId typeId, QMetaObject const& meta) noexcept;
 
-private:
-
-    struct Impl;
-    std::unique_ptr<Impl> pimpl;
-
-    // hide some functions
-    using GtAbstractObjectFactory::newObject;
-    using GtAbstractObjectFactory::registerClass;
-
-    /// private constructor
-    NodeDataFactory();
+    QMetaObject const* findMetaObject(TypeId const& anyTypeId) const noexcept;
 };
 
 } // namespace intelli

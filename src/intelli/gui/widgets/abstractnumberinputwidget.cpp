@@ -179,8 +179,6 @@ AbstractNumberInputWidget::applyInputMode(InputMode mode)
         setMinimumHeight(m_text->minimumSizeHint().height());
         break;
     case LineEditBound:
-        m_useBounds = true;
-
         setupVLayout();
         m_dial->setHidden(true);
         m_slider->setHidden(true);

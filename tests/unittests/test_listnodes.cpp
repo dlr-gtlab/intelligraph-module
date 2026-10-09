@@ -83,7 +83,7 @@ TEST_F(IntListNodes, verify)
     ASSERT_TRUE(toListEvaluated.wait(std::chrono::seconds{1}));
 
     ASSERT_TRUE(exec.isNodeEvaluated(toListUuid));
-    auto listData = exec.nodeData(toListUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::BaseListData>();
+    auto listData = exec.nodeData(toListUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::ListData>();
     ASSERT_TRUE(listData);
     ASSERT_EQ(listData->iterate().size(), expectedSize);
 
@@ -172,7 +172,7 @@ TEST_F(StringListNodes, verify)
     ASSERT_TRUE(toListEvaluated.wait(std::chrono::seconds{1}));
 
     ASSERT_TRUE(exec.isNodeEvaluated(toListUuid));
-    auto listData = exec.nodeData(toListUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::BaseListData>();
+    auto listData = exec.nodeData(toListUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::ListData>();
     ASSERT_TRUE(listData);
     ASSERT_EQ(listData->iterate().size(), expectedSize);
 
