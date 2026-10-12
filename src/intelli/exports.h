@@ -27,7 +27,13 @@
   #define GT_INTELLI_TEST_EXPORT
 #endif
 
-#if __cplusplus < 201703L
+#ifdef _MSVC_LANG
+  #define GT_INTELLIGRAPH_CPP_VERSION _MSVC_LANG
+#else
+  #define GT_INTELLIGRAPH_CPP_VERSION __cplusplus
+#endif
+
+#if GT_INTELLIGRAPH_CPP_VERSION < 201703L
   #error "IntelliGraph requires C++17 or higher"
 #endif
 
