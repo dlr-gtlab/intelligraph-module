@@ -319,6 +319,9 @@ set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 target_compile_definitions(GTlabIntelliGraph PRIVATE
     GT_LOG_USE_QT_BINDINGS # enable Qt operator<< for logging
 )
+target_compile_definitions(GTlabIntelliGraph PUBLIC
+    cxx_std_17 # requires C++17
+)
 
 if (INTELLIGRAPH_DEBUG_NODE_GRAPHICS)
     target_compile_definitions(GTlabIntelliGraph PRIVATE

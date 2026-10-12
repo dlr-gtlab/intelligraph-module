@@ -27,5 +27,8 @@
   #define GT_INTELLI_TEST_EXPORT
 #endif
 
+#if __cplusplus < 201703L
+  #error "IntelliGraph requires C++17 or higher"
+#endif
 
 #endif // GT_INTELLI__EXPORTS_H
