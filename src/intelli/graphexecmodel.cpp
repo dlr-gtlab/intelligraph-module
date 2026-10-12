@@ -153,14 +153,15 @@ GraphExecutionModel::make(Graph& graph)
 Graph&
 GraphExecutionModel::graph()
 {
-//    assert(pimpl->graph);
+    assert(pimpl->graph);
     return *pimpl->graph;
 }
 
 Graph const&
 GraphExecutionModel::graph() const
 {
-    return const_cast<GraphExecutionModel*>(this)->graph();
+    assert(pimpl->graph);
+    return *pimpl->graph;
 }
 
 void
