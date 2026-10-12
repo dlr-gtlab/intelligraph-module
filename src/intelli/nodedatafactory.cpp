@@ -249,7 +249,7 @@ NodeDataFactory::registerConversion(TypeId const& from,
 }
 
 QMetaObject const*
-NodeDataFactory::findMetaObject(QStringView anyTypeId) const noexcept
+NodeDataFactory::findMetaObject(TypeId const& anyTypeId) const noexcept
 {
     auto iter = pimpl->types.find(anyTypeId);
     if (iter != pimpl->types.end())
@@ -266,7 +266,7 @@ NodeDataFactory::findMetaObject(QStringView anyTypeId) const noexcept
 }
 
 bool
-NodeDataFactory::isKnownType(QStringView typeId) const
+NodeDataFactory::isKnownType(TypeId const& typeId) const
 {
     return (pimpl->types.contains(typeId) || isListType(typeId));
 }
@@ -300,40 +300,40 @@ NodeDataFactory::typeName(TypeId const& typeId) const noexcept
 }
 
 bool
-NodeDataFactory::isListType(QStringView typeIdView) const
+NodeDataFactory::isListType(TypeId const& typeId) const
 {
     // emit warning if accessing GT_CLASSNAME(StringListData)
-    if (typeIdView == QString{GT_CLASSNAME(StringListData)} && gtApp && gtApp->devMode())
+    if (typeId == QString{GT_CLASSNAME(StringListData)} && gtApp && gtApp->devMode())
     {
         gtLogOnce(Warning)
             << QObject::tr("use intelli::typeId<T>() instead of GT_CLASSNAME(T)!");
     }
-    return pimpl->listTypes.contains(typeIdView);
+    return pimpl->listTypes.contains(typeId);
 }
 
 bool
-NodeDataFactory::hasListType(QStringView typeIdView) const
+NodeDataFactory::hasListType(TypeId const& typeId) const
 {
-    if (isListType(typeIdView)) return false;
-    if (typeIdView == typeId<InvalidData>()) return false;
+    if (isListType(typeId)) return false;
+    if (typeId == intelli::typeId<InvalidData>()) return false;
 
-    return pimpl->listTypes.contains(generateListType(typeIdView));
+    return pimpl->listTypes.contains(generateListType(typeId));
 }
 
 TypeId
-NodeDataFactory::innerType(QStringView typeIdView) const
+NodeDataFactory::innerType(TypeId const& typeId) const
 {
-    auto iter = pimpl->listTypes.constFind(typeIdView);
+    auto iter = pimpl->listTypes.constFind(typeId);
     if (iter == pimpl->listTypes.cend()) return {};
     return iter->scalar;
 }
 
 TypeId
-NodeDataFactory::listType(QStringView typeIdView) const
+NodeDataFactory::listType(TypeId const& typeId) const
 {
-    if (!hasListType(typeIdView)) return {};
+    if (!hasListType(typeId)) return {};
 
-    return generateListType(typeIdView);
+    return generateListType(typeId);
 }
 
 bool

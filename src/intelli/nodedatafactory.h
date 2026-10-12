@@ -100,7 +100,7 @@ public:
      * @param typeId Tpye id to check
      * @return Is known type id
      */
-    bool isKnownType(QStringView typeId) const;
+    bool isKnownType(TypeId const& typeId) const;
 
     /**
      * @brief Returns a list of all registered type ids
@@ -123,33 +123,33 @@ public:
 
     /**
      * @brief Returns whether the given type id is a list type
-     * @param typeIdView Type id to check
+     * @param typeId Type id to check
      * @return Returns true if the given type id is a list type
      */
-    bool isListType(QStringView typeIdView) const;
+    bool isListType(TypeId const& typeId) const;
 
     /**
      * @brief Returns whether the given type id has a list type associated
-     * @param typeIdView Type id to check
+     * @param typeId Type id to check
      * @return Returns true if the given type id has a list type associated
      */
-    bool hasListType(QStringView typeIdView) const;
+    bool hasListType(TypeId const& typeId) const;
 
     /**
      * @brief Returns the inner type in case the given type id is a list type
-     * @param typeIdView List type id
+     * @param typeId List type id
      * @return Returns inner type. Returns empty string if the given type has
      * no inner type
      */
-    TypeId innerType(QStringView typeIdView) const;
+    TypeId innerType(TypeId const& typeId) const;
 
     /**
      * @brief Returns the given type as a list type
-     * @param typeIdView Type id
+     * @param typeId Type id
      * @return Returns the corresponding list type. Returns empty string if
      * the type id has no valid list type
      */
-    TypeId listType(QStringView typeIdView) const;
+    TypeId listType(TypeId const& typeId) const;
 
     /**
      * @brief Returns whether a conversion function exists between two types.
@@ -216,7 +216,7 @@ private:
 
     bool registerListType(TypeId typeId, QMetaObject const& meta) noexcept;
 
-    QMetaObject const* findMetaObject(QStringView anyTypeId) const noexcept;
+    QMetaObject const* findMetaObject(TypeId const& anyTypeId) const noexcept;
 };
 
 } // namespace intelli
