@@ -254,11 +254,11 @@ TEST(NodeData, list_types_invalid_data)
 
     // cannot use typeId<list<InvalidData>>() -> produces compiler error
     // cannot use listTypeId<InvalidData>()   -> produces compiler error
-    EXPECT_FALSE(factory.isListType(u"#list#intelli::InvalidData"));
+    EXPECT_FALSE(factory.isListType("#list#intelli::InvalidData"));
     EXPECT_FALSE(factory.isListType(typeId<InvalidData>()));
-    EXPECT_EQ(factory.innerType(u"#list#intelli::InvalidData"), QString{});
+    EXPECT_EQ(factory.innerType("#list#intelli::InvalidData"), QString{});
     EXPECT_TRUE(factory.innerType(typeId<InvalidData>()).isEmpty());
-    EXPECT_TRUE(factory.listType(u"#list#intelli::InvalidData").isEmpty());
+    EXPECT_TRUE(factory.listType("#list#intelli::InvalidData").isEmpty());
     EXPECT_TRUE(factory.listType(typeId<InvalidData>()).isEmpty());
 }
 
@@ -288,7 +288,7 @@ TEST(NodeData, is_known_type)
     EXPECT_TRUE(factory.isKnownType(typeId<FileData>()));
 
     EXPECT_TRUE(factory.isKnownType(typeId<InvalidData>()));
-    EXPECT_FALSE(factory.isKnownType(u"#list#intelli::InvalidData"));
+    EXPECT_FALSE(factory.isKnownType("#list#intelli::InvalidData"));
 }
 
 TEST(NodeData, is_known_type_stringlist_backwards_compat)
