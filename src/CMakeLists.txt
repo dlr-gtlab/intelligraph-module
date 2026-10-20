@@ -316,7 +316,7 @@ target_link_libraries(GTlabIntelliGraph
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
 
-target_compile_features(GTlabIntelliGraph INTERFACE
+target_compile_features(GTlabIntelliGraph PUBLIC
     cxx_std_17
 )
 
