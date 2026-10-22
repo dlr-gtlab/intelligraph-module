@@ -7,12 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Fixed sporadic crashes, while shutting down a detached executor - #352
-- Fixed node and port highlighting when creating a draft connection - #362
-- Fixed duplicate node creation on some desktop systems - #350
 - Fixed icons not being licensed under Apache 2.0.
 - Fixed memory leak in the `GraphUserVariablesDialog`.
-- Fixed connections to the `GraphUserVariablesInputNode` not being saved correctly.
 
 ### Added
 - Selected nodes can now be "cut" using the corresponding shortcut (usually `Ctrl+X`). Cut-nodes are "greyed-out", similar to how cutting works for files and folders. Once the selection is pasted, the cut-objects are deleted. - #283
@@ -20,6 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Graph User Variables Dialog can now be opened on any "User Constants" (`GraphUserVariablesInputNode`) Node - #360
 
 ### Changed
+
+## [0.15.1] - 2026-10-22
+
+### Fixed
+- Fixed sporadic crashes, while shutting down a detached executor - #352
+- Fixed node and port highlighting when creating a draft connection - #362
+- Fixed duplicate node creation from the context menu - #350
+- Fixed invalid resource icons on Linux.
+- Fixed connections to the `GraphUserVariablesInputNode` not being saved correctly.
+- Fixed Windows exports for wrapper dependencies - #369
+
+### Changed
+- Added support for Qt 6 and GTlab 2.1.
 
 ## [0.15.0] - 2025-10-27
 *This release is not ABI compatible with `0.14.0` and introduces small API changes*

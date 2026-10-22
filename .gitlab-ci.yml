@@ -13,7 +13,7 @@ variables:
   # enclose the branch name with ^ and $
   # separete severl branch names with |
   # e.g. /^main$|^main_1_0$/
-  STABLE_BRANCHES: /^main$/
+  STABLE_BRANCHES: /^main$|^release\/.*$/
   
   # Name of the unstable branch (if it exists)
   # UNSTABLE_BRANCH: unstable_master
@@ -47,6 +47,19 @@ windowsBuildDebug:
     - cmake -B build -S . -G "Ninja" -DGTlabDevtools_ROOT="$env:GTLAB_DEV_TOOLS"  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install-msvc2019-dbg -DBUILD_UNITTESTS=ON
     - cmake --build build --target install
 
+windowsBuildDebug_2.1:
+  stage: build
+  extends: 
+    - .build-win_21
+  script:
+    # sync submodules
+    - git submodule sync
+    - git submodule update --init
+    # build
+    - $env:PATH+=(";.\build;"+$env:GTLAB_DEV_TOOLS+"\binDebug;"+$env:GTLAB_DEV_TOOLS+"\binDebug\modules;")
+    - cmake -B build -S . -G "Ninja" -DGTlabDevtools_ROOT="$env:GTLAB_DEV_TOOLS"  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install-msvc2026-dbg -DBUILD_UNITTESTS=ON
+    - cmake --build build --target install
+
 windowsBuildRelease:
   stage: build
   extends: 
@@ -60,6 +73,19 @@ windowsBuildRelease:
     - cmake -B build -S . -G "Ninja" -DGTlabDevtools_ROOT="$env:GTLAB_DEV_TOOLS"  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install-msvc2019
     - cmake --build build --target install
     
+windowsBuildRelease_2.1:
+  stage: build
+  extends: 
+    - .build-win_21
+    - .run-master-and-tags
+  script:
+    # sync submodules
+    - git submodule sync
+    - git submodule update --init
+    # build
+    - cmake -B build -S . -G "Ninja" -DGTlabDevtools_ROOT="$env:GTLAB_DEV_TOOLS"  -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install-msvc2026
+    - cmake --build build --target install
+
 # build on Linux system
 linuxBuildDebug:
   stage: build
@@ -77,8 +103,23 @@ linuxBuildDebug:
     - cmake -B build -S . -G "Ninja" -DGTlabDevtools_ROOT=$GTLAB_DEV_TOOLS -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install-linux-dbg -DBUILD_UNITTESTS=ON
     - cmake --build build --target install
 
-linuxBuildRelease:
+linuxBuildDebug_2.1:
+  stage: build
   extends: 
+    - .build-linux_21
+  script: 
+    - git config --global credential.helper store
+    - echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.dlr.de" > ~/.git-credentials
+    # sync submodules
+    - git submodule sync
+    - git submodule update --init
+    # build
+    - export LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/bin:$LD_LIBRARY_PATH"
+    - export LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/bin/modules:$LD_LIBRARY_PATH"
+    - cmake -B build -S . -G "Ninja" -DGTlabDevtools_ROOT=$GTLAB_DEV_TOOLS -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install-linux-dbg -DBUILD_UNITTESTS=ON
+    - cmake --build build --target install
+
+linuxBuildRelease:
   stage: build
   extends: 
     - .build-linux_20
@@ -95,15 +136,50 @@ linuxBuildRelease:
     - cmake -B build -S . -G "Ninja" -DGTlabDevtools_ROOT=$GTLAB_DEV_TOOLS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install-linux -DBUILD_UNITTESTS=ON
     - cmake --build build --target install
 
+linuxBuildRelease_2.1:
+  stage: build
+  extends: 
+    - .build-linux_21
+    - .run-master-and-tags
+  script: 
+    - git config --global credential.helper store
+    - echo "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.dlr.de" > ~/.git-credentials
+    # sync submodules
+    - git submodule sync
+    - git submodule update --init
+    # build
+    - export LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/bin:$LD_LIBRARY_PATH"
+    - export LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/bin/modules:$LD_LIBRARY_PATH"
+    - cmake -B build -S . -G "Ninja" -DGTlabDevtools_ROOT=$GTLAB_DEV_TOOLS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install-linux -DBUILD_UNITTESTS=ON
+    - cmake --build build --target install
+
 testWin_2.0:
   stage: test
-  tags: ["windows", "docker"]
-  image: at-twk-hal9000.intra.dlr.de:5000/dlr-at/gtlabdev-2_0-win
+  extends:
+    - .windocker_2.0
   needs: ["windowsBuildDebug"]
   before_script:
-    - '& $env:GTLAB_UPDATE_TOOL up --confirm-command; $null'
+    - !reference [.update_devtools_win, script]
   script:
     - $env:path = "$env:GTLAB_DEV_TOOLS\binDebug;$env:GTLAB_DEV_TOOLS\binDebug\modules;$env:path"
+    - cd build
+    - .\IntelliGraphUnitTests.exe --gtest_output=xml:unittests.xml
+  artifacts:
+    paths:
+      - "build/unittests.xml"
+    expire_in: 1 week
+    reports:
+      junit: build/unittests.xml
+
+testWin_2.1:
+  stage: test
+  extends:
+    - .windocker_2.1
+  needs: ["windowsBuildDebug_2.1"]
+  before_script:
+    - !reference [.update_devtools_win, script]
+  script:
+    - $env:path = "$env:CI_PROJECT_DIR\build\modules;$env:GTLAB_DEV_TOOLS\binDebug;$env:GTLAB_DEV_TOOLS\binDebug\modules\;$env:QT_INSTALL_PATH\bin;$env:path"
     - cd build
     - .\IntelliGraphUnitTests.exe --gtest_output=xml:unittests.xml
   artifacts:
@@ -116,11 +192,31 @@ testWin_2.0:
 testLinux_2.0:
   stage: test
   extends:
-    - .linuxdocker
+    - .linuxdocker_2.0
   needs: ["linuxBuildDebug"]
   before_script:
     # update to latest dev tools
-    - '"$GTLAB_UPDATE_TOOL" up --confirm-command'
+    - !reference [.update_devtools_linux, script]
+  script:
+    - cd build
+    - LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/binDebug" ./IntelliGraphUnitTests --gtest_output=xml:unittests.xml
+  variables:
+    GIT_SUBMODULE_STRATEGY: "none"
+  artifacts:
+    paths:
+      - "build/unittests.xml"
+    expire_in: 1 week
+    reports:
+      junit: build/unittests.xml 
+
+testLinux_2.1:
+  stage: test
+  extends:
+    - .linuxdocker_2.1
+  needs: ["linuxBuildDebug_2.1"]
+  before_script:
+    # update to latest dev tools
+    - !reference [.update_devtools_linux, script]
   script:
     - cd build
     - LD_LIBRARY_PATH="$GTLAB_DEV_TOOLS/binDebug" ./IntelliGraphUnitTests --gtest_output=xml:unittests.xml
@@ -155,9 +251,21 @@ package-win-gtlab_2.0:
   variables:
     toolchain: msvc2019
 
+package-win-gtlab_2.1:
+  extends: [".package"]
+  needs: ["windowsBuildDebug_2.1", "windowsBuildRelease_2.1"]
+  variables:
+    toolchain: msvc2026
+
 package-linux-gtlab_2.0:
   extends: [".package"]
   needs: ["linuxBuildDebug", "linuxBuildRelease"]
+  variables:
+    toolchain: linux
+
+package-linux-gtlab_2.1:
+  extends: [".package"]
+  needs: ["linuxBuildDebug_2.1", "linuxBuildRelease_2.1"]
   variables:
     toolchain: linux
 
@@ -201,5 +309,7 @@ badges:
   dependencies:
     - windowsBuildDebug
     - linuxBuildDebug
+    - windowsBuildDebug_2.1
+    - linuxBuildDebug_2.1
     #- testWin
     #- testLinux
