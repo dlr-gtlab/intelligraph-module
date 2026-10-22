@@ -18,7 +18,7 @@ namespace intelli
 /**
  * @brief The InvalidData class. Invalid node data. Always yields null.
  */
-class GT_INTELLI_EXPORT InvalidData : public intelli::NodeData
+class GT_INTELLI_EXPORT InvalidData final : public intelli::NodeData
 {
     Q_OBJECT
 

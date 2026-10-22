@@ -15,7 +15,7 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT StringData : public NodeData
+class GT_INTELLI_EXPORT StringData final : public NodeData
 {
     Q_OBJECT
 

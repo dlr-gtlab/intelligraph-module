@@ -7,7 +7,7 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include "intelli/node/general/listgetindex.h"
+#include "intelli/node/general/listgetitem.h"
 
 #include "intelli/data/int.h"
 #include "intelli/data/double.h"
@@ -16,7 +16,7 @@
 
 using namespace intelli;
 
-ListGetIndexNode::ListGetIndexNode() :
+ListGetItemNode::ListGetItemNode() :
     Node(tr("Get Index")),
     m_typeId("typeId",
              tr("Type Id"),
@@ -53,7 +53,7 @@ ListGetIndexNode::ListGetIndexNode() :
 }
 
 void
-ListGetIndexNode::eval()
+ListGetItemNode::eval()
 {
     Ptr<IntData> indexData = nodeData<IntData>(m_index);
     if (!indexData) return evalFailed();
@@ -62,12 +62,11 @@ ListGetIndexNode::eval()
     if (!listData) return evalFailed();
 
     int index = indexData->value();
-    if (static_cast<size_t>(index) >= listData->iterate().size() || index < 0)
+    if (static_cast<size_t>(index) >= listData->size() || index < 0)
     {
         return evalFailed();
     }
 
-    Ptr<NodeData> data = *std::next(listData->iterate().begin(), index);
-    setNodeData(m_out, std::move(data));
+    setNodeData(m_out, listData->at(index));
 }
 

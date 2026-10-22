@@ -130,7 +130,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/input/graphuservariablesinput.h
     intelli/node/input/fileinput.h
     intelli/node/general/tolist.h intelli/node/general/tolist.cpp
-    intelli/node/general/listgetindex.h intelli/node/general/listgetindex.cpp
+    intelli/node/general/listgetitem.h intelli/node/general/listgetitem.cpp
     intelli/node/general/listgetsize.h intelli/node/general/listgetsize.cpp
     intelli/gui/commentgroup.h
     intelli/gui/commentdata.h

@@ -22,7 +22,7 @@
 /// Helper macro for registering a node class. The node class does should not be
 /// registered additionally as a "data" object of your module
 #define GT_INTELLI_REGISTER_DATA(CLASS) \
-    intelli::NodeDataFactory::registerData<CLASS>();
+intelli::NodeDataFactory::instance().registerData<CLASS>();
 
 /// Helper macro to register a conversion between two types. `FUNC` parameter
 /// takes the converted NodeDataPtr `FROM` as an argument and should return a
@@ -72,7 +72,7 @@ public:
     template <typename T,
               typename = std::enable_if_t<std::is_base_of<NodeData, T>::value>,
               typename = std::enable_if_t<!is_list_type<T>::value>>
-    inline static bool registerData()
+    inline bool registerData()
     {
         bool success = instance().registerData(T::staticMetaObject, GT_MODULENAME());
         if (success)
@@ -80,20 +80,45 @@ public:
             success = instance().registerListType(
                 typeId<T>(), list_type_t<T>::staticMetaObject
             );
+            if (!success)
+            {
+                instance().unregisterData(T::staticMetaObject);
+            }
         }
         return success;
     }
 
     /**
+     * @brief Unregisters data and associated conversions. Does not
+     * unregister the list type.
+     * @param meta Meta object of the class to unregister
+     */
+    void unregisterData(QMetaObject const& meta);
+
+    /**
      * @brief Registers a conversion function between two type ids.
      * @param from Type Id of the source data type
-     * @param to Type Id of the target data type.
+     * @param to Type Id of the target data type
      * @param conversion Conversion function
      * @return success
      */
     bool registerConversion(TypeId const& from,
                             TypeId const& to,
-                            ConversionFunction conversion) noexcept;
+                            ConversionFunction conversion);
+
+    /**
+     * @brief Unregisters all conversion involving `type`
+     * @param type Type id to remove all conversions for
+     */
+    void unregisterConversions(TypeId const& type);
+
+    /**
+     * @brief Unregisters the conversion from `from` to `to`
+     * @param from Type Id of the source data type
+     * @param to Type Id of the target data type
+     */
+    void unregisterConversion(TypeId const& from,
+                              TypeId const& to);
 
     /**
      * @brief Returns true if `typeId` is registered
@@ -119,7 +144,7 @@ public:
      * @param typeId Type id to retrieve the type name from
      * @return Type name. Empty if type id was not found
      */
-    TypeName typeName(TypeId const& typeId) const noexcept;
+    TypeName typeName(TypeId const& typeId) const;
 
     /**
      * @brief Returns whether the given type id is a list type
@@ -187,7 +212,7 @@ public:
      * @param typeId Type to instantiate
      * @return New type (may be null)
      */
-    std::unique_ptr<NodeData> makeData(TypeId const& typeId) const noexcept;
+    std::unique_ptr<NodeData> makeData(TypeId const& typeId) const;
 
     /**
      * @brief Instantiates a new list data type for the given type id
@@ -195,7 +220,7 @@ public:
      * already.
      * @return New list type (may be null)
      */
-    std::unique_ptr<ListData> makeListData(TypeId const& typeId) const noexcept;
+    std::unique_ptr<ListData> makeListData(TypeId const& typeId) const;
 
 private:
 
@@ -212,9 +237,15 @@ private:
      * @param meta Meta object of the data type
      * @return success
      */
-    bool registerData(QMetaObject const& meta, QString const& moduleId) noexcept;
+    bool registerData(QMetaObject const& meta, QString const& moduleId);
 
-    bool registerListType(TypeId typeId, QMetaObject const& meta) noexcept;
+    /**
+     * @brief Registers the list type `meta` for the scalar type `typeId`
+     * @param typeId Scalar typeId
+     * @param meta Meta object of the corresponding list data class
+     * @return success
+     */
+    bool registerListType(TypeId typeId, QMetaObject const& meta);
 
     QMetaObject const* findMetaObject(TypeId const& anyTypeId) const noexcept;
 };

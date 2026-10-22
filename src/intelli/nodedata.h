@@ -164,6 +164,8 @@ template <typename T,
           typename = std::enable_if_t<std::is_base_of<NodeData, T>::value>>
 inline QString typeId()
 {
+    static_assert(!std::is_abstract<T>::value,
+                  "T must not be an abstract class!");
     return T::staticMetaObject.className();
 }
 
@@ -197,6 +199,8 @@ inline QString typeId()
                   "Cannot use `intelli::InvalidData` as list type!");
     static_assert(std::is_base_of<NodeData, U>::value,
                   "T::type must be derived of `intelli::NodeData`!");
+    static_assert(!std::is_abstract<U>::value,
+                  "T::type must not be abstract!");
 
     return listTypeId<U>();
 }

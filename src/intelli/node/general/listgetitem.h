@@ -7,8 +7,8 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#ifndef GT_INTELLI_LISTGETINDEXNODE_H
-#define GT_INTELLI_LISTGETINDEXNODE_H
+#ifndef GT_INTELLI_LISTGETITEMNODE_H
+#define GT_INTELLI_LISTGETITEMNODE_H
 
 #include <intelli/node.h>
 #include <intelli/property/stringselection.h>
@@ -16,13 +16,13 @@
 namespace intelli
 {
 
-class ListGetIndexNode : public Node
+class ListGetItemNode : public Node
 {
     Q_OBJECT
 
 public:
 
-    Q_INVOKABLE ListGetIndexNode();
+    Q_INVOKABLE ListGetItemNode();
 
 protected:
 
@@ -36,4 +36,4 @@ private:
 
 } // namespace intelli
 
-#endif // GT_INTELLI_LISTGETINDEXNODE_H
+#endif // GT_INTELLI_LISTGETITEMNODE_H

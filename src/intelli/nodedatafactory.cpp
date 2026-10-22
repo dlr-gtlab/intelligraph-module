@@ -93,7 +93,8 @@ NodeDataFactory::NodeDataFactory() :
     registerData(GT_METADATA(InvalidData), GT_MODULENAME());
 
     // for seamless backwards compatibility
-    pimpl->listTypes.insert(GT_CLASSNAME(StringListData), ListEntry{&StringListData::staticMetaObject, typeId<StringData>()});
+    pimpl->listTypes.insert(GT_CLASSNAME(StringListData),
+                            ListEntry{&StringListData::staticMetaObject, typeId<StringData>()});
 }
 
 NodeDataFactory::~NodeDataFactory() = default;
@@ -106,7 +107,7 @@ NodeDataFactory::instance()
 }
 
 bool
-NodeDataFactory::registerData(QMetaObject const& meta, QString const& moduleId) noexcept
+NodeDataFactory::registerData(QMetaObject const& meta, QString const& moduleId)
 {
     QString className = meta.className();
 
@@ -172,7 +173,7 @@ NodeDataFactory::registerData(QMetaObject const& meta, QString const& moduleId) 
 }
 
 bool
-NodeDataFactory::registerListType(TypeId typeId, const QMetaObject& meta) noexcept
+NodeDataFactory::registerListType(TypeId typeId, QMetaObject const& meta)
 {
     QString className = meta.className();
 
@@ -211,10 +212,35 @@ NodeDataFactory::registerListType(TypeId typeId, const QMetaObject& meta) noexce
     return true;
 }
 
+void
+NodeDataFactory::unregisterData(QMetaObject const& meta)
+{
+    QString className = meta.className();
+
+    auto entry = pimpl->types.constFind(className);
+    if (entry == pimpl->types.cend()) return;
+
+    gtTrace().verbose().nospace()
+        << "### Unregistering Data '" << className << ")...";
+
+    pimpl->types.erase(entry);
+
+    unregisterConversions(className);
+
+    QString listTypeId = generateListType(className);
+
+    auto listEntry = pimpl->listTypes.constFind(listTypeId);
+    if (listEntry == pimpl->listTypes.cend()) return;
+
+    pimpl->listTypes.erase(listEntry);
+
+    unregisterConversions(listTypeId);
+}
+
 bool
 NodeDataFactory::registerConversion(TypeId const& from,
                                     TypeId const& to,
-                                    ConversionFunction conversion) noexcept
+                                    ConversionFunction conversion)
 {
     gtTrace().verbose().nospace()
         << "### Registering Conversion from '"<< from << "' to '" << to << "'...";
@@ -244,8 +270,43 @@ NodeDataFactory::registerConversion(TypeId const& from,
         return false;
     }
 
+    if (findConversion(pimpl->conversions, from, to) != pimpl->conversions.cend())
+    {
+        gtError()
+            << QObject::tr("Failed to register conversion from '%1' to '%2'! "
+                           "(Duplicate conversion)")
+                   .arg(from, to);
+        return false;
+    }
+
     pimpl->conversions.insert(from, {to, conversion});
     return true;
+}
+
+void
+NodeDataFactory::unregisterConversions(TypeId const& type)
+{
+    auto entry = pimpl->conversions.constFind(type);
+    if (entry != pimpl->conversions.cend())
+    {
+        pimpl->conversions.erase(entry);
+    }
+
+    for (TypeId const& from : pimpl->conversions.uniqueKeys())
+    {
+        assert(from != type); // we have removed this one
+        unregisterConversion(from, type);
+    }
+}
+
+void
+NodeDataFactory::unregisterConversion(TypeId const& from, TypeId const& to)
+{
+    auto conv = findConversion(pimpl->conversions, from, to);
+    if (conv != pimpl->conversions.cend())
+    {
+        pimpl->conversions.erase(conv);
+    }
 }
 
 QMetaObject const*
@@ -287,7 +348,7 @@ NodeDataFactory::validTypeIds() const
 }
 
 TypeName
-NodeDataFactory::typeName(TypeId const& typeId) const noexcept
+NodeDataFactory::typeName(TypeId const& typeId) const
 {
     if (isListType(typeId))
     {
@@ -405,7 +466,7 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
 }
 
 std::unique_ptr<NodeData>
-NodeDataFactory::makeData(TypeId const& typeId) const noexcept
+NodeDataFactory::makeData(TypeId const& typeId) const
 {
     if (isListType(typeId)) return makeListData(typeId);
 
@@ -429,7 +490,7 @@ NodeDataFactory::makeData(TypeId const& typeId) const noexcept
 }
 
 std::unique_ptr<ListData>
-NodeDataFactory::makeListData(TypeId const& typeId) const noexcept
+NodeDataFactory::makeListData(TypeId const& typeId) const
 {
     auto entry = pimpl->listTypes.constFind(isListType(typeId) ?
                                                 typeId : listType(typeId));

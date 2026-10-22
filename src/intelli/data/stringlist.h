@@ -40,32 +40,52 @@ public:
 
     Q_INVOKABLE void setValue(QStringList val);
 
+    /// Appends the data to the list. Data must be string compatible.
+    /// Returns whether appending was successfull
     bool append(NodeDataPtr const& data) override;
 
-    size_type size() const { return m_data.size(); }
-    bool empty() const { return m_data.empty(); }
+    /// Returns the size of this list
+    size_type size() const noexcept { return m_data.size(); }
+    /// Returns whether this list is empty
+    bool empty() const noexcept { return m_data.empty(); }
 
-    const_iterator begin() const { return m_data.begin(); }
-    const_iterator end() const { return m_data.end(); }
+    /// Returns begin iterator
+    const_iterator begin() const noexcept { return m_data.begin(); }
+    /// Returns end iterator
+    const_iterator end() const noexcept { return m_data.end(); }
 
-    const_reference front() const { return m_data.front(); }
-    const_reference back() const { return m_data.back(); }
+    /// Returns first element. List must not be empty
+    const_reference front() const noexcept { return m_data.front(); }
+    /// Returns last element. List must not be empty
+    const_reference back() const noexcept { return m_data.back(); }
 
-    const_reference at(size_type idx) const { return m_data.at(idx); }
+    /// Returns the element at the given position. Must not exceed list's size
+    const_reference at(size_type idx) const noexcept { return m_data.at(idx); }
+
+    /// Returns the element at the given position. Must not exceed list's size
+    inline const_reference operator[](size_t idx) const noexcept { return at(idx); }
 
 protected:
 
-    size_t getLength() const override { return size(); }
+    /// Returns the size of the underlying list
+    size_t getSize() const noexcept override
+    {
+        return size();
+    }
 
-    NodeDataPtr getAt(size_t idx) const override { return makeNodeData<StringData>(at(idx)); }
+    /// Returns the element at the given position
+    NodeDataPtr getAt(size_t idx) const noexcept override
+    {
+        return makeNodeData<StringData>(at(idx));
+    }
 
 private:
 
     QStringList m_data;
 };
 
-GT_INTELLI_DECLARE_LIST_TYPE(StringData, StringListData);
-
 } // namespace intelli
+
+GT_INTELLI_DECLARE_LIST_TYPE(intelli::StringData, intelli::StringListData);
 
 #endif // GT_INTELLI_STRINGLISTDATA_H

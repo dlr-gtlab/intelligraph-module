@@ -31,7 +31,6 @@ enum NodeFlag : size_t
     /// Indicates node caption should be hidden
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
-    // TODO: remove once executor is reworked
     Unique      = 1 << 2,
     /// Indicates that the widget should be placed so that its size can be maximized
     MaximizeWidget = 1 << 4,
@@ -39,7 +38,6 @@ enum NodeFlag : size_t
     Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
     ResizableHOnly = 1 << 6,
-    // TODO: add ResizableVOnly?
     /// Indicates node is deprecated and should no longer be used
     Deprecated = 1 << 7,
 
@@ -80,7 +78,6 @@ enum class NodeEvalMode : size_t
     ExclusiveBlocking = IsExclusiveMask | IsBlockingMask,
     /// Inidcates that the inputs of the node should be forwarded to the outputs
     /// of the node
-    // TODO: remove, only a hack for input output providers
     ForwardInputsToOutputs = 1 << 3 | IsBlockingMask,
     /// Default behaviour
     Default = Detached,
