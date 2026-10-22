@@ -49,7 +49,7 @@ public:
         builder.connect(inputC, intelli::PortIndex{0}, toList, intelli::PortIndex{2});
 
         intelli::Node& getSize = builder.addNode("intelli::ListGetSizeNode");
-        intelli::Node& getEntry = builder.addNode("intelli::ListGetIndexNode");
+        intelli::Node& getEntry = builder.addNode("intelli::ListGetItemNode");
 
         intelli::setNodeProperty(getSize, "typeId", intelli::typeId<intelli::IntData>());
         intelli::setNodeProperty(getEntry, "typeId", intelli::typeId<intelli::IntData>());
@@ -85,11 +85,11 @@ TEST_F(IntListNodes, verify)
     ASSERT_TRUE(exec.isNodeEvaluated(toListUuid));
     auto listData = exec.nodeData(toListUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::ListData>();
     ASSERT_TRUE(listData);
-    ASSERT_EQ(listData->iterate().size(), expectedSize);
+    ASSERT_EQ(listData->size(), expectedSize);
 
-    intelli::Ptr<intelli::IntData> entry0 = qobject_pointer_cast<intelli::IntData const>(*std::next(listData->iterate().begin(), 0));
-    intelli::Ptr<intelli::IntData> entry1 = qobject_pointer_cast<intelli::IntData const>(*std::next(listData->iterate().begin(), 1));
-    intelli::Ptr<intelli::IntData> entry2 = qobject_pointer_cast<intelli::IntData const>(*std::next(listData->iterate().begin(), 2));
+    intelli::Ptr<intelli::IntData> entry0 = qobject_pointer_cast<intelli::IntData const>(listData->at(0));
+    intelli::Ptr<intelli::IntData> entry1 = qobject_pointer_cast<intelli::IntData const>(listData->at(1));
+    intelli::Ptr<intelli::IntData> entry2 = qobject_pointer_cast<intelli::IntData const>(listData->at(2));
 
     ASSERT_EQ(entry0->value(), 5);
     ASSERT_EQ(entry1->value(), 30);
@@ -138,7 +138,7 @@ public:
         builder.connect(inputC, intelli::PortIndex{0}, toList, intelli::PortIndex{2});
 
         intelli::Node& getSize = builder.addNode("intelli::ListGetSizeNode");
-        intelli::Node& getEntry = builder.addNode("intelli::ListGetIndexNode");
+        intelli::Node& getEntry = builder.addNode("intelli::ListGetItemNode");
 
         intelli::setNodeProperty(getSize, "typeId", intelli::typeId<intelli::StringData>());
         intelli::setNodeProperty(getEntry, "typeId", intelli::typeId<intelli::StringData>());
@@ -176,9 +176,9 @@ TEST_F(StringListNodes, verify)
     ASSERT_TRUE(listData);
     ASSERT_EQ(listData->iterate().size(), expectedSize);
 
-    auto entry0 = qobject_pointer_cast<intelli::StringData const>(*std::next(listData->iterate().begin(), 0));
-    auto entry1 = qobject_pointer_cast<intelli::StringData const>(*std::next(listData->iterate().begin(), 1));
-    auto entry2 = qobject_pointer_cast<intelli::StringData const>(*std::next(listData->iterate().begin(), 2));
+    auto entry0 = qobject_pointer_cast<intelli::StringData const>(listData->at(0));
+    auto entry1 = qobject_pointer_cast<intelli::StringData const>(listData->at(1));
+    auto entry2 = qobject_pointer_cast<intelli::StringData const>(listData->at(2));
 
     ASSERT_EQ(entry0->value(), "5");
     ASSERT_EQ(entry1->value(), "30");

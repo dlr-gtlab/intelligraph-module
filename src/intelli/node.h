@@ -31,7 +31,6 @@ enum NodeFlag : size_t
     /// Indicates node caption should be hidden
     HideCaption = 1 << 1,
     /// Indicates node is unique (i.e. only one instance should exist)
-    // TODO: remove once executor is reworked
     Unique      = 1 << 2,
     /// Indicates that the widget should be placed so that its size can be maximized
     MaximizeWidget = 1 << 4,
@@ -39,7 +38,6 @@ enum NodeFlag : size_t
     Resizable   = 1 << 5,
     /// Indicates node is only resizeable horizontally
     ResizableHOnly = 1 << 6,
-    // TODO: add ResizableVOnly?
     /// Indicates node is deprecated and should no longer be used
     Deprecated = 1 << 7,
 
@@ -80,7 +78,6 @@ enum class NodeEvalMode : size_t
     ExclusiveBlocking = IsExclusiveMask | IsBlockingMask,
     /// Inidcates that the inputs of the node should be forwarded to the outputs
     /// of the node
-    // TODO: remove, only a hack for input output providers
     ForwardInputsToOutputs = 1 << 3 | IsBlockingMask,
     /// Default behaviour
     Default = Detached,
@@ -150,33 +147,6 @@ GT_INTELLI_EXPORT void setNodeDataInterface(Node& node, NodeDataInterface* model
 GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
 
 } // namespace exec
-
-/**
- * @brief Attempts to convert `data` to into the desired type. If
- * no conversion exists or the conversion fails, a nullptr is returned.
- * @param data Data to convert
- * @param to Target type Id to convert the data into
- * @return Converted data (may be null)
- */
-GT_INTELLI_EXPORT NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to);
-
-/**
- * @brief Convenience function that performs a conversion of `data` into the
- * desired type `T`. If no conversion exists or the conversion fails, a
- * nullptr is returned.
- * @param data Data to convert
- * @return Converted data of type `T` (may be null)
- */
-template <typename T>
-inline std::shared_ptr<unwrap_type_t<T> const>
-convert(NodeDataPtr const& data)
-{
-    if (auto converted = qobject_pointer_cast<unwrap_type_t<T> const>(data)) return converted;
-
-    return std::static_pointer_cast<unwrap_type_t<T> const>(
-        convert(data, safeTypeId<unwrap_type_t<T>>())
-    );
-}
 
 /**
  * @brief Creates a base widget that has a simple layout attached. Can be used

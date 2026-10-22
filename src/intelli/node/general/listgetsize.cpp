@@ -47,13 +47,8 @@ ListGetSizeNode::ListGetSizeNode() :
 void
 ListGetSizeNode::eval()
 {
-    int size = 0;
-
     Ptr<ListData> listData = nodeData<ListData>(m_in);
-    if (listData)
-    {
-        size = listData->iterate().size();
-    }
+    int size = (listData) ? listData->size() : 0;
 
     setNodeData(m_out, makeNodeData<IntData>(size));
 }

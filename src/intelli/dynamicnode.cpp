@@ -13,6 +13,7 @@
 #include "intelli/property/stringselection.h"
 #include "intelli/property/uint.h"
 #include "intelli/private/utils.h"
+#include "intelli/data/invalid.h"
 
 #include "gt_propertystructcontainer.h"
 #include "gt_structproperty.h"

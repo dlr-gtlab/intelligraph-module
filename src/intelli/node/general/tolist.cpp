@@ -81,7 +81,7 @@ ToListNode::ToListNode() :
 void
 ToListNode::eval()
 {
-    NonConstPtr<ListData> outputData =
+    std::unique_ptr<ListData> outputData =
         NodeDataFactory::instance().makeListData(m_typeId);
     if (!outputData)
     {
@@ -102,14 +102,14 @@ ToListNode::eval()
         outputData->append(std::move(data));
     }
 
-    if (outputData->iterate().size() != ports(PortType::In).size())
+    if (outputData->size() != ports(PortType::In).size())
     {
         gtError() << utils::logId(*this)
                   << tr("Failed to append data!");
         return evalFailed();
     }
 
-    setNodeData(m_out, outputData);
+    setNodeData(m_out, Ptr<ListData>{std::move(outputData)});
 }
 
 Node::PortId

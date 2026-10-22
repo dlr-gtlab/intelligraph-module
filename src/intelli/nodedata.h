@@ -13,13 +13,18 @@
 #include <intelli/exports.h>
 #include <intelli/globals.h>
 
-#include <gt_logging.h>
-
 #include <tl/optional.hpp>
 
 #include <QMetaMethod>
 
 #include <type_traits>
+
+/// Helper macro to register a list type for a scalar type
+#define GT_INTELLI_DECLARE_LIST_TYPE(SCALAR, LIST) \
+    template <> \
+    struct intelli::list_type<SCALAR> { using type = LIST; }; \
+    template <> \
+    struct intelli::inner_type<LIST> { using type = SCALAR; };
 
 namespace intelli
 {
@@ -40,21 +45,14 @@ public:
      * @brief Type name. May be displayed in the editor as a default port caption
      * @return Type name
      */
-    QString const& typeName() const;
+    QString const& typeName() const noexcept;
 
     /**
-     * @brief Type id of the node data. Is guranteed to be unique.
-     * @return
+     * @brief Type id of the node data. May be empty if node data is not setup
+     * correctly.
+     * @return Type id.
      */
-    [[deprecated("use `typeId<T>` instead")]]
-    QString typeId() const;
-
-    /**
-     * @brief value
-     * @param methodName - Name of an invokable method to call
-     * @return pair of success and value of the call of an invokable function
-     * of the node data object
-     */
+    virtual QString typeId() const;
 
     /**
      * @brief Attempts to invoke the (Q_INVOKABLE) member method `methodName`.
@@ -87,9 +85,7 @@ public:
                                        retArg,
                                        std::forward<Args>(args)...))
         {
-            gtTraceId("IntelliGraph")
-                << tr("Invoking member function '%1 %2(...)' failed!")
-                        .arg(rtypeName, methodName);
+            logInvokeError(rtypeName, methodName);
             return {};
         }
 
@@ -104,21 +100,20 @@ protected:
      */
     NodeData(QString typeName);
 
+    static void logInvokeError(QByteArray const& rtypeName,
+                               QString const& methodName);
+
 private:
 
     QString m_typeName;
 };
 
-
 template<typename T>
 using Ptr = std::shared_ptr<const T>;
-template<typename T>
-using NonConstPtr = std::shared_ptr<T>;
 
 using NodeDataPtr = Ptr<NodeData>;
-using NodeDataNonConstPtr = NonConstPtr<NodeData>;
 
-/// returns the corresponding list type for T
+/// Yields the corresponding list type for `T`
 template <typename T>
 struct list_type;
 template <typename T>
@@ -126,7 +121,7 @@ using list_type_t = typename list_type<T>::type;
 template <typename T>
 using list = list_type<T>;
 
-/// returns the inner type T of a a list type
+/// Yields the inner type `T` of a list type. If `T` is not a list, yields `void`
 template <typename T>
 struct inner_type { using type = void; };
 template <typename T>
@@ -134,7 +129,7 @@ struct inner_type<list_type<T>> { using type = T; };
 template <typename T>
 using inner_type_t = typename inner_type<T>::type;
 
-/// unwraps list_type
+/// Unwraps `list_type` else yields `T`
 template <typename T>
 struct unwrap_type { using type = T; };
 template <typename T>
@@ -142,62 +137,90 @@ struct unwrap_type<list_type<T>> { using type = list_type_t<T>; };
 template <typename T>
 using unwrap_type_t = typename unwrap_type<T>::type;
 
-/// returns whether a type T is a list type
+/// Unwraps `shared_pointer<T>` and yields T else `void`
+template <typename T>
+struct unwrap_ptr { using type = void; };
+template <typename T>
+struct unwrap_ptr<Ptr<T>> { using type = T; };
+template <typename T>
+using unwrap_ptr_t = typename unwrap_ptr<T>::type;
+
+/// Yields whether a type T is a scalar data type
 template<typename T>
-struct is_list_type
+struct is_scalar_type_impl
+    : std::bool_constant<
+          // not derived of `ListData`
+          !std::is_base_of<ListData, T>::value &&
+          // but derived of `NodeData`
+          std::is_base_of<NodeData, T>::value &&
+          // not abstract / must be default constructible
+          std::is_constructible<T>::value> {};
+template<typename T>
+struct is_scalar_type
+    : std::conditional_t<std::is_class<T>::value,
+                         // using non-class type in std::is_base_of is UB
+                         is_scalar_type_impl<T>,
+                         std::false_type> {};
+
+/// Yields whether a type T is a list data type
+template<typename T>
+struct is_list_type_impl
     : std::bool_constant<
           // either derived of `ListData`
           std::is_base_of<ListData, T>::value ||
           // or a wrapper type whose inner type is derived of `NodeData`
-          (
-              std::negation<std::is_same<inner_type_t<T>, void>>::value &&
-              std::is_base_of<NodeData, inner_type_t<T>>::value
-          )
-      > {};
+          is_scalar_type<inner_type_t<T>>::value> {};
+template<typename T>
+struct is_list_type
+    : std::conditional_t<std::is_class<T>::value,
+                         // using non-class type in std::is_base_of is UB
+                         is_list_type_impl<T>,
+                         std::false_type> {};
+
+/// Yields whether a type T has a registered list type
+template<typename T>
+struct has_list_type
+    : std::bool_constant<
+          is_scalar_type<T>::value &&
+          !std::is_void<list_type_t<T>>::value> {};
 
 /**
- * @brief Returns the typeid of a node data class
+ * @brief Returns the type id of a node data class
  * @return Type id
  */
 template <typename T,
-          typename = std::enable_if_t<!is_list_type<T>::value>,
-          typename = std::enable_if_t<std::is_base_of<NodeData, T>::value>>
+          typename = std::enable_if_t<is_scalar_type<T>::value>>
 inline QString typeId()
 {
     return T::staticMetaObject.className();
 }
 
 /**
- * @brief Returns the list-typeid of a node data class
+ * @brief Returns the list type id of a node data class
  * @return List type id
  */
-template <typename T>
+template <typename T,
+          typename = std::enable_if_t<is_scalar_type<T>::value>>
 inline QString listTypeId()
 {
-    static_assert(!is_list_type<T>::value,
-                  "`T` must not be a list type!");
-    static_assert(!std::is_same<T, InvalidData>::value,
-                  "Cannot use `intelli::InvalidData` as list type!");
-
+    static_assert(has_list_type<T>::value, "`T` has no list type!");
     return QStringLiteral("#list#") + typeId<T>();
 }
 
 /**
- * @brief Overload. Returns the list-typeid of a list node data class
+ * @brief Overload. Returns the list type id of a list node data class
  * @return List type id
  */
 template <typename T,
+          typename = std::enable_if_t<!is_scalar_type<T>::value>,
           typename = std::enable_if_t<is_list_type<T>::value>>
 inline QString typeId()
 {
     using U = inner_type_t<T>;
     static_assert(!std::is_same<U, void>::value,
-                  "Could not interfer inner type of `T`!");
-    static_assert(!std::is_same<U, InvalidData>::value,
-                  "Cannot use `intelli::InvalidData` as list type!");
-    static_assert(std::is_base_of<NodeData, U>::value,
-                  "T::type must be derived of `intelli::NodeData`!");
-
+                  "Could not infer inner type of `T`!");
+    static_assert(is_scalar_type<U>::value,
+                  "inner type of `T` must be a scalar node data type!");
     return listTypeId<U>();
 }
 
@@ -211,8 +234,8 @@ inline QString typeId()
  */
 template <typename T,
           typename ...Args,
-          typename = std::enable_if_t<std::is_base_of<NodeData, T>::value ||
-                                      std::is_base_of<NodeData, inner_type_t<T>>::value>>
+         typename = std::enable_if_t<is_scalar_type<T>::value ||
+                                     is_list_type<T>::value>>
 inline Ptr<unwrap_type_t<T>> makeNodeData(Args&&... args)
 {
     return std::make_shared<unwrap_type_t<T> const>(std::forward<Args>(args)...);
@@ -226,10 +249,10 @@ inline Ptr<unwrap_type_t<T>> makeNodeData(Args&&... args)
 template <typename T>
 inline QString safeTypeId()
 {
-    using U = inner_type_t<T>;
-    if constexpr ((is_list_type<T>::value && ( std::is_same<U, InvalidData>::value   ||
-                                              !std::is_base_of<NodeData, U>::value)) ||
-                  !std::is_base_of<NodeData, T>::value)
+    using Inner = inner_type_t<T>;
+    if constexpr ((is_list_type<T>::value && ( std::is_same<Inner, InvalidData>::value   ||
+                                              !is_scalar_type<Inner>::value)) ||
+                  (!is_list_type<T>::value && !is_scalar_type<T>::value))
     {
         return QString{};
     }
@@ -237,6 +260,33 @@ inline QString safeTypeId()
     {
         return typeId<T>();
     }
+}
+
+/**
+ * @brief Attempts to convert `data` to into the desired type. If
+ * no conversion exists or the conversion fails, a nullptr is returned.
+ * @param data Data to convert
+ * @param to Target type Id to convert the data into
+ * @return Converted data (may be null)
+ */
+GT_INTELLI_EXPORT NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to);
+
+/**
+ * @brief Convenience function that performs a conversion of `data` into the
+ * desired type `T`. If no conversion exists or the conversion fails, a
+ * nullptr is returned.
+ * @param data Data to convert
+ * @return Converted data of type `T` (may be null)
+ */
+template <typename T>
+inline std::shared_ptr<unwrap_type_t<T> const>
+convert(NodeDataPtr const& data)
+{
+    if (auto converted = qobject_pointer_cast<unwrap_type_t<T> const>(data)) return converted;
+
+    return std::static_pointer_cast<unwrap_type_t<T> const>(
+        convert(data, safeTypeId<T>())
+    );
 }
 
 /**
