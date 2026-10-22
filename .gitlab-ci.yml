@@ -13,7 +13,7 @@ variables:
   # enclose the branch name with ^ and $
   # separete severl branch names with |
   # e.g. /^main$|^main_1_0$/
-  STABLE_BRANCHES: /^main$/
+  STABLE_BRANCHES: /^main$|^release\/.*$/
   
   # Name of the unstable branch (if it exists)
   # UNSTABLE_BRANCH: unstable_master
