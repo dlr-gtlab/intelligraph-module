@@ -9,7 +9,7 @@
 
 #include "test_helper.h"
 
-#include "data/test_nodedata.h"
+#include "data/testdata.h"
 
 #include <intelli/nodedatafactory.h>
 #include <intelli/data/file.h>
@@ -17,6 +17,8 @@
 #include <intelli/data/string.h>
 #include <intelli/data/stringlist.h>
 #include <intelli/data/double.h>
+#include <intelli/data/int.h>
+#include <intelli/data/bytearray.h>
 #include <intelli/data/invalid.h>
 
 #include <QFileInfo>
@@ -80,11 +82,11 @@ TEST(NodeData, convert_same_type)
     EXPECT_TRUE(NodeDataFactory::instance()
                     .canConvert(typeId<DoubleData>(), typeId<DoubleData>()));
 
-    EXPECT_TRUE(intelli::convert(doubleData, typeId<DoubleData>()));
-    EXPECT_TRUE(intelli::convert<DoubleData>(doubleData));
+    EXPECT_TRUE(convert(doubleData, typeId<DoubleData>()));
+    EXPECT_TRUE(convert<DoubleData>(doubleData));
 
-    EXPECT_TRUE(intelli::convert(doubleDataPtr, typeId<DoubleData>()));
-    EXPECT_TRUE(intelli::convert<DoubleData>(doubleDataPtr));
+    EXPECT_TRUE(convert(doubleDataPtr, typeId<DoubleData>()));
+    EXPECT_TRUE(convert<DoubleData>(doubleDataPtr));
 }
 
 /// check that conversion for incompatible types fails
@@ -98,11 +100,11 @@ TEST(NodeData, convert_incompatible_type)
     EXPECT_FALSE(NodeDataFactory::instance()
                      .canConvert(typeId<DoubleData>(), typeId<TestNodeData>()));
 
-    EXPECT_FALSE(intelli::convert(doubleData, typeId<TestNodeData>()));
-    EXPECT_FALSE(intelli::convert<TestNodeData>(doubleData));
+    EXPECT_FALSE(convert(doubleData, typeId<TestNodeData>()));
+    EXPECT_FALSE(convert<TestNodeData>(doubleData));
 
-    EXPECT_FALSE(intelli::convert(doubleDataPtr, typeId<TestNodeData>()));
-    EXPECT_FALSE(intelli::convert<TestNodeData>(doubleDataPtr));
+    EXPECT_FALSE(convert(doubleDataPtr, typeId<TestNodeData>()));
+    EXPECT_FALSE(convert<TestNodeData>(doubleDataPtr));
 }
 
 /// check that conversion for compatible types succeeds
@@ -116,22 +118,31 @@ TEST(NodeData, convert_compatible_type)
     ASSERT_FALSE(NodeDataFactory::instance()
                      .canConvert(typeId<TestNodeData>(), typeId<DoubleData>()));
 
-    EXPECT_FALSE(intelli::convert(doubleData, typeId<TestNodeData>()));
-    EXPECT_FALSE(intelli::convert<TestNodeData>(doubleData));
+    EXPECT_FALSE(convert(doubleData, typeId<TestNodeData>()));
+    EXPECT_FALSE(convert<TestNodeData>(doubleData));
 
-    GT_INTELLI_REGISTER_INLINE_CONVERSION(DoubleData, TestNodeData, data->value())
+    bool success =
+        GT_INTELLI_REGISTER_INLINE_CONVERSION(DoubleData, TestNodeData, data->value());
+    EXPECT_TRUE(success);
+
+    // restore
+    auto cleanup = gt::finally([](){
+        NodeDataFactory::instance().unregisterConversion(typeId<DoubleData>(), typeId<TestNodeData>());
+    });
+    Q_UNUSED(cleanup);
 
     EXPECT_TRUE(NodeDataFactory::instance()
                     .canConvert(typeId<DoubleData>(), typeId<TestNodeData>()));
     EXPECT_FALSE(NodeDataFactory::instance()
                      .canConvert(typeId<TestNodeData>(), typeId<DoubleData>()));
 
-    ASSERT_TRUE(intelli::convert(doubleData, typeId<TestNodeData>()));
-    ASSERT_TRUE(intelli::convert<TestNodeData>(doubleData));
-    ASSERT_TRUE(intelli::convert(doubleData, typeId<TestNodeData>()));
-    ASSERT_TRUE(intelli::convert<TestNodeData>(doubleData));
+    ASSERT_TRUE(convert(doubleData, typeId<TestNodeData>()));
+    ASSERT_TRUE(convert<TestNodeData>(doubleData));
+    ASSERT_TRUE(convert(doubleData, typeId<TestNodeData>()));
+    ASSERT_TRUE(convert<TestNodeData>(doubleData));
 
-    EXPECT_EQ(intelli::convert<TestNodeData>(doubleDataPtr)->myDouble(), doubleData->value());
+    EXPECT_EQ(convert<TestNodeData>(doubleDataPtr)->myDouble(), doubleData->value());
+
 }
 
 /// check that conversion for list types works as expected
@@ -166,10 +177,8 @@ TEST(NodeData, convert_invalid_data)
                     .canConvert(typeId<InvalidData>(), typeId<list<IntData>>()));
 
     // converting from or to invalid data always yields null
-    ASSERT_FALSE(NodeDataFactory::instance()
-                     .convert(makeNodeData<list<IntData>>(), typeId<InvalidData>()));
-    ASSERT_FALSE(NodeDataFactory::instance()
-                     .convert(makeNodeData<InvalidData>(), typeId<list<IntData>>()));
+    ASSERT_FALSE(convert(makeNodeData<list<IntData>>(), typeId<InvalidData>()));
+    ASSERT_FALSE(convert(makeNodeData<InvalidData>(),   typeId<list<IntData>>()));
 }
 
 TEST(NodeData, list_types_type_ids)
@@ -182,17 +191,17 @@ TEST(NodeData, list_types_type_ids)
     static_assert(!is_list_type<DoubleData>::value,      "expected non-list type");
     static_assert(!is_list_type<StringData>::value,      "expected non-list type");
 
-    static_assert(std::is_same<intelli::unwrap_type_t<list<StringData>>, StringListData>::value,
+    static_assert(std::is_same<unwrap_type_t<list<StringData>>, StringListData>::value,
                   "expect correct unwrapping");
-    static_assert(std::is_same<intelli::unwrap_type_t<StringListData>, StringListData>::value,
+    static_assert(std::is_same<unwrap_type_t<StringListData>, StringListData>::value,
                   "expect correct unwrapping");
-    static_assert(std::is_same<intelli::unwrap_type_t<list<StringData>>, list_type_t<StringData>>::value,
+    static_assert(std::is_same<unwrap_type_t<list<StringData>>, list_type_t<StringData>>::value,
                   "expect correct unwrapping");
-    static_assert(std::is_same<intelli::unwrap_type_t<list<IntData>>, list_type_t<IntData>>::value,
+    static_assert(std::is_same<unwrap_type_t<list<IntData>>, list_type_t<IntData>>::value,
                   "expect correct unwrapping");
-    static_assert(std::is_same<intelli::unwrap_type_t<list<DoubleData>>, list_type_t<DoubleData>>::value,
+    static_assert(std::is_same<unwrap_type_t<list<DoubleData>>, list_type_t<DoubleData>>::value,
                   "expect correct unwrapping");
-    static_assert(std::is_same<intelli::unwrap_type_t<list<FileData>>, list_type_t<FileData>>::value,
+    static_assert(std::is_same<unwrap_type_t<list<FileData>>, list_type_t<FileData>>::value,
                   "expect correct unwrapping");
 
     static_assert(std::is_same_v<inner_type_t<StringListData>, StringData>,
@@ -207,6 +216,7 @@ TEST(NodeData, list_types_type_ids)
     EXPECT_EQ(safeTypeId<ListData>(), QString{});
     EXPECT_EQ(safeTypeId<GenericListData>(), QString{});
 }
+
 /// check that conversion for incompatible types fails
 TEST(NodeData, list_types)
 {
@@ -245,7 +255,6 @@ TEST(NodeData, list_types)
     EXPECT_TRUE(factory.innerType(typeId<FileData>()).isEmpty());
     EXPECT_TRUE(factory.listType(typeId<list<FileData>>()).isEmpty());
     EXPECT_EQ(factory.listType(typeId<FileData>()), typeId<list<FileData>>());
-
 }
 
 TEST(NodeData, list_types_invalid_data)
@@ -274,7 +283,7 @@ TEST(NodeData, list_types_stringlist_backwards_compat)
     EXPECT_TRUE(factory.listType(QString{GT_CLASSNAME(StringListData)}).isEmpty());
 }
 
-TEST(NodeData, is_known_type)
+TEST(NodeDataFactory, is_known_type)
 {
     auto& factory = NodeDataFactory::instance();
 
@@ -291,14 +300,14 @@ TEST(NodeData, is_known_type)
     EXPECT_FALSE(factory.isKnownType("#list#intelli::InvalidData"));
 }
 
-TEST(NodeData, is_known_type_stringlist_backwards_compat)
+TEST(NodeDataFactory, is_known_type_stringlist_backwards_compat)
 {
     auto& factory = NodeDataFactory::instance();
 
     EXPECT_TRUE(factory.isKnownType(QString{GT_CLASSNAME(StringListData)}));
 }
 
-TEST(NodeData, make_data)
+TEST(NodeDataFactory, make_data)
 {
     auto& factory = NodeDataFactory::instance();
 
@@ -342,7 +351,7 @@ TEST(NodeData, make_data)
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(GenericListData));
 }
 
-TEST(NodeData, make_data_stringlist_backwards_compat)
+TEST(NodeDataFactory, make_data_stringlist_backwards_compat)
 {
     auto& factory = NodeDataFactory::instance();
 
@@ -354,7 +363,7 @@ TEST(NodeData, make_data_stringlist_backwards_compat)
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(StringListData));
 }
 
-TEST(NodeData, make_data_invalid_data)
+TEST(NodeDataFactory, make_data_invalid_data)
 {
     auto& factory = NodeDataFactory::instance();
 
@@ -367,4 +376,214 @@ TEST(NodeData, make_data_invalid_data)
     EXPECT_FALSE(data);
     data = factory.makeListData("#list#intelli::InvalidData");
     EXPECT_FALSE(data);
+}
+
+/// check that NodeData::typeId() returns the correct type id, also for lists
+TEST(NodeData, type_id)
+{
+    // scalar type via base pointer (virtual dispatch)
+    DoubleData d{42};
+    NodeData* base = &d;
+    EXPECT_EQ(base->typeId(), typeId<DoubleData>());
+
+    // typed generic list reflects its associated list type id
+    auto const doubleId = typeId<DoubleData>();
+    GenericListData typed(doubleId);
+    EXPECT_EQ(typed.typeId(), typeId<list<DoubleData>>());
+
+    // untyped generic list has no type id yet
+    GenericListData untyped;
+    EXPECT_TRUE(untyped.typeId().isEmpty());
+
+    // specialized list types
+    StringListData sl;
+    EXPECT_EQ(sl.typeId(), typeId<list<StringData>>());
+
+    TestListData tl;
+    EXPECT_EQ(tl.typeId(), typeId<list<TestNodeData>>());
+}
+
+/// check appending to a typed GenericListData
+TEST(NodeData, generic_list_append)
+{
+    auto const doubleId = typeId<DoubleData>();
+    GenericListData list(doubleId);
+
+    EXPECT_TRUE(list.append(makeNodeData<DoubleData>(1.0)));
+    EXPECT_TRUE(list.append(makeNodeData<IntData>(2))); // int -> double
+    EXPECT_FALSE(list.append(makeNodeData<StringData>(QStringLiteral("x")))); // no conversion
+    EXPECT_FALSE(list.append(nullptr));
+    ASSERT_EQ(list.size(), 2);
+
+    // read back through the common ListData interface
+    ListData* base = &list;
+    auto first = convert<DoubleData>(base->at(0));
+    ASSERT_TRUE(first);
+    EXPECT_DOUBLE_EQ(first->value(), 1.0);
+
+    auto second = convert<DoubleData>(base->at(1));
+    ASSERT_TRUE(second);
+    EXPECT_DOUBLE_EQ(second->value(), 2.0);
+}
+
+/// check that an untyped GenericListData infers its type from the first element
+TEST(NodeData, generic_list_append_infers_type)
+{
+    GenericListData list;
+    EXPECT_TRUE(list.empty());
+
+    EXPECT_TRUE(list.append(makeNodeData<IntData>(3)));
+    EXPECT_EQ(list.typeId(), listTypeId<IntData>());
+
+    EXPECT_TRUE(list.append(makeNodeData<DoubleData>(4.0))); // Double -> Int
+    EXPECT_FALSE(list.append(makeNodeData<StringData>(QStringLiteral("x")))); // no conversion
+    ASSERT_EQ(list.size(), 2);
+}
+
+/// check appending to a StringListData
+TEST(NodeData, string_list_append)
+{
+    StringListData list;
+
+    EXPECT_TRUE(list.append(makeNodeData<StringData>(QStringLiteral("a"))));
+    EXPECT_TRUE(list.append(makeNodeData<ByteArrayData>(QByteArray("b"))));  // ByteArray -> String
+    EXPECT_FALSE(list.append(makeNodeData<DoubleData>(1.0))); // no conversion
+    EXPECT_FALSE(list.append((NodeDataPtr)nullptr));
+
+    list.append(QStringLiteral("c")); // uses QString overload
+
+    ASSERT_EQ(list.size(), 3);
+    QStringList expected{QStringLiteral("a"), QStringLiteral("b"), QStringLiteral("c")};
+    EXPECT_EQ(list.value(), expected);
+}
+
+/// check that a specialized list type is registered and behaves correctly
+TEST(NodeData, specialized_list_type)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    ASSERT_TRUE(factory.hasListType(typeId<TestNodeData>()));
+
+    auto list = factory.makeListData(typeId<TestNodeData>());
+    ASSERT_TRUE(list);
+    EXPECT_TRUE(list->metaObject()->className() == GT_CLASSNAME(TestListData));
+    EXPECT_EQ(list->typeId(), listTypeId<TestNodeData>());
+
+    ASSERT_TRUE(list->append(makeNodeData<TestNodeData>(42.0)));
+    EXPECT_FALSE(list->append(makeNodeData<IntData>(1))); // no Int -> Test
+    EXPECT_FALSE(list->append(nullptr));
+    ASSERT_EQ(list->size(), 1u);
+
+    auto item = convert<TestNodeData>(list->at(0));
+    ASSERT_TRUE(item);
+    EXPECT_DOUBLE_EQ(item->myDouble(), 42.0);
+}
+
+/// check that registering multiple conversions for the same type pair fails
+TEST(NodeDataFactory, register_conversion_duplicate_fails)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    auto conv = [](NodeDataPtr const&) -> NodeDataPtr {
+        return makeNodeData<TestNodeData>(0.0);
+    };
+    auto otherConv = [](NodeDataPtr const&) -> NodeDataPtr {
+        return makeNodeData<TestNodeData>(1.0);
+    };
+
+    factory.unregisterConversion(typeId<IntData>(), typeId<TestNodeData>());
+
+    EXPECT_TRUE(factory.registerConversion(typeId<IntData>(), typeId<TestNodeData>(), conv));
+    EXPECT_FALSE(factory.registerConversion(typeId<IntData>(), typeId<TestNodeData>(), otherConv));
+
+    factory.unregisterConversion(typeId<IntData>(), typeId<TestNodeData>());
+    EXPECT_FALSE(factory.canConvert(typeId<IntData>(), typeId<TestNodeData>()));
+}
+
+/// check that registering conversions involving a generic list type works
+TEST(NodeDataFactory, register_conversion_list_type)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    auto toList = [](NodeDataPtr const& data) -> NodeDataPtr {
+        auto list = std::make_shared<GenericListData>(typeId<IntData>());
+        list->append(data);
+        return list;
+    };
+
+    TypeId const from = typeId<IntData>();
+    TypeId const to   = typeId<list<IntData>>();
+
+    factory.unregisterConversion(from, to);
+
+    ASSERT_TRUE(factory.registerConversion(from, to, toList));
+    EXPECT_TRUE(factory.canConvert(from, to));
+
+    auto converted = factory.convert(makeNodeData<IntData>(42), to);
+    ASSERT_TRUE(converted);
+
+    auto listData = std::static_pointer_cast<const ListData>(converted);
+    ASSERT_EQ(listData->size(), 1u);
+
+    auto item = convert<IntData>(listData->at(0));
+    ASSERT_TRUE(item);
+    EXPECT_EQ(item->value(), 42);
+
+    factory.unregisterConversion(from, to);
+    EXPECT_FALSE(factory.canConvert(from, to));
+}
+
+/// check that unregistering a single and all conversions works
+TEST(NodeDataFactory, unregister_conversion)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    auto toTest = [](NodeDataPtr const&) -> NodeDataPtr {
+        return makeNodeData<TestNodeData>(0.0);
+    };
+
+    factory.unregisterConversion(typeId<TestNodeData>(), typeId<IntData>());
+    factory.unregisterConversion(typeId<TestNodeData>(), typeId<DoubleData>());
+
+    ASSERT_TRUE(factory.registerConversion(typeId<TestNodeData>(), typeId<IntData>(), toTest));
+    ASSERT_TRUE(factory.registerConversion(typeId<TestNodeData>(), typeId<DoubleData>(), toTest));
+
+    // remove a single conversion
+    factory.unregisterConversion(typeId<TestNodeData>(), typeId<IntData>());
+    EXPECT_FALSE(factory.canConvert(typeId<TestNodeData>(), typeId<IntData>()));
+    EXPECT_TRUE(factory.canConvert(typeId<TestNodeData>(), typeId<DoubleData>()));
+
+    // remove all conversions involving TestNodeData
+    factory.unregisterConversions(typeId<TestNodeData>());
+    EXPECT_FALSE(factory.canConvert(typeId<TestNodeData>(), typeId<DoubleData>()));
+
+    // restore the InvalidData conversions removed by the bulk unregister
+    auto toInvalid = [](NodeDataPtr const&) -> NodeDataPtr { return nullptr; };
+    factory.registerConversion(typeId<TestNodeData>(), typeId<InvalidData>(), toInvalid);
+    factory.registerConversion(typeId<InvalidData>(), typeId<TestNodeData>(), toInvalid);
+}
+
+/// check that unregistering data (and its list type/conversions) works
+TEST(NodeDataFactory, unregister_data)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    ASSERT_TRUE(factory.isKnownType(typeId<TestNodeData>()));
+    ASSERT_TRUE(factory.hasListType(typeId<TestNodeData>()));
+    ASSERT_TRUE(factory.isKnownType(typeId<list<TestNodeData>>()));
+    ASSERT_TRUE(factory.canConvert(typeId<TestNodeData>(), typeId<InvalidData>()));
+
+    factory.unregisterData(TestNodeData::staticMetaObject);
+
+    EXPECT_FALSE(factory.isKnownType(typeId<TestNodeData>()));
+    EXPECT_FALSE(factory.hasListType(typeId<TestNodeData>()));
+    EXPECT_FALSE(factory.isKnownType(typeId<list<TestNodeData>>()));
+    EXPECT_FALSE(factory.canConvert(typeId<TestNodeData>(), typeId<InvalidData>()));
+
+    // re-register to restore state for the other tests
+    ASSERT_TRUE(factory.registerData<TestNodeData>());
+    EXPECT_TRUE(factory.isKnownType(typeId<TestNodeData>()));
+    EXPECT_TRUE(factory.hasListType(typeId<TestNodeData>()));
+    ASSERT_TRUE(factory.isKnownType(typeId<list<TestNodeData>>()));
+    ASSERT_TRUE(factory.canConvert(typeId<TestNodeData>(), typeId<InvalidData>()));
 }

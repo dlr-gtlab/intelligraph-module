@@ -287,9 +287,10 @@ void
 NodeDataFactory::unregisterConversions(TypeId const& type)
 {
     auto entry = pimpl->conversions.constFind(type);
-    if (entry != pimpl->conversions.cend())
+    while (entry != pimpl->conversions.cend())
     {
         pimpl->conversions.erase(entry);
+        entry = pimpl->conversions.constFind(type);
     }
 
     for (TypeId const& from : pimpl->conversions.uniqueKeys())
