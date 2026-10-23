@@ -241,7 +241,7 @@ TEST(NodeData, safe_type_id)
     EXPECT_EQ(safeTypeId<void>(), QString{});
     EXPECT_EQ(safeTypeId<int>(), QString{});
 
-    // cannot interfer inner type
+    // cannot infer inner type
     EXPECT_EQ(safeTypeId<GenericListData>(), QString{});
 
     EXPECT_EQ(safeTypeId<IntData>(), typeId<IntData>());
@@ -650,14 +650,15 @@ TEST(NodeDataFactory, convert_generic_list_type_yields_null)
     factory.unregisterConversion(from, to);
     ASSERT_TRUE(factory.registerConversion(from, to, toList));
 
-    // string based conversion works for generic lists...
+    // string based conversion works for generic lists
     auto converted = convert(makeNodeData<IntData>(42), to);
     ASSERT_TRUE(converted);
     EXPECT_EQ(std::static_pointer_cast<const ListData>(converted)->size(), 1u);
 
-    // ...but the type based helper yields null, even though a conversion exists
-    // TODO fix
-    EXPECT_TRUE(convert<list<IntData>>(makeNodeData<IntData>(42)));
+    // type based helper works too
+    converted = convert<list<IntData>>(makeNodeData<IntData>(42));
+    ASSERT_TRUE(converted);
+    EXPECT_EQ(std::static_pointer_cast<const ListData>(converted)->size(), 1u);
 
     // type based conversion can still cast an existing generic list
     auto casted = convert<list<IntData>>(converted);

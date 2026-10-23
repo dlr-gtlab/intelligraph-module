@@ -171,7 +171,7 @@ convert(NodeDataPtr const& data)
     if (auto converted = qobject_pointer_cast<unwrap_type_t<T> const>(data)) return converted;
 
     return std::static_pointer_cast<unwrap_type_t<T> const>(
-        convert(data, safeTypeId<unwrap_type_t<T>>())
+        convert(data, safeTypeId<T>())
     );
 }
 

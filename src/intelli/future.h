@@ -97,7 +97,7 @@ public:
      * whether the nodes started their evaluation successfully. Does not
      * invalidate the future, thus, it can be used to wait for the evaluation at
      * a later point in time.
-     * @return Whether the evaluation prcocess started successfully
+     * @return Whether the evaluation process started successfully
      */
     GT_INTELLI_EXPORT
     bool detach() const;

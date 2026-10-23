@@ -159,7 +159,7 @@ struct is_scalar_type
           std::is_constructible<T>::value
         > {};
 
-/// Yields  whether a type T is a list data type
+/// Yields whether a type T is a list data type
 template<typename T>
 struct is_list_type
     : std::bool_constant<

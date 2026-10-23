@@ -55,7 +55,7 @@ public:
     /// Returns the associated list type id
     QString typeId() const override;
 
-    /// Appends the data to the list. Returns whether appending was successfull
+    /// Appends the data to the list. Returns whether appending was successful
     bool append(intelli::NodeDataPtr const& data) override;
 
 protected:

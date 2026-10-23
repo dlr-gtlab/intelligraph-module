@@ -94,7 +94,7 @@ public:
     /// Returns the element at the given position. Must not exceed list's size
     inline NodeDataPtr operator[](size_t idx) const { return at(idx); }
 
-    /// Appends the data to the list. Returns whether appending was successfull
+    /// Appends the data to the list. Returns whether appending was successful
     virtual bool append(NodeDataPtr const&) = 0;
 
 protected:
@@ -160,7 +160,7 @@ public:
     /// Reserves space for at least `size` elements
     void reserve(size_type size) { m_data.reserve(size); }
 
-    /// Appends the data to the list. Returns whether appending was successfull
+    /// Appends the data to the list. Returns whether appending was successful
     bool append(NodeDataPtr const& data) override;
 
     /// Returns the size of this list

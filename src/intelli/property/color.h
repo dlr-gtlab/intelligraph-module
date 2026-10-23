@@ -38,7 +38,7 @@ public:
      * @brief Overloaded function to convert internal property value to
      * QVariant. Value is converted based on given unit.
      * @param unit Unit into which the value is to be converted.
-     * @param ok Whether conversion was successfull or not.
+     * @param ok Whether conversion was successful or not.
      * @return Value as QVariant
      */
     QVariant valueToVariant(QString const& unit, bool* ok = nullptr) const override;
