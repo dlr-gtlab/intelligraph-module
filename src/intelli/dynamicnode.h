@@ -35,8 +35,7 @@ public:
     {
         /// no ports can be added dynamically. Ports are not saved persistently.
         NoDynamicPorts = 0,
-        /// input ports may be added dynamically (output ports may still be
-        /// added, but wont be saved persistently)
+        /// input ports may be added dynamically
         DynamicInput = 1 << 0,
         DynamicInputOnly [[deprecated("Use `DynamicInput` or `NoUserDynamicInput` instead")]] = DynamicInput,
         /// output ports may be added dynamically
@@ -52,8 +51,21 @@ public:
         NoUserDynamicOutput = 1 << 3,
         /// input and output ports may only be added programmatically
         /// (no UI action for adding/deleting port is added by default)
-        NoUserDynamicInputAndOutput = NoUserDynamicInput | NoUserDynamicOutput
+        NoUserDynamicInputAndOutput = NoUserDynamicInput | NoUserDynamicOutput,
+        NoDefaultListTypes = 1 << 5
     };
+
+    /**
+     * @brief Returns the whitelist used for the input ports
+     * @return Whitelist for the input ports.
+     */
+    QStringList const& inputWhitelist() const;
+
+    /**
+     * @brief Returns the whitelist used for the output ports
+     * @return Whitelist for the output ports.
+     */
+    QStringList const& outputWhitelist() const;
 
     /**
      * @brief Getter for the node option used
@@ -229,7 +241,6 @@ private:
      * @return Offset to beginning of the first index of a dynamic port.
      */
     int offset(PortType type) const;
-
     /**
      * @brief Can be used to check which port tyoe the container belongs to
      * @param container Container to get port type from

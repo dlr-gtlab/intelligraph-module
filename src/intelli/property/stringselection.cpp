@@ -35,6 +35,7 @@ StringSelectionProperty::setValues(QStringList const& values)
 {
     m_values = values;
     validate();
+    emit changed();
 }
 
 QStringList const&
@@ -87,6 +88,7 @@ StringSelectionProperty::setValueFromVariant(QVariant const& val,
 {
     m_value = val.toString();
     validate();
+    emit changed();
     return true;
 }
 

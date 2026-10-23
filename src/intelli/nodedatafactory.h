@@ -12,30 +12,34 @@
 
 #include <intelli/exports.h>
 #include <intelli/globals.h>
+#include <intelli/nodedata.h>
+#include <intelli/data/list.h>
 
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
+#include <gt_globals.h>
 
 /// Helper macro for registering a node class. The node class does should not be
 /// registered additionally as a "data" object of your module
 #define GT_INTELLI_REGISTER_DATA(CLASS) \
-    intelli::NodeDataFactory::registerData<CLASS>();
+intelli::NodeDataFactory::instance().registerData<CLASS>();
 
 /// Helper macro to register a conversion between two types. `FUNC` parameter
 /// takes the converted NodeDataPtr `FROM` as an argument and should return a
 /// NodeDataPtr of type `TO`.
 #define GT_INTELLI_REGISTER_CONVERSION(FROM, TO, FUNC) \
-    intelli::NodeDataFactory::instance().registerConversion(GT_CLASSNAME(FROM), GT_CLASSNAME(TO), \
-        [](intelli::NodeDataPtr const& data_) -> intelli::NodeDataPtr { \
-            assert(data_);\
-            return std::static_pointer_cast<TO const>(FUNC( \
-                std::static_pointer_cast<FROM const>(data_))); \
-        });
+    intelli::NodeDataFactory::instance() \
+        .registerConversion(intelli::typeId<FROM>(), intelli::typeId<TO>(), \
+            [](intelli::NodeDataPtr const& data_) -> intelli::NodeDataPtr { \
+                assert(data_);\
+                return std::static_pointer_cast<intelli::unwrap_type_t<TO> const>(FUNC( \
+                    std::static_pointer_cast<intelli::unwrap_type_t<FROM> const>(data_))); \
+            });
 
 /// Helper macro to register a simple conversion between two types
 #define GT_INTELLI_REGISTER_INLINE_CONVERSION(FROM, TO, HOW) \
     GT_INTELLI_REGISTER_CONVERSION(FROM, TO, [](auto const& data){ \
-        return std::make_shared<TO const>(HOW); });
+        return intelli::makeNodeData<TO>(HOW); });
 
 namespace intelli
 {
@@ -44,9 +48,12 @@ namespace intelli
 using ConversionFunction = std::function<NodeDataPtr(NodeDataPtr const&)>;
 
 class NodeData;
-class GT_INTELLI_EXPORT NodeDataFactory : public GtAbstractObjectFactory
-{
 
+/**
+ * @brief NodeDataFactory class.
+ */
+class GT_INTELLI_EXPORT NodeDataFactory
+{
 public:
 
     ~NodeDataFactory();
@@ -58,42 +65,73 @@ public:
     static NodeDataFactory& instance();
 
     /**
-     * @brief Registers the meta object in the data factory. This is necessary
-     * to create a data type object dynamically or to retrieve the type id/
-     * type name of the registered data types at runtime.
-     * @param meta Meta object of the data type
-     * @return success
-     */
-    bool registerData(QMetaObject const& meta) noexcept;
-
-    /**
      * @brief Overload, convenience function. Registers the data type `T` in
      * the factory. `T` must be derived fo the common data type class.
      * @return success
      */
     template <typename T,
-             std::enable_if_t<std::is_base_of<NodeData, T>::value, bool> = true>
-    static bool registerData()
+              typename = std::enable_if_t<std::is_base_of<NodeData, T>::value>,
+              typename = std::enable_if_t<!is_list_type<T>::value>>
+    inline bool registerData()
     {
-        return instance().registerData(T::staticMetaObject);
+        bool success = instance().registerData(T::staticMetaObject, GT_MODULENAME());
+        if (success)
+        {
+            success = instance().registerListType(
+                typeId<T>(), list_type_t<T>::staticMetaObject
+            );
+            if (!success)
+            {
+                instance().unregisterData(T::staticMetaObject);
+            }
+        }
+        return success;
     }
+
+    /**
+     * @brief Unregisters data and associated conversions. Does not
+     * unregister the list type.
+     * @param meta Meta object of the class to unregister
+     */
+    void unregisterData(QMetaObject const& meta);
 
     /**
      * @brief Registers a conversion function between two type ids.
      * @param from Type Id of the source data type
-     * @param to Type Id of the target data type.
+     * @param to Type Id of the target data type
      * @param conversion Conversion function
      * @return success
      */
     bool registerConversion(TypeId const& from,
                             TypeId const& to,
-                            ConversionFunction conversion) noexcept;
+                            ConversionFunction conversion);
+
+    /**
+     * @brief Unregisters all conversion involving `type`
+     * @param type Type id to remove all conversions for
+     */
+    void unregisterConversions(TypeId const& type);
+
+    /**
+     * @brief Unregisters the conversion from `from` to `to`
+     * @param from Type Id of the source data type
+     * @param to Type Id of the target data type
+     */
+    void unregisterConversion(TypeId const& from,
+                              TypeId const& to);
+
+    /**
+     * @brief Returns true if `typeId` is registered
+     * @param typeId Tpye id to check
+     * @return Is known type id
+     */
+    bool isKnownType(TypeId const& typeId) const;
 
     /**
      * @brief Returns a list of all registered type ids
      * @return List of registered type ids
      */
-    TypeIdList registeredTypeIds() const { return knownClasses(); }
+    TypeIdList registeredTypeIds() const;
 
     /**
      * @brief Returns a list of all registered and valid type ids
@@ -106,7 +144,37 @@ public:
      * @param typeId Type id to retrieve the type name from
      * @return Type name. Empty if type id was not found
      */
-    TypeName const& typeName(TypeId const& typeId) const noexcept;
+    TypeName typeName(TypeId const& typeId) const;
+
+    /**
+     * @brief Returns whether the given type id is a list type
+     * @param typeId Type id to check
+     * @return Returns true if the given type id is a list type
+     */
+    bool isListType(TypeId const& typeId) const;
+
+    /**
+     * @brief Returns whether the given type id has a list type associated
+     * @param typeId Type id to check
+     * @return Returns true if the given type id has a list type associated
+     */
+    bool hasListType(TypeId const& typeId) const;
+
+    /**
+     * @brief Returns the inner type in case the given type id is a list type
+     * @param typeId List type id
+     * @return Returns inner type. Returns empty string if the given type has
+     * no inner type
+     */
+    TypeId innerType(TypeId const& typeId) const;
+
+    /**
+     * @brief Returns the given type as a list type
+     * @param typeId Type id
+     * @return Returns the corresponding list type. Returns empty string if
+     * the type id has no valid list type
+     */
+    TypeId listType(TypeId const& typeId) const;
 
     /**
      * @brief Returns whether a conversion function exists between two types.
@@ -140,23 +208,46 @@ public:
     NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to) const;
 
     /**
-     * @brief Instantiates a new node of type className.
-     * @param className Class to instantiate
-     * @return Object pointer (may be null)
+     * @brief Instantiates a data type for the given type id
+     * @param typeId Type to instantiate
+     * @return New type (may be null)
      */
-    NodeDataPtr makeData(TypeId const& typeId) const noexcept;
+    std::unique_ptr<NodeData> makeData(TypeId const& typeId) const;
+
+    /**
+     * @brief Instantiates a new list data type for the given type id
+     * @param typeId Type to instantiate a list type from. May be a list type
+     * already.
+     * @return New list type (may be null)
+     */
+    std::unique_ptr<ListData> makeListData(TypeId const& typeId) const;
 
 private:
 
     struct Impl;
     std::unique_ptr<Impl> pimpl;
 
-    // hide some functions
-    using GtAbstractObjectFactory::newObject;
-    using GtAbstractObjectFactory::registerClass;
-
     /// private constructor
     NodeDataFactory();
+
+    /**
+     * @brief Registers the meta object in the data factory. This is necessary
+     * to create a data type object dynamically or to retrieve the type id/
+     * type name of the registered data types at runtime.
+     * @param meta Meta object of the data type
+     * @return success
+     */
+    bool registerData(QMetaObject const& meta, QString const& moduleId);
+
+    /**
+     * @brief Registers the list type `meta` for the scalar type `typeId`
+     * @param typeId Scalar typeId
+     * @param meta Meta object of the corresponding list data class
+     * @return success
+     */
+    bool registerListType(TypeId typeId, QMetaObject const& meta);
+
+    QMetaObject const* findMetaObject(TypeId const& anyTypeId) const noexcept;
 };
 
 } // namespace intelli

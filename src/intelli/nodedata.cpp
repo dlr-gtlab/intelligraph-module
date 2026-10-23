@@ -12,7 +12,7 @@
 using namespace intelli;
 
 QString const&
-NodeData::typeName() const
+NodeData::typeName() const noexcept
 {
     return m_typeName;
 }
@@ -25,6 +25,4 @@ NodeData::typeId() const
 
 NodeData::NodeData(QString typeName) :
     m_typeName(std::move(typeName))
-{
-
-}
+{ }

@@ -57,9 +57,9 @@ public:
 
     template<template<class...> class Container,
              typename... U,
-             std::enable_if_t<
-                 std::is_convertible<typename Container<U...>::value_type,
-                                     T const>::value, bool> = true>
+             typename = std::enable_if_t<
+                     std::is_convertible<typename Container<U...>::value_type,
+                                         T const>::value>>
     View(Container<U...> const& vector) :
         base_class(detail::container_data<T const>::get(vector),
                    detail::container_size<size_type>::get(vector))

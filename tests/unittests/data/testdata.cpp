@@ -7,9 +7,10 @@
  *  Author: Marius Bröcker <marius.broecker@dlr.de>
  */
 
-#include "test_nodedata.h"
+#include "testdata.h"
 
 #include <intelli/nodedatafactory.h>
+#include <intelli/node.h>
 
 void
 TestNodeData::registerOnce()
@@ -43,5 +44,39 @@ void
 TestNodeData::setMyDouble(double value)
 {
     m_value = value;
+}
+
+TestListData::TestListData() :
+    intelli::ListData(QStringLiteral("testlist"))
+{ }
+
+QString
+TestListData::typeId() const
+{
+    return intelli::typeId<TestListData>();
+}
+
+bool
+TestListData::append(intelli::NodeDataPtr const& data)
+{
+    if (!data) return false;
+
+    auto converted = intelli::convert<TestNodeData>(data);
+    if (!converted) return false;
+
+    m_data.push_back(std::move(converted));
+    return true;
+}
+
+size_t
+TestListData::getSize() const noexcept
+{
+    return m_data.size();
+}
+
+intelli::NodeDataPtr
+TestListData::getAt(size_t idx) const
+{
+    return m_data.at(idx);
 }
 
