@@ -20,6 +20,12 @@ GenericListData::GenericListData(TypeId type) :
     assert(!NodeDataFactory::instance().isListType(m_typeId));
 }
 
+QString
+GenericListData::typeId() const
+{
+    return NodeDataFactory::instance().listType(m_typeId);
+}
+
 bool
 GenericListData::append(NodeDataPtr const& data)
 {
@@ -33,7 +39,10 @@ GenericListData::append(NodeDataPtr const& data)
         m_typeId = newTypeId;
     }
 
-    m_data.push_back(convert(data, m_typeId));
+    auto converted = convert(data, m_typeId);
+    if (!converted) return false;
+
+    m_data.push_back(converted);
     return true;
 }
 

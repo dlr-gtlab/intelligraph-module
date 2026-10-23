@@ -40,6 +40,9 @@ class GT_INTELLI_EXPORT ListData : public NodeData
 
 public:
 
+    /// Should return the associated list type id
+    QString typeId() const override = 0;
+
     struct NodeDataProxy
     {
         using Iter = gt::DynamicRange<size_t>::iterator;
@@ -82,14 +85,14 @@ public:
     NodeDataPtr back() const noexcept { return at(size() - 1); }
 
     /// Returns the element at the given position. Must not exceed list's size
-    NodeDataPtr at(size_t idx) const noexcept
+    NodeDataPtr at(size_t idx) const
     {
         assert(size() > idx);
         return getAt(idx);
     }
 
     /// Returns the element at the given position. Must not exceed list's size
-    inline NodeDataPtr operator[](size_t idx) const noexcept { return at(idx); }
+    inline NodeDataPtr operator[](size_t idx) const { return at(idx); }
 
     /// Appends the data to the list. Returns whether appending was successfull
     virtual bool append(NodeDataPtr const&) = 0;
@@ -103,7 +106,7 @@ protected:
     virtual size_t getSize() const noexcept = 0;
 
     /// Should return the element at the given position
-    virtual NodeDataPtr getAt(size_t idx) const noexcept = 0;
+    virtual NodeDataPtr getAt(size_t idx) const = 0;
 };
 
 /**
@@ -145,6 +148,9 @@ public:
         });
     }
 
+    /// Returns the associated list type id
+    QString typeId() const override;
+
     /// Appends the data to the list. Returns whether appending was successfull
     bool append(NodeDataPtr const& data) override;
 
@@ -175,7 +181,7 @@ protected:
     size_t getSize() const noexcept override { return size(); }
 
     /// Returns the element at the given position
-    NodeDataPtr getAt(size_t idx) const noexcept override { return at(idx); }
+    NodeDataPtr getAt(size_t idx) const override { return at(idx); }
 
 private:
 

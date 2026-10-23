@@ -17,7 +17,7 @@
 using namespace intelli;
 
 ListGetItemNode::ListGetItemNode() :
-    Node(tr("Get Index")),
+    Node(tr("Get Item")),
     m_typeId("typeId",
              tr("Type Id"),
              NodeDataFactory::instance().validTypeIds(),

@@ -423,38 +423,7 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
 
     if (srcMetaObject->inherits(targetMetaObject)) return data;
 
-    TypeId from = srcMetaObject->className();
-
-    // find "from" based on metaObject for list types instead
-    if (srcMetaObject->inherits(&ListData::staticMetaObject))
-    {
-        auto isSrcMetaObject =
-            [srcMetaObject](std::pair<TypeId, ListEntry> const& entry){
-                return entry.second.metaObject->className() == srcMetaObject->className();
-            };
-
-        bool isGenericList = std::count_if(pimpl->listTypes.keyValueBegin(),
-                                           pimpl->listTypes.keyValueEnd(),
-                                           isSrcMetaObject) > 1;
-        // currently not supporting converting from generic list data
-        if (isGenericList)
-        {
-            if (from != typeId<InvalidData>() && to != typeId<InvalidData>())
-            {
-                gtLogOnce(Error).verbose()
-                    << QObject::tr("generic conversion not supported "
-                                   "(from '%1' to '%2')").arg(from, to);
-            }
-            return nullptr;
-        }
-
-        auto iter = std::find_if(pimpl->listTypes.keyValueBegin(),
-                                 pimpl->listTypes.keyValueEnd(),
-                                 isSrcMetaObject);
-        if (iter == pimpl->listTypes.keyValueEnd()) return nullptr;
-
-        from = iter->first;
-    }
+    TypeId from = data->typeId();
 
     auto iter = findConversion(pimpl->conversions, from, to);
     if (iter == pimpl->conversions.cend()) return nullptr;

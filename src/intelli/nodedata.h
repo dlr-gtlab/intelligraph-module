@@ -40,14 +40,14 @@ public:
      * @brief Type name. May be displayed in the editor as a default port caption
      * @return Type name
      */
-    QString const& typeName() const;
+    QString const& typeName() const noexcept;
 
     /**
-     * @brief Type id of the node data. Is guranteed to be unique.
-     * @return
+     * @brief Type id of the node data. May be empty if node data is not setup
+     * correctly.
+     * @return Type id.
      */
-    [[deprecated("use `typeId<T>` instead")]]
-    QString typeId() const;
+    virtual QString typeId() const;
 
     /**
      * @brief value

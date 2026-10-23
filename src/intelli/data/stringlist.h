@@ -40,9 +40,14 @@ public:
 
     Q_INVOKABLE void setValue(QStringList val);
 
+    /// Returns the associated list type id
+    QString typeId() const override;
+
     /// Appends the data to the list. Data must be string compatible.
     /// Returns whether appending was successfull
     bool append(NodeDataPtr const& data) override;
+    /// Appends the string to the list.
+    void append(QString entry);
 
     /// Returns the size of this list
     size_type size() const noexcept { return m_data.size(); }
@@ -74,7 +79,7 @@ protected:
     }
 
     /// Returns the element at the given position
-    NodeDataPtr getAt(size_t idx) const noexcept override
+    NodeDataPtr getAt(size_t idx) const override
     {
         return makeNodeData<StringData>(at(idx));
     }
