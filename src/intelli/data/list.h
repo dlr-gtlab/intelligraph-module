@@ -131,7 +131,9 @@ public:
     /// be a scalar type!
     Q_INVOKABLE GenericListData(TypeId id = {});
 
-    template <typename List, typename T = typename List::type>
+    template <typename List,
+              typename T = typename List::type,
+              typename = std::enable_if_t<std::is_same<GenericListData, list_type_t<T>>::value>>
     GenericListData(List const& list) :
         GenericListData(intelli::typeId<T>())
     {
@@ -139,8 +141,10 @@ public:
             return this->append(d);
         });
     }
-    template <typename T>
-    GenericListData(std::initializer_list<T> const& list) :
+    template <typename DataPtr,
+              typename T = unwrap_ptr_t<DataPtr>,
+              typename = std::enable_if_t<std::is_same<GenericListData, list_type_t<T>>::value>>
+    GenericListData(std::initializer_list<DataPtr> const& list) :
         GenericListData(intelli::typeId<T>())
     {
         std::for_each(list.begin(), list.end(), [this](NodeDataPtr const& d) {
@@ -195,14 +199,7 @@ private:
 template <typename T>
 struct list_type
 {
-    using type = GenericListData;
-
-    static_assert(!is_list_type<T>::value,
-                  "T is already a list type!");
-    static_assert(std::is_base_of<NodeData, T>::value,
-                  "T must be derived of `intelli::NodeData`");
-    static_assert(!std::is_same<T, InvalidData>::value,
-                  "Cannot use `intelli::InvalidData` as list type!");
+    using type = std::conditional_t<is_scalar_type<T>::value, GenericListData, void>;
 };
 
 } // namespace intelli

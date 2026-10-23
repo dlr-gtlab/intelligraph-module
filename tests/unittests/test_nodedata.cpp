@@ -190,6 +190,20 @@ TEST(NodeData, list_types_type_ids)
     static_assert(is_list_type<StringListData>::value,   "expected list type");
     static_assert(!is_list_type<DoubleData>::value,      "expected non-list type");
     static_assert(!is_list_type<StringData>::value,      "expected non-list type");
+    static_assert(!is_list_type<QString>::value,         "expected non-data type");
+    static_assert(!is_list_type<int>::value,             "expected non-data type");
+
+    static_assert(!is_scalar_type<ListData>::value,         "expected list type");
+    static_assert(!is_scalar_type<GenericListData>::value,  "expected list type");
+    static_assert(!is_scalar_type<list<StringData>>::value, "expected list type");
+    static_assert(!is_scalar_type<list<DoubleData>>::value, "expected list type");
+    static_assert(!is_scalar_type<StringListData>::value,   "expected list type");
+    static_assert(!is_scalar_type<NodeData>::value,         "expected abstract type");
+    static_assert(is_scalar_type<DoubleData>::value,        "expected non-list type");
+    static_assert(is_scalar_type<StringData>::value,        "expected non-list type");
+    static_assert(is_scalar_type<InvalidData>::value,       "expected non-list type");
+    static_assert(!is_scalar_type<QString>::value,          "expected non-data type");
+    static_assert(!is_scalar_type<int>::value,              "expected non-data type");
 
     static_assert(std::is_same<unwrap_type_t<list<StringData>>, StringListData>::value,
                   "expect correct unwrapping");
@@ -212,9 +226,31 @@ TEST(NodeData, list_types_type_ids)
                   "expected double type");
     static_assert(std::is_same_v<inner_type_t<list<FileData>>, FileData>,
                   "expected file type");
+}
 
+/// intelli::safeTypeId always compiles and yields the typeId if it exists else
+/// an empty string
+TEST(NodeData, safe_type_id)
+{
+    // abstract classes
+    EXPECT_EQ(safeTypeId<NodeData>(), QString{});
     EXPECT_EQ(safeTypeId<ListData>(), QString{});
+
+    // invalid types
+    EXPECT_EQ(safeTypeId<QString>(), QString{});
+    EXPECT_EQ(safeTypeId<void>(), QString{});
+    EXPECT_EQ(safeTypeId<int>(), QString{});
+
+    // cannot interfer inner type
     EXPECT_EQ(safeTypeId<GenericListData>(), QString{});
+
+    EXPECT_EQ(safeTypeId<IntData>(), typeId<IntData>());
+    EXPECT_EQ(safeTypeId<DoubleData>(), typeId<DoubleData>());
+    EXPECT_EQ(safeTypeId<InvalidData>(), typeId<InvalidData>());
+
+    // specialized type ids
+    EXPECT_EQ(safeTypeId<StringListData>(), typeId<list<StringData>>());
+    EXPECT_EQ(safeTypeId<TestListData>(), typeId<list<TestNodeData>>());
 }
 
 /// check that conversion for incompatible types fails
@@ -388,7 +424,7 @@ TEST(NodeData, type_id)
 
     // typed generic list reflects its associated list type id
     auto const doubleId = typeId<DoubleData>();
-    GenericListData typed(doubleId);
+    GenericListData typed{doubleId};
     EXPECT_EQ(typed.typeId(), typeId<list<DoubleData>>());
 
     // untyped generic list has no type id yet
@@ -438,6 +474,28 @@ TEST(NodeData, generic_list_append_infers_type)
     EXPECT_TRUE(list.append(makeNodeData<DoubleData>(4.0))); // Double -> Int
     EXPECT_FALSE(list.append(makeNodeData<StringData>(QStringLiteral("x")))); // no conversion
     ASSERT_EQ(list.size(), 2);
+}
+
+/// check that brace initialization selects the correct GenericListData ctor
+TEST(NodeData, generic_list_braced_init)
+{
+    // single type id must use the (TypeId) ctor, not an initializer_list<TypeId> ctor
+    GenericListData fromId{typeId<DoubleData>()};
+    EXPECT_TRUE(fromId.empty());
+    EXPECT_EQ(fromId.typeId(), listTypeId<DoubleData>());
+
+    // initializer list of same-typed node data ptrs
+    GenericListData list{makeNodeData<IntData>(1), makeNodeData<IntData>(2)};
+    EXPECT_EQ(list.typeId(), listTypeId<IntData>());
+    ASSERT_EQ(list.size(), 2);
+
+    auto first = convert<IntData>(list.at(0));
+    ASSERT_TRUE(first);
+    EXPECT_EQ(first->value(), 1);
+
+    auto second = convert<IntData>(list.at(1));
+    ASSERT_TRUE(second);
+    EXPECT_EQ(second->value(), 2);
 }
 
 /// check appending to a StringListData
