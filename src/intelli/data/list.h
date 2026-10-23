@@ -132,13 +132,15 @@ public:
     Q_INVOKABLE GenericListData(TypeId id = {});
 
     template <typename List,
-              typename T = typename List::type,
+              typename Iterator = decltype(std::declval<List const&>().begin()),
+              typename DataPtr = typename std::iterator_traits<Iterator>::value_type,
+              typename T = unwrap_ptr_t<DataPtr>,
               typename = std::enable_if_t<std::is_same<GenericListData, list_type_t<T>>::value>>
     GenericListData(List const& list) :
         GenericListData(intelli::typeId<T>())
     {
         std::for_each(list.begin(), list.end(), [this](NodeDataPtr const& d) {
-            return this->append(d);
+            return this->appendNoConvert(d);
         });
     }
     template <typename DataPtr,
@@ -154,6 +156,9 @@ public:
 
     /// Returns the associated list type id
     QString typeId() const override;
+
+    /// Reserves space for at least `size` elements
+    void reserve(size_type size) { m_data.reserve(size); }
 
     /// Appends the data to the list. Returns whether appending was successfull
     bool append(NodeDataPtr const& data) override;
@@ -199,6 +204,7 @@ private:
 template <typename T>
 struct list_type
 {
+    // conditionally uses GenericListData
     using type = std::conditional_t<is_scalar_type<T>::value, GenericListData, void>;
 };
 

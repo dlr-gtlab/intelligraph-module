@@ -123,8 +123,7 @@ using list_type_t = typename list_type<T>::type;
 template <typename T>
 using list = list_type<T>;
 
-/// Yields the inner type `T` of a a list type. If `T` is not a list,
-/// yields `void`
+/// Yields the inner type `T` of a list type. If `T` is not a list, yields `void`
 template <typename T>
 struct inner_type { using type = void; };
 template <typename T>
@@ -205,7 +204,7 @@ inline QString typeId()
 {
     using U = inner_type_t<T>;
     static_assert(!std::is_same<U, void>::value,
-                  "Could not interfer inner type of `T`!");
+                  "Could not infer inner type of `T`!");
     static_assert(!std::is_same<U, InvalidData>::value,
                   "Cannot use `intelli::InvalidData` as list type!");
     static_assert(std::is_base_of<NodeData, U>::value,

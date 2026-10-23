@@ -498,6 +498,48 @@ TEST(NodeData, generic_list_braced_init)
     EXPECT_EQ(second->value(), 2);
 }
 
+/// check the GenericListData constructor taking a list-like wrapper type
+TEST(NodeData, generic_list_from_container)
+{
+    static_assert(!std::is_constructible<GenericListData, QVector<Ptr<NodeData>>>::value,
+                  "expected generic list to not accept abstract types");
+    static_assert(!std::is_constructible<GenericListData, QVector<Ptr<ListData>>>::value,
+                  "expected generic list to not accept abstract types");
+    static_assert(!std::is_constructible<GenericListData, QVector<QString>>::value,
+                  "expected generic list to not accept non data types");
+    static_assert(std::is_constructible<GenericListData, QVector<Ptr<IntData>>>::value,
+                  "expected generic list to accept data types");
+    static_assert(std::is_constructible<GenericListData, QVector<Ptr<DoubleData>>>::value,
+                  "expected generic list to accept data types");
+    static_assert(std::is_constructible<GenericListData, QVector<Ptr<InvalidData>>>::value,
+                  "expected generic list to accept data types");
+    static_assert(!std::is_constructible<GenericListData, QVector<Ptr<StringListData>>>::value,
+                  "expected generic list to not accept list types");
+
+    QVector<Ptr<IntData>> wrapper;
+    wrapper.push_back(makeNodeData<IntData>(1));
+    wrapper.push_back(makeNodeData<IntData>(2));
+    wrapper.push_back(makeNodeData<IntData>(3));
+    wrapper.push_back(nullptr);
+
+    // elements are appended via append(), i.e. converted and silently dropped on failure
+    GenericListData list{wrapper};
+    EXPECT_EQ(list.typeId(), listTypeId<IntData>());
+    ASSERT_EQ(list.size(), 3);
+
+    auto first = convert<IntData>(list.at(0));
+    ASSERT_TRUE(first);
+    EXPECT_EQ(first->value(), 1);
+
+    auto second = convert<IntData>(list.at(1));
+    ASSERT_TRUE(second);
+    EXPECT_EQ(second->value(), 2);
+
+    auto third = convert<IntData>(list.at(2));
+    ASSERT_TRUE(third);
+    EXPECT_EQ(third->value(), 3);
+}
+
 /// check appending to a StringListData
 TEST(NodeData, string_list_append)
 {
@@ -589,6 +631,50 @@ TEST(NodeDataFactory, register_conversion_list_type)
 
     factory.unregisterConversion(from, to);
     EXPECT_FALSE(factory.canConvert(from, to));
+}
+
+/// check that the type based conversion helpers only work with specialized list types
+TEST(NodeDataFactory, convert_generic_list_type_yields_null)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    auto toList = [](NodeDataPtr const& data) -> NodeDataPtr {
+        auto list = std::make_shared<GenericListData>(typeId<IntData>());
+        list->append(data);
+        return list;
+    };
+
+    TypeId const from = typeId<IntData>();
+    TypeId const to   = typeId<list<IntData>>();
+
+    factory.unregisterConversion(from, to);
+    ASSERT_TRUE(factory.registerConversion(from, to, toList));
+
+    // string based conversion works for generic lists...
+    auto converted = convert(makeNodeData<IntData>(42), to);
+    ASSERT_TRUE(converted);
+    EXPECT_EQ(std::static_pointer_cast<const ListData>(converted)->size(), 1u);
+
+    // ...but the type based helper yields null, even though a conversion exists
+    // TODO fix
+    EXPECT_TRUE(convert<list<IntData>>(makeNodeData<IntData>(42)));
+
+    // type based conversion can still cast an existing generic list
+    auto casted = convert<list<IntData>>(converted);
+    ASSERT_TRUE(casted);
+    EXPECT_EQ(casted->size(), 1);
+
+    factory.unregisterConversion(from, to);
+
+    // type based conversion works for specialized list types
+    GT_INTELLI_REGISTER_INLINE_CONVERSION(StringData, list<StringData>, QStringList{data->value()})
+
+    auto strings = convert<list<StringData>>(makeNodeData<StringData>(QStringLiteral("Hello World")));
+    ASSERT_TRUE(strings);
+    ASSERT_EQ(strings->size(), 1);
+    EXPECT_EQ(strings->at(0), QStringLiteral("Hello World"));
+
+    factory.unregisterConversion(typeId<StringData>(), typeId<list<StringData>>());
 }
 
 /// check that unregistering a single and all conversions works

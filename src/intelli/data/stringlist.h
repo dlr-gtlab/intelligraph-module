@@ -44,7 +44,7 @@ public:
     QString typeId() const override;
 
     /// Appends the data to the list. Data must be string compatible.
-    /// Returns whether appending was successfull
+    /// Returns whether appending was successful
     bool append(NodeDataPtr const& data) override;
     /// Appends the string to the list.
     void append(QString entry);
