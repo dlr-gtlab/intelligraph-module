@@ -26,7 +26,7 @@ class GT_INTELLI_EXPORT StringListData final : public ListData
 
 public:
 
-    using value_type      = gt::trait::value_t<container_type>;
+    using value_type      = typename container_type::value_type;
     using reference       = typename container_type::reference;
     using const_reference = typename container_type::const_reference;
     using iterator        = typename container_type::iterator;
@@ -90,7 +90,5 @@ private:
 };
 
 } // namespace intelli
-
-GT_INTELLI_DECLARE_LIST_TYPE(intelli::StringData, intelli::StringListData);
 
 #endif // GT_INTELLI_STRINGLISTDATA_H

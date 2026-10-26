@@ -149,33 +149,6 @@ GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
 } // namespace exec
 
 /**
- * @brief Attempts to convert `data` to into the desired type. If
- * no conversion exists or the conversion fails, a nullptr is returned.
- * @param data Data to convert
- * @param to Target type Id to convert the data into
- * @return Converted data (may be null)
- */
-GT_INTELLI_EXPORT NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to);
-
-/**
- * @brief Convenience function that performs a conversion of `data` into the
- * desired type `T`. If no conversion exists or the conversion fails, a
- * nullptr is returned.
- * @param data Data to convert
- * @return Converted data of type `T` (may be null)
- */
-template <typename T>
-inline std::shared_ptr<unwrap_type_t<T> const>
-convert(NodeDataPtr const& data)
-{
-    if (auto converted = qobject_pointer_cast<unwrap_type_t<T> const>(data)) return converted;
-
-    return std::static_pointer_cast<unwrap_type_t<T> const>(
-        convert(data, safeTypeId<T>())
-    );
-}
-
-/**
  * @brief Creates a base widget that has a simple layout attached. Can be used
  * for widgets, that have trouble resizing correctly.
  * @return Widget pointer (never null)

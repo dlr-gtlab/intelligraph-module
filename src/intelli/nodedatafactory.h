@@ -15,8 +15,6 @@
 #include <intelli/nodedata.h>
 #include <intelli/data/list.h>
 
-#include <gt_abstractobjectfactory.h>
-#include <gt_object.h>
 #include <gt_globals.h>
 
 /// Helper macro for registering a node class. The node class does should not be
@@ -65,15 +63,18 @@ public:
     static NodeDataFactory& instance();
 
     /**
-     * @brief Overload, convenience function. Registers the data type `T` in
-     * the factory. `T` must be derived fo the common data type class.
-     * @return success
+     * @brief Registers the data type `T` in the factory. `T` must be derived
+     * of the common data type class `NodeData`.
+     * Automatically registers the corresponding list type
+     * @return Returns whether registering was successful.
      */
     template <typename T,
               typename = std::enable_if_t<std::is_base_of<NodeData, T>::value>,
               typename = std::enable_if_t<!is_list_type<T>::value>>
     inline bool registerData()
     {
+        static_assert(has_list_type<T>::value,
+                      "`T` must be a scalar node data type with a valid list type!");
         bool success = instance().registerData(T::staticMetaObject, GT_MODULENAME());
         if (success)
         {

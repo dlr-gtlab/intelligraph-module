@@ -9,7 +9,6 @@
 
 #include "intelli/node.h"
 
-#include "intelli/nodedatafactory.h"
 #include "intelli/nodedatainterface.h"
 #include "intelli/graphuservariables.h"
 #include "intelli/exec/detachedexecutor.h"
@@ -23,13 +22,6 @@
 #include <QRegularExpression>
 
 using namespace intelli;
-
-NodeDataPtr
-intelli::convert(NodeDataPtr const& data, TypeId const& to)
-{
-    // forwarding call
-    return NodeDataFactory::instance().convert(data, to);
-}
 
 std::unique_ptr<QWidget>
 intelli::makeBaseWidget()

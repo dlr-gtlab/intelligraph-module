@@ -27,6 +27,13 @@ public:
     Q_INVOKABLE InvalidData();
 };
 
+// disallow invalid data type
+template <>
+struct list_type<InvalidData>
+{
+    using type = void;
+};
+
 } // namespace intelli
 
 #endif // GT_INTELLI_INVALIDDATA_H

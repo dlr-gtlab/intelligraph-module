@@ -11,10 +11,10 @@
 #include "intelli/data/invalid.h"
 #include "intelli/data/stringlist.h"
 
-#include "gt_utilities.h"
-#include "gt_qtutilities.h"
-#include "gt_logging.h"
-#include "gt_coreapplication.h"
+#include <gt_object.h>
+#include <gt_qtutilities.h>
+#include <gt_coreapplication.h>
+#include <gt_logging.h>
 
 using namespace intelli;
 

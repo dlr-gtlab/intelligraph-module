@@ -50,6 +50,7 @@ set(PUBLIC_HEADERS
     intelli/nodeevent.h
     intelli/nodefactory.h
     intelli/nodeport.h
+    intelli/proxyiterator.h
     intelli/span.h
     intelli/utilities.h
     intelli/view.h

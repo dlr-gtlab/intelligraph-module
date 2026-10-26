@@ -205,6 +205,18 @@ TEST(NodeData, list_types_type_ids)
     static_assert(!is_scalar_type<QString>::value,          "expected non-data type");
     static_assert(!is_scalar_type<int>::value,              "expected non-data type");
 
+    static_assert(!has_list_type<ListData>::value,         "expected to disallow list types");
+    static_assert(!has_list_type<GenericListData>::value,  "expected to disallow list types");
+    static_assert(!has_list_type<list<StringData>>::value, "expected to disallow list types");
+    static_assert(!has_list_type<list<DoubleData>>::value, "expected to disallow list types");
+    static_assert(!has_list_type<StringListData>::value,   "expected to disallow list types");
+    static_assert(!has_list_type<NodeData>::value,         "expected to disallow abstract type");
+    static_assert(has_list_type<DoubleData>::value,        "expected to allow scalar type");
+    static_assert(has_list_type<StringData>::value,        "expected to allow scalar type");
+    static_assert(!has_list_type<InvalidData>::value,      "expected to disallow types without a list type");
+    static_assert(!has_list_type<QString>::value,          "expected to disallow non-data type");
+    static_assert(!has_list_type<int>::value,              "expected to disallow non-data type");
+
     static_assert(std::is_same<unwrap_type_t<list<StringData>>, StringListData>::value,
                   "expect correct unwrapping");
     static_assert(std::is_same<unwrap_type_t<StringListData>, StringListData>::value,
@@ -511,8 +523,10 @@ TEST(NodeData, generic_list_from_container)
                   "expected generic list to accept data types");
     static_assert(std::is_constructible<GenericListData, QVector<Ptr<DoubleData>>>::value,
                   "expected generic list to accept data types");
-    static_assert(std::is_constructible<GenericListData, QVector<Ptr<InvalidData>>>::value,
-                  "expected generic list to accept data types");
+    static_assert(!std::is_constructible<GenericListData, QVector<Ptr<InvalidData>>>::value,
+                  "expected generic list to not accept invalid data types");
+    static_assert(!std::is_constructible<GenericListData, QVector<Ptr<StringData>>>::value,
+                  "expected generic list to not accept types with a specialized list type");
     static_assert(!std::is_constructible<GenericListData, QVector<Ptr<StringListData>>>::value,
                   "expected generic list to not accept list types");
 
@@ -522,7 +536,7 @@ TEST(NodeData, generic_list_from_container)
     wrapper.push_back(makeNodeData<IntData>(3));
     wrapper.push_back(nullptr);
 
-    // elements are appended via append(), i.e. converted and silently dropped on failure
+    // null elements are silently dropped
     GenericListData list{wrapper};
     EXPECT_EQ(list.typeId(), listTypeId<IntData>());
     ASSERT_EQ(list.size(), 3);
@@ -633,8 +647,8 @@ TEST(NodeDataFactory, register_conversion_list_type)
     EXPECT_FALSE(factory.canConvert(from, to));
 }
 
-/// check that the type based conversion helpers only work with specialized list types
-TEST(NodeDataFactory, convert_generic_list_type_yields_null)
+/// check that the type based conversion helpers work with generic list types too
+TEST(NodeDataFactory, convert_generic_list_type)
 {
     auto& factory = NodeDataFactory::instance();
 
@@ -659,6 +673,10 @@ TEST(NodeDataFactory, convert_generic_list_type_yields_null)
     converted = convert<list<IntData>>(makeNodeData<IntData>(42));
     ASSERT_TRUE(converted);
     EXPECT_EQ(std::static_pointer_cast<const ListData>(converted)->size(), 1u);
+
+    // bare GenericListData instance has no static type id so the
+    // conversion cannot be accessed and fails
+    EXPECT_FALSE(convert<GenericListData>(makeNodeData<IntData>(42)));
 
     // type based conversion can still cast an existing generic list
     auto casted = convert<list<IntData>>(converted);

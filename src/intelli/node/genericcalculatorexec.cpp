@@ -415,7 +415,7 @@ GenericCalculatorExecNode::eval()
     // execute calculator
     gtTrace() << tr("Executing calculator '%1'...").arg(calc->objectName());
     success = calc->run();
-    gtTrace() << tr("Execution was %1successfull!").arg(success ? "":"un");
+    gtTrace() << tr("Execution was %1successful!").arg(success ? "":"un");
 
     // extract output data from calculator
     gt::for_each_key(m_calcOutPorts.begin(), m_calcOutPorts.end(),

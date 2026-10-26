@@ -13,13 +13,18 @@
 #include <intelli/exports.h>
 #include <intelli/globals.h>
 
-#include <gt_logging.h>
-
 #include <tl/optional.hpp>
 
 #include <QMetaMethod>
 
 #include <type_traits>
+
+/// Helper macro to register a list type for a scalar type
+#define GT_INTELLI_DECLARE_LIST_TYPE(SCALAR, LIST) \
+    template <> \
+    struct intelli::list_type<SCALAR> { using type = LIST; }; \
+    template <> \
+    struct intelli::inner_type<LIST> { using type = SCALAR; };
 
 namespace intelli
 {
@@ -48,13 +53,6 @@ public:
      * @return Type id.
      */
     virtual QString typeId() const;
-
-    /**
-     * @brief value
-     * @param methodName - Name of an invokable method to call
-     * @return pair of success and value of the call of an invokable function
-     * of the node data object
-     */
 
     /**
      * @brief Attempts to invoke the (Q_INVOKABLE) member method `methodName`.
@@ -87,9 +85,7 @@ public:
                                        retArg,
                                        std::forward<Args>(args)...))
         {
-            gtTraceId("IntelliGraph")
-                << tr("Invoking member function '%1 %2(...)' failed!")
-                        .arg(rtypeName, methodName);
+            logInvokeError(rtypeName, methodName);
             return {};
         }
 
@@ -104,11 +100,13 @@ protected:
      */
     NodeData(QString typeName);
 
+    static void logInvokeError(QByteArray const& rtypeName,
+                               QString const& methodName);
+
 private:
 
     QString m_typeName;
 };
-
 
 template<typename T>
 using Ptr = std::shared_ptr<const T>;
@@ -149,25 +147,42 @@ using unwrap_ptr_t = typename unwrap_ptr<T>::type;
 
 /// Yields whether a type T is a scalar data type
 template<typename T>
-struct is_scalar_type
+struct is_scalar_type_impl
     : std::bool_constant<
           // not derived of `ListData`
           !std::is_base_of<ListData, T>::value &&
           // but derived of `NodeData`
           std::is_base_of<NodeData, T>::value &&
-          // not abstract
-          std::is_constructible<T>::value
-        > {};
+          // not abstract / must be default constructible
+          std::is_constructible<T>::value> {};
+template<typename T>
+struct is_scalar_type
+    : std::conditional_t<std::is_class<T>::value,
+                         // using non-class type in std::is_base_of is UB
+                         is_scalar_type_impl<T>,
+                         std::false_type> {};
 
 /// Yields whether a type T is a list data type
 template<typename T>
-struct is_list_type
+struct is_list_type_impl
     : std::bool_constant<
           // either derived of `ListData`
           std::is_base_of<ListData, T>::value ||
           // or a wrapper type whose inner type is derived of `NodeData`
-          is_scalar_type<inner_type_t<T>>::value
-      > {};
+          is_scalar_type<inner_type_t<T>>::value> {};
+template<typename T>
+struct is_list_type
+    : std::conditional_t<std::is_class<T>::value,
+                         // using non-class type in std::is_base_of is UB
+                         is_list_type_impl<T>,
+                         std::false_type> {};
+
+/// Yields whether a type T has a registered list type
+template<typename T>
+struct has_list_type
+    : std::bool_constant<
+          is_scalar_type<T>::value &&
+          !std::is_void<list_type_t<T>>::value> {};
 
 /**
  * @brief Returns the type id of a node data class
@@ -188,8 +203,7 @@ template <typename T,
           typename = std::enable_if_t<is_scalar_type<T>::value>>
 inline QString listTypeId()
 {
-    static_assert(!std::is_same<T, InvalidData>::value,
-                  "Cannot use `intelli::InvalidData` as list type!");
+    static_assert(has_list_type<T>::value, "`T` has no list type!");
     return QStringLiteral("#list#") + typeId<T>();
 }
 
@@ -205,13 +219,8 @@ inline QString typeId()
     using U = inner_type_t<T>;
     static_assert(!std::is_same<U, void>::value,
                   "Could not infer inner type of `T`!");
-    static_assert(!std::is_same<U, InvalidData>::value,
-                  "Cannot use `intelli::InvalidData` as list type!");
-    static_assert(std::is_base_of<NodeData, U>::value,
-                  "T::type must be derived of `intelli::NodeData`!");
-    static_assert(std::is_constructible<U>::value,
-                  "T::type must not be abstract!");
-
+    static_assert(is_scalar_type<U>::value,
+                  "inner type of `T` must be a scalar node data type!");
     return listTypeId<U>();
 }
 
@@ -225,8 +234,8 @@ inline QString typeId()
  */
 template <typename T,
           typename ...Args,
-          typename = std::enable_if_t<std::is_base_of<NodeData, T>::value ||
-                                      std::is_base_of<NodeData, inner_type_t<T>>::value>>
+         typename = std::enable_if_t<is_scalar_type<T>::value ||
+                                     is_list_type<T>::value>>
 inline Ptr<unwrap_type_t<T>> makeNodeData(Args&&... args)
 {
     return std::make_shared<unwrap_type_t<T> const>(std::forward<Args>(args)...);
@@ -251,6 +260,33 @@ inline QString safeTypeId()
     {
         return typeId<T>();
     }
+}
+
+/**
+ * @brief Attempts to convert `data` to into the desired type. If
+ * no conversion exists or the conversion fails, a nullptr is returned.
+ * @param data Data to convert
+ * @param to Target type Id to convert the data into
+ * @return Converted data (may be null)
+ */
+GT_INTELLI_EXPORT NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to);
+
+/**
+ * @brief Convenience function that performs a conversion of `data` into the
+ * desired type `T`. If no conversion exists or the conversion fails, a
+ * nullptr is returned.
+ * @param data Data to convert
+ * @return Converted data of type `T` (may be null)
+ */
+template <typename T>
+inline std::shared_ptr<unwrap_type_t<T> const>
+convert(NodeDataPtr const& data)
+{
+    if (auto converted = qobject_pointer_cast<unwrap_type_t<T> const>(data)) return converted;
+
+    return std::static_pointer_cast<unwrap_type_t<T> const>(
+        convert(data, safeTypeId<T>())
+    );
 }
 
 /**

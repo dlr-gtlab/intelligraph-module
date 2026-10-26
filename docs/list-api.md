@@ -31,6 +31,9 @@ In addition, the list class must:
 
 To implement a specialized list type, you must use the preprocessor macro `GT_INTELLI_DECLARE_LIST_TYPE(T, LIST)` with `T` denoting the type of the data element and `LIST` your specialized list type.
 
+> [!IMPORTANT]
+> Use the macro `GT_INTELLI_DECLARE_LIST_TYPE(T, LIST)` in the header file of the scalar data type using a forward declaration to the specialized list type
+
 ## TypeId API
 
 > [!IMPORTANT]
@@ -41,6 +44,8 @@ intelli::list<T>                                 // alias for intelli::list_type
 intelli::list_type_t<T>                          // registered list type for T (by default GenericListData)
 intelli::inner_type_t<intelli::list<T>>          // yields T
 intelli::inner_type_t<intelli::GenericListData>  // yields void, generic lists have no static inner type
+intelli::is_scalar_type<T>::value                // yields true if T is not a list type
+intelli::has_list_type<T>::value                 // yields true if T has a list type
 intelli::is_list_type<T>::value                  // yields true if T is a list type
 
 // type ids
@@ -70,6 +75,8 @@ If you know the specialized list type, it's best to use it:
 
 ```cpp
 auto listData = nodeData<intelli::StringListData>(myPortId);
+// or
+auto listData = nodeData<intelli::list<intelli::StringData>>(myPortId);
 ```
 
 If you do not know the actual list type, use the common base class `intelli::ListData` to access size and elements of the list.
@@ -94,7 +101,9 @@ auto myTypeId = intelli::typeId<IntData>();
 std::unique_ptr<intelli::ListData> listData = NodeDataFactory::instance().makeListData(myTypeId);
 if (!listData) return evalFailed();
 
-// add entry only works on non const node data
+// best practice to preallocate for number of expected items (only for non const node data)
+listData->reserve(1);
+// add entry (only for non const node data)
 listData->append(intelli::makeNodeData<IntData>(42));
 ```
 

@@ -10,22 +10,13 @@
 #ifndef GT_INTELLI_LIST_H
 #define GT_INTELLI_LIST_H
 
-#include "intelli/graphconnectionmodel.h"
-#include <intelli/data/invalid.h>
+#include <intelli/proxyiterator.h>
 #include <intelli/nodedata.h>
 #include <intelli/view.h>
 
-#include <gt_typetraits.h>
 #include <gt_utilities.h>
 
 #include <QVector>
-
-/// Helper macro to register a list type for a scalar type
-#define GT_INTELLI_DECLARE_LIST_TYPE(SCALAR, LIST) \
-    template <> \
-    struct intelli::list_type<SCALAR> { using type = LIST; }; \
-    template <> \
-    struct intelli::inner_type<LIST> { using type = SCALAR; };
 
 namespace intelli
 {
@@ -43,6 +34,7 @@ public:
     /// Should return the associated list type id
     QString typeId() const override = 0;
 
+    /// translates idx -> NodeDataPtr
     struct NodeDataProxy
     {
         using Iter = gt::DynamicRange<size_t>::iterator;
@@ -120,7 +112,7 @@ class GT_INTELLI_EXPORT GenericListData final : public ListData
 
 public:
 
-    using value_type      = gt::trait::value_t<container_type>;
+    using value_type      = typename container_type::value_type;
     using reference       = typename container_type::reference;
     using const_reference = typename container_type::const_reference;
     using iterator        = typename container_type::iterator;
@@ -201,6 +193,7 @@ private:
     bool appendNoConvert(NodeDataPtr const& data);
 };
 
+// by default assumes GenericListData data type
 template <typename T>
 struct list_type
 {
