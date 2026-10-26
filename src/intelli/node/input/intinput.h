@@ -47,7 +47,10 @@ public:
 
 signals:
 
+    void valueChanged();
+
     void rangeChanged();
+
     void inputModeChanged();
 
 protected:

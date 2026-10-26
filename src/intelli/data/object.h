@@ -13,13 +13,15 @@
 #include <intelli/nodedata.h>
 #include <intelli/memory.h>
 
+#include <gt_object.h>
+
 namespace intelli
 {
 
 /**
  * @brief The ObjectData class. Represents a GtObject as node data object.
  */
-class GT_INTELLI_EXPORT ObjectData : public NodeData
+class GT_INTELLI_EXPORT ObjectData final : public NodeData
 {
     Q_OBJECT
 

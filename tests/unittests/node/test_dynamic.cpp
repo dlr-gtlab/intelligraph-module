@@ -21,7 +21,7 @@ TestDynamicNode::registerOnce()
 }
 
 TestDynamicNode::TestDynamicNode() :
-    intelli::DynamicNode("MyDynamicNode")
+    intelli::DynamicNode("MyDynamicNode", intelli::DynamicNode::NoDefaultListTypes)
 {
 
 }
@@ -37,7 +37,7 @@ TestDynamicWhiteListNode::registerOnce()
 
 TestDynamicWhiteListNode::TestDynamicWhiteListNode(QStringList inputWhiteList,
                                                    QStringList outputWhiteList) :
-    intelli::DynamicNode("MyDynamicWhiteListNode", inputWhiteList, outputWhiteList)
+    intelli::DynamicNode("MyDynamicWhiteListNode", inputWhiteList, outputWhiteList, intelli::DynamicNode::NoDefaultListTypes)
 {
 
 }

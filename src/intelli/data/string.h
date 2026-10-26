@@ -15,7 +15,7 @@
 namespace intelli
 {
 
-class GT_INTELLI_EXPORT StringData : public NodeData
+class GT_INTELLI_EXPORT StringData final : public NodeData
 {
     Q_OBJECT
 
@@ -29,6 +29,10 @@ private:
     QString m_data;
 };
 
+class StringListData;
+
 } // namespace intelli
+
+GT_INTELLI_DECLARE_LIST_TYPE(intelli::StringData, intelli::StringListData);
 
 #endif // GT_INTELLI_STRINGDATA_H

@@ -47,7 +47,10 @@ set(PUBLIC_HEADERS
     intelli/nodedata.h
     intelli/nodedatafactory.h
     intelli/nodedatainterface.h
+    intelli/nodeevent.h
     intelli/nodefactory.h
+    intelli/nodeport.h
+    intelli/proxyiterator.h
     intelli/span.h
     intelli/utilities.h
     intelli/view.h
@@ -59,6 +62,7 @@ set(PUBLIC_HEADERS
     intelli/data/int.h
     intelli/data/integer.h
     intelli/data/invalid.h
+    intelli/data/list.h
     intelli/data/object.h
     intelli/data/string.h
     intelli/data/stringlist.h
@@ -126,6 +130,9 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/node/textdisplay.h
     intelli/node/input/graphuservariablesinput.h
     intelli/node/input/fileinput.h
+    intelli/node/general/tolist.h intelli/node/general/tolist.cpp
+    intelli/node/general/listgetitem.h intelli/node/general/listgetitem.cpp
+    intelli/node/general/listgetsize.h intelli/node/general/listgetsize.cpp
     intelli/gui/commentgroup.h
     intelli/gui/commentdata.h
     intelli/gui/grapheditor.h
@@ -203,9 +210,10 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/data/bool.cpp
     intelli/data/bytearray.cpp
     intelli/data/double.cpp
+    intelli/data/file.cpp
     intelli/data/int.cpp
     intelli/data/invalid.cpp
-    intelli/data/file.cpp
+    intelli/data/list.cpp
     intelli/data/object.cpp
     intelli/data/string.cpp
     intelli/data/stringlist.cpp
@@ -308,6 +316,10 @@ target_link_libraries(GTlabIntelliGraph
     Qt${QT_VERSION_MAJOR}::Concurrent
 )
 set_property(TARGET GTlabIntelliGraph PROPERTY AUTOMOC ON)
+
+target_compile_features(GTlabIntelliGraph PUBLIC
+    cxx_std_17
+)
 
 target_compile_definitions(GTlabIntelliGraph PRIVATE
     GT_LOG_USE_QT_BINDINGS # enable Qt operator<< for logging

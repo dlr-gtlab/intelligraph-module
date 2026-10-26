@@ -9,6 +9,7 @@
  */
 
 #include <intelli/gui/style.h>
+#include <intelli/nodedatafactory.h>
 
 #include <gt_utilities.h>
 
@@ -112,23 +113,32 @@ static StyleData& styleInstance()
 QColor
 StyleData::ConnectionData::typeColor(TypeId const& typeId) const
 {
-    if (typeId.isEmpty() || !useCustomTypeColors)
-    {
-        return defaultOutline;
-    }
+    auto const rawTypeColor = [this](const TypeId& typeId){
+        if (typeId.isEmpty() || !useCustomTypeColors)
+        {
+            return defaultOutline;
+        }
 
-    auto iter = customTypeColors.find(typeId);
-    if (iter != customTypeColors.end())
-    {
-        return *iter;
-    }
+        auto iter = customTypeColors.find(typeId);
+        if (iter != customTypeColors.end())
+        {
+            return *iter;
+        }
 
-    if (!generateMissingTypeColors)
-    {
-        return defaultOutline;
-    }
+        if (!generateMissingTypeColors)
+        {
+            return defaultOutline;
+        }
 
-    return generateTypeColor(typeId);
+        return generateTypeColor(typeId);
+    };
+
+    auto& factory = NodeDataFactory::instance();
+    if (factory.isListType(typeId))
+    {
+        return rawTypeColor(factory.innerType(typeId));
+    }
+    return rawTypeColor(typeId);
 }
 
 void

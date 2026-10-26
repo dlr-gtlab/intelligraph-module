@@ -287,7 +287,7 @@ LogicNodePainter::drawBackground(QPainter& painter, uint flags) const
 
 void
 LogicNodePainter::drawPortCaption(QPainter& painter,
-                                  PortInfo const& port,
+                                  NodePort const& port,
                                   PortType type,
                                   PortIndex idx,
                                   uint flags) const
@@ -303,7 +303,7 @@ LogicNodePainter::drawPortCaption(QPainter& painter,
 
 void
 LogicNodePainter::drawPort(QPainter& painter,
-                           PortInfo const& port,
+                           NodePort const& port,
                            PortType type,
                            PortIndex idx,
                            uint flags) const

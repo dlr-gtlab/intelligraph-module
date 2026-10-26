@@ -53,6 +53,7 @@ makeNumberInputWidget(NodeT* node, NodeGraphicsObject& object)
         if (node->upperBound() != newVal) node->setUpperBound(newVal);
     });
 
+    QObject::connect(node, &NodeT::valueChanged, w, updateRange);
     QObject::connect(node, &NodeT::rangeChanged, w, updateRange);
     QObject::connect(node, &NodeT::inputModeChanged, w, updateMode);
 
@@ -63,7 +64,9 @@ makeNumberInputWidget(NodeT* node, NodeGraphicsObject& object)
 }
 
 } // namespace detail
+
 } // namespace ui
+
 } // namespace intelli
 
 #endif // GT_INTELLI_NUMBERINPUTNODEUI_UTILS_H
