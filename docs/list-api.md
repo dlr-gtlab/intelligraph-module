@@ -31,12 +31,12 @@ In addition, the list class must:
 
 To implement a specialized list type, you must use the preprocessor macro `GT_INTELLI_DECLARE_LIST_TYPE(T, LIST)` with `T` denoting the type of the data element and `LIST` your specialized list type.
 
-> [!IMPORTANT]
-> Use the macro `GT_INTELLI_DECLARE_LIST_TYPE(T, LIST)` in the header file of the scalar data type using a forward declaration to the specialized list type
+> [!NOTE]
+> Use the macro `GT_INTELLI_DECLARE_LIST_TYPE(T, LIST)` in the header file of the scalar data type, forward declarating the specialized list type
 
 ## TypeId API
 
-> [!IMPORTANT]
+> [!NOTE]
 > Include `intelli/data/list.h`, if you want to access a list-type of an existing node data type
 
 ```cpp
