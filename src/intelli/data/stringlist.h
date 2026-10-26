@@ -12,6 +12,7 @@
 #include <intelli/nodedata.h>
 #include <intelli/data/string.h>
 #include <intelli/data/list.h>
+#include <intelli/view.h>
 
 #include <QStringList>
 
