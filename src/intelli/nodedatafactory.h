@@ -90,8 +90,8 @@ public:
     }
 
     /**
-     * @brief Unregisters data and associated conversions. Does not
-     * unregister the list type.
+     * @brief Unregisters the data type and the associated conversions and
+     * lsit type.
      * @param meta Meta object of the class to unregister
      */
     void unregisterData(QMetaObject const& meta);

@@ -12,11 +12,12 @@
 
 #include <intelli/proxyiterator.h>
 #include <intelli/nodedata.h>
-#include <intelli/view.h>
 
 #include <gt_utilities.h>
 
 #include <QVector>
+
+#include <iterator>
 
 namespace intelli
 {

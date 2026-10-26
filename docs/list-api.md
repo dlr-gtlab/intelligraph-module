@@ -44,7 +44,7 @@ intelli::list<T>                                 // alias for intelli::list_type
 intelli::list_type_t<T>                          // registered list type for T (by default GenericListData)
 intelli::inner_type_t<intelli::list<T>>          // yields T
 intelli::inner_type_t<intelli::GenericListData>  // yields void, generic lists have no static inner type
-intelli::is_scalar_type<T>::value                // yields true if T is not a list type
+intelli::is_scalar_type<T>::value                // yields true if T is a default constructible, non-list data type
 intelli::has_list_type<T>::value                 // yields true if T has a list type
 intelli::is_list_type<T>::value                  // yields true if T is a list type
 
@@ -101,8 +101,6 @@ auto myTypeId = intelli::typeId<IntData>();
 std::unique_ptr<intelli::ListData> listData = NodeDataFactory::instance().makeListData(myTypeId);
 if (!listData) return evalFailed();
 
-// best practice to preallocate for number of expected items (only for non const node data)
-listData->reserve(1);
 // add entry (only for non const node data)
 listData->append(intelli::makeNodeData<IntData>(42));
 ```
