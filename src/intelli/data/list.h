@@ -122,7 +122,7 @@ public:
 
     /// Constructor. The given type id is the type this list may accept. Must
     /// be a scalar type!
-    Q_INVOKABLE GenericListData(TypeId id = {});
+    Q_INVOKABLE GenericListData(QString typeIdent = {});
 
     template <typename List,
               typename Iterator = decltype(std::declval<List const&>().begin()),

@@ -25,6 +25,15 @@
 
 using namespace intelli;
 
+/// NonConstPtr<T> should implicitly convert to Ptr<T>
+TEST(NodeDataFactory, implicit_const_cast)
+{
+    NonConstPtr<IntData> myInt = std::make_unique<IntData>(42);
+    Ptr<IntData> myConstInt = myInt;
+    ASSERT_TRUE(myConstInt);
+    ASSERT_EQ(myConstInt->value(), 42);
+}
+
 TEST(NodeData, sanity_check)
 {
     TestNodeData data{42};
@@ -362,41 +371,64 @@ TEST(NodeDataFactory, make_data)
     auto data = factory.makeData(typeId<DoubleData>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(DoubleData));
+    EXPECT_EQ(data->typeId(), typeId<DoubleData>());
+
     data = factory.makeData(typeId<list<DoubleData>>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(GenericListData));
+    EXPECT_EQ(data->typeId(), typeId<list<DoubleData>>());
+
     data = factory.makeListData(typeId<DoubleData>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(GenericListData));
+    EXPECT_EQ(data->typeId(), typeId<list<DoubleData>>());
+
     data = factory.makeListData(typeId<list<DoubleData>>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(GenericListData));
+    EXPECT_EQ(data->typeId(), typeId<list<DoubleData>>());
+
 
     data = factory.makeData(typeId<StringData>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(StringData));
+    EXPECT_EQ(data->typeId(), typeId<StringData>());
+
     data = factory.makeData(typeId<list<StringData>>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(StringListData));
+    EXPECT_EQ(data->typeId(), typeId<list<StringData>>());
+
     data = factory.makeListData(typeId<StringData>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(StringListData));
+    EXPECT_EQ(data->typeId(), typeId<list<StringData>>());
+
     data = factory.makeListData(typeId<list<StringData>>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(StringListData));
+    EXPECT_EQ(data->typeId(), typeId<list<StringData>>());
+
 
     data = factory.makeData(typeId<FileData>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(FileData));
+    EXPECT_EQ(data->typeId(), typeId<FileData>());
+
     data = factory.makeData(typeId<list<FileData>>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(GenericListData));
+    EXPECT_EQ(data->typeId(), typeId<list<FileData>>());
+
     data = factory.makeListData(typeId<FileData>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(GenericListData));
+    EXPECT_EQ(data->typeId(), typeId<list<FileData>>());
+
     data = factory.makeListData(typeId<list<FileData>>());
     ASSERT_TRUE(data);
     EXPECT_TRUE(data->metaObject()->className() == GT_CLASSNAME(GenericListData));
+    EXPECT_EQ(data->typeId(), typeId<list<FileData>>());
 }
 
 TEST(NodeDataFactory, make_data_stringlist_backwards_compat)
@@ -519,9 +551,9 @@ TEST(NodeData, generic_list_from_container)
                   "expected generic list to not accept abstract types");
     static_assert(!std::is_constructible<GenericListData, QVector<QString>>::value,
                   "expected generic list to not accept non data types");
-    static_assert(std::is_constructible<GenericListData, QVector<Ptr<IntData>>>::value,
+    static_assert(std::is_constructible<GenericListData, QVector<Ptr<IntData>> const&>::value,
                   "expected generic list to accept data types");
-    static_assert(std::is_constructible<GenericListData, QVector<Ptr<DoubleData>>>::value,
+    static_assert(std::is_constructible<GenericListData, QVector<Ptr<DoubleData>> const&>::value,
                   "expected generic list to accept data types");
     static_assert(!std::is_constructible<GenericListData, QVector<Ptr<InvalidData>>>::value,
                   "expected generic list to not accept invalid data types");
@@ -606,7 +638,6 @@ TEST(NodeDataFactory, register_conversion_duplicate_fails)
     };
 
     factory.unregisterConversion(typeId<IntData>(), typeId<TestNodeData>());
-
     EXPECT_TRUE(factory.registerConversion(typeId<IntData>(), typeId<TestNodeData>(), conv));
     EXPECT_FALSE(factory.registerConversion(typeId<IntData>(), typeId<TestNodeData>(), otherConv));
 
@@ -629,7 +660,6 @@ TEST(NodeDataFactory, register_conversion_list_type)
     TypeId const to   = typeId<list<IntData>>();
 
     factory.unregisterConversion(from, to);
-
     ASSERT_TRUE(factory.registerConversion(from, to, toList));
     EXPECT_TRUE(factory.canConvert(from, to));
 
@@ -647,8 +677,9 @@ TEST(NodeDataFactory, register_conversion_list_type)
     EXPECT_FALSE(factory.canConvert(from, to));
 }
 
-/// check that the type based conversion helpers work with generic list types too
-TEST(NodeDataFactory, convert_generic_list_type)
+/// check that the type based conversion works when converting to a generic
+/// list type
+TEST(NodeDataFactory, convert_to_generic_list_type)
 {
     auto& factory = NodeDataFactory::instance();
 
@@ -684,11 +715,134 @@ TEST(NodeDataFactory, convert_generic_list_type)
     EXPECT_EQ(casted->size(), 1);
 
     factory.unregisterConversion(from, to);
+}
 
-    // type based conversion works for specialized list types
+/// check that the type based conversion works when converting from a generic
+/// list type
+TEST(NodeDataFactory, convert_from_generic_list_type)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    auto fromList = [](NodeDataPtr const& data) -> NodeDataPtr {
+        auto fromList = qobject_pointer_cast<GenericListData const>(data);
+        return fromList ? convert<IntData>(fromList->front()) : nullptr;
+    };
+
+    TypeId const to   = typeId<IntData>();
+    TypeId const from = typeId<list<IntData>>();
+
+    factory.unregisterConversion(from, to);
+    ASSERT_TRUE(factory.registerConversion(from, to, fromList));
+
+    auto intList = makeNodeData<list<IntData>>();
+    intList->append(makeNodeData<IntData>(42));
+    intList->append(makeNodeData<IntData>(10));
+    ASSERT_EQ(intList->typeId(), from);
+
+    // string based conversion works for generic lists
+    auto converted = convert(intList, to);
+    ASSERT_TRUE(converted);
+    EXPECT_EQ(std::static_pointer_cast<const IntData>(converted)->value(), 42);
+
+    // type based helper works too
+    converted = convert<IntData>(intList);
+    ASSERT_TRUE(converted);
+    EXPECT_EQ(std::static_pointer_cast<const IntData>(converted)->value(), 42);
+
+    // bare GenericListData instance has no static type id so the
+    // conversion cannot be accessed and fails
+    EXPECT_FALSE(convert<GenericListData>(intList));
+
+    // type based conversion can still cast an existing generic list
+    auto casted = convert<IntData>(converted);
+    ASSERT_TRUE(casted);
+    EXPECT_EQ(casted->value(), 42);
+
+    factory.unregisterConversion(from, to);
+}
+
+/// check that type based conversion works across generic list types
+TEST(NodeDataFactory, convert_across_generic_list_types)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    auto toList = [](NodeDataPtr const& raw) -> NodeDataPtr {
+        auto doubleData = qobject_pointer_cast<GenericListData const>(raw);
+        if (!doubleData) return nullptr;
+
+        auto intData = makeNodeData<GenericListData>(typeId<IntData>());
+        for (auto const& data : *doubleData)
+        {
+            intData->append(convert<IntData>(data));
+        }
+        return (intData->size() != doubleData->size()) ? nullptr : intData;
+    };
+
+    TypeId const from = typeId<list<DoubleData>>();
+    TypeId const to   = typeId<list<IntData>>();
+
+    factory.unregisterConversion(from, to);
+    ASSERT_TRUE(factory.registerConversion(from, to, toList));
+
+    auto doubleList = makeNodeData<list<DoubleData>>();
+    doubleList->append(makeNodeData<DoubleData>(42.0));
+    doubleList->append(makeNodeData<DoubleData>(10.2));
+    ASSERT_EQ(doubleList->typeId(), from);
+
+    // string based conversion works for generic lists
+    auto converted = convert(doubleList, to);
+    ASSERT_TRUE(converted);
+    ASSERT_EQ(converted->typeId(), to);
+    ASSERT_EQ(std::static_pointer_cast<const ListData>(converted)->size(), 2u);
+
+    // type based helper works too
+    converted = convert<list<IntData>>(doubleList);
+    ASSERT_TRUE(converted);
+    ASSERT_EQ(converted->typeId(), to);
+    ASSERT_EQ(std::static_pointer_cast<const ListData>(converted)->size(), 2u);
+
+    // bare GenericListData instance has no static type id so the
+    // conversion cannot be accessed and fails
+    EXPECT_FALSE(convert<GenericListData>(doubleList));
+
+    // type based conversion can still cast an existing generic list
+    auto casted = convert<list<IntData>>(converted);
+    ASSERT_TRUE(casted);
+    ASSERT_EQ(converted->typeId(), to);
+    ASSERT_EQ(casted->size(), 2);
+
+    factory.unregisterConversion(from, to);
+}
+
+
+/// check that type based conversion works from specialized list types
+TEST(NodeDataFactory, convert_from_specialized_list_type)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    factory.unregisterConversion(typeId<list<StringData>>(), typeId<StringData>());
+    GT_INTELLI_REGISTER_INLINE_CONVERSION(list<StringData>, StringData, data->value().front())
+
+    auto string = convert<StringData>(
+        makeNodeData<list<StringData>>(
+            std::initializer_list<QString>{QStringLiteral("Hello"),
+                                           QStringLiteral("World")}));
+    ASSERT_TRUE(string);
+    ASSERT_EQ(string->value(), QStringLiteral("Hello"));
+
+    factory.unregisterConversion(typeId<list<StringData>>(), typeId<StringData>());
+}
+
+/// check that type based conversion works for specialized list types
+TEST(NodeDataFactory, convert_to_specialized_list_type)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    factory.unregisterConversion(typeId<StringData>(), typeId<list<StringData>>());
     GT_INTELLI_REGISTER_INLINE_CONVERSION(StringData, list<StringData>, QStringList{data->value()})
 
-    auto strings = convert<list<StringData>>(makeNodeData<StringData>(QStringLiteral("Hello World")));
+    auto strings = convert<list<StringData>>(
+        makeNodeData<StringData>(QStringLiteral("Hello World")));
     ASSERT_TRUE(strings);
     ASSERT_EQ(strings->size(), 1);
     EXPECT_EQ(strings->at(0), QStringLiteral("Hello World"));

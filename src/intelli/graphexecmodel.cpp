@@ -217,10 +217,10 @@ void GraphExecutionModel::shutdown()
         auto const nodes = pimpl->graph->nodes();
         for (auto* node : nodes)
         {
-        if (auto* executor = node->findChild<DetachedExecutor*>())
-        {
-            executor->deleteLater();
-        }
+            if (auto* executor = node->findChild<DetachedExecutor*>())
+            {
+                executor->waitForFinished();
+            }
         }
     }
 

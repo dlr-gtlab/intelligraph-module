@@ -108,11 +108,6 @@ private:
     QString m_typeName;
 };
 
-template<typename T>
-using Ptr = std::shared_ptr<const T>;
-
-using NodeDataPtr = Ptr<NodeData>;
-
 /// Yields the corresponding list type for `T`
 template <typename T>
 struct list_type;
@@ -137,11 +132,19 @@ struct unwrap_type<list_type<T>> { using type = list_type_t<T>; };
 template <typename T>
 using unwrap_type_t = typename unwrap_type<T>::type;
 
+/// Wrapper type for NodeData
+template<typename T>
+using Ptr = std::shared_ptr<const unwrap_type_t<T>>;
+template<typename T>
+using NonConstPtr = std::shared_ptr<unwrap_type_t<T>>;
+
+using NodeDataPtr = Ptr<NodeData>;
+
 /// Unwraps `shared_pointer<T>` and yields T else `void`
 template <typename T>
 struct unwrap_ptr { using type = void; };
 template <typename T>
-struct unwrap_ptr<Ptr<T>> { using type = T; };
+struct unwrap_ptr<std::shared_ptr<T>> { using type = std::remove_cv_t<T>; };
 template <typename T>
 using unwrap_ptr_t = typename unwrap_ptr<T>::type;
 
@@ -157,8 +160,8 @@ struct is_scalar_type_impl
           std::is_constructible<T>::value> {};
 template<typename T>
 struct is_scalar_type
+    // needed workaround, using non-class type here is UB
     : std::conditional_t<std::is_class<T>::value,
-                         // using non-class type in std::is_base_of is UB
                          is_scalar_type_impl<T>,
                          std::false_type> {};
 
@@ -236,9 +239,9 @@ template <typename T,
           typename ...Args,
          typename = std::enable_if_t<is_scalar_type<T>::value ||
                                      is_list_type<T>::value>>
-inline Ptr<unwrap_type_t<T>> makeNodeData(Args&&... args)
+inline NonConstPtr<T> makeNodeData(Args&&... args)
 {
-    return std::make_shared<unwrap_type_t<T> const>(std::forward<Args>(args)...);
+    return std::make_shared<unwrap_type_t<T>>(std::forward<Args>(args)...);
 }
 
 /**
@@ -282,7 +285,14 @@ template <typename T>
 inline std::shared_ptr<unwrap_type_t<T> const>
 convert(NodeDataPtr const& data)
 {
-    if (auto converted = qobject_pointer_cast<unwrap_type_t<T> const>(data)) return converted;
+    // in case T is an intermediate class we should first use casting
+    if constexpr (!std::is_constructible<T>::value)
+    {
+        if (auto converted = qobject_pointer_cast<unwrap_type_t<T> const>(data))
+        {
+            return converted;
+        }
+    }
 
     return std::static_pointer_cast<unwrap_type_t<T> const>(
         convert(data, safeTypeId<T>())

@@ -25,8 +25,11 @@ ListGetSizeNode::ListGetSizeNode() :
 {
     registerProperty(m_typeId);
 
-    m_in  = addInPort(makePort(typeId<list<DoubleData>>()).setCaption(tr("list")));
-    m_out = addOutPort(makePort(typeId<IntData>()).setCaption(tr("size")));
+    m_in  = addInPort(makePort(typeId<list<DoubleData>>())
+                         .setCaption(tr("list"))
+                         .setOptional(false));
+    m_out = addOutPort(makePort(typeId<IntData>())
+                           .setCaption(tr("size")));
 
     auto updatePort = [this](){
         auto& factory = NodeDataFactory::instance();
@@ -48,7 +51,7 @@ void
 ListGetSizeNode::eval()
 {
     Ptr<ListData> listData = nodeData<ListData>(m_in);
-    int size = (listData) ? listData->size() : 0;
+    if (!listData) return evalFailed();
 
-    setNodeData(m_out, makeNodeData<IntData>(size));
+    setNodeData(m_out, makeNodeData<IntData>(listData->size()));
 }

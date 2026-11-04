@@ -9,13 +9,12 @@
 
 #include "intelli/data/list.h"
 #include "intelli/nodedatafactory.h"
-#include "intelli/node.h"
 
 using namespace intelli;
 
-GenericListData::GenericListData(TypeId type) :
+GenericListData::GenericListData(QString typeIdent) :
     ListData("list"),
-    m_typeId(std::move(type))
+    m_typeId(std::move(typeIdent))
 {
     assert(!NodeDataFactory::instance().isListType(m_typeId));
 }

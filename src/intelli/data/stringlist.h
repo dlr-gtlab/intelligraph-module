@@ -36,6 +36,9 @@ public:
 
     Q_INVOKABLE StringListData(QStringList values = {});
     StringListData(View<QString> view);
+    StringListData(std::initializer_list<QString> list) :
+        StringListData(View<QString>{list})
+    {}
 
     Q_INVOKABLE QStringList value() const;
 

@@ -416,15 +416,8 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
 {
     if (!data) return nullptr;
 
-    QMetaObject const* srcMetaObject =  data->metaObject();
-    if (!srcMetaObject) return nullptr;
-
-    QMetaObject const* targetMetaObject = findMetaObject(to);
-    if (!targetMetaObject) return nullptr;
-
-    if (srcMetaObject->inherits(targetMetaObject)) return data;
-
     TypeId from = data->typeId();
+    if (from == to) return data; // no conversion necessary
 
     auto iter = findConversion(pimpl->conversions, from, to);
     if (iter == pimpl->conversions.cend()) return nullptr;
@@ -462,14 +455,20 @@ NodeDataFactory::makeData(TypeId const& typeId) const
 std::unique_ptr<ListData>
 NodeDataFactory::makeListData(TypeId const& typeId) const
 {
-    auto entry = pimpl->listTypes.constFind(isListType(typeId) ?
-                                                typeId : listType(typeId));
+    auto listTypeId  = isListType(typeId) ? typeId : listType(typeId);
+    auto innerTypeId = innerType(listTypeId);
+    auto entry = pimpl->listTypes.constFind(listTypeId);
     if (entry == pimpl->listTypes.cend())
     {
         return nullptr;
     }
 
-    std::unique_ptr<QObject> rawListData{entry->metaObject->newInstance()};
+    std::unique_ptr<QObject> rawListData{
+        (&GT_METADATA(GenericListData) == entry->metaObject) ?
+            // initialize type-id for generic lists
+            entry->metaObject->newInstance(Q_ARG(QString, innerTypeId)) :
+            entry->metaObject->newInstance()
+    };
     if (!rawListData) return nullptr;
 
     return gt::unique_qobject_cast<ListData>(std::move(rawListData));

@@ -49,18 +49,18 @@ public:
         builder.connect(inputC, intelli::PortIndex{0}, toList, intelli::PortIndex{2});
 
         intelli::Node& getSize = builder.addNode("intelli::ListGetSizeNode");
-        intelli::Node& getEntry = builder.addNode("intelli::ListGetItemNode");
+        intelli::Node& getItem = builder.addNode("intelli::ListGetItemNode");
 
         intelli::setNodeProperty(getSize, "typeId", intelli::typeId<intelli::IntData>());
-        intelli::setNodeProperty(getEntry, "typeId", intelli::typeId<intelli::IntData>());
+        intelli::setNodeProperty(getItem, "typeId", intelli::typeId<intelli::IntData>());
 
         builder.connect(toList, intelli::PortIndex{0}, getSize, intelli::PortIndex{0});
-        builder.connect(toList, intelli::PortIndex{0}, getEntry, intelli::PortIndex{0});
-        builder.connect(index, intelli::PortIndex{0}, getEntry, intelli::PortIndex{1});
+        builder.connect(toList, intelli::PortIndex{0}, getItem, intelli::PortIndex{0});
+        builder.connect(index, intelli::PortIndex{0}, getItem, intelli::PortIndex{1});
 
         toListUuid = toList.uuid();
         getSizeUuid = getSize.uuid();
-        getEntryUuid = getEntry.uuid();
+        getItemUuid = getItem.uuid();
     }
 
     void TearDown() override
@@ -69,7 +69,7 @@ public:
     }
 
     intelli::Graph graph;
-    intelli::NodeUuid toListUuid, getSizeUuid, getEntryUuid;
+    intelli::NodeUuid toListUuid, getSizeUuid, getItemUuid;
 };
 
 TEST_F(IntListNodes, verify)
@@ -83,25 +83,28 @@ TEST_F(IntListNodes, verify)
     ASSERT_TRUE(toListEvaluated.wait(std::chrono::seconds{1}));
 
     ASSERT_TRUE(exec.isNodeEvaluated(toListUuid));
-    auto listData = exec.nodeData(toListUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::ListData>();
+    auto listData = exec.nodeData(toListUuid, intelli::PortType::Out, intelli::PortIndex{0})
+                        .as<intelli::ListData>();
     ASSERT_TRUE(listData);
     ASSERT_EQ(listData->size(), expectedSize);
 
-    intelli::Ptr<intelli::IntData> entry0 = qobject_pointer_cast<intelli::IntData const>(listData->at(0));
-    intelli::Ptr<intelli::IntData> entry1 = qobject_pointer_cast<intelli::IntData const>(listData->at(1));
-    intelli::Ptr<intelli::IntData> entry2 = qobject_pointer_cast<intelli::IntData const>(listData->at(2));
+    auto entry0 = qobject_pointer_cast<intelli::IntData const>(listData->at(0));
+    auto entry1 = qobject_pointer_cast<intelli::IntData const>(listData->at(1));
+    auto entry2 = qobject_pointer_cast<intelli::IntData const>(listData->at(2));
 
     ASSERT_EQ(entry0->value(), 5);
     ASSERT_EQ(entry1->value(), 30);
     ASSERT_EQ(entry2->value(), 7);
 
     ASSERT_TRUE(exec.isNodeEvaluated(getSizeUuid));
-    auto sizeData = exec.nodeData(getSizeUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::IntData>();
+    auto sizeData = exec.nodeData(getSizeUuid, intelli::PortType::Out, intelli::PortIndex{0})
+                        .as<intelli::IntData>();
     ASSERT_TRUE(sizeData);
     ASSERT_EQ(sizeData->value(), expectedSize);
 
-    ASSERT_TRUE(exec.isNodeEvaluated(getEntryUuid));
-    auto entryData = exec.nodeData(getEntryUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::IntData>();
+    ASSERT_TRUE(exec.isNodeEvaluated(getItemUuid));
+    auto entryData = exec.nodeData(getItemUuid, intelli::PortType::Out, intelli::PortIndex{0})
+                         .as<intelli::IntData>();
     ASSERT_TRUE(entryData);
     ASSERT_EQ(entryData->value(), expectedOutput);
     ASSERT_EQ(entryData->value(), entry2->value());
@@ -138,18 +141,18 @@ public:
         builder.connect(inputC, intelli::PortIndex{0}, toList, intelli::PortIndex{2});
 
         intelli::Node& getSize = builder.addNode("intelli::ListGetSizeNode");
-        intelli::Node& getEntry = builder.addNode("intelli::ListGetItemNode");
+        intelli::Node& getItem = builder.addNode("intelli::ListGetItemNode");
 
         intelli::setNodeProperty(getSize, "typeId", intelli::typeId<intelli::StringData>());
-        intelli::setNodeProperty(getEntry, "typeId", intelli::typeId<intelli::StringData>());
+        intelli::setNodeProperty(getItem, "typeId", intelli::typeId<intelli::StringData>());
 
         builder.connect(toList, intelli::PortIndex{0}, getSize, intelli::PortIndex{0});
-        builder.connect(toList, intelli::PortIndex{0}, getEntry, intelli::PortIndex{0});
-        builder.connect(index, intelli::PortIndex{0}, getEntry, intelli::PortIndex{1});
+        builder.connect(toList, intelli::PortIndex{0}, getItem, intelli::PortIndex{0});
+        builder.connect(index, intelli::PortIndex{0}, getItem, intelli::PortIndex{1});
 
         toListUuid = toList.uuid();
         getSizeUuid = getSize.uuid();
-        getEntryUuid = getEntry.uuid();
+        getItemUuid = getItem.uuid();
     }
 
     void TearDown() override
@@ -158,7 +161,7 @@ public:
     }
 
     intelli::Graph graph;
-    intelli::NodeUuid toListUuid, getSizeUuid, getEntryUuid;
+    intelli::NodeUuid toListUuid, getSizeUuid, getItemUuid;
 };
 
 TEST_F(StringListNodes, verify)
@@ -172,7 +175,8 @@ TEST_F(StringListNodes, verify)
     ASSERT_TRUE(toListEvaluated.wait(std::chrono::seconds{1}));
 
     ASSERT_TRUE(exec.isNodeEvaluated(toListUuid));
-    auto listData = exec.nodeData(toListUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::ListData>();
+    auto listData = exec.nodeData(toListUuid, intelli::PortType::Out, intelli::PortIndex{0})
+                        .as<intelli::ListData>();
     ASSERT_TRUE(listData);
     ASSERT_EQ(listData->iterate().size(), expectedSize);
 
@@ -185,12 +189,14 @@ TEST_F(StringListNodes, verify)
     ASSERT_EQ(entry2->value(), "7");
 
     ASSERT_TRUE(exec.isNodeEvaluated(getSizeUuid));
-    auto sizeData = exec.nodeData(getSizeUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::IntData>();
+    auto sizeData = exec.nodeData(getSizeUuid, intelli::PortType::Out, intelli::PortIndex{0})
+                        .as<intelli::IntData>();
     ASSERT_TRUE(sizeData);
     ASSERT_EQ(sizeData->value(), expectedSize);
 
-    ASSERT_TRUE(exec.isNodeEvaluated(getEntryUuid));
-    auto entryData = exec.nodeData(getEntryUuid, intelli::PortType::Out, intelli::PortIndex{0}).as<intelli::StringData>();
+    ASSERT_TRUE(exec.isNodeEvaluated(getItemUuid));
+    auto entryData = exec.nodeData(getItemUuid, intelli::PortType::Out, intelli::PortIndex{0})
+                         .as<intelli::StringData>();
     ASSERT_TRUE(entryData);
     ASSERT_EQ(entryData->value(), expectedOutput);
     ASSERT_EQ(entryData->value(), entry2->value());
