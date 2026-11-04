@@ -11,11 +11,12 @@
 
 #include "node/test_dynamic.h"
 #include "node/test_node.h"
-#include "data/test_nodedata.h"
 
 #include <intelli/connection.h>
 #include <intelli/core.h>
 #include <intelli/nodefactory.h>
+
+#include "data/testdata.h"
 
 #include <gt_objectfactory.h>
 

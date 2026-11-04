@@ -67,18 +67,19 @@ inline void setupNumberInputNode(NodeT* node,
     };
 
     QObject::connect(&value, &ValuePropT::changed,
-                     node, [node]() { emit node->rangeChanged(); });
+                     node, [node]() {
+                         emit node->valueChanged();
+                         emit node->triggerNodeEvaluation();
+                     });
     QObject::connect(&min, &BoundPropT::changed,
                      node, [node]() {
                         emit node->rangeChanged();
                         emit node->nodeChanged();
-                        emit node->triggerNodeEvaluation();
                      });
     QObject::connect(&max, &BoundPropT::changed,
                      node, [node]() {
                         emit node->rangeChanged();
                         emit node->nodeChanged();
-                        emit node->triggerNodeEvaluation();
                      });
     QObject::connect(&mode, &GtAbstractProperty::changed,
                      node, [node, updateResizability]() {

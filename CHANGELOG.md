@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Selected nodes can now be "cut" using the corresponding shortcut (usually `Ctrl+X`). Cut-nodes are "greyed-out", similar to how cutting works for files and folders. Once the selection is pasted, the cut-objects are deleted. - #283
 - The style of comments can be customized using a dedicated dialog that can be opened using the context menu of comments. This dialog allows changing the background color and text color, frame visibility, and text alignment. - #326
 - The Graph User Variables Dialog can now be opened on any "User Constants" (`GraphUserVariablesInputNode`) Node - #360
+- Introduced list types as a dedicated data type. All scalar data types now have a corresponding list type associated by default - #266
 
 ### Changed
 
