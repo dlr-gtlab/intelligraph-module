@@ -9,9 +9,36 @@
 #define GT_INTELLI_TEXTDISPLAYNODEUI_H
 
 #include <intelli/gui/nodeui.h>
+#include <QWidget>
+
+class GtCodeEditor;
 
 namespace intelli
 {
+
+class TextDisplayNode;
+class NodeGraphicsObject;
+
+class TextDisplayNodeWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+
+    explicit TextDisplayNodeWidget(TextDisplayNode& node, QWidget* parent = nullptr);
+
+    static NodeUI::QGraphicsWidgetPtr create(Node& source, NodeGraphicsObject& object);
+
+private slots:
+
+    void updateTextFromNode();
+    void updateHighlighterFromNode();
+
+private:
+
+    TextDisplayNode* m_node{};
+    GtCodeEditor* m_editor{};
+};
 
 class TextDisplayNodeUI : public NodeUI
 {

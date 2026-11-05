@@ -11,10 +11,64 @@
 #include <intelli/node/stringselection.h>
 #include <intelli/nodedatainterface.h>
 
-#include <QComboBox>
 #include <QGraphicsWidget>
 
 using namespace intelli;
+
+StringSelectionNodeWidget::StringSelectionNodeWidget(StringSelectionNode& node) :
+    QComboBox()
+{
+    m_node = &node;
+
+    QObject::connect(m_node, &StringSelectionNode::optionsChanged,
+                     this, &StringSelectionNodeWidget::updateOptionsFromNode);
+    QObject::connect(m_node, &StringSelectionNode::selectionChanged,
+                     this, &StringSelectionNodeWidget::updateSelectionFromNode);
+    QObject::connect(this, &QComboBox::currentTextChanged,
+                     this, &StringSelectionNodeWidget::updateNodeFromSelection);
+
+    if (exec::nodeDataInterface(*m_node))
+    {
+        updateOptionsFromNode();
+    }
+    updateSelectionFromNode();
+}
+
+NodeUI::QGraphicsWidgetPtr
+StringSelectionNodeWidget::create(Node& source, NodeGraphicsObject& object)
+{
+    auto* node = qobject_cast<StringSelectionNode*>(&source);
+    if (!node) return nullptr;
+
+    auto w = std::make_unique<StringSelectionNodeWidget>(*node);
+    return NodeUI::convertToGraphicsWidget(std::move(w), object);
+}
+
+void
+StringSelectionNodeWidget::updateOptionsFromNode()
+{
+    clear();
+    addItems(m_node->options());
+}
+
+void
+StringSelectionNodeWidget::updateSelectionFromNode()
+{
+    auto const selection = m_node->selection();
+    if (selection.isEmpty())
+    {
+        setCurrentIndex(-1);
+        return;
+    }
+
+    if (currentText() != selection) setCurrentText(selection);
+}
+
+void
+StringSelectionNodeWidget::updateNodeFromSelection(QString const& text)
+{
+    m_node->setSelection(text);
+}
 
 StringSelectionNodeUI::StringSelectionNodeUI() = default;
 
@@ -23,40 +77,5 @@ StringSelectionNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<StringSelectionNode const*>(&n)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
-        auto* node = qobject_cast<StringSelectionNode*>(&source);
-        if (!node) return nullptr;
-
-        auto w = std::make_unique<QComboBox>();
-
-        auto const updateOptions = [w_ = w.get()](QStringList const& options) {
-            w_->clear();
-            w_->addItems(options);
-        };
-        auto const updateSelection = [w_ = w.get()](QString const& selection) {
-            if (selection.isEmpty())
-            {
-                w_->setCurrentIndex(-1);
-                return;
-            }
-            if (w_->currentText() != selection) w_->setCurrentText(selection);
-        };
-
-        QObject::connect(node, &StringSelectionNode::optionsChanged,
-                         w.get(), updateOptions);
-        QObject::connect(node, &StringSelectionNode::selectionChanged,
-                         w.get(), updateSelection);
-        QObject::connect(w.get(), &QComboBox::currentTextChanged,
-                         w.get(), [node](QString const& text) {
-            node->setSelection(text);
-        });
-
-        if (exec::nodeDataInterface(*node))
-        {
-            updateOptions(node->options());
-        }
-        updateSelection(node->selection());
-
-        return convertToGraphicsWidget(std::move(w), object);
-    };
+    return &StringSelectionNodeWidget::create;
 }

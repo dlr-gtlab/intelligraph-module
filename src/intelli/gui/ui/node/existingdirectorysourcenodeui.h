@@ -9,9 +9,39 @@
 #define GT_INTELLI_EXISTINGDIRECTORYSOURCENODEUI_H
 
 #include <intelli/gui/nodeui.h>
+#include <gt_propertyfilechoosereditor.h>
+
+class GtExistingDirectoryProperty;
 
 namespace intelli
 {
+
+class ExistingDirectorySourceNode;
+class NodeGraphicsObject;
+
+class ExistingDirectorySourceNodeWidget : public GtPropertyFileChooserEditor
+{
+    Q_OBJECT
+
+public:
+
+    explicit ExistingDirectorySourceNodeWidget(ExistingDirectorySourceNode& node);
+
+    static NodeUI::QGraphicsWidgetPtr create(Node& source, NodeGraphicsObject& object);
+
+private slots:
+
+    void syncPropertyFromNode(QString const& path);
+    void syncNodeFromProperty();
+    void chooseDirectory();
+
+private:
+
+    void updateSelectButton();
+
+    ExistingDirectorySourceNode* m_node{};
+    GtExistingDirectoryProperty* m_property{};
+};
 
 class ExistingDirectorySourceNodeUI : public NodeUI
 {

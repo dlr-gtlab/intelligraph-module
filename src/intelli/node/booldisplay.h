@@ -21,7 +21,7 @@ class BoolDisplayNode : public Node
 {
     Q_OBJECT
 
-    friend class BoolNodeUI;
+    friend class BoolDisplayNodeWidget;
 
 public:
 
