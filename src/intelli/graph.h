@@ -660,8 +660,6 @@ signals:
      */
     void childNodeDeleted(NodeId nodeId);
 
-    void childNodeInvalidated();
-
 protected:
 
     /// protected constructor
@@ -703,14 +701,6 @@ private:
     void updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const& ptr);
 
     void mergeUserVariables(Graph& other);
-
-private slots:
-
-    void onPortInserted(PortType type, PortIndex idx);
-
-    void onPortChanged(PortId portId);
-
-    void onPortDeleted(PortType type, PortIndex idx);
 };
 
 } // namespace intelli

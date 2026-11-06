@@ -301,137 +301,6 @@ struct Graph::Impl
         }
     }
 
-    static void onPortInserted(Node* root,
-                               AbstractGraphProvider* provider,
-                               PortType type,
-                               PortIndex idx,
-                               bool invert = false)
-    {
-        assert(root);
-        assert(!qobject_cast<DynamicNode*>(root) ||
-               static_cast<DynamicNode*>(root)->isDynamicPort(type, idx));
-        assert(provider);
-
-        if (!invert && type != provider->providerType()) return;
-
-        auto const makeError = [root, type, idx](){
-            return relativeNodePath(*root) + QStringLiteral(": ") +
-                   QObject::tr("Failed to add %3put port (%1/%2)!")
-                       .arg(toString(idx),
-                            toString(type),
-                            type == PortType::In ? "in":"out");
-        };
-
-        PortInfo* srcPort = root->port(root->portId(type, idx));
-        if (!srcPort)
-        {
-            gtError() << makeError() << QObject::tr("(Source port not found)");
-            return;
-        }
-
-        if (!provider)
-        {
-            gtError() << makeError() << QObject::tr("(provider not found)");
-            return;
-        }
-
-        PortId addedPortId = provider->addPort(*srcPort);
-        if (!addedPortId.isValid())
-        {
-            gtError() << makeError()
-                      << QObject::tr("(Adding port to provider failed)");
-            return;
-        }
-        assert(addedPortId == srcPort->id());
-    }
-
-    static void onPortChanged(Node* root,
-                              AbstractGraphProvider* provider,
-                              PortId portId,
-                              bool invert = false)
-    {
-        assert(portId.isValid());
-        assert(root);
-        assert(provider);
-
-        PortType type = root->portType(portId);
-        assert(type != PortType::NoType);
-        assert(!qobject_cast<DynamicNode*>(root) ||
-               static_cast<DynamicNode*>(root)->isDynamicPort(type, root->portIndex(type, portId)));
-
-        if (!invert && type != provider->providerType()) return;
-
-        auto const makeError = [root, type, portId](){
-            return relativeNodePath(*root) + QStringLiteral(": ") +
-                   QObject::tr("Failed to update %2put port (%1)!")
-                       .arg(toString(portId),
-                            type == PortType::In ? "in":"out");
-        };
-
-        PortInfo* srcPort = root->port(portId);
-        if (!srcPort)
-        {
-            gtError() << makeError() << QObject::tr("(Source port not found)");
-            return;
-        }
-
-        if (!provider)
-        {
-            gtError() << makeError() << QObject::tr("(provider not found)");
-            return;
-        }
-
-        PortInfo* port = provider->port(srcPort->id());
-        if (!port)
-        {
-            gtError() << makeError()
-                      << QObject::tr("(Updating port of provider failed)");
-            return;
-        }
-        port->assign(*srcPort);
-        emit provider->portChanged(port->id());
-    }
-
-    static void onPortDeleted(Node* root,
-                              AbstractGraphProvider* provider,
-                              PortType type,
-                              PortIndex idx,
-                              bool invert = false)
-    {
-        assert(root);
-        assert(provider);
-
-        if (!invert && type != provider->providerType()) return;
-
-        auto const makeError = [root, type, idx](){
-            return relativeNodePath(*root) + QStringLiteral(": ") +
-                   QObject::tr("Failed to delete %3put port (%1/%2)!")
-                       .arg(toString(idx),
-                            toString(type),
-                            type == PortType::In ? "in":"out");
-        };
-
-        auto portId = root->portId(type, idx);
-        if (!portId.isValid())
-        {
-            gtError() << makeError() << QObject::tr("(Source port not found)");
-            return;
-        }
-
-        if (!provider)
-        {
-            gtError() << makeError() << QObject::tr("(provider not found)");
-            return;
-        }
-
-        if (!provider->removePort(portId))
-        {
-            gtError() << makeError()
-                      << QObject::tr("(Removing port of provider failed)");
-            return;
-        }
-    }
-
     /// Functor to handle port deletion
     struct PortDeleted
     {
@@ -449,8 +318,8 @@ struct Graph::Impl
             if (port == invalid<PortId>())
             {
                 gtWarning() << tr("Failed to update connections of deleted "
-                                  "port %1 with %2 of node %3!")
-                                   .arg(port).arg(toString(type)).arg(nodeId);
+                                  "port (id: '%1') (%2) of node '%3'!")
+                                   .arg(port).arg(toString(type)).arg(relativeNodePath(*node));
                 return;
             }
 
@@ -490,8 +359,8 @@ struct Graph::Impl
             {
                 gtWarning() << utils::logId(*graph)
                             << tr("Failed to update connections of changed "
-                                  "portId %1 node %2!")
-                                   .arg(portId).arg(nodeId);
+                                  "port (id: '%1') of node '%2'!")
+                                   .arg(portId).arg(relativeNodePath(*node));
                 return;
             }
 

@@ -17,6 +17,10 @@
 namespace intelli
 {
 
+class NodePort;
+class Node;
+class AbstractGraphProvider;
+
 namespace utils
 {
 
@@ -119,6 +123,10 @@ inline auto makeReverseIterable(T& t)
 {
     return makeIterable(t.rbegin(), t.rend());
 }
+
+void synchronizePorts(Node& source,
+                      AbstractGraphProvider& target,
+                      std::function<NodePort(NodePort const&)> makePort = nullptr);
 
 template <typename Sender, typename SignalSender,
          typename Reciever, typename SignalReciever>

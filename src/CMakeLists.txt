@@ -209,6 +209,7 @@ add_gtlab_module(GTlabIntelliGraph MODULE_ID "IntelliGraph"
     intelli/nodedatafactory.cpp
     intelli/nodefactory.cpp
     intelli/package.cpp
+    intelli/utilities.cpp
     intelli/calculators/graphexeccalculator.cpp
     intelli/exec/detachedexecutor.cpp
     intelli/exec/dummynodedatamodel.cpp
