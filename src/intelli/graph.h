@@ -204,6 +204,12 @@ public:
     Graph const* rootGraph() const;
 
     /**
+     * @brief Returns true if this graph is the root graph
+     * @return Is root graph
+     */
+    bool isRootGraph() const;
+
+    /**
      * @brief Returns a list of all nodes in this graph
      * @return Nodes
      */

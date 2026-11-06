@@ -905,7 +905,7 @@ struct GraphExecutionModel::Impl
         nodes.erase(std::remove_if(nodes.begin(), nodes.end(), [&model](const auto& uuid) {
             auto item = findData(model, uuid, evaluteNodeError);
             assert(item);
-            return item.isEvaluated();
+            return !item || item.isEvaluated();
         }), nodes.end());
     }
 

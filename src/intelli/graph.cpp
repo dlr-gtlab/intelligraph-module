@@ -151,6 +151,12 @@ Graph::rootGraph() const
     return const_cast<Graph*>(this)->rootGraph();
 }
 
+bool
+Graph::isRootGraph() const
+{
+    return rootGraph() == this;
+}
+
 QList<Node*>
 Graph::nodes()
 {
@@ -1357,7 +1363,7 @@ Graph::eval()
         }
     }
 
-    auto future = executor->evaluateGraph(*this);
+    auto future = executor->evaluateNode(outputNode->uuid());
 
     future.then([this,
                  makeError,

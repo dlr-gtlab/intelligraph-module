@@ -350,11 +350,18 @@ GraphExecutionModel::isGraphEvaluated(Graph const& graph) const
 {
     if (isShuttingDown()) return false;
 
+    bool isRootGraph = graph.isRootGraph();
+    Node const* inputProvider = graph.inputProvider();
+    Node const* outputProvider = graph.outputProvider();
+
     auto const& nodes = graph.nodes();
     return std::all_of(nodes.begin(), nodes.end(),
-                       [this](Node const* node){
-       return isNodeEvaluated(node->uuid());
-    });
+                       [=](Node const* node){
+                           // providers of root graph may be ignored
+                           return (isRootGraph && (node == inputProvider ||
+                                                   node == outputProvider)) ||
+                                  isNodeEvaluated(node->uuid());
+                       });
 }
 
 bool
@@ -394,7 +401,7 @@ bool
 GraphExecutionModel::autoEvaluateGraph()
 {
     if (isShuttingDown()) return false;
-    return autoEvaluateGraph(this->graph());
+    return Impl::autoEvaluateGraph(*this, this->graph());
 }
 
 bool
@@ -402,23 +409,74 @@ GraphExecutionModel::autoEvaluateGraph(Graph& graph)
 {
     if (isShuttingDown()) return false;
 
-    assert(Impl::containsGraph(*this, graph));
+    if (&graph == &this->graph())
+    {
+        return Impl::autoEvaluateGraph(*this, graph);
+    }
 
-    return Impl::autoEvaluateGraph(*this, graph);
+    if (!Impl::containsGraph(*this, graph))
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot auto evaluate graph '%1': not part of this "
+                        "graph hierarchy!")
+                         .arg(graph.caption());
+        return false;
+    }
+
+    auto* model = accessExecModel(graph);
+    if (!model)
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot auto evaluate graph '%1': no execution model "
+                        "associated!")
+                         .arg(graph.caption());
+        return false;
+    }
+
+    return model->autoEvaluateGraph();
 }
 
 ExecFuture
 GraphExecutionModel::evaluateGraph()
 {
     if (isShuttingDown()) return ExecFuture{};
-    return evaluateGraph(this->graph());
+    return Impl::evaluateGraph(*this, this->graph());
 }
 
 ExecFuture
 GraphExecutionModel::evaluateGraph(Graph& graph)
 {
     if (isShuttingDown()) return ExecFuture{};
-    return Impl::evaluateGraph(*this, graph);
+
+    if (&graph == &this->graph())
+    {
+        return Impl::evaluateGraph(*this, graph);
+    }
+
+    if (!Impl::containsGraph(*this, graph))
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot evaluate graph '%1': not part of this graph "
+                        "hierarchy!")
+                         .arg(graph.caption());
+        return ExecFuture{};
+    }
+
+    auto* model = accessExecModel(graph);
+    if (!model)
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot evaluate graph '%1': no execution model "
+                        "associated!")
+                         .arg(graph.caption());
+        return ExecFuture{};
+    }
+
+    return model->evaluateGraph();
 }
 
 ExecFuture
@@ -432,15 +490,8 @@ void
 GraphExecutionModel::stopAutoEvaluatingGraph()
 {
     if (isShuttingDown()) return;
-    return stopAutoEvaluatingGraph(this->graph());
-}
 
-void
-GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
-{
-    if (isShuttingDown()) return;
-
-    assert(Impl::containsGraph(*this, graph));
+    Graph& graph = this->graph();
 
     utils::erase(impl()->autoEvaluatingGraphs, graph.uuid());
 
@@ -450,6 +501,41 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
     {
         Impl::evaluateNextInQueue(*this);
     }
+}
+
+void
+GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
+{
+    if (isShuttingDown()) return;
+
+    if (&graph == &this->graph())
+    {
+        stopAutoEvaluatingGraph();
+        return;
+    }
+
+    if (!Impl::containsGraph(*this, graph))
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot stop auto evaluating graph '%1': not part of "
+                        "this graph hierarchy!")
+                         .arg(graph.caption());
+        return;
+    }
+
+    auto* model = accessExecModel(graph);
+    if (!model)
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot stop auto evaluating graph '%1': no execution "
+                        "model associated!")
+                         .arg(graph.caption());
+        return;
+    }
+
+    model->stopAutoEvaluatingGraph();
 }
 
 bool
