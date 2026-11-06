@@ -85,13 +85,21 @@ public:
     }
 
     /**
-     * @brief Retruns true if a port is considered dynamic (i.e. was added at
-     * runtime and may be deleted by the user)
+     * @brief Retruns true if the port is considered dynamic (i.e. was added at
+     * runtime and may be deleted programmatically)
      * @param type Port type
      * @param idx Port Index to check
      * @return Is port dynamic
      */
     bool isDynamicPort(PortType type, PortIndex idx) const;
+
+    /**
+     * @brief Retruns true if the port is considered dynamic (i.e. was added at
+     * runtime and may be deleted programmatically)
+     * @param portId Port id
+     * @return Is port dynamic
+     */
+    bool isDynamicPort(PortId portId) const;
 
     /**
      * @brief Appends a dynamic/user input port. User ports are saved

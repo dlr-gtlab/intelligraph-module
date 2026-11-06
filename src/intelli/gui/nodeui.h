@@ -56,7 +56,7 @@ public:
     /// function signature to check if deleter is applicable
     using EnableCustomDeleteFunctor = std::function<bool (Node const*)>;
 
-    /// enum contaning the order priorities for the default node actions.
+    /// enum denoting the order priorities for the default node actions.
     struct OrderPriority
     {
         enum Value : int

@@ -121,9 +121,6 @@ GraphExecutionModel::isShuttingDown() const
 GraphExecutionModel*
 GraphExecutionModel::accessExecModel(Graph& graph)
 {
-//    auto* root = graph.rootGraph();
-//    if (!root) return {};
-
     return graph.findDirectChild<GraphExecutionModel*>();
 }
 
@@ -831,23 +828,6 @@ GraphExecutionModel::onNodeAppended(Node* node)
     impl()->data.insert(nodeUuid, std::move(entry));
 
     exec::setNodeDataInterface(*node, this);
-
-//    // append subgraph recursively
-//    if (auto* subgraph = qobject_cast<Graph*>(node))
-//    {
-//        // avoid auto evaluating nodes if graph has not been appended fully
-//        impl()->modificationCount++;
-//        auto finally = gt::finally([this](){ impl()->modificationCount--; });
-//        Q_UNUSED(finally);
-
-//        setupConnections(*subgraph);
-
-//        auto const& nodes = subgraph->nodes();
-//        for (auto* n : nodes)
-//        {
-//            onNodeAppended(n);
-//        }
-//    }
 
     // setup connections
     auto autoEvaluate = [this](NodeUuid const& nodeUuid){

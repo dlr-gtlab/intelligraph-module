@@ -10,8 +10,8 @@
 #include "intelli/graph.h"
 #include "intelli/graphdatamodel.h"
 #include "intelli/graphexecmodel.h"
-//#include "intelli/graphexecutor.h"
 #include "intelli/graphuservariables.h"
+#include "intelli/utilities.h"
 #include "intelli/private/graph_impl.h"
 
 #include "intelli/connection.h"
@@ -63,7 +63,7 @@ Graph::Graph(QString const& modelName, bool initProviders) :
         input->setUserHidden(!gtApp || !gtApp->devMode());
         input->setUserHidden(true);
         input->setId(nextId++);
-        synchronizePorts(*input);
+        utils::synchronizePorts(*this, *input);
         auto inputProvider = appendNode(std::move(input), NodeIdPolicy::Keep);
         
         auto output = std::make_unique<GraphOutputProvider>();
@@ -71,15 +71,16 @@ Graph::Graph(QString const& modelName, bool initProviders) :
         output->setUserHidden(!gtApp || !gtApp->devMode());
         output->setUserHidden(true);
         output->setId(nextId++);
-        synchronizePorts(*output);
+        utils::synchronizePorts(*this, *output);
         appendNode(std::move(output), NodeIdPolicy::Keep);
 
         // forward input data of graph to input provider
-        connect(this, &Node::inputDataRecieved, this, [this, inputProvider](PortId portId){
+        connect(this, &Node::inputDataRecieved,
+                this, [this, inputProvider](PortId portId){
+            assert(!portId.isValid() || portType(portId) == PortType::In);
+
             Graph* parent = parentGraph();
             if (!parent) return;
-
-            if (portType(portId) != PortType::In) return;
 
             auto* dataInterface = exec::nodeDataInterface(*inputProvider);
             if (!dataInterface) return;
@@ -88,7 +89,9 @@ Graph::Graph(QString const& modelName, bool initProviders) :
             {
                 for (auto const& port : ports(PortType::In))
                 {
-                    dataInterface->setNodeData(inputProvider->uuid(), port.id(), nodeData(port.id()));
+                    dataInterface->setNodeData(
+                        inputProvider->uuid(), port.id(), nodeData(port.id())
+                    );
                 }
                 return;
             }
@@ -307,6 +310,7 @@ Graph::findNode(NodeId nodeId)
             << utils::logIds(this)
             << "::findNode(" << nodeId << ")\n"
             << "-> node not found";
+        assert(iter->node);
         return nullptr;
     }
     if (iter->node->id() != nodeId)
@@ -327,7 +331,7 @@ Graph::findNode(NodeId nodeId)
             << "::findNode(" << nodeId << ")\n"
             << "-> found node: " << utils::logIds(iter->node) << "\n"
             << "-> invalid parent: " << utils::logIds(static_cast<Node*>(accessGraph(*iter->node)));
-        assert(iter->node->id() == nodeId);
+        assert(iter->node->parent() == this);
     }
 
     return iter->node;
@@ -457,8 +461,23 @@ Graph::clearGraph()
     auto* guiData = findDirectChild<GuiData*>();
     if (guiData) guiData->clearData();
 
-    // connections should be removed automatically
-    qDeleteAll(nodes());
+    // remove all but the providers
+    // -> connections should be removed automatically
+    auto nodes = this->nodes();
+    nodes.removeOne(inputProvider());
+    nodes.removeOne(outputProvider());
+    qDeleteAll(nodes);
+
+    // remove all input and output ports
+    auto inPorts = ports(PortType::In);
+    auto outPorts = ports(PortType::Out);
+
+    auto remove = [this](NodePort const& port){
+        if (isDynamicPort(port.id())) removePort(port.id());
+    };
+
+    std::for_each(inPorts.cbegin(), inPorts.cend(), remove);
+    std::for_each(outPorts.cbegin(), outPorts.cend(), remove);
 }
 
 PortId
@@ -1440,94 +1459,6 @@ Graph::updateGlobalConnectionModel(std::shared_ptr<GlobalConnectionModel> const&
     for (Graph* subgraph : graphNodes())
     {
         subgraph->updateGlobalConnectionModel(ptr);
-    }
-}
-
-void
-Graph::synchronizePorts(AbstractGraphProvider& provider)
-{
-    connect(this, &Node::portInserted,
-            &provider, std::bind(Impl::onPortInserted,
-                                 this,
-                                 &provider,
-                                 std::placeholders::_1,   // type
-                                 std::placeholders::_2, false),  // idx
-            Qt::DirectConnection);
-    connect(this, &Node::portChanged,
-            &provider, std::bind(Impl::onPortChanged,
-                                 this,
-                                 &provider,
-                                 std::placeholders::_1, false),  // portId
-            Qt::DirectConnection);
-    connect(this, &Node::portAboutToBeDeleted,
-            &provider, std::bind(Impl::onPortDeleted,
-                                 this,
-                                 &provider,
-                                 std::placeholders::_1,   // type
-                                 std::placeholders::_2, false),  // idx
-            Qt::DirectConnection);
-}
-
-void
-Graph::synchronizePorts(Node& source, AbstractGraphProvider& target)
-{
-    connect(&source, &Node::portInserted,
-            &target, [&source, &target](PortType type, PortIndex idx){
-                Impl::onPortInserted(&source, &target, (type), idx, true);
-            }, Qt::DirectConnection);
-    connect(&source, &Node::portChanged,
-            &target, [&source, &target](PortId portId){
-                Impl::onPortChanged(&source, &target, portId, true);
-            }, Qt::DirectConnection);
-    connect(&source, &Node::portAboutToBeDeleted,
-            &target, [&source, &target](PortType type, PortIndex idx){
-                Impl::onPortDeleted(&source, &target, (type), idx, true);
-            }, Qt::DirectConnection);
-}
-
-void
-Graph::onPortInserted(PortType type, PortIndex idx)
-{
-    auto cmd = modify();
-    Q_UNUSED(cmd);
-    if (type == PortType::In)
-    {
-        Impl::onPortInserted(this, inputProvider(), type, idx);
-    }
-    else
-    {
-        Impl::onPortInserted(this, outputProvider(), type, idx);
-    }
-}
-
-void
-Graph::onPortChanged(PortId portId)
-{
-    auto cmd = modify();
-    Q_UNUSED(cmd);
-    PortType type = portType(portId);
-    if (type == PortType::In)
-    {
-        Impl::onPortChanged(this, inputProvider(), portId);
-    }
-    else
-    {
-        Impl::onPortChanged(this, outputProvider(), portId);
-    }
-}
-
-void
-Graph::onPortDeleted(PortType type, PortIndex idx)
-{
-    auto cmd = modify();
-    Q_UNUSED(cmd);
-    if (type == PortType::In)
-    {
-        Impl::onPortDeleted(this, inputProvider(), type, idx);
-    }
-    else
-    {
-        Impl::onPortDeleted(this, outputProvider(), type, idx);
     }
 }
 

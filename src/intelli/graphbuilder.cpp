@@ -54,14 +54,10 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
     auto graph = std::make_unique<Graph>();
     if (!graphUuid.isEmpty()) graph->setUuid(graphUuid);
 
-    // custom uuids for input and utput provider
-    auto inputPtr  = std::make_unique<GraphInputProvider>();
-    auto outputPtr = std::make_unique<GraphOutputProvider>();
-    if (!inNodeUuid.isEmpty()) inputPtr->setUuid(inNodeUuid);
-    if (!outNodeUuid.isEmpty()) outputPtr->setUuid(outNodeUuid);
-    
-    GraphInputProvider* input   = graph->appendNode(std::move(inputPtr));
-    GraphOutputProvider* output = graph->appendNode(std::move(outputPtr));
+    graph->initInputOutputProviders();
+
+    GraphInputProvider* input   = graph->inputProvider();
+    GraphOutputProvider* output = graph->outputProvider();
 
     if (!input || !output)
     {
@@ -73,14 +69,20 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
         };
     }
 
+    // custom uuids for input and output provider
+    if (!inNodeUuid.isEmpty()) input->setUuid(inNodeUuid);
+    if (!outNodeUuid.isEmpty()) output->setUuid(outNodeUuid);
+
+    if (!inNodeUuid.isEmpty() && !outNodeUuid.isEmpty()) graph->resetGlobalConnectionModel();
+
     auto success = true;
     for (auto& port : inPorts)
     {
-        success &= input->insertPort(std::move(port)).isValid();
+        success &= graph->addInPort(std::move(port)).isValid();
     }
     for (auto& port : outPorts)
     {
-        success &= output->insertPort(std::move(port)).isValid();
+        success &= graph->addOutPort(std::move(port)).isValid();
     }
 
     if (!success)

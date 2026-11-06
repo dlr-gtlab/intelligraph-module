@@ -212,7 +212,17 @@ DynamicNode::offset(PortType type) const
 bool
 DynamicNode::isDynamicPort(PortType type, PortIndex idx) const
 {
-    return static_cast<int>(idx) >= offset(type);
+    return static_cast<int>(idx) >= offset(type) && ports(type).size() > idx;
+}
+
+bool
+DynamicNode::isDynamicPort(PortId portId) const
+{
+    PortType type = portType(portId);
+    if (type == PortType::NoType) return false;
+
+    PortIndex idx = portIndex(type, portId);
+    return idx.isValid() && isDynamicPort(type, idx);
 }
 
 PortId
