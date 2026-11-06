@@ -244,23 +244,31 @@ TEST(GraphExecutionModel, evaluate_graph_with_single_layer)
     Graph* subgraph = graph.graphNodes().at(0);
     ASSERT_TRUE(subgraph);
 
+    GraphExecutionModel submodel(*subgraph);
+
     debug(graph);
     debug(model);
 
     // all nodes should be outdated
     EXPECT_TRUE(test::compareNodeEvalState(
         graph, model, {
-            A_uuid, B_uuid, D_uuid, E_uuid,
-            group_uuid, group_input_uuid, group_output_uuid,
+            A_uuid, B_uuid, D_uuid, E_uuid, group_uuid
+        }, NodeEvalState::Outdated));
+    EXPECT_TRUE(test::compareNodeEvalState(
+        graph, submodel, {
+            group_input_uuid, group_output_uuid,
             group_A_uuid, group_B_uuid, group_C_uuid, group_D_uuid
         }, NodeEvalState::Outdated));
 
     // all ports should be outdated and have no data associated
     EXPECT_TRUE(test::comparePortData(
         graph, model, {
-            A_uuid, B_uuid, D_uuid, E_uuid,
-             group_uuid, group_input_uuid, group_output_uuid,
-             group_A_uuid, group_B_uuid, group_C_uuid, group_D_uuid
+            A_uuid, B_uuid, D_uuid, E_uuid, group_uuid
+        }, PortDataState::Outdated, {nullptr}));
+    EXPECT_TRUE(test::comparePortData(
+        graph, submodel, {
+            group_input_uuid, group_output_uuid,
+            group_A_uuid, group_B_uuid, group_C_uuid, group_D_uuid
         }, PortDataState::Outdated, {nullptr}));
 
     gtTrace() << "Evaluate root graph...";
@@ -277,20 +285,24 @@ TEST(GraphExecutionModel, evaluate_graph_with_single_layer)
 
     EXPECT_TRUE(test::compareNodeEvalState(
         graph, model, {
+            // all nodes in the root graph have been evaluated
             {group_uuid, NodeEvalState::Valid},
+            {A_uuid, NodeEvalState::Valid},
+            {B_uuid, NodeEvalState::Valid},
+            {D_uuid, NodeEvalState::Valid},
+            {E_uuid, NodeEvalState::Valid},
+        }));
+
+    EXPECT_TRUE(test::compareNodeEvalState(
+        graph, submodel, {
             {group_input_uuid, NodeEvalState::Valid},
             {group_output_uuid, NodeEvalState::Valid},
             {group_A_uuid, NodeEvalState::Valid},
             {group_B_uuid, NodeEvalState::Valid},
             {group_C_uuid, NodeEvalState::Valid},
-            // all nodes in the root graph have been evaluated
-            {A_uuid, NodeEvalState::Valid},
-            {B_uuid, NodeEvalState::Valid},
-            {D_uuid, NodeEvalState::Valid},
-            {E_uuid, NodeEvalState::Valid},
             // nodes in subgraph that are not required are not evaluated
             {group_D_uuid, NodeEvalState::Outdated},
-        }));
+         }));
 
     constexpr double EXPECTED_VALUE_A = 26.0;
     constexpr double EXPECTED_VALUE_B =  8.0;
@@ -307,91 +319,105 @@ TEST(GraphExecutionModel, evaluate_graph_with_single_layer)
             // graphs inputs are correct
             {group_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_A},
             {group_uuid, PortType::In , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE_B},
-            {group_input_uuid, PortType::Out , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_A},
-            {group_input_uuid, PortType::Out , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE_B},
             // graph outputs are correct
             {group_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_C},
             {group_uuid, PortType::Out, PortIndex(1), PortDataState::Valid, {}}, // TODO: should this data be considered valid?
-            {group_output_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_C},
-            {group_output_uuid, PortType::In , PortIndex(1), PortDataState::Outdated, {}},
             // D was evaluated correctly
             {D_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_C},
             {D_uuid, PortType::In , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE_B},
             {D_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_D}
         }));
 
+    EXPECT_TRUE(test::comparePortData<double>(
+        graph, submodel, {
+            // graphs inputs are correct
+            {group_input_uuid, PortType::Out , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_A},
+            {group_input_uuid, PortType::Out , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE_B},
+            // graph outputs are correct
+            {group_output_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_C},
+            {group_output_uuid, PortType::In , PortIndex(1), PortDataState::Outdated, {}},
+        }));
+
     gtTrace() << "Reset...";
 
     model.reset();
 
-    // all nodes should be outdated
+    // resetting the root model only resets the nodes of its associated graph
     EXPECT_TRUE(test::compareNodeEvalState(
         graph, model, {
-            A_uuid, B_uuid, D_uuid, E_uuid,
-            group_uuid, group_input_uuid, group_output_uuid,
-            group_A_uuid, group_B_uuid, group_C_uuid, group_D_uuid
+            A_uuid, B_uuid, D_uuid, E_uuid, group_uuid
         }, NodeEvalState::Outdated));
+    // the subgraph is managed by its own exec model -> NOT reset, still valid
+    EXPECT_TRUE(test::compareNodeEvalState(
+        graph, submodel, {
+            group_input_uuid, group_output_uuid,
+            group_A_uuid, group_B_uuid, group_C_uuid,
+        }, NodeEvalState::Valid));
+    EXPECT_TRUE(test::compareNodeEvalState(
+        graph, submodel, { group_D_uuid }, NodeEvalState::Outdated));
 
-    // all ports should be outdated and have no data associated
+    // root graph ports should be outdated and have no data associated
     EXPECT_TRUE(test::comparePortData(
         graph, model, {
-            A_uuid, B_uuid, D_uuid, E_uuid,
-            group_uuid, group_input_uuid, group_output_uuid,
-            group_A_uuid, group_B_uuid, group_C_uuid, group_D_uuid
+            A_uuid, B_uuid, D_uuid, E_uuid, group_uuid
         }, PortDataState::Outdated, {nullptr}));
+    // subgraph ports are untouched (still valid)
+    EXPECT_TRUE(test::comparePortData<double>(
+        graph, submodel, {
+            {group_input_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_A},
+            {group_input_uuid, PortType::Out, PortIndex(1), PortDataState::Valid, EXPECTED_VALUE_B},
+            {group_output_uuid, PortType::In, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_C},
+            {group_output_uuid, PortType::In, PortIndex(1), PortDataState::Outdated, {}},
+        }));
 
     debug(model);
 
     gtTrace() << "Evaluate subgraph only...";
 
-    future = model.evaluateGraph(*subgraph);
+    // evaluate the subgraph via its own exec model (per-graph model)
+    future = submodel.evaluateGraph();
     EXPECT_TRUE(future.startedSuccessfully());
     EXPECT_TRUE(future.wait(maxTimeout));
 
-    debug(model);
+    debug(submodel);
 
     gtTrace() << "Validate results of sub graph...";
 
-    EXPECT_TRUE(model.isGraphEvaluated(*subgraph));
+    EXPECT_TRUE(submodel.isGraphEvaluated());
 
+    // root model is independent -> all nodes are still outdated
     EXPECT_TRUE(test::compareNodeEvalState(
         graph, model, {
+            {group_uuid, NodeEvalState::Outdated},
+            {A_uuid, NodeEvalState::Outdated},
+            {B_uuid, NodeEvalState::Outdated},
+            {D_uuid, NodeEvalState::Outdated},
+            {E_uuid, NodeEvalState::Outdated},
+        }));
+    EXPECT_TRUE(test::compareNodeEvalState(
+        graph, submodel, {
             // all nodes in the subgraph are evaluated
-            {group_uuid, NodeEvalState::Valid},
             {group_input_uuid, NodeEvalState::Valid},
             {group_output_uuid, NodeEvalState::Valid},
             {group_A_uuid, NodeEvalState::Valid},
             {group_B_uuid, NodeEvalState::Valid},
             {group_C_uuid, NodeEvalState::Valid},
             {group_D_uuid, NodeEvalState::Valid},
-            // only successors are evaluated
-            {A_uuid, NodeEvalState::Valid},
-            {B_uuid, NodeEvalState::Valid},
-            {D_uuid, NodeEvalState::Outdated},
-            {E_uuid, NodeEvalState::Outdated},
         }));
 
-    EXPECT_TRUE(test::comparePortData<double>(
+    // root model ports are still outdated (untouched by the subgraph eval)
+    EXPECT_TRUE(test::comparePortData(
         graph, model, {
-            // A was evaluated and has the expected value
-            {A_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_A},
-            // B is connected to E, both should share the same value
-            {B_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_B},
-            {E_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_B},
+            A_uuid, B_uuid, D_uuid, E_uuid, group_uuid
+        }, PortDataState::Outdated, {nullptr}));
+    EXPECT_TRUE(test::comparePortData<double>(
+        graph, submodel, {
             // graphs inputs are correct
-            {group_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_A},
-            {group_uuid, PortType::In , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE_B},
             {group_input_uuid, PortType::Out , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_A},
             {group_input_uuid, PortType::Out , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE_B},
             // graph outputs are correct
-            {group_uuid, PortType::Out, PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_C},
-            {group_uuid, PortType::Out, PortIndex(1), PortDataState::Valid, {}}, // TODO: should this data be considered valid?
             {group_output_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_C},
             {group_output_uuid, PortType::In , PortIndex(1), PortDataState::Outdated, {}},
-            // D was not evaluated
-            {D_uuid, PortType::In , PortIndex(0), PortDataState::Valid, EXPECTED_VALUE_C},
-            {D_uuid, PortType::In , PortIndex(1), PortDataState::Valid, EXPECTED_VALUE_B},
-            {D_uuid, PortType::Out, PortIndex(0), PortDataState::Outdated, {}}
         }));
 }
 

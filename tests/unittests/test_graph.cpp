@@ -33,10 +33,14 @@ TEST(Graph, root_graph)
     auto rootGraphPtr = std::make_unique<Graph>();
     Graph* rootGraph = rootGraphPtr.get();
     EXPECT_EQ(rootGraph->rootGraph(), rootGraph);
+    EXPECT_TRUE(rootGraph->isRootGraph());
 
     auto subgraphPtr = std::make_unique<Graph>();
     Graph* subgraph = subgraphPtr.get();
     rootGraph->appendNode(std::move(subgraphPtr));
+
+    EXPECT_TRUE(rootGraph->isRootGraph());
+    EXPECT_FALSE(subgraph->isRootGraph());
 
     EXPECT_EQ(rootGraph->rootGraph(), rootGraph);
     EXPECT_EQ(subgraph->rootGraph(), rootGraph);
@@ -47,6 +51,9 @@ TEST(Graph, root_graph)
     rootGraphPtr.release(); // root now owns rootGraph
     EXPECT_EQ(rootGraph->rootGraph(), rootGraph);
     EXPECT_EQ(subgraph->rootGraph(), rootGraph);
+
+    EXPECT_TRUE(rootGraph->isRootGraph());
+    EXPECT_FALSE(subgraph->isRootGraph());
 }
 
 /// Clearing a graph causes all nodes and connections to be removed except
