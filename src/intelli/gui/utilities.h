@@ -19,6 +19,7 @@ class QWidget;
 
 namespace intelli
 {
+
 namespace utils
 {
 

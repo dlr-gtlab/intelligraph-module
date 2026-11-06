@@ -147,7 +147,12 @@ public:
      * @brief Starts the auto evaluation of the given graph node.
      * Use this method to keep the nodes of the given graph up-to-date.
      * @return Whether the auto evaluation could be started successfully.
+     * @deprecated Retrieve the exec model of the target graph via
+     * `GraphExecutionModel::accessExecModel(graph)` and call the no-argument
+     * overload on it instead. Each graph is now managed by its own exec model.
      */
+    [[deprecated("call autoEvaluateGraph() on the exec model of the target "
+                 "graph (see GraphExecutionModel::accessExecModel)")]]
     bool autoEvaluateGraph(Graph& graph);
 
     /**
@@ -164,8 +169,13 @@ public:
      * Any inactive node is also evalauted. Use this method to evaluate the
      * nodes of the associated graph exactly once.
      * @return Future object
+     * @deprecated Retrieve the exec model of the target graph via
+     * `GraphExecutionModel::accessExecModel(graph)` and call the no-argument
+     * overload on it instead. Each graph is now managed by its own exec model.
      */
     GT_NO_DISCARD
+    [[deprecated("call evaluateGraph() on the exec model of the target "
+                 "graph (see GraphExecutionModel::accessExecModel)")]]
     ExecFuture evaluateGraph(Graph& graph);
     /**
      * @brief Starts the evaluation of the given node including all
@@ -183,7 +193,12 @@ public:
     void stopAutoEvaluatingGraph();
     /**
      * @brief Stops the auto evaluation of the given graph.
+     * @deprecated Retrieve the exec model of the target graph via
+     * `GraphExecutionModel::accessExecModel(graph)` and call the no-argument
+     * overload on it instead. Each graph is now managed by its own exec model.
      */
+    [[deprecated("call stopAutoEvaluatingGraph() on the exec model of the "
+                 "target graph (see GraphExecutionModel::accessExecModel)")]]
     void stopAutoEvaluatingGraph(Graph& graph);
 
     /**
@@ -366,6 +381,9 @@ private:
     struct Impl;
     std::unique_ptr<Impl> pimpl;
     std::atomic_bool m_isShuttingDown{false};
+
+    Impl* impl();
+    Impl const* impl() const;
 
     void beginReset();
 

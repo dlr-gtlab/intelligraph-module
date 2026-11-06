@@ -31,7 +31,7 @@ public:
     ~DynamicNode();
 
     /// Option for the node creation.
-    enum Option : size_t
+    enum DynamicNodeOption : unsigned
     {
         /// no ports can be added dynamically. Ports are not saved persistently.
         NoDynamicPorts = 0,
@@ -52,8 +52,14 @@ public:
         /// input and output ports may only be added programmatically
         /// (no UI action for adding/deleting port is added by default)
         NoUserDynamicInputAndOutput = NoUserDynamicInput | NoUserDynamicOutput,
-        NoDefaultListTypes = 1 << 5
+
+        NoDefaultListTypes = 1 << 5,
+
+        ListTypesOnly = 1 << 6
     };
+
+    using Option [[deprecated("Use `DynamicNodeOption` instead")]] = DynamicNodeOption;
+    using DynamicNodeOptions = UFlags<DynamicNodeOption>;
 
     /**
      * @brief Returns the whitelist used for the input ports
@@ -68,19 +74,32 @@ public:
     QStringList const& outputWhitelist() const;
 
     /**
-     * @brief Getter for the node option used
+     * @brief Getter for the dynamic node options used
      * @return
      */
-    size_t dynamicNodeOption() const;
+    DynamicNodeOptions dynamicNodeOptions() const;
+    [[deprecated("Use `dynamicNodeOptions()` instead")]]
+    DynamicNodeOptions dynamicNodeOption() const
+    {
+        return dynamicNodeOptions();
+    }
 
     /**
-     * @brief Retruns true if a port is considered dynamic (i.e. was added at
-     * runtime and may be deleted by the user)
+     * @brief Retruns true if the port is considered dynamic (i.e. was added at
+     * runtime and may be deleted programmatically)
      * @param type Port type
      * @param idx Port Index to check
      * @return Is port dynamic
      */
     bool isDynamicPort(PortType type, PortIndex idx) const;
+
+    /**
+     * @brief Retruns true if the port is considered dynamic (i.e. was added at
+     * runtime and may be deleted programmatically)
+     * @param portId Port id
+     * @return Is port dynamic
+     */
+    bool isDynamicPort(PortId portId) const;
 
     /**
      * @brief Appends a dynamic/user input port. User ports are saved
@@ -126,7 +145,7 @@ public:
 
 protected:
 
-    enum PortOption
+    enum PortOption : uint8_t
     {
         StaticPort = 0,
         DynamicPort,
@@ -140,13 +159,13 @@ protected:
      * @param parent Parent object
      */
     DynamicNode(QString const& modelName,
-                size_t option = DynamicInputAndOutput,
+                DynamicNodeOptions options = DynamicInputAndOutput,
                 GtObject* parent = nullptr);
 
     DynamicNode(QString const& modelName,
                 QStringList inputWhiteList,
                 QStringList outputWhiteList,
-                size_t option = DynamicInputAndOutput,
+                DynamicNodeOptions options = DynamicInputAndOutput,
                 GtObject* parent = nullptr);
 
     /**

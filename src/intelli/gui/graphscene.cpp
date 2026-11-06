@@ -16,8 +16,8 @@
 #include <intelli/nodefactory.h>
 #include <intelli/nodedatafactory.h>
 #include <intelli/utilities.h>
-#include <intelli/node/groupinputprovider.h>
-#include <intelli/node/groupoutputprovider.h>
+#include <intelli/node/graphinputprovider.h>
+#include <intelli/node/graphoutputprovider.h>
 #include <intelli/gui/commentgroup.h>
 #include <intelli/gui/commentdata.h>
 #include <intelli/gui/guidata.h>
@@ -894,7 +894,7 @@ GraphScene::deleteSelectedObjects()
         });
     };
 
-    /// create popus for certain objects to notify that these are not deletable
+    /// create pop-ups for certain objects to notify that these are not deletable
     auto const createPopups = [](auto begin,
                                  auto end,
                                  GraphScene* scene,
@@ -1184,7 +1184,7 @@ GraphScene::onObjectContextMenu(InteractableGraphicsObject* object)
 
     bool areNodesSelected = !selectedNodes.empty();
     Node* selectedNode = areNodesSelected ? &selectedNodes.front()->node() : nullptr;
-    Graph* selectedGraphNode = NodeUI::toGraph(selectedNode);
+    Graph* selectedGraphNode = qobject_cast<Graph*>(selectedNode);
 
     bool allDeletable = std::all_of(selectedNodes.begin(),
                                     selectedNodes.end(),
@@ -1361,6 +1361,8 @@ GraphScene::onNodeAppended(Node* node)
     connect(entity, &NodeGraphicsObject::makeDraftConnection,
             this, &GraphScene::onMakeDraftConnection,
             Qt::DirectConnection);
+
+    if (node->isUserHidden()) entity->hide();
 
     auto* ptr = entity.get();
 

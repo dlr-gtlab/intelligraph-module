@@ -12,8 +12,8 @@
 #include <intelli/graphuservariables.h>
 #include <intelli/exec/detachedexecutor.h>
 #include <intelli/private/graphexecmodel_impl.h>
-#include <intelli/node/groupoutputprovider.h>
-#include <intelli/node/groupinputprovider.h>
+#include <intelli/node/graphoutputprovider.h>
+#include <intelli/node/graphinputprovider.h>
 
 #include <intelli/connection.h>
 
@@ -26,16 +26,7 @@ using namespace intelli;
 GraphExecutionModel::GraphExecutionModel(Graph& graph) :
     pimpl(std::make_unique<Impl>(graph))
 {
-    if (gtApp) pimpl->scope = gtApp->currentProject();
-
-    if (graph.parentGraph())
-    {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("graph %1 is not a root graph!")
-                         .arg(graph.objectName());
-        pimpl->modificationCount++; // deactivate this exec model
-    }
+    if (gtApp) impl()->scope = gtApp->currentProject();
 
     if (auto* exec = graph.findDirectChild<GraphExecutionModel*>())
     if (exec != this)
@@ -57,7 +48,7 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
 
     // trigger evalaution of nodes that are potentially waiting for evaluation
     connect(this, &GraphExecutionModel::wakeup, this, [this](){
-        if (pimpl->queuedNodes.empty()) return;
+        if (impl()->queuedNodes.empty()) return;
         Impl::evaluateNextInQueue(*this);
     }, Qt::QueuedConnection);
 
@@ -115,6 +106,12 @@ GraphExecutionModel::~GraphExecutionModel()
     shutdown();
 }
 
+GraphExecutionModel::Impl*
+GraphExecutionModel::impl() { return pimpl.get(); }
+
+GraphExecutionModel::Impl const*
+GraphExecutionModel::impl() const { return pimpl.get(); }
+
 bool
 GraphExecutionModel::isShuttingDown() const
 {
@@ -124,10 +121,7 @@ GraphExecutionModel::isShuttingDown() const
 GraphExecutionModel*
 GraphExecutionModel::accessExecModel(Graph& graph)
 {
-    auto* root = graph.rootGraph();
-    if (!root) return {};
-
-    return root->findDirectChild<GraphExecutionModel*>();
+    return graph.findDirectChild<GraphExecutionModel*>();
 }
 
 GraphExecutionModel const*
@@ -139,13 +133,10 @@ GraphExecutionModel::accessExecModel(const Graph& graph)
 GraphExecutionModel*
 GraphExecutionModel::make(Graph& graph)
 {
-    auto* root = &graph;
-    assert(root);
-
-    auto* model = accessExecModel(*root);
+    auto* model = accessExecModel(graph);
     if (!model)
     {
-        model = new GraphExecutionModel(*root);
+        model = new GraphExecutionModel(graph);
     }
     return model;
 }
@@ -153,8 +144,8 @@ GraphExecutionModel::make(Graph& graph)
 Graph&
 GraphExecutionModel::graph()
 {
-    assert(pimpl->graph);
-    return *pimpl->graph;
+    assert(impl()->graph);
+    return *impl()->graph;
 }
 
 Graph const&
@@ -229,41 +220,47 @@ void GraphExecutionModel::shutdown()
     return;
 }
 
-
 void
 GraphExecutionModel::reset()
 {
+    INTELLI_LOG(*this)
+        << tr("BEGIN RESET");
+
     beginModification();
 
     beginReset();
     endReset();
 
     endModification();
+
+    INTELLI_LOG(*this)
+        << tr("ENDED RESET");
 }
 
 void
 GraphExecutionModel::resetTargetNodes()
 {
-    pimpl->targetNodes.clear();
-    pimpl->pendingNodes.clear();
+    impl()->targetNodes.clear();
+    impl()->pendingNodes.clear();
 }
 
 void
 GraphExecutionModel::beginReset()
 {
-    pimpl->autoEvaluatingGraphs.clear();
+    if (!impl()->graph) return;
 
-    auto iter = pimpl->data.keyBegin();
-    auto end  = pimpl->data.keyEnd();
+    impl()->autoEvaluatingGraphs.clear();
+
+    auto iter = impl()->data.keyBegin();
+    auto end  = impl()->data.keyEnd();
     for (; iter != end; ++iter)
     {
-        auto& entry = *pimpl->data.find(*iter);
+        auto& entry = *impl()->data.find(*iter);
         entry.state = NodeEvalState::Outdated;
         for (auto& e : entry.portsIn ) e.data.state = PortDataState::Outdated;
         for (auto& e : entry.portsOut) e.data.state = PortDataState::Outdated;
 
-        if (pimpl->graph)
-        if (Node* node = pimpl->graph->findNodeByUuid(*iter))
+        if (Node* node = impl()->graph->findNodeByUuid(*iter))
         {
             exec::setNodeDataInterface(*node, nullptr);
         }
@@ -273,11 +270,11 @@ GraphExecutionModel::beginReset()
 void
 GraphExecutionModel::endReset()
 {
-    pimpl->targetNodes.clear();
-    pimpl->queuedNodes.clear();
-    pimpl->pendingNodes.clear();
-    pimpl->evaluatingNodes.clear();
-    pimpl->data.clear();
+    impl()->targetNodes.clear();
+    impl()->queuedNodes.clear();
+    impl()->pendingNodes.clear();
+    impl()->evaluatingNodes.clear();
+    impl()->data.clear();
 
     Graph& graph = this->graph();
     setupConnections(graph);
@@ -294,23 +291,23 @@ GraphExecutionModel::beginModification()
 {
     INTELLI_LOG(*this)
         << tr("BEGIN MODIFICIATION...")
-        << pimpl->modificationCount;
+        << impl()->modificationCount;
 
-    assert(pimpl->modificationCount >= 0);
-    pimpl->modificationCount++;
+    assert(impl()->modificationCount >= 0);
+    impl()->modificationCount++;
 }
 
 void
 GraphExecutionModel::endModification()
 {
-    pimpl->modificationCount--;
-    assert(pimpl->modificationCount >= 0);
+    impl()->modificationCount--;
+    assert(impl()->modificationCount >= 0);
 
     INTELLI_LOG(*this)
         << tr("...END MODIFICATION")
-        << pimpl->modificationCount;
+        << impl()->modificationCount;
 
-    if (pimpl->modificationCount != 0) return;
+    if (impl()->modificationCount != 0) return;
 
     Impl::rescheduleTargetNodes(*this);
     Impl::rescheduleAutoEvaluatingNodes(*this);
@@ -320,7 +317,7 @@ GraphExecutionModel::endModification()
 bool
 GraphExecutionModel::isBeingModified() const
 {
-    return pimpl->modificationCount > 0;
+    return impl()->modificationCount > 0;
 }
 
 NodeEvalState
@@ -353,11 +350,18 @@ GraphExecutionModel::isGraphEvaluated(Graph const& graph) const
 {
     if (isShuttingDown()) return false;
 
+    bool isRootGraph = graph.isRootGraph();
+    Node const* inputProvider = graph.inputProvider();
+    Node const* outputProvider = graph.outputProvider();
+
     auto const& nodes = graph.nodes();
     return std::all_of(nodes.begin(), nodes.end(),
-                       [this](Node const* node){
-       return isNodeEvaluated(node->uuid());
-    });
+                       [=](Node const* node){
+                           // providers of root graph may be ignored
+                           return (isRootGraph && (node == inputProvider ||
+                                                   node == outputProvider)) ||
+                                  isNodeEvaluated(node->uuid());
+                       });
 }
 
 bool
@@ -365,15 +369,15 @@ GraphExecutionModel::isNodeEvaluated(NodeUuid const& nodeUuid) const
 {
     if (isShuttingDown()) return false;
 
-    auto iter = pimpl->data.find(nodeUuid);
-    return iter != pimpl->data.end() && iter->state == NodeEvalState::Valid;
+    auto iter = impl()->data.find(nodeUuid);
+    return iter != impl()->data.end() && iter->state == NodeEvalState::Valid;
 }
 
 bool
 GraphExecutionModel::isEvaluating() const
 {
     if (isShuttingDown()) return false;
-    return !pimpl->evaluatingNodes.empty() || pimpl->isEvaluatingQueue;
+    return !impl()->evaluatingNodes.empty() || impl()->isEvaluatingQueue;
 }
 
 bool
@@ -388,16 +392,16 @@ GraphExecutionModel::isAutoEvaluatingGraph(Graph const& graph) const
 {
     if (isShuttingDown()) return false;
 
-    return std::find(pimpl->autoEvaluatingGraphs.begin(),
-                     pimpl->autoEvaluatingGraphs.end(),
-                     graph.uuid()) != pimpl->autoEvaluatingGraphs.end();
+    return std::find(impl()->autoEvaluatingGraphs.begin(),
+                     impl()->autoEvaluatingGraphs.end(),
+                     graph.uuid()) != impl()->autoEvaluatingGraphs.end();
 }
 
 bool
 GraphExecutionModel::autoEvaluateGraph()
 {
     if (isShuttingDown()) return false;
-    return autoEvaluateGraph(this->graph());
+    return Impl::autoEvaluateGraph(*this, this->graph());
 }
 
 bool
@@ -405,23 +409,74 @@ GraphExecutionModel::autoEvaluateGraph(Graph& graph)
 {
     if (isShuttingDown()) return false;
 
-    assert(Impl::containsGraph(*this, graph));
+    if (&graph == &this->graph())
+    {
+        return Impl::autoEvaluateGraph(*this, graph);
+    }
 
-    return Impl::autoEvaluateGraph(*this, graph);
+    if (!Impl::containsGraph(*this, graph))
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot auto evaluate graph '%1': not part of this "
+                        "graph hierarchy!")
+                         .arg(graph.caption());
+        return false;
+    }
+
+    auto* model = accessExecModel(graph);
+    if (!model)
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot auto evaluate graph '%1': no execution model "
+                        "associated!")
+                         .arg(graph.caption());
+        return false;
+    }
+
+    return model->autoEvaluateGraph();
 }
 
 ExecFuture
 GraphExecutionModel::evaluateGraph()
 {
     if (isShuttingDown()) return ExecFuture{};
-    return evaluateGraph(this->graph());
+    return Impl::evaluateGraph(*this, this->graph());
 }
 
 ExecFuture
 GraphExecutionModel::evaluateGraph(Graph& graph)
 {
     if (isShuttingDown()) return ExecFuture{};
-    return Impl::evaluateGraph(*this, graph);
+
+    if (&graph == &this->graph())
+    {
+        return Impl::evaluateGraph(*this, graph);
+    }
+
+    if (!Impl::containsGraph(*this, graph))
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot evaluate graph '%1': not part of this graph "
+                        "hierarchy!")
+                         .arg(graph.caption());
+        return ExecFuture{};
+    }
+
+    auto* model = accessExecModel(graph);
+    if (!model)
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot evaluate graph '%1': no execution model "
+                        "associated!")
+                         .arg(graph.caption());
+        return ExecFuture{};
+    }
+
+    return model->evaluateGraph();
 }
 
 ExecFuture
@@ -435,17 +490,10 @@ void
 GraphExecutionModel::stopAutoEvaluatingGraph()
 {
     if (isShuttingDown()) return;
-    return stopAutoEvaluatingGraph(this->graph());
-}
 
-void
-GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
-{
-    if (isShuttingDown()) return;
+    Graph& graph = this->graph();
 
-    assert(Impl::containsGraph(*this, graph));
-
-    utils::erase(pimpl->autoEvaluatingGraphs, graph.uuid());
+    utils::erase(impl()->autoEvaluatingGraphs, graph.uuid());
 
     emit autoEvaluationChanged(&graph);
 
@@ -453,6 +501,41 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
     {
         Impl::evaluateNextInQueue(*this);
     }
+}
+
+void
+GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
+{
+    if (isShuttingDown()) return;
+
+    if (&graph == &this->graph())
+    {
+        stopAutoEvaluatingGraph();
+        return;
+    }
+
+    if (!Impl::containsGraph(*this, graph))
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot stop auto evaluating graph '%1': not part of "
+                        "this graph hierarchy!")
+                         .arg(graph.caption());
+        return;
+    }
+
+    auto* model = accessExecModel(graph);
+    if (!model)
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot stop auto evaluating graph '%1': no execution "
+                        "model associated!")
+                         .arg(graph.caption());
+        return;
+    }
+
+    model->stopAutoEvaluatingGraph();
 }
 
 bool
@@ -607,7 +690,7 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
 GraphDataModel const&
 GraphExecutionModel::data() const
 {
-    return pimpl->data;
+    return impl()->data;
 }
 
 GraphUserVariables const*
@@ -622,13 +705,13 @@ GraphExecutionModel::userVariables() const
 GtObject*
 GraphExecutionModel::scope()
 {
-    return pimpl->scope;
+    return impl()->scope;
 }
 
 void
 GraphExecutionModel::setScope(GtObject* scope)
 {
-    pimpl->scope = scope;
+    impl()->scope = scope;
 }
 
 void
@@ -647,7 +730,7 @@ GraphExecutionModel::nodeEvaluationStarted(NodeUuid const& nodeUuid)
         return;
     }
 
-    pimpl->evaluatingNodes.push_back(nodeUuid);
+    impl()->evaluatingNodes.push_back(nodeUuid);
 
     item->state = NodeEvalState::Evaluating;
     emit item.node->nodeEvalStateChanged();
@@ -662,7 +745,7 @@ GraphExecutionModel::nodeEvaluationFinished(NodeUuid const& nodeUuid)
 {
     if (isShuttingDown()) return;
 
-    utils::erase(pimpl->evaluatingNodes, nodeUuid);
+    utils::erase(impl()->evaluatingNodes, nodeUuid);
 
     // update synchronization entity
     Impl::s_sync.update(*this);
@@ -739,11 +822,26 @@ GraphExecutionModel::onNodeEvaluated(NodeUuid const& nodeUuid)
     }
 
     // remove from target nodes
-    utils::erase(pimpl->targetNodes, nodeUuid);
+    utils::erase(impl()->targetNodes, nodeUuid);
 
     if (item->state != NodeEvalState::Invalid)
     {
         constexpr Impl::SetDataFlags flags = Impl::DontTriggerEvaluation;
+
+        GraphExecutionModel* submodel{};
+        if (Graph* subgraph = qobject_cast<Graph*>(item.node))
+        {
+            submodel = accessExecModel(*subgraph);
+            submodel->beginModification();
+        }
+
+        auto cleanup = gt::finally([submodel](){
+            if (submodel)
+            {
+                submodel->endModification();
+            }
+        });
+        Q_UNUSED(cleanup);
 
         // node not failed -> mark outdated outputs as valid
         for (auto& port : item->portsOut)
@@ -751,7 +849,7 @@ GraphExecutionModel::onNodeEvaluated(NodeUuid const& nodeUuid)
             if (port.data.state == PortDataState::Outdated)
             {
                 port.data.state = PortDataState::Valid;
-                Impl::setNodeData(*this, item,port.portId, port.data, flags);
+                Impl::setNodeData(*this, item, port.portId, port.data, flags);
             }
         }
 
@@ -794,7 +892,7 @@ GraphExecutionModel::onNodeAppended(Node* node)
     assert(node->id() != invalid<NodeId>());
     assert(!nodeUuid.isEmpty());
 
-    if (pimpl->data.contains(nodeUuid))
+    if (impl()->data.contains(nodeUuid))
     {
         INTELLI_LOG_WARN(*this)
             << tr("Node %1 already appended!")
@@ -813,26 +911,9 @@ GraphExecutionModel::onNodeAppended(Node* node)
         << tr("Node %1 (%2) appended!")
                .arg(relativeNodePath(*node), nodeUuid);
 
-    pimpl->data.insert(nodeUuid, std::move(entry));
+    impl()->data.insert(nodeUuid, std::move(entry));
 
     exec::setNodeDataInterface(*node, this);
-
-    // append subgraph recursively
-    if (auto* subgraph = qobject_cast<Graph*>(node))
-    {
-        // avoid auto evaluating nodes if graph has not been appended fully
-        pimpl->modificationCount++;
-        auto finally = gt::finally([this](){ pimpl->modificationCount--; });
-        Q_UNUSED(finally);
-
-        setupConnections(*subgraph);
-
-        auto const& nodes = subgraph->nodes();
-        for (auto* n : nodes)
-        {
-            onNodeAppended(n);
-        }
-    }
 
     // setup connections
     auto autoEvaluate = [this](NodeUuid const& nodeUuid){
@@ -882,14 +963,14 @@ GraphExecutionModel::onNodeDeleted(Graph* graph, NodeId nodeId)
                .arg(relativeNodePath(*item.node))
                .arg(nodeId);
 
-    pimpl->data.erase(item.entry);
+    impl()->data.erase(item.entry);
 
     NodeUuid const& nodeUuid = item.node->uuid();
 
-    utils::erase(pimpl->targetNodes, nodeUuid);
-    utils::erase(pimpl->queuedNodes, nodeUuid);
-    utils::erase(pimpl->autoEvaluatingGraphs, nodeUuid);
-    if (utils::erase(pimpl->evaluatingNodes, nodeUuid))
+    utils::erase(impl()->targetNodes, nodeUuid);
+    utils::erase(impl()->queuedNodes, nodeUuid);
+    utils::erase(impl()->autoEvaluatingGraphs, nodeUuid);
+    if (utils::erase(impl()->evaluatingNodes, nodeUuid))
     {
         // update synchronization entity
         Impl::s_sync.update(*this);

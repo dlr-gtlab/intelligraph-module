@@ -24,19 +24,19 @@
 namespace intelli
 {
 
-constexpr NodeId A_id{0};
-constexpr NodeId B_id{1};
-constexpr NodeId C_id{2};
-constexpr NodeId D_id{3};
-constexpr NodeId E_id{4};
+constexpr NodeId A_id{8};
+constexpr NodeId B_id{9};
+constexpr NodeId C_id{10};
+constexpr NodeId D_id{11};
+constexpr NodeId E_id{12};
 
 constexpr NodeId group_id{C_id};
 constexpr NodeId group_input_id{0};
 constexpr NodeId group_output_id{1};
-constexpr NodeId group_A_id{2};
-constexpr NodeId group_B_id{3};
-constexpr NodeId group_C_id{4};
-constexpr NodeId group_D_id{5};
+constexpr NodeId group_A_id{8};
+constexpr NodeId group_B_id{9};
+constexpr NodeId group_C_id{10};
+constexpr NodeId group_D_id{11};
 
 static NodeUuid A_uuid = QStringLiteral("A-UUID");
 static NodeUuid B_uuid = QStringLiteral("B-UUID");
@@ -58,12 +58,12 @@ namespace test
 
 /** basic graph:
 
-  .---.          .---
-  | A |--26------|   |--42--.
-  '---'          | C |      |
-             .---|   |--O   |  .---.
+  .---.          .---.
+  | A |--26------| C |
+  '---'          |   |--34--.
+             .---| + |      |  .---.
              |   '---'      '--| D |
-  .---.      |                 |   |--50
+  .---.      |                 |   |--42
   | B |---8--+-----------------| + |
   '---'      |                 '---'
              |                 .---.
@@ -189,6 +189,52 @@ inline bool buildLinearGraph(Graph& graph)
 
     return true;
 }
+
+class LinearGraph
+{
+public:
+
+    LinearGraph()
+    {
+        intelli::GraphBuilder builder{graph};
+        intelli::Node& A = builder.addNode("intelli::IntInputNode");
+        intelli::Node& B = builder.addNode("intelli::NumberMathNode");
+        intelli::Node& C = builder.addNode("intelli::NumberMathNode");
+        intelli::Node& D = builder.addNode("intelli::NumberDisplayNode");
+
+        intelli::setNodeProperty(A, "value", 42);
+        setNodeProperty(B, QStringLiteral("operation"), QStringLiteral("Plus"));
+        setNodeProperty(C, QStringLiteral("operation"), QStringLiteral("Plus"));
+
+        builder.connect(A, PortIndex(0), B, PortIndex(0));
+
+        builder.connect(B, PortIndex(0), C, PortIndex(0));
+        builder.connect(B, PortIndex(0), C, PortIndex(1));
+
+        builder.connect(C, PortIndex(0), D, PortIndex(0));
+
+        aId = A.id();
+        aUuid = A.uuid();
+
+        bId = B.id();
+        bUuid = B.uuid();
+
+        cId = C.id();
+        cUuid = C.uuid();
+
+        dId = D.id();
+        dUuid = D.uuid();
+    }
+
+    ~LinearGraph()
+    {
+        graph.clearGraph();
+    }
+
+    intelli::Graph graph;
+    intelli::NodeUuid aUuid, bUuid, cUuid, dUuid;
+    intelli::NodeId aId, bId, cId, dId;
+};
 
 /** graph with a group:
 

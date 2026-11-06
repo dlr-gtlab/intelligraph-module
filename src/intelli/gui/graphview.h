@@ -67,7 +67,7 @@ public:
     double scale() const;
 
     /// Returns the current graph scene
-    GraphScene* nodeScene();
+    GraphScene* graphScene();
 
 public slots:
 

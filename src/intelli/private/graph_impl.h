@@ -13,12 +13,17 @@
 #include <intelli/graph.h>
 #include <intelli/connection.h>
 #include <intelli/nodedatafactory.h>
+#include <intelli/node/abstractgroupprovider.h>
 #include <intelli/private/utils.h>
 
 #include <gt_logging.h>
 
+
 namespace intelli
 {
+
+/// Offset starting id of new nodes to allow adding default nodes
+constexpr static NodeId s_startingNodeId{8};
 
 /// Helper struct to "hide" implementation details and template functions
 struct Graph::Impl
@@ -32,6 +37,12 @@ struct Graph::Impl
     /// flag indicating that the connection model should be reset once
     /// the graph is no longer being modified
     bool resetAfterModification = false;
+
+    // TODO: this should be fixed with #1370 (GTlab Core)
+    // Default nodes may update their uuid when merging mementos.
+    // Since there is no way of reacting to a node uuid changes we'll record
+    // the uuids of the default nodes here and update the graph on the fly
+    QHash<Node*, NodeUuid> defaultNodes;
 
     template <typename MakeError = QString(*)()>
     static inline bool
@@ -75,56 +86,70 @@ struct Graph::Impl
         // check if nodes exist
         auto& conModel = graph.connectionModel();
 
-        auto targetNode = conModel.find(conId.inNodeId);;
-        auto sourceNode = conModel.find(conId.outNodeId);
+        auto target = conModel.find(conId.inNodeId);;
+        auto source = conModel.find(conId.outNodeId);
 
-        if (targetNode == conModel.end() || sourceNode == conModel.end())
+        if (target == conModel.end() || source == conModel.end())
         {
             if (!silent)
             {
                 gtWarning() << makeError()
                             << tr("(connection in-node %1, out-node %2)")
-                                   .arg(targetNode == conModel.end() ? "found" : "not found")
-                                   .arg(sourceNode == conModel.end() ? "found" : "not found");
+                                   .arg(target == conModel.end() ? "found" : "not found",
+                                        source == conModel.end() ? "found" : "not found");
             }
             return false;
         }
 
-        assert(targetNode->node->id() == conId.inNodeId &&
-               targetNode->node->parent()  == &graph);
-        assert(sourceNode->node->id() == conId.outNodeId &&
-               sourceNode->node->parent() == &graph);
+        if (!target->node || !source->node)
+        {
+            if (!silent)
+            {
+                gtWarning() << makeError()
+                            << tr("(connection in-node %1, out-node %2)")
+                                   .arg(target->node ? "valid" : "null",
+                                        source->node ? "valid" : "null");
+            }
+            return false;
+        }
+
+        assert(target->node->id() == conId.inNodeId &&
+               target->node->parent()  == &graph);
+        assert(source->node->id() == conId.outNodeId &&
+               source->node->parent() == &graph);
 
         // check if ports to connect exist
-        PortInfo* inPort  = targetNode->node->port(conId.inPort);
-        PortInfo* outPort = sourceNode->node->port(conId.outPort);
+        PortInfo* inPort  = target->node->port(conId.inPort);
+        PortInfo* outPort = source->node->port(conId.outPort);
 
         if (!inPort || !outPort)
         {
             if (!silent)
             {
                 gtWarning() << makeError()
-                            << tr("(connection in-port %1, out-port %2)")
-                                   .arg(inPort  ? "found" : "not found")
-                                   .arg(outPort ? "found" : "not found");
+                            << tr("(connection in-port of node '%3' %1, out-port of node '%4' %2)")
+                                   .arg(inPort  ? "found" : "not found",
+                                        outPort ? "found" : "not found",
+                                        relativeNodePath(*target->node),
+                                        relativeNodePath(*source->node));
             }
             return false;
         }
 
         // check if output is connected to input
-        if (targetNode->node->portType(inPort->id())  ==
-            sourceNode->node->portType(outPort->id()))
+        if (target->node->portType(inPort->id())  ==
+            source->node->portType(outPort->id()))
         {
             if (!silent)
             {
                 gtWarning() << makeError()
-                            << tr("(cannot connect ports of same port type)");
+                            << tr("(cannot connect ports of same port side)");
             }
             return false;
         }
 
         // target node should be an input port
-        assert(targetNode->node->portType(inPort->id()) == PortType::In);
+        assert(target->node->portType(inPort->id()) == PortType::In);
 
         // check if types are compatible
         auto& factory = NodeDataFactory::instance();
@@ -140,7 +165,7 @@ struct Graph::Impl
         }
 
         // check if input port is already connected
-        auto connected = !targetNode->iterateConnections(conId.inPort).empty();
+        auto connected = !target->iterateConnections(conId.inPort).empty();
         if (connected)
         {
             if (!silent)
@@ -222,10 +247,15 @@ struct Graph::Impl
             if (policy != NodeIdPolicy::Update) return false;
 
             // generate a new one
-            auto maxId = ids.empty() ? 0 : *std::max_element(std::begin(ids), std::end(ids)) + 1;
+            size_t maxId = ids.empty() ?
+                               s_startingNodeId :
+                               std::max(
+                                   *std::max_element(
+                                       std::begin(ids),
+                                       std::end(ids)) + NodeId{1},
+                                   s_startingNodeId);
             node.setId(NodeId::fromValue(maxId));
-
-            return node.id() != invalid<NodeId>();
+            return node.id().isValid();
         }
         return true;
     }
@@ -288,8 +318,8 @@ struct Graph::Impl
             if (port == invalid<PortId>())
             {
                 gtWarning() << tr("Failed to update connections of deleted "
-                                  "port %1 with %2 of node %3!")
-                                   .arg(port).arg(toString(type)).arg(nodeId);
+                                  "port (id: '%1') (%2) of node '%3'!")
+                                   .arg(port).arg(toString(type)).arg(relativeNodePath(*node));
                 return;
             }
 
@@ -329,8 +359,8 @@ struct Graph::Impl
             {
                 gtWarning() << utils::logId(*graph)
                             << tr("Failed to update connections of changed "
-                                  "portId %1 node %2!")
-                                   .arg(portId).arg(nodeId);
+                                  "port (id: '%1') of node '%2'!")
+                                   .arg(portId).arg(relativeNodePath(*node));
                 return;
             }
 
@@ -400,6 +430,8 @@ struct Graph::Impl
             }
             Node* node = localIter->node;
             assert(node);
+            graph->pimpl->defaultNodes.remove(node);
+
             auto const& nodeUuid = node->uuid();
 
             auto globalIter = graph->pimpl->global->find(nodeUuid);
@@ -412,7 +444,13 @@ struct Graph::Impl
             }
 
             auto* root = graph->rootGraph();
+            assert(root);
             assert(root && root->pimpl->global.get() == graph->pimpl->global.get());
+            if (root->pimpl->global.get() != graph->pimpl->global.get())
+            {
+                gtError() << root << ":" << root->pimpl->global.get() << "vs"
+                          << graph << ":" << graph->pimpl->global.get();
+            }
 
             auto change = graph->modify();
             Q_UNUSED(change);
