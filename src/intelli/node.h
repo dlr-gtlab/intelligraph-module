@@ -565,11 +565,9 @@ protected:
      * intelli graphs.
      * @param factory Widget factory
      */
-    [[deprecated("Reimplement `NodeUI::centralWidgetFactory` or use "
-                 "`NodeUI::registerCentralWidgetFactory` instead.")]]
+    [[deprecated("Reimplement `NodeUI::centralWidgetFactory` instead.")]]
     void registerWidgetFactory(WidgetFactory factory);
-    [[deprecated("Reimplement `NodeUI::centralWidgetFactory` or use "
-                 "`NodeUI::registerCentralWidgetFactory` instead.")]]
+    [[deprecated("Reimplement `NodeUI::centralWidgetFactory` instead.")]]
     void registerWidgetFactory(WidgetFactoryNoArgs factory);
 
     /**
