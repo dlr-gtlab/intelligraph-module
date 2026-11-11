@@ -587,7 +587,7 @@ move_dynamic_ports_to_graph_for_0_16_0(QDomElement& root,
     return true;
 }
 
-// reserve first node ids from 0-8 in a graph to allow adding "default" nodes
+// reserve first node ids from 0-64 in a graph to allow adding "default" nodes
 // (like input providers and output providers) more easily in the future
 bool
 update_node_ids_for_0_16_0(QDomElement& root,
@@ -595,7 +595,7 @@ update_node_ids_for_0_16_0(QDomElement& root,
 {
     constexpr NodeId reservedInputNodeId{0};
     constexpr NodeId reservedOutputNodeId{1};
-    constexpr NodeId reservedUpperNodeId{8};
+    constexpr NodeId reservedUpperNodeId{64};
 
     auto graphs = gt::xml::findObjectElementsByClassName(
         root, QStringLiteral("intelli::Graph")

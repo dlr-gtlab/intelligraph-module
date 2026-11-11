@@ -23,7 +23,7 @@ namespace intelli
 {
 
 /// Offset starting id of new nodes to allow adding default nodes
-constexpr static NodeId s_startingNodeId{8};
+constexpr static NodeId s_startingNodeId{64};
 
 /// Helper struct to "hide" implementation details and template functions
 struct Graph::Impl

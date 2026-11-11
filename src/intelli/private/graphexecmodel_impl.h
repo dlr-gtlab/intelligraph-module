@@ -614,6 +614,11 @@ struct GraphExecutionModel::Impl
 
         item->state = NodeEvalState::Outdated;
 
+        auto finally = gt::finally([node = item.node](){
+            emit node->nodeEvalStateChanged();
+        });
+        Q_UNUSED(finally);
+
         if (!item.isReadyForEvaluation())
         {
             utils::erase(model.impl()->queuedNodes, nodeUuid);
@@ -631,10 +636,6 @@ struct GraphExecutionModel::Impl
                 success &= invalidatePort(model, con.node, con.port);
             }
         }
-
-        auto finally = gt::finally([node = item.node](){
-            emit node->nodeEvalStateChanged();
-        });
 
         NodeInvalidatedEvent event;
         postNodeEvent(*item.node, event);
@@ -929,10 +930,6 @@ struct GraphExecutionModel::Impl
             Graph const* graph = qobject_cast<Graph const*>(model.graph().findNodeByUuid(graphUuid));
             assert(graph);
             findLeafNodes(*graph, targets);
-
-//            // append the graph node itself
-//            bool isRootGraph = model.impl()->graph == graph;
-//            if (!isRootGraph) targets.push_back(graphUuid);
         }
 
         if (targets.empty()) return false;
@@ -1100,11 +1097,6 @@ struct GraphExecutionModel::Impl
 
         QVarLengthArray<NodeUuid, 10> targets;
         findLeafNodes(graph, targets);
-
-        // TODO: not needed anymore?
-//        // append the graph node itself
-//        bool isRootGraph = model.impl()->graph == &graph;
-//        if (!isRootGraph) targets.push_back(graph.uuid());
 
         // evaluate pending nodes
         ExecFuture future{model};
@@ -1490,6 +1482,8 @@ struct GraphExecutionModel::Impl
 
         return triggeredNodes;
     }
+
+    /** HELPER METHODS FOR HANDLING INTER EXEC MODEL IMPLEMENTATIONS **/
 
     template <typename GRAPH>
     static apply_constness_t<GRAPH, GraphExecutionModel>*

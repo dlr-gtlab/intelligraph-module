@@ -24,19 +24,19 @@
 namespace intelli
 {
 
-constexpr NodeId A_id{8};
-constexpr NodeId B_id{9};
-constexpr NodeId C_id{10};
-constexpr NodeId D_id{11};
-constexpr NodeId E_id{12};
+constexpr NodeId A_id{64};
+constexpr NodeId B_id{65};
+constexpr NodeId C_id{66};
+constexpr NodeId D_id{67};
+constexpr NodeId E_id{68};
 
 constexpr NodeId group_id{C_id};
 constexpr NodeId group_input_id{0};
 constexpr NodeId group_output_id{1};
-constexpr NodeId group_A_id{8};
-constexpr NodeId group_B_id{9};
-constexpr NodeId group_C_id{10};
-constexpr NodeId group_D_id{11};
+constexpr NodeId group_A_id{64};
+constexpr NodeId group_B_id{65};
+constexpr NodeId group_C_id{66};
+constexpr NodeId group_D_id{67};
 
 static NodeUuid A_uuid = QStringLiteral("A-UUID");
 static NodeUuid B_uuid = QStringLiteral("B-UUID");
