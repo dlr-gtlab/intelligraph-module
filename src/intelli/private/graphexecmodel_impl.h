@@ -13,6 +13,7 @@
 #include <intelli/graphexecmodel.h>
 #include <intelli/graph.h>
 #include <intelli/node.h>
+#include <intelli/nodeevent.h>
 
 #include <intelli/private/utils.h>
 
@@ -43,15 +44,14 @@ inline int& getIndentation(GraphExecutionModel const& model)
 inline QString makeIndentation(int indent)
 {
     if (indent == 0) return {};
-    return QStringLiteral(" ") + QStringLiteral("+").repeated(indent);
+    return QStringLiteral("+").repeated(indent);
 }
 
 } // namespace intelli
 
 // helper macros for more legible output
 #define INTELLI_LOG_IMPL(MODEL, INDENT) \
-    utils::logId((MODEL).graph()) + QChar{' '} + \
-    utils::logId(MODEL) + makeIndentation(INDENT)
+    utils::logIds((MODEL).graph(), MODEL) << makeIndentation(INDENT)
 #define INTELLI_LOG_SCOPE(MODEL) \
     auto undo_indentation__ = gt::finally([&](){ getIndentation((MODEL))--; }); \
     gtTrace().verbose() << INTELLI_LOG_IMPL(MODEL, getIndentation((MODEL))++)
@@ -96,6 +96,12 @@ inline QString autoEvaluteNodeError(Graph const& graph)
 {
     return utils::logId(graph) + utils::logId<GraphExecutionModel>();
            QObject::tr("failed to auto evaluate node") + ',';
+}
+
+inline QString invalidateNodeError(Graph const& graph)
+{
+    return utils::logId(graph) + utils::logId<GraphExecutionModel>();
+           QObject::tr("failed to invalidate node") + ',';
 }
 
 /// Helper struct to "hide" implementation details and template functions
@@ -565,53 +571,14 @@ struct GraphExecutionModel::Impl
 
         item->data.state = PortDataState::Outdated;
 
-        // TODO: better solution?
-        if (item.node->nodeEvalMode() != NodeEvalMode::ForwardInputsToOutputs)
-        {
-            return invalidateNode(model, nodeUuid, item);
-        }
-
-        // node is forwarding data from input to respective output
-        item.entry->state = NodeEvalState::Outdated;
-        emit item.node->nodeEvalStateChanged();
-
-        PortType type = item.node->portType(portId);
-        assert(type != PortType::NoType);
-
-        switch (type)
-        {
-        case PortType::In:
-        {
-            // invalidate oppositte output port
-            PortIndex idx = item.node->portIndex(PortType::In, item->portId);
-            if (idx < 0 || (size_t)item.entry->portsOut.size() <= idx)
-            {
-                break;
-            }
-            invalidatePort(model, nodeUuid, item.node->portId(PortType::Out, idx));
-            break;
-        }
-        case PortType::Out:
-        {
-            // invalidate all outgoing connections of this port only
-            auto& conModel = model.graph().globalConnectionModel();
-            for (auto& con : conModel.iterate(nodeUuid, portId))
-            {
-                invalidatePort(model, con.node, con.port);
-            }
-            break;
-        }
-        case PortType::NoType:
-            throw GTlabException(__FUNCTION__, "path is unreachable!");
-        }
-        return true;
+        return invalidateNode(model, nodeUuid, item);
     }
 
     static inline bool
     invalidateNode(GraphExecutionModel& model,
                    NodeUuid const& nodeUuid)
     {
-        auto item = Impl::findData(model, nodeUuid);
+        auto item = Impl::findData(model, nodeUuid, invalidateNodeError);
         if (!item) return false;
 
         return Impl::invalidateNode(model, nodeUuid, item);
@@ -631,16 +598,14 @@ struct GraphExecutionModel::Impl
                    NodeUuid const& nodeUuid,
                    MutableDataItemHelper item)
     {
-        if (item->state == NodeEvalState::Outdated &&
+        bool const alreadyInvalidated =
+            item->state == NodeEvalState::Outdated &&
             std::all_of(item->portsOut.begin(),
                         item->portsOut.end(),
                         [](auto const& port){
-                return port.data.state == PortDataState::Outdated;
-            }))
-        {
-            // already invalidated -> nothing to do
-            return true;
-        }
+                            return port.data.state == PortDataState::Outdated;
+                        });
+        if (alreadyInvalidated) return true;
 
         INTELLI_LOG_SCOPE(model)
             << tr("invalidating node '%1' (%2)...")
@@ -648,10 +613,6 @@ struct GraphExecutionModel::Impl
                    .arg(item.node->id());
 
         item->state = NodeEvalState::Outdated;
-
-        auto finally = gt::finally([node = item.node](){
-            emit node->nodeEvalStateChanged();
-        });
 
         if (!item.isReadyForEvaluation())
         {
@@ -670,6 +631,13 @@ struct GraphExecutionModel::Impl
                 success &= invalidatePort(model, con.node, con.port);
             }
         }
+
+        auto finally = gt::finally([node = item.node](){
+            emit node->nodeEvalStateChanged();
+        });
+
+        NodeInvalidatedEvent event;
+        postNodeEvent(*item.node, event);
 
         return success;
     }
@@ -795,7 +763,7 @@ struct GraphExecutionModel::Impl
                 invalidateNode(model, nodeUuid, item);
             }
 
-            emit item.node->inputDataRecieved(portId);
+            emit item.node->inputDataUpdated(portId);
 
             if ((flags & DontTriggerEvaluation) || model.isBeingModified()) break;
 
@@ -804,7 +772,7 @@ struct GraphExecutionModel::Impl
 
             // check if predecessor is evaluating
             auto& conModel = model.graph().globalConnectionModel();
-            auto predeccessors = conModel.iterateUniqueNodes(nodeUuid, PortType::In);
+            auto predeccessors = conModel.iterateUniqueNodeIds(nodeUuid, PortType::In);
             bool arePredecessorsEvaluating =
                 std::any_of(predeccessors.begin(),
                             predeccessors.end(),
@@ -871,7 +839,7 @@ struct GraphExecutionModel::Impl
         if (utils::contains(list, nodeUuid)) return;
 
         list.push_back(nodeUuid);
-        for (auto& nextNode : conModel.iterateNodes(nodeUuid, type))
+        for (auto& nextNode : conModel.iterateNodeIds(nodeUuid, type))
         {
             accumulateDependencies(conModel, list, nextNode, type);
         }
@@ -889,7 +857,7 @@ struct GraphExecutionModel::Impl
         for (auto& nodeUuid : list)
         {
             std::vector<NodeUuid> predecessors;
-            for (auto& predecessor : conModel.iterateUniqueNodes(nodeUuid, PortType::Out))
+            for (auto& predecessor : conModel.iterateUniqueNodeIds(nodeUuid, PortType::Out))
             {
                 predecessors.push_back(predecessor);
             }
@@ -1037,7 +1005,7 @@ struct GraphExecutionModel::Impl
                                        NodeUuid const& nodeUuid)
     {
         auto& conModel = model.graph().globalConnectionModel();
-        auto successors = conModel.iterateUniqueNodes(nodeUuid, PortType::Out);
+        auto successors = conModel.iterateUniqueNodeIds(nodeUuid, PortType::Out);
         if (successors.empty()) return true;
 
         INTELLI_LOG_SCOPE(model)
@@ -1359,7 +1327,7 @@ struct GraphExecutionModel::Impl
             return item.isExclusive();
         });
 
-        // an exclusive node has to be evaluated separatly to all other nodes
+        // an exclusive node has to be evaluated separately to all other nodes
         if (isExclusiveNodeRunning)
         {
             INTELLI_LOG(model)
@@ -1379,7 +1347,7 @@ struct GraphExecutionModel::Impl
         {
             QMutexLocker locker{&s_sync.mutex};
 
-            // an exclusive node has to be evaluated separatly to all other nodes
+            // an exclusive node has to be evaluated separately to all other nodes
             if (s_sync.isExclusiveNodeRunning())
             {
                 INTELLI_LOG(model)
@@ -1521,6 +1489,34 @@ struct GraphExecutionModel::Impl
         }
 
         return triggeredNodes;
+    }
+
+    template <typename GRAPH>
+    static apply_constness_t<GRAPH, GraphExecutionModel>*
+    findNestedModel(GRAPH& parent, NodeUuid const& nodeUuid)
+    {
+        auto subnode = parent.findNodeByUuid(nodeUuid);
+        if (!subnode) return nullptr;
+        auto* subgraph = Graph::accessGraph(*subnode);
+        if (!subgraph) return nullptr;
+        return GraphExecutionModel::accessExecModel(*subgraph);
+    }
+
+    static bool
+    isGraphEvaluatedImpl(GraphExecutionModel const& model, Graph const& graph)
+    {
+        bool isRootGraph = graph.isRootGraph();
+        Node const* inputProvider = graph.inputNode();
+        Node const* outputProvider = graph.outputNode();
+
+        auto const& nodes = graph.nodes();
+        return std::all_of(nodes.begin(), nodes.end(),
+                           [=, &model](Node const* node){
+                               // providers of root graph may be ignored
+                               return (isRootGraph && (node == inputProvider ||
+                                                       node == outputProvider)) ||
+                                      model.isNodeEvaluated(node->uuid());
+                           });
     }
 
 }; // struct Impl

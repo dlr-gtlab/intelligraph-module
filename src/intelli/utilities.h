@@ -21,6 +21,11 @@ class NodePort;
 class Node;
 class AbstractGraphProvider;
 
+template <typename T>
+const T& asConst(T& obj) { return static_cast<const T&>(obj); }
+template <typename T>
+void asConst(T&& obj) = delete;
+
 namespace utils
 {
 

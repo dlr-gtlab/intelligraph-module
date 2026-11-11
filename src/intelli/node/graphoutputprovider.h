@@ -25,7 +25,12 @@ public:
         AbstractGraphProvider(PortType::Out, "Output Provider")
     { }
 
-    void inte();
+signals:
+
+    void nodeInvalidated();
+
+protected:
+    void nodeEvent(NodeEvent const* e);
 };
 
 //using GroupOutputProvider = GraphOutputProvider;

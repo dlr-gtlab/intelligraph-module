@@ -9,6 +9,7 @@
 
 #include "intelli/node.h"
 
+#include "intelli/nodeevent.h"
 #include "intelli/nodedatainterface.h"
 #include "intelli/graphuservariables.h"
 #include "intelli/exec/detachedexecutor.h"
@@ -74,25 +75,28 @@ Node::Node(QString const& modelName, GtObject* parent) :
     connect(this, &QObject::objectNameChanged,
             this, &Node::nodeChanged);
 
+    connect(this, &Node::inputDataRecieved, this, &Node::inputDataUpdated);
+    connect(this, &Node::invalidateNode, this, &Node::triggerNodeEvaluation);
+
     connect(&pimpl->isActive, &GtAbstractProperty::changed, this, [this](){
-        emit isActiveChanged();
-        if (pimpl->isActive) emit triggerNodeEvaluation();
+        emit isActiveChanged(QPrivateSignal());
+        if (pimpl->isActive) emit invalidateNode();
     });
 
     // must subscribe to both properties incase only one changes
     connect(&pimpl->posX, &GtAbstractProperty::changed, this, [this](){
-        emit nodePositionChanged();
+        emit nodePositionChanged(QPrivateSignal());
     });
     connect(&pimpl->posY, &GtAbstractProperty::changed, this, [this](){
-        emit nodePositionChanged();
+        emit nodePositionChanged(QPrivateSignal());
     });
 
     // must subscribe to both properties incase only one changes
     connect(&pimpl->sizeWidth, &GtAbstractProperty::changed, this, [this](){
-        emit nodeSizeChanged();
+        emit nodeSizeChanged(QPrivateSignal());
     });
     connect(&pimpl->sizeHeight, &GtAbstractProperty::changed, this, [this](){
-        emit nodeSizeChanged();
+        emit nodeSizeChanged(QPrivateSignal());
     });
 
     connect(this, &Node::portConnected, this, [this](PortId portId){
@@ -108,7 +112,7 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
 Node::~Node()
 {
-    emit nodeAboutToBeDeleted(id());
+    emit nodeAboutToBeDeleted(id(), QPrivateSignal());
 }
 
 void
@@ -131,7 +135,7 @@ Node::setId(NodeId id)
 }
 
 NodeId
-Node::id() const
+Node::id() const noexcept
 {
     return NodeId{pimpl->id};
 }
@@ -149,7 +153,7 @@ Node::setPos(Position pos)
 }
 
 Position
-Node::pos() const
+Node::pos() const noexcept
 {
     return { pimpl->posX, pimpl->posY };
 }
@@ -168,7 +172,7 @@ Node::setSize(QSize size)
 }
 
 QSize
-Node::size() const
+Node::size() const noexcept
 {
     if (nodeFlags() & ResizableHOnly) return { pimpl->sizeWidth, 0 };
 
@@ -176,7 +180,7 @@ Node::size() const
 }
 
 QSize
-Node::size(QSize fallback) const
+Node::size(QSize fallback) const noexcept
 {
     auto size = this->size();
 
@@ -190,12 +194,6 @@ void
 Node::updateObjectName()
 {
     gt::setUniqueName(*this, baseObjectName());
-}
-
-bool
-Node::isValid() const
-{
-    return id() != invalid<NodeId>();
 }
 
 void
@@ -230,13 +228,13 @@ Node::setNodeEvalMode(NodeEvalMode mode)
 }
 
 NodeFlags
-Node::nodeFlags() const
+Node::nodeFlags() const noexcept
 {
     return pimpl->flags;
 }
 
 NodeEvalMode
-Node::nodeEvalMode() const
+Node::nodeEvalMode() const noexcept
 {
     return pimpl->evalMode;
 }
@@ -248,13 +246,7 @@ Node::setToolTip(QString const& tooltip)
 }
 
 QString const&
-Node::tooltip() const
-{
-    return pimpl->toolTip;
-}
-
-QString const&
-Node::toolTip() const
+Node::toolTip() const noexcept
 {
     return pimpl->toolTip;
 }
@@ -284,44 +276,56 @@ Node::baseObjectName() const
 }
 
 QString const&
-Node::modelName() const
+Node::modelName() const noexcept
 {
     return pimpl->modelName;
 }
 
-std::vector<Node::PortInfo> const&
+std::vector<NodePort> const&
 Node::ports(PortType type) const noexcept(false)
 {
     return pimpl->ports(type);
 }
 
+View<NodePort>
+Node::getPorts(PortType type) const noexcept(false)
+{
+    return View<NodePort>{pimpl->ports(type)};
+}
+
+Span<NodePort>
+Node::getPorts(PortType type) noexcept(false)
+{
+    return Span<NodePort>{pimpl->ports(type)};
+}
+
 PortId
-Node::addInPort(PortInfo port, PortPolicy policy) noexcept(false)
+Node::addInPort(NodePort port, PortPolicy policy) noexcept(false)
 {
     return insertInPort(std::move(port), -1, policy);
 }
 
 PortId
-Node::addOutPort(PortInfo port) noexcept(false)
+Node::addOutPort(NodePort port) noexcept(false)
 {
     return insertOutPort(std::move(port), -1);
 }
 
 PortId
-Node::insertInPort(PortInfo port, int idx, PortPolicy policy) noexcept(false)
+Node::insertInPort(NodePort port, int idx, PortPolicy policy) noexcept(false)
 {
     port.optional = policy == PortPolicy::Optional;
     return insertPort(PortType::In, std::move(port), idx);
 }
 
 PortId
-Node::insertOutPort(PortInfo port, int idx) noexcept(false)
+Node::insertOutPort(NodePort port, int idx) noexcept(false)
 {
     return insertPort(PortType::Out, std::move(port), idx);
 }
 
 PortId
-Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
+Node::insertPort(PortType type, NodePort port, int idx) noexcept(false)
 {
     auto const makeError = [this, type, idx](){
         return objectName() + QStringLiteral(": ") +
@@ -357,8 +361,11 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
 
     // notify model
     PortIndex pidx = PortIndex::fromValue(std::distance(ports.begin(), iter));
-    emit portAboutToBeInserted(type, pidx);
-    auto finally = gt::finally([=](){ emit portInserted(type, pidx); });
+    emit portAboutToBeInserted(type, pidx, QPrivateSignal());
+    auto finally = gt::finally([=](){
+        emit portInserted(type, pidx, QPrivateSignal());
+    });
+    Q_UNUSED(finally);
 
     // do the insertion
     ports.insert(iter, std::move(port));
@@ -373,10 +380,11 @@ Node::removePort(PortId id)
     if (!port) return false;
 
     // notify model
-    emit portAboutToBeDeleted(port.type, port.idx);
+    emit portAboutToBeDeleted(port.type, port.idx, QPrivateSignal());
     auto finally = gt::finally([type = port.type, idx = port.idx, this](){
-        emit portDeleted(type, idx);
+        emit portDeleted(type, idx, QPrivateSignal());
     });
+    Q_UNUSED(finally);
 
     port.ports->erase(std::next(port.ports->begin(), port.idx));
 
@@ -424,7 +432,7 @@ Node::setNodeData(PortId id, NodeDataPtr data)
     return model->setNodeData(this->uuid(), id, std::move(data));
 }
 
-Node::PortInfo*
+NodePort*
 Node::port(PortId id) noexcept
 {
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
@@ -437,7 +445,7 @@ Node::port(PortId id) noexcept
     return nullptr;
 }
 
-Node::PortInfo const*
+NodePort const*
 Node::port(PortId id) const noexcept
 {
     return const_cast<Node*>(this)->port(id);
@@ -497,9 +505,8 @@ Node::userVariables() const
 }
 
 void
-Node::nodeEvent(NodeEvent const* event)
+Node::nodeEvent(NodeEvent const*)
 {
-    Q_UNUSED(event);
     // nothing to do here
 }
 
@@ -551,6 +558,12 @@ class intelli::INode
 public:
 
     inline static void
+    postEvent(Node& node, NodeEvent const& event)
+    {
+        node.nodeEvent(&event);
+    }
+
+    inline static void
     evaluateNode(Node& node)
     {
         node.eval();
@@ -564,10 +577,8 @@ public:
 
         if (!hadValue)
         {
-            Node::NodeEvent e{
-                DataInterfaceAvailableEvent
-            };
-            node.nodeEvent(&e);
+            DataInterfaceAvailableEvent event;
+            postEvent(node, event);
         }
     }
 
@@ -691,4 +702,10 @@ NodeDataInterface*
 intelli::exec::nodeDataInterface(Node& node)
 {
     return INode::nodeDataInterface(node);
+}
+
+void
+intelli::postNodeEvent(Node& node, const NodeEvent& event)
+{
+    return INode::postEvent(node, event);
 }

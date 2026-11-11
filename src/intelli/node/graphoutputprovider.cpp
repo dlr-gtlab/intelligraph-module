@@ -9,11 +9,16 @@
 
 #include <intelli/node/graphoutputprovider.h>
 
+#include <intelli/nodeevent.h>
+
 using namespace intelli;
 
-
-
-void GraphOutputProvider::inte()
+void
+GraphOutputProvider::nodeEvent(const NodeEvent* e)
 {
-
+    if (e->cast<NodeInvalidatedEvent>())
+    {
+        emit nodeInvalidated();
+    }
+    return Node::nodeEvent(e);
 }

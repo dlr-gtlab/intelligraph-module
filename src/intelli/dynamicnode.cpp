@@ -268,8 +268,8 @@ DynamicNode::insertPort(PortOption option, PortType type, PortInfo port, int idx
 {
     if (idx < 0) idx = std::numeric_limits<int>::max();
 
-    auto& allPorts     = this->ports(type);
-    auto& dynamicPorts = this->dynamicPorts(type);
+    auto const& allPorts = this->ports(type);
+    auto& dynamicPorts   = this->dynamicPorts(type);
 
     if (option == StaticPort)
     {
