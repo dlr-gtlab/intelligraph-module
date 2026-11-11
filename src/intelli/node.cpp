@@ -75,7 +75,7 @@ Node::Node(QString const& modelName, GtObject* parent) :
     connect(this, &QObject::objectNameChanged,
             this, &Node::nodeChanged);
 
-    connect(this, &Node::inputDataRecieved, this, &Node::inputDataUpdated);
+    connect(this, &Node::inputDataUpdated, this, &Node::inputDataRecieved);
     connect(this, &Node::invalidateNode, this, &Node::triggerNodeEvaluation);
 
     connect(&pimpl->isActive, &GtAbstractProperty::changed, this, [this](){
