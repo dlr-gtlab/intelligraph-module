@@ -151,8 +151,6 @@ public:
      * `GraphExecutionModel::accessExecModel(graph)` and call the no-argument
      * overload on it instead. Each graph is now managed by its own exec model.
      */
-    [[deprecated("call autoEvaluateGraph() on the exec model of the target "
-                 "graph (see GraphExecutionModel::accessExecModel)")]]
     bool autoEvaluateGraph(Graph& graph);
 
     /**
@@ -174,8 +172,6 @@ public:
      * overload on it instead. Each graph is now managed by its own exec model.
      */
     GT_NO_DISCARD
-    [[deprecated("call evaluateGraph() on the exec model of the target "
-                 "graph (see GraphExecutionModel::accessExecModel)")]]
     ExecFuture evaluateGraph(Graph& graph);
     /**
      * @brief Starts the evaluation of the given node including all
@@ -197,8 +193,6 @@ public:
      * `GraphExecutionModel::accessExecModel(graph)` and call the no-argument
      * overload on it instead. Each graph is now managed by its own exec model.
      */
-    [[deprecated("call stopAutoEvaluatingGraph() on the exec model of the "
-                 "target graph (see GraphExecutionModel::accessExecModel)")]]
     void stopAutoEvaluatingGraph(Graph& graph);
 
     /**

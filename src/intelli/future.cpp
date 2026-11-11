@@ -127,7 +127,7 @@ ExecFuture::get(NodeUuid const& nodeUuid,
     if (!future.wait(timeout)) return {};
 
     // model may be deleted while waiting
-    assert(m_model);
+    if (!m_model) return {};
     return m_model->nodeData(nodeUuid, portId);
 }
 

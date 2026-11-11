@@ -116,7 +116,7 @@ public:
 
     /**
      * @brief Joins with other futures. Can be used to wait for multiple,
-     * separatly triggered nodes.
+     * separately triggered nodes.
      * @param other Other future to join with
      * @return returns a new future
      */

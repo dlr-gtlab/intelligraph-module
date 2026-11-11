@@ -673,6 +673,8 @@ protected:
 
     void eval() override;
 
+    void nodeEvent(NodeEvent const* e) override;
+
     void onObjectDataMerged() override;
 
     void synchronizePorts(AbstractGraphProvider& provider);

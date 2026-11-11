@@ -13,9 +13,9 @@
 #include <intelli/exports.h>
 #include <intelli/globals.h>
 #include <intelli/flags.h>
-#include <intelli/nodeevent.h>
 #include <intelli/nodeport.h>
 #include <intelli/nodedata.h>
+#include <intelli/view.h>
 
 #include <gt_typetraits.h>
 #include <gt_object.h>
@@ -24,6 +24,8 @@
 
 namespace intelli
 {
+
+class NodeEvent;
 
 enum NodeFlag : unsigned
 {
@@ -152,6 +154,13 @@ GT_INTELLI_EXPORT NodeDataInterface* nodeDataInterface(Node& node);
 } // namespace exec
 
 /**
+ * @brief Posts the node event to `node`
+ * @param node Node
+ * @param event Node Event to post
+ */
+GT_INTELLI_EXPORT void postNodeEvent(Node& node, NodeEvent const& event);
+
+/**
  * @brief Creates a base widget that has a simple layout attached. Can be used
  * for widgets, that have trouble resizing correctly.
  * @return Widget pointer (never null)
@@ -181,7 +190,6 @@ public:
     using Position      = intelli::Position;
     using NodeDataPtr   = intelli::NodeDataPtr;
     using NodeEvent     = intelli::NodeEvent;
-    using NodeEventType = intelli::NodeEventType;
 
     /// widget factory function type. Parameter is guranteed to be of type
     /// "this" and can be casted safely using static_cast.
@@ -201,9 +209,9 @@ public:
     };
 
     /**
-     * @brief Helper method to create a `PortInfo` struct given a `TypeId`.
+     * @brief Helper method to create a `NodePort` struct given a `TypeId`.
      * @param typeId TypeId
-     * @return `PortInfo` struct
+     * @return `NodePort` struct
      */
     static inline NodePort makePort(TypeId typeId)
     {
@@ -233,7 +241,7 @@ public:
      * @brief Returns the node id
      * @return Node id
      */
-    NodeId id() const;
+    NodeId id() const noexcept;
 
     /**
      * @brief Sets the new node position. Will be saved persistently.
@@ -245,7 +253,7 @@ public:
      * @brief pos
      * @return
      */
-    Position pos() const;
+    Position pos() const noexcept;
 
     /**
      * @brief Sets size property. Emits `nodeSizeChanged` if size changed.
@@ -260,26 +268,27 @@ public:
      * returned.
      * @return Size (may be invalid)
      */
-    QSize size() const;
-    QSize size(QSize fallback) const;
+    QSize size() const noexcept;
+    QSize size(QSize fallback) const noexcept;
 
     /**
      * @brief Returns true if the node (id) is valid
      * @return is valid
      */
-    [[deprecated("Use `id().isValid()` instead")]] bool isValid() const;
+    [[deprecated("Use `id().isValid()` instead")]]
+    bool isValid() const { return id().isValid(); }
 
     /**
      * @brief Returns the node flags
      * @return Node flags
      */
-    NodeFlags nodeFlags() const;
+    NodeFlags nodeFlags() const noexcept;
 
     /**
      * @brief Return the node eval mode
      * @return Node eval mode
      */
-    NodeEvalMode nodeEvalMode() const;
+    NodeEvalMode nodeEvalMode() const noexcept;
 
     /**
      * @brief Return the node eval state
@@ -298,8 +307,9 @@ public:
      * @brief Tooltip of the node
      * @return Tooltip
      */
-    [[deprecated("use `toolTip` instead")]] QString const& tooltip() const;
-    QString const& toolTip() const;
+    QString const& toolTip() const noexcept;
+    [[deprecated("use `toolTip` instead")]]
+    QString const& tooltip() const noexcept { return toolTip(); }
 
     /**
      * @brief Setter for the caption. Will be saved persistently
@@ -335,7 +345,7 @@ public:
      * @brief Model name of the node
      * @return Model name
      */
-    QString const& modelName() const;
+    QString const& modelName() const noexcept;
 
     /**
      * @brief Returns a list of the input or output ports depending on the port
@@ -343,15 +353,35 @@ public:
      * @param type Port type (input or output)
      * @return Ports
      */
-    std::vector<PortInfo> const& ports(PortType type) const noexcept(false);
+    std::vector<NodePort> const& ports(PortType type) const noexcept(false);
+
+    /**
+     * @brief Returns a view of the input or output ports respectively. Node
+     * ports are not mutable. Removing or adding an port invalidates the
+     * returned object.
+     * @throws Throws if the port type is invalid.
+     * @param type Port type (input or output)
+     * @return Non mutable view on the ports
+     */
+    View<NodePort> getPorts(PortType type) const noexcept(false);
+
+    /**
+     * @brief Returns a span of the input or output ports respectively. Node
+     * ports are mutable. Removing or adding an port invalidates the
+     * returned object.
+     * @throws Throws if the port type is invalid.
+     * @param type Port type (input or output)
+     * @return Mutable view on the ports
+     */
+    Span<NodePort> getPorts(PortType type) noexcept(false);
 
     /**
      * @brief Returns the port for the port id
      * @param id Port id
      * @return Port. May be null
      */
-    PortInfo* port(PortId id) noexcept;
-    PortInfo const* port(PortId id) const noexcept;
+    NodePort* port(PortId id) noexcept;
+    NodePort const* port(PortId id) const noexcept;
 
     /**
      * @brief Returns the port index of the port id and its port type.
@@ -382,7 +412,7 @@ public:
      * @param id Port id to check
      * @return Is port connected
      */
-    [[deprecated("Use `PortInfo::isConnected()` instead")]]
+    [[deprecated("Use `NodePort::isConnected()` instead")]]
     bool isPortConnected(PortId portId) const;
 
     Q_INVOKABLE GraphUserVariables const* userVariables() const;
@@ -390,12 +420,13 @@ public:
 signals:
 
     /**
-     * @brief Triggers the evaluation of node. It is not guranteed to be
-     * evaluated, as the underling graph execution model must be active.
-     * Should be triggered if the node has changed internal data and requires
-     * reevaluation.
+     * @brief Notifies listeners that the output data of a node changed.
+     * May trigger a node execution, if auto evaluation is enabled. Should be
+     * triggered by the "user" if the node has changed internal data and
+     * a reevaluation is necessary to update the output data.
      */
-    // TODO: rename `invalidateOutputData` because it is only used for auto evaluation
+    void invalidateNode();
+    [[deprecated("use `invalidateNode` instead")]]
     void triggerNodeEvaluation();
 
     /**
@@ -409,7 +440,8 @@ signals:
      * Data may be invalid. Should not be triggered by the "user".
      * @param portId Input port that recieved data
      */
-    // TODO: rename `inputDataUpdated` because it is triggered on disconnect too
+    void inputDataUpdated(PortId portId = invalid<PortId>());
+    [[deprecated("use `inputDataUpdated` instead")]]
     void inputDataRecieved(PortId portId = invalid<PortId>());
 
     /**
@@ -423,19 +455,20 @@ signals:
      * @brief Emitted when the node has changed its position. Triggered by
      * `setPos`.
      */
-    void nodePositionChanged();
+    void nodePositionChanged(QPrivateSignal);
 
     /**
      * @brief Emitted when the node has changed its size. Triggered by
      * `setSize`.
      */
-    void nodeSizeChanged();
+    void nodeSizeChanged(QPrivateSignal);
 
     /**
-     * @brief Emitted just before the node is deleted similar to
-     * QObject::destroyed with the difference that one may still access members
+     * @brief Emitted just before the node is deleted. Similar to
+     * `QObject::destroyed` with the difference that one may still access
+     * Node members (not members of derived classes!).
      */
-    void nodeAboutToBeDeleted(NodeId nodeId);
+    void nodeAboutToBeDeleted(NodeId nodeId, QPrivateSignal);
 
     /**
      * @brief Emitted if port specific data has changed (e.g. port caption).
@@ -449,28 +482,28 @@ signals:
      * @param type Port type (input or output)
      * @param idx Affected index
      */
-    void portAboutToBeDeleted(PortType type, PortIndex idx);
+    void portAboutToBeDeleted(PortType type, PortIndex idx, QPrivateSignal);
 
     /**
      * @brief Will be emitted just after a port was deleted
      * @param type Port type (input or output)
      * @param idx Old index
      */
-    void portDeleted(PortType type, PortIndex idx);
+    void portDeleted(PortType type, PortIndex idx, QPrivateSignal);
 
     /**
      * @brief Will be called internally before inserting a port.
      * @param type Port type (input or output)
      * @param idx Affected index
      */
-    void portAboutToBeInserted(PortType type, PortIndex idx);
+    void portAboutToBeInserted(PortType type, PortIndex idx, QPrivateSignal);
 
      /**
      * @brief Will be emitted just after a port was inserted
      * @param type Port type (input or output)
      * @param idx New index
      */
-    void portInserted(PortType type, PortIndex idx);
+    void portInserted(PortType type, PortIndex idx, QPrivateSignal);
 
     /**
      * @brief Will be emitted once a port was connected
@@ -487,7 +520,7 @@ signals:
     /**
      * @brief Emitted once the `isActive` flag changes.
      */
-    void isActiveChanged();
+    void isActiveChanged(QPrivateSignal);
 
     /**
      * @brief Emitted once the node evaluation state changes
@@ -509,7 +542,7 @@ protected:
     /**
      * @brief This function invoked when certain events are triggered allowing
      * the node to react accordingly.
-     * @param event Event type
+     * @param event Event
      */
     virtual void nodeEvent(NodeEvent const* event);
 
@@ -571,14 +604,14 @@ protected:
      * @param policy Input port policy
      * @return Port id
      */
-    PortId addInPort(PortInfo port, PortPolicy policy = DefaultPortPolicy) noexcept(false);
+    PortId addInPort(NodePort port, PortPolicy policy = DefaultPortPolicy) noexcept(false);
 
     /**
      * @brief Appends the output port
      * @param port Port data to append
      * @return Port id
      */
-    PortId addOutPort(PortInfo port) noexcept(false);
+    PortId addOutPort(NodePort port) noexcept(false);
 
     /**
      * @brief Inserts an input port at the given location
@@ -588,7 +621,7 @@ protected:
      * @param policy Input port policy
      * @return Port id
      */
-    PortId insertInPort(PortInfo port, int idx, PortPolicy policy = DefaultPortPolicy) noexcept(false);
+    PortId insertInPort(NodePort port, int idx, PortPolicy policy = DefaultPortPolicy) noexcept(false);
 
     /**
      * @brief Inserts an output port at the given location
@@ -597,7 +630,7 @@ protected:
      * @param idx Where to insert the port
      * @return Port id
      */
-    PortId insertOutPort(PortInfo port, int idx) noexcept(false);
+    PortId insertOutPort(NodePort port, int idx) noexcept(false);
 
     /**
      * @brief Helper method for inserting a port. Prefer the explicit insert/add
@@ -607,7 +640,7 @@ protected:
      * @param idx Where to insert the port
      * @return Port id
     */
-    PortId insertPort(PortType type, PortInfo port, int idx = -1) noexcept(false);
+    PortId insertPort(PortType type, NodePort port, int idx = -1) noexcept(false);
 
     /**
      * @brief Removes the port specified by id
@@ -670,8 +703,6 @@ private:
     // hide object name setter
     using GtObject::setObjectName;
 };
-
-inline void swap(Node::PortInfo& a, Node::PortInfo& b) noexcept { a.swap(b); }
 
 /**
  * @brief Helper struct that yields the desired identification of a node

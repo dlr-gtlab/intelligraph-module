@@ -243,6 +243,10 @@ struct LogIdsFormatter
         return s << (obj ? gt::quoted(QString{obj->metaObject()->className()}.remove("intelli::"), "[", "]") :
                          QStringLiteral("[NULL]"));
     }
+    gt::log::Stream& operator()(gt::log::Stream& s, QObject const& obj) const
+    {
+        return s << gt::quoted(QString{obj.metaObject()->className()}.remove("intelli::"));
+    }
     gt::log::Stream& operator()(gt::log::Stream& s, Node const* node) const
     {
         return s << (node ? gt::quoted(relativeNodePath(*node), "'", "'") : QStringLiteral("'NULL'"));

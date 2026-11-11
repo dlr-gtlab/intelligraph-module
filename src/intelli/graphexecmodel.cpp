@@ -324,7 +324,15 @@ NodeEvalState
 GraphExecutionModel::nodeEvalState(NodeUuid const& nodeUuid) const
 {
     auto item = Impl::findData(*this, nodeUuid);
-    if (!item) return NodeEvalState::Invalid;
+    if (!item)
+    {
+        // forward to other model for backwards compatibility
+        auto const* otherModel = Impl::findNestedModel(graph(), nodeUuid);
+        if (!otherModel) return NodeEvalState::Invalid;
+
+        item = Impl::findData(*otherModel, nodeUuid);
+        if (!item) return NodeEvalState::Invalid;
+    }
 
     if (item.isEvaluating() ||
         item->evaluatingChildNodes > 0)
@@ -342,7 +350,7 @@ bool
 GraphExecutionModel::isGraphEvaluated() const
 {
     if (isShuttingDown()) return false;
-    return isGraphEvaluated(graph());
+    return Impl::isGraphEvaluatedImpl(*this, graph());
 }
 
 bool
@@ -350,18 +358,28 @@ GraphExecutionModel::isGraphEvaluated(Graph const& graph) const
 {
     if (isShuttingDown()) return false;
 
-    bool isRootGraph = graph.isRootGraph();
-    Node const* inputProvider = graph.inputProvider();
-    Node const* outputProvider = graph.outputProvider();
+    if (!Impl::containsGraph(*this, graph))
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot check evaluation of graph '%1': "
+                        "not part of this graph hierarchy!")
+                         .arg(graph.caption());
+        return false;
+    }
 
-    auto const& nodes = graph.nodes();
-    return std::all_of(nodes.begin(), nodes.end(),
-                       [=](Node const* node){
-                           // providers of root graph may be ignored
-                           return (isRootGraph && (node == inputProvider ||
-                                                   node == outputProvider)) ||
-                                  isNodeEvaluated(node->uuid());
-                       });
+    auto* model = accessExecModel(graph);
+    if (!model)
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot check evaluation of graph '%1': "
+                        "no execution model associated!")
+                         .arg(graph.caption());
+        return false;
+    }
+
+    return model->isGraphEvaluated();
 }
 
 bool
@@ -384,7 +402,10 @@ bool
 GraphExecutionModel::isAutoEvaluatingGraph() const
 {
     if (isShuttingDown()) return false;
-    return isAutoEvaluatingGraph(this->graph());
+
+    return std::find(impl()->autoEvaluatingGraphs.begin(),
+                     impl()->autoEvaluatingGraphs.end(),
+                     graph().uuid()) != impl()->autoEvaluatingGraphs.end();
 }
 
 bool
@@ -392,9 +413,28 @@ GraphExecutionModel::isAutoEvaluatingGraph(Graph const& graph) const
 {
     if (isShuttingDown()) return false;
 
-    return std::find(impl()->autoEvaluatingGraphs.begin(),
-                     impl()->autoEvaluatingGraphs.end(),
-                     graph.uuid()) != impl()->autoEvaluatingGraphs.end();
+    if (!Impl::containsGraph(*this, graph))
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot check auto evaluation of graph '%1': "
+                        "not part of this graph hierarchy!")
+                         .arg(graph.caption());
+        return false;
+    }
+
+    auto* model = accessExecModel(graph);
+    if (!model)
+    {
+        gtError() << utils::logId(this->graph())
+                  << utils::logId(*this)
+                  << tr("cannot check auto evaluation of graph '%1': "
+                        "no execution model associated!")
+                         .arg(graph.caption());
+        return false;
+    }
+
+    return model->isAutoEvaluatingGraph();
 }
 
 bool
@@ -441,19 +481,14 @@ GraphExecutionModel::autoEvaluateGraph(Graph& graph)
 ExecFuture
 GraphExecutionModel::evaluateGraph()
 {
-    if (isShuttingDown()) return ExecFuture{};
+    if (isShuttingDown()) return ExecFuture{*this};
     return Impl::evaluateGraph(*this, this->graph());
 }
 
 ExecFuture
 GraphExecutionModel::evaluateGraph(Graph& graph)
 {
-    if (isShuttingDown()) return ExecFuture{};
-
-    if (&graph == &this->graph())
-    {
-        return Impl::evaluateGraph(*this, graph);
-    }
+    if (isShuttingDown()) return ExecFuture{*this};
 
     if (!Impl::containsGraph(*this, graph))
     {
@@ -462,7 +497,7 @@ GraphExecutionModel::evaluateGraph(Graph& graph)
                   << tr("cannot evaluate graph '%1': not part of this graph "
                         "hierarchy!")
                          .arg(graph.caption());
-        return ExecFuture{};
+        return ExecFuture{*this};
     }
 
     auto* model = accessExecModel(graph);
@@ -473,7 +508,7 @@ GraphExecutionModel::evaluateGraph(Graph& graph)
                   << tr("cannot evaluate graph '%1': no execution model "
                         "associated!")
                          .arg(graph.caption());
-        return ExecFuture{};
+        return ExecFuture{*this};
     }
 
     return model->evaluateGraph();
@@ -482,8 +517,12 @@ GraphExecutionModel::evaluateGraph(Graph& graph)
 ExecFuture
 GraphExecutionModel::evaluateNode(NodeUuid const& nodeUuid)
 {
-    if (isShuttingDown()) return ExecFuture{};
-    return Impl::evaluateNode(*this, nodeUuid);
+    if (isShuttingDown()) return ExecFuture{*this};
+
+    auto* model = Impl::findNestedModel(graph(), nodeUuid);
+    if (!model || model->isShuttingDown()) return ExecFuture{*this};
+
+    return Impl::evaluateNode(*model, nodeUuid);
 }
 
 void
@@ -507,12 +546,6 @@ void
 GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
 {
     if (isShuttingDown()) return;
-
-    if (&graph == &this->graph())
-    {
-        stopAutoEvaluatingGraph();
-        return;
-    }
 
     if (!Impl::containsGraph(*this, graph))
     {
@@ -542,7 +575,11 @@ bool
 GraphExecutionModel::invalidateNode(NodeUuid const& nodeUuid)
 {
     if (isShuttingDown()) return false;
-    return Impl::invalidateNode(*this, nodeUuid);
+
+    auto* model = Impl::findNestedModel(graph(), nodeUuid);
+    if (!model || model->isShuttingDown()) return false;
+
+    return Impl::invalidateNode(*model, nodeUuid);
 }
 
 NodeDataSet
@@ -575,7 +612,10 @@ GraphExecutionModel::nodeData(NodeUuid const& nodeUuid,
 {
     if (isShuttingDown()) return {};
 
-    auto item = Impl::findPortData(*this, nodeUuid, portId, getNodeDataError);
+    auto* model = Impl::findNestedModel(graph(), nodeUuid);
+    if (!model || model->isShuttingDown()) return {};
+
+    auto item = Impl::findPortData(*model, nodeUuid, portId, getNodeDataError);
     if (!item) return {};
 
     return item->data;
@@ -588,7 +628,10 @@ GraphExecutionModel::nodeData(const NodeUuid& nodeUuid,
 {
     if (isShuttingDown()) return {};
 
-    auto item = Impl::findPortData(*this, nodeUuid, type, portIdx, getNodeDataError);
+    auto* model = Impl::findNestedModel(graph(), nodeUuid);
+    if (!model || model->isShuttingDown()) return {};
+
+    auto item = Impl::findPortData(*model, nodeUuid, type, portIdx, getNodeDataError);
     if (!item) return {};
 
     return item->data;
@@ -600,16 +643,20 @@ GraphExecutionModel::nodeData(NodeUuid const& nodeUuid,
 {
     if (isShuttingDown()) return {};
 
-    auto* node = graph().findNodeByUuid(nodeUuid);
-    if (!node) return {};
+    auto* model = Impl::findNestedModel(graph(), nodeUuid);
+    if (!model || model->isShuttingDown()) return {};
 
-    auto const& ports = node->ports(type);
+    auto item = Impl::findData(*model, nodeUuid, setNodeDataError);
+    if (!item || !item.node) return {};
+
+    auto const& ports = item.node->ports(type);
 
     NodeDataPtrList list;
     list.reserve(ports.size());
     for (auto const& port : ports)
     {
-        list.push_back({port.id(), nodeData(nodeUuid, port.id())});
+        auto data = Impl::findPortData(*model, nodeUuid, port.id(), getNodeDataError);
+        list.push_back({port.id(), data ? data->data : NodeDataSet{} });
     }
 
     return list;
@@ -648,7 +695,11 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
                                  NodeDataSet data)
 {
     if (isShuttingDown()) return false;
-    return Impl::setNodeData(*this, nodeUuid, portId, std::move(data));
+
+    auto* model = Impl::findNestedModel(graph(), nodeUuid);
+    if (!model || model->isShuttingDown()) return {};
+
+    return Impl::setNodeData(*model, nodeUuid, portId, std::move(data));
 }
 
 bool
@@ -659,10 +710,13 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
 {
     if (isShuttingDown()) return false;
 
-    auto item = Impl::findPortData(*this, nodeUuid, type, portIdx, setNodeDataError);
+    auto* model = Impl::findNestedModel(graph(), nodeUuid);
+    if (!model || model->isShuttingDown()) return {};
+
+    auto item = Impl::findPortData(*model, nodeUuid, type, portIdx, setNodeDataError);
     if (!item) return false;
 
-    return Impl::setNodeData(*this, item, std::move(data));
+    return Impl::setNodeData(*model, item, std::move(data));
 }
 
 bool
@@ -672,13 +726,16 @@ GraphExecutionModel::setNodeData(NodeUuid const& nodeUuid,
 {
     if (isShuttingDown()) return false;
 
-    auto item = Impl::findData(*this, nodeUuid, setNodeDataError);
+    auto* model = Impl::findNestedModel(graph(), nodeUuid);
+    if (!model || model->isShuttingDown()) return {};
+
+    auto item = Impl::findData(*model, nodeUuid, setNodeDataError);
     if (!item) return false;
 
     for (auto& entry : data)
     {
         PortId portId = entry.first;
-        if (!Impl::setNodeData(*this, item, portId, std::move(entry.second)))
+        if (!Impl::setNodeData(*model, item, portId, std::move(entry.second)))
         {
             return false;
         }
@@ -926,7 +983,7 @@ GraphExecutionModel::onNodeAppended(Node* node)
         }
     };
 
-    connect(node, &Node::triggerNodeEvaluation,
+    connect(node, &Node::triggerNodeEvaluation, // must use deprecation here
             this, [this, nodeUuid, autoEvaluate](){
         invalidateNode(nodeUuid);
         autoEvaluate(nodeUuid);

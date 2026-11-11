@@ -9,10 +9,12 @@
 
 #include "intelli/node/input/graphuservariablesinput.h"
 #include "intelli/graphuservariables.h"
+#include "intelli/nodeevent.h"
 #include "intelli/data/bool.h"
 #include "intelli/data/int.h"
 #include "intelli/data/double.h"
 #include "intelli/data/string.h"
+#include "intelli/utilities.h"
 
 #include <gt_utilities.h>
 
@@ -70,12 +72,12 @@ GraphUserVariablesInputNode::~GraphUserVariablesInputNode() = default;
 void
 GraphUserVariablesInputNode::nodeEvent(NodeEvent const* e)
 {
-    Node::nodeEvent(e);
-
-    if (e->type() == NodeEventType::DataInterfaceAvailableEvent)
+    if (e->cast<DataInterfaceAvailableEvent>())
     {
-        return updatePorts();
+        updatePorts();
     }
+
+    return Node::nodeEvent(e);
 }
 
 void
@@ -152,7 +154,7 @@ GraphUserVariablesInputNode::updatePorts()
     }
 
     // add ports for missing entries
-    for (QString const& missingKey : qAsConst(keys))
+    for (QString const& missingKey : asConst(keys))
     {
         QVariant const& value = uv->value(missingKey);
 

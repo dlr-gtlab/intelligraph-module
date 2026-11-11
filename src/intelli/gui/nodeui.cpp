@@ -238,7 +238,9 @@ NodeUI::NodeUI(Options options) :
                 })
                 .setIcon(gt::gui::icon::bug())
                 .setVisibilityMethod(isNode)
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
             << makeSeparator()
+#endif
             << makeSingleAction(tr("Force Delete"), [](GtObject* obj){
                     if (obj) obj->deleteLater();
                 })
