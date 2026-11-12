@@ -369,7 +369,7 @@ GtIntelliGraphModule::uiItems()
 
     buffer.reserve(registeredNodes.size());
 
-    for (QString const& node : qAsConst(registeredNodes))
+    for (QString const& node : asConst(registeredNodes))
     {
         buffer.push_back(node.toLatin1());
         map.insert(buffer.constLast(), GT_METADATA(NodeUI));

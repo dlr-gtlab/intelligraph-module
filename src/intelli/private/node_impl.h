@@ -161,12 +161,12 @@ struct Node::Impl
     /**
      * @brief Returns the next, unoccupied port id. The input port id can
      * be used to request a custom port id. If a custom port id was specified,
-     * but the port id is already in use, an invalid port id is returned
+     * but the port id is already in use, an invalid port id is returned.
      * @param id Optional port id, which can be used for a custom port id.
-     * @return Nnew port id. Invalid, if operation failed.
+     * @return New port id. Invalid, if operation failed.
      */
     inline PortId
-    incNextPortId(PortId id = invalid<PortId>())
+    incrNextPortId(PortId id = invalid<PortId>())
     {
         if (id != invalid<PortId>())
         {

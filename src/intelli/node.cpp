@@ -327,14 +327,14 @@ Node::insertOutPort(NodePort port, int idx) noexcept(false)
 PortId
 Node::insertPort(PortType type, NodePort port, int idx) noexcept(false)
 {
-    auto const makeError = [this, type, idx](){
-        return objectName() + QStringLiteral(": ") +
-               tr("Failed to insert port at idx %1 (%2)").arg(idx).arg(toString(type));
+    auto const makeError = [this, type, idx](gt::log::Stream& s) -> gt::log::Stream& {
+        return s << utils::logPath(*this)
+                 << tr("Failed to insert port at idx %1 (%2)").arg(idx).arg(toString(type));
     };
 
     if (port.typeId.isEmpty())
     {
-        gtWarning() << makeError() << tr("(Invalid typeId specified)");
+        gtWarning() << makeError << tr("(Invalid typeId specified)");
         return PortId{};
     }
 
@@ -350,10 +350,10 @@ Node::insertPort(PortType type, NodePort port, int idx) noexcept(false)
     }
 
     // update port id if necessary
-    PortId id = pimpl->incNextPortId(port.m_id);
+    PortId id = pimpl->incrNextPortId(port.m_id);
     if (id == invalid<PortId>())
     {
-        gtWarning() << makeError() << tr("(Port id %1 already exists)").arg(port.m_id);
+        gtWarning() << makeError << tr("(Port id %1 already exists)").arg(port.m_id);
         return PortId{};
     }
 
@@ -409,7 +409,7 @@ Node::nodeData(PortId id) const
     if (!model)
     {
         gtWarning()
-            << utils::logId(*this)
+            << utils::logPath(*this)
             << tr("Failed to access node data, data interface not found!");
         return {};
     }
@@ -424,7 +424,7 @@ Node::setNodeData(PortId id, NodeDataPtr data)
     if (!model)
     {
         gtWarning()
-            << utils::logId(*this)
+            << utils::logPath(*this)
             << tr("Failed to set node data, data interface not found!");
         return false;
     }
@@ -464,6 +464,15 @@ Node::portIndex(PortType type, PortId id) const noexcept(false)
     }
 
     return PortIndex{};
+}
+
+Node::PortLocation
+Node::portIndex(PortId id) const noexcept(false)
+{
+    auto entry = pimpl->findPort(id);
+    if (!entry) return {};
+
+    return {entry.idx, entry.type};
 }
 
 Node::PortType
@@ -523,7 +532,7 @@ Node::evalFailed()
     if (!model)
     {
         gtWarning()
-            << utils::logId(*this)
+            << utils::logPath(*this)
             << tr("Failed to set node evaluation status, data interface not found!");
         return;
     }
@@ -612,7 +621,7 @@ public:
             return exec::blockingEvaluation(node);
         }
 
-        gtError() << utils::logId(node)
+        gtError() << utils::logPath(node)
                   << QObject::tr("Unhandled eval mode! (%1)").arg((size_t)evalFlag);
 
         return false;
@@ -637,7 +646,7 @@ updateNodeDataInterface(Node& node, NodeDataInterface* model)
     model = INode::nodeDataInterface(node);
     if (!model)
     {
-        gtError() << utils::logId(node)
+        gtError() << utils::logPath(node)
                   << QObject::tr("Failed to evaluate node! (Missing data interface)");
         return nullptr;
     }
@@ -654,7 +663,7 @@ intelli::exec::detachedEvaluation(Node& node, NodeDataInterface* model)
     auto executor = node.findChild<DetachedExecutor*>();
     if (executor && !executor->canEvaluateNode())
     {
-        gtError() << utils::logId(node)
+        gtError() << utils::logPath(node)
                   << QObject::tr("Failed to evaluate node! (Node is already executing)");
         return false;
     }

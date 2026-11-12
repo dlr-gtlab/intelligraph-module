@@ -11,6 +11,7 @@
 
 #include <intelli/graph.h>
 #include <intelli/graphuservariables.h>
+#include <intelli/utilities.h>
 #include <intelli/gui/widgets/editablelabel.h>
 
 #include <gt_icons.h>
@@ -200,7 +201,7 @@ GraphUserVariablesDialog::saveChanges()
 
     QStringList exisitingKeys = uv->keys();
 
-    for (auto entry : qAsConst(keyValueList))
+    for (auto entry : asConst(keyValueList))
     {
         auto const& key = std::get<QString>(entry);
         auto const& value = std::get<QVariant>(entry);
@@ -210,7 +211,7 @@ GraphUserVariablesDialog::saveChanges()
         uv->setValue(key, value);
     }
 
-    for (QString const& oldKey : qAsConst(exisitingKeys))
+    for (QString const& oldKey : asConst(exisitingKeys))
     {
         uv->remove(oldKey);
     }

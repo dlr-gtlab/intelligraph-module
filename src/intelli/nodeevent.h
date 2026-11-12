@@ -22,7 +22,7 @@ namespace intelli
 /// Enums inidacting of node event
 enum class NodeEventType : unsigned
 {
-    Unkown = 0,
+    Unknown = 0,
     /// Event is emitted once `nodeDataInterface` yields a valid pointer
     /// (not emitted if `nodeDataInterface` changes).
     /// Can be used to initialize a node.

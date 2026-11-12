@@ -10,6 +10,7 @@
 #include <intelli/gui/graphics/popupitem.h>
 #include <intelli/gui/style.h>
 #include <intelli/graphconnectionmodel.h>
+#include <intelli/utilities.h>
 
 #include <gt_colors.h>
 
@@ -83,7 +84,7 @@ void
 PopupItem::clearActivePopups()
 {
     // reverse iterate to not cause access to dangling iterator
-    for (auto i : qAsConst(s_activeItems))
+    for (auto i : asConst(s_activeItems))
     {
         i->hide();
     }
