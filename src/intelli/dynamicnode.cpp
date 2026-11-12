@@ -218,11 +218,8 @@ DynamicNode::isDynamicPort(PortType type, PortIndex idx) const
 bool
 DynamicNode::isDynamicPort(PortId portId) const
 {
-    PortType type = portType(portId);
-    if (type == PortType::NoType) return false;
-
-    PortIndex idx = portIndex(type, portId);
-    return idx.isValid() && isDynamicPort(type, idx);
+    auto p = portIndex(portId);
+    return p.isValid() && isDynamicPort(p.type, p.idx);
 }
 
 PortId

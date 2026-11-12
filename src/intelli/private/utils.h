@@ -35,6 +35,7 @@ intelli::Profiler profiler__{__FUNCTION__}; (void)profiler__;
 #define GT_INTELLI_PROFILE_C(X) \
 intelli::Profiler profiler__{X}; (void)profiler__;
 
+// ability to log functors that operate on gt::log::Stream
 template<typename T>
 using has_gt_log_call_operator =
     std::enable_if_t<
@@ -223,108 +224,21 @@ inline void transform_if(InputIterable iterable,
     return transform_if(iterable.begin(), iterable.end(), ifOp, out, transform);
 }
 
-namespace detail
-{
-
-template<typename ...Args>
-struct LogIdsLambda
-{
-    LogIdsLambda(Args... args_) : args(args_...) {}
-
-    std::tuple<Args...> args;
-
-    gt::log::Stream& operator()(gt::log::Stream& s) const;
-};
-
-struct LogIdsFormatter
-{
-    gt::log::Stream& operator()(gt::log::Stream& s, QObject const* obj) const
-    {
-        return s << (obj ? gt::quoted(QString{obj->metaObject()->className()}.remove("intelli::"), "[", "]") :
-                         QStringLiteral("[NULL]"));
-    }
-    gt::log::Stream& operator()(gt::log::Stream& s, QObject const& obj) const
-    {
-        return s << gt::quoted(QString{obj.metaObject()->className()}.remove("intelli::"));
-    }
-    gt::log::Stream& operator()(gt::log::Stream& s, Node const* node) const
-    {
-        return s << (node ? gt::quoted(relativeNodePath(*node), "'", "'") : QStringLiteral("'NULL'"));
-    }
-    gt::log::Stream& operator()(gt::log::Stream& s, Node const& node) const
-    {
-        return s << gt::quoted(relativeNodePath(node), "'", "'");
-    }
-    gt::log::Stream& operator()(gt::log::Stream& s, Graph const* graph) const
-    {
-        return s << (graph ? gt::quoted(relativeNodePath(*graph), "<", ">") : QStringLiteral("<NULL>"));
-    }
-    gt::log::Stream& operator()(gt::log::Stream& s, Graph const& graph) const
-    {
-        return s << gt::quoted(relativeNodePath(graph), "<", ">");
-    }
-    gt::log::Stream& operator()(gt::log::Stream& s, QString const& str) const
-    {
-        return s << str;
-    }
-    gt::log::Stream& operator()(gt::log::Stream& s, const char* str) const
-    {
-        return s << str;
-    }
-    template<typename ...Args>
-    gt::log::Stream& operator()(gt::log::Stream& s, LogIdsLambda<Args...> const& lambda) const
-    {
-        return lambda(s);
-    }
-    gt::log::Stream& operator()(gt::log::Stream& s) const
-    {
-        return s;
-    }
-};
-
-template<typename ...Args>
-inline gt::log::Stream& LogIdsLambda<Args...>::operator()(gt::log::Stream& s) const
-{
-    gt::mpl::static_foreach(args, [&s](auto&& arg){
-        LogIdsFormatter{}(s, std::forward<decltype(arg)>(arg));
-    });
-    return s;
-}
-
-} // namespace detail
-
-
-template<typename ...Args>
-inline detail::LogIdsLambda<Args...>
-logIds(Args&&... args)
-{
-    return detail::LogIdsLambda<Args...>{args...};
-}
-
 /// Helper function that returns the path of the node as a formated string for
 /// logging
-inline QString
-logId(Node const& node)
+inline QString logPath(Node const& node)
 {
-    return gt::quoted(relativeNodePath(node), "'", "'");
+    return gt::quoted(relativeNodePath(node), "", ":");
 }
 
 /// Helper function that returns the class name of the template parameter as a
 /// formated string for logging
 template<typename T>
-inline QString logId()
+inline QString logScope()
 {
     static QString str = QString{T::staticMetaObject.className()}.remove("intelli::");
-    return gt::quoted(str, "<", ">");
+    return gt::quoted(str, "[", "]");
 }
-
-/// Helper function to deduce class name from argument and return a formated
-/// string for logging
-template<typename T,
-         typename U = std::remove_cv_t<std::remove_reference_t<std::remove_pointer_t<T>>>,
-         typename = std::enable_if_t<!std::is_base_of<Node, U>::value>>
-inline QString logId(T const&) { return logId<U>(); }
-
 
 /// helper struct to make state creation more explicit and ledgible
 template <typename GetValue>
@@ -433,13 +347,13 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
     if (!parent) return;
 
-    QList<T*> siblings = parent->findDirectChildren<T*>();
+    QList<T*> const siblings = parent->findDirectChildren<T*>();
 
     if (siblings.isEmpty()) return;
 
     QStringList names;
 
-    for (auto* s : qAsConst(siblings))
+    for (auto* s : siblings)
     {
         names.append(s->objectName());
     }

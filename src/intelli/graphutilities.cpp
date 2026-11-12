@@ -126,7 +126,7 @@ copyObjectsToGraph(Graph const& source,
                    Graph& target)
 {
     auto const makeError = [&source, &target](gt::log::Stream& s) -> gt::log::Stream& {
-        return s << utils::logId(source)
+        return s << utils::logPath(source)
                  << QObject::tr("Error copying objects to '%2':")
                         .arg(relativeNodePath(target));
     };
@@ -292,7 +292,7 @@ moveObjectsToGraph(Graph& source,
                    Graph& target)
 {
     auto const makeError = [&source, &target](gt::log::Stream& s) -> gt::log::Stream& {
-        return s << utils::logId(source)
+        return s << utils::logPath(source)
                  << QObject::tr("Error moving objects to '%2':")
                         .arg(relativeNodePath(target));
     };
@@ -407,7 +407,7 @@ Graph* groupObjects(Graph& source,
                     View<CommentData*> comments)
 {
     auto const makeError = [&source](gt::log::Stream& s) -> gt::log::Stream& {
-        return s << utils::logId(source)
+        return s << utils::logPath(source)
                  << QObject::tr("Failed to group objects:");
     };
 
@@ -486,7 +486,7 @@ Graph* groupObjects(Graph& source,
     inputProvider->setPos(inputProvider->pos() + center - 2 * offset);
     outputProvider->setPos(outputProvider->pos() + center);
 
-    for (Node* node : qAsConst(nodes))
+    for (Node* node : asConst(nodes))
     {
         node->setPos(node->pos() - offset);
     }
@@ -531,7 +531,7 @@ Graph* groupObjects(Graph& source,
             if (!NodeDataFactory::instance().isKnownType(port->typeId))
             {
                 gtError() << makeError
-                          << QObject::tr("Unkown node datatype '%1', id: %2, port: %3!")
+                          << QObject::tr("Unknown node datatype '%1', id: %2, port: %3!")
                                  .arg(port->typeId,
                                       node->caption(),
                                       toString(*port));
@@ -632,7 +632,7 @@ Graph* groupObjects(Graph& source,
     // make subgraph input connections
     PortIndex index{0};
     PortType type = PortType::In;
-    for (ConnectionUuid const& conId : qAsConst(connectionsIn))
+    for (ConnectionUuid const& conId : asConst(connectionsIn))
     {
         makeConnections(conId, inputProvider, index, type);
 
@@ -644,7 +644,7 @@ Graph* groupObjects(Graph& source,
     // make subgraph output connections
     index = PortIndex{0};
     type  = PortType::Out;
-    for (ConnectionUuid const& conId : qAsConst(connectionsOut))
+    for (ConnectionUuid const& conId : asConst(connectionsOut))
     {
         makeConnections(conId, outputProvider, index, type);
 
@@ -676,7 +676,8 @@ utils::expandSubgraph(std::unique_ptr<Graph> groupNode)
 {
     assert(groupNode);
 
-    auto const makeError = [logId = utils::logId(*groupNode)](gt::log::Stream& s) -> gt::log::Stream& {
+    auto const makeError =
+        [logId = utils::logPath(*groupNode)](gt::log::Stream& s) -> gt::log::Stream& {
         return s << logId << QObject::tr("Expanding group node failed:");
     };
 
@@ -767,7 +768,7 @@ utils::expandSubgraph(std::unique_ptr<Graph> groupNode)
 
     auto boundingRect = selectionPoly.boundingRect();
     auto center = boundingRect.center();
-    for (Node* node : qAsConst(nodes))
+    for (Node* node : asConst(nodes))
     {
         auto offset = (node->pos() - center);
         node->setPos(groupNode->pos() + offset);
@@ -787,7 +788,7 @@ utils::expandSubgraph(std::unique_ptr<Graph> groupNode)
     // install connections to moved nodes
     for (auto* connections : {&expandedInputConnections, &expandedOutputConnections})
     {
-        for (ConnectionUuid const& conUuid : qAsConst(*connections))
+        for (ConnectionUuid const& conUuid : asConst(*connections))
         {
             targetGraph->appendConnection(targetGraph->connectionId(conUuid));
         }

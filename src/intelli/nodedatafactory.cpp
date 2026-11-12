@@ -221,7 +221,7 @@ NodeDataFactory::unregisterData(QMetaObject const& meta)
     if (entry == pimpl->types.cend()) return;
 
     gtTrace().verbose().nospace()
-        << "### Unregistering Data '" << className << ")...";
+        << "### Unregistering Data '" << className << "'...";
 
     pimpl->types.erase(entry);
 

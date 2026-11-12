@@ -31,8 +31,8 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
     if (auto* exec = graph.findDirectChild<GraphExecutionModel*>())
     if (exec != this)
     {
-        gtWarning() << utils::logId(this->graph())
-                    << utils::logId(*this)
+        gtWarning() << utils::logScope<GraphExecutionModel>()
+                    << utils::logPath(this->graph())
                     << tr("graph %1 already has a graph execution model associated!")
                            .arg(graph.objectName());
     }
@@ -59,8 +59,8 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
         if (node)
         {
             gtInfo().medium()
-                << utils::logId(this->graph())
-                << utils::logId(*this)
+                << utils::logScope<GraphExecutionModel>()
+                << utils::logPath(this->graph())
                 << tr("node '%1' (%2) evaluated!")
                        .arg(relativeNodePath(*node))
                        .arg(node->id());
@@ -73,8 +73,8 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
         if (node)
         {
             gtWarning()
-                << utils::logId(this->graph())
-                << utils::logId(*this)
+                << utils::logScope<GraphExecutionModel>()
+                << utils::logPath(this->graph())
                 << tr("node '%1' (%2) failed to evaluate!")
                        .arg(relativeNodePath(*node))
                        .arg(node->id());
@@ -85,16 +85,16 @@ GraphExecutionModel::GraphExecutionModel(Graph& graph) :
     connect(this, &GraphExecutionModel::internalError,
             this, [this](){
         gtWarning()
-                << utils::logId(this->graph())
-                << utils::logId(*this)
+                << utils::logScope<GraphExecutionModel>()
+                << utils::logPath(this->graph())
                 << tr("intenral error occured!");
     }, Qt::DirectConnection);
 
     connect(this, &GraphExecutionModel::graphStalled,
             this, [this](){
         gtWarning()
-                << utils::logId(this->graph())
-                << utils::logId(*this)
+                << utils::logScope<GraphExecutionModel>()
+                << utils::logPath(this->graph())
                 << tr("graph stalled!");
     }, Qt::DirectConnection);
 
@@ -360,22 +360,24 @@ GraphExecutionModel::isGraphEvaluated(Graph const& graph) const
 
     if (!Impl::containsGraph(*this, graph))
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot check evaluation of graph '%1': "
-                        "not part of this graph hierarchy!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot check evaluation of graph '%1': "
+                  "not part of this graph hierarchy!")
+                   .arg(graph.caption());
         return false;
     }
 
     auto* model = accessExecModel(graph);
     if (!model)
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot check evaluation of graph '%1': "
-                        "no execution model associated!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot check evaluation of graph '%1': "
+                  "no execution model associated!")
+                   .arg(graph.caption());
         return false;
     }
 
@@ -415,22 +417,24 @@ GraphExecutionModel::isAutoEvaluatingGraph(Graph const& graph) const
 
     if (!Impl::containsGraph(*this, graph))
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot check auto evaluation of graph '%1': "
-                        "not part of this graph hierarchy!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot check auto evaluation of graph '%1': "
+                  "not part of this graph hierarchy!")
+                   .arg(graph.caption());
         return false;
     }
 
     auto* model = accessExecModel(graph);
     if (!model)
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot check auto evaluation of graph '%1': "
-                        "no execution model associated!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot check auto evaluation of graph '%1': "
+                  "no execution model associated!")
+                   .arg(graph.caption());
         return false;
     }
 
@@ -456,22 +460,24 @@ GraphExecutionModel::autoEvaluateGraph(Graph& graph)
 
     if (!Impl::containsGraph(*this, graph))
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot auto evaluate graph '%1': not part of this "
-                        "graph hierarchy!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot auto evaluate graph '%1': "
+                  "not part of this graph hierarchy!")
+                   .arg(graph.caption());
         return false;
     }
 
     auto* model = accessExecModel(graph);
     if (!model)
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot auto evaluate graph '%1': no execution model "
-                        "associated!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot auto evaluate graph '%1': "
+                  "no execution model associated!")
+                   .arg(graph.caption());
         return false;
     }
 
@@ -492,22 +498,22 @@ GraphExecutionModel::evaluateGraph(Graph& graph)
 
     if (!Impl::containsGraph(*this, graph))
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot evaluate graph '%1': not part of this graph "
-                        "hierarchy!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot evaluate graph '%1': not part of this graph hierarchy!")
+                   .arg(graph.caption());
         return ExecFuture{*this};
     }
 
     auto* model = accessExecModel(graph);
     if (!model)
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot evaluate graph '%1': no execution model "
-                        "associated!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot evaluate graph '%1': no execution model associated!")
+                   .arg(graph.caption());
         return ExecFuture{*this};
     }
 
@@ -549,22 +555,24 @@ GraphExecutionModel::stopAutoEvaluatingGraph(Graph& graph)
 
     if (!Impl::containsGraph(*this, graph))
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot stop auto evaluating graph '%1': not part of "
-                        "this graph hierarchy!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot stop auto evaluating graph '%1': "
+                  "not part of this graph hierarchy!")
+                   .arg(graph.caption());
         return;
     }
 
     auto* model = accessExecModel(graph);
     if (!model)
     {
-        gtError() << utils::logId(this->graph())
-                  << utils::logId(*this)
-                  << tr("cannot stop auto evaluating graph '%1': no execution "
-                        "model associated!")
-                         .arg(graph.caption());
+        gtError()
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
+            << tr("cannot stop auto evaluating graph '%1': "
+                  "no execution model associated!")
+                   .arg(graph.caption());
         return;
     }
 
@@ -780,8 +788,8 @@ GraphExecutionModel::nodeEvaluationStarted(NodeUuid const& nodeUuid)
     if (!item)
     {
         gtError()
-            << utils::logId(this->graph())
-            << utils::logId(*this)
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
             << tr("Failed to mark node '%1' as evaluating! (node not found)")
                    .arg(nodeUuid);
         return;
@@ -819,8 +827,8 @@ GraphExecutionModel::setNodeEvaluationFailed(NodeUuid const& nodeUuid)
     if (!item)
     {
         gtError()
-            << utils::logId(this->graph())
-            << utils::logId(this)
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
             << tr("Failed to mark node '%1' as failed! (node not found)")
                    .arg(nodeUuid);
         return;
@@ -838,8 +846,8 @@ GraphExecutionModel::onNodeEvaluated(NodeUuid const& nodeUuid)
     if (!item)
     {
         gtError()
-            << utils::logId(this->graph())
-            << utils::logId(*this)
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
             << tr("Node %1 has been evaluated, "
                   "but was not found in the model!")
                    .arg(nodeUuid);
@@ -1007,8 +1015,8 @@ GraphExecutionModel::onNodeDeleted(Graph* graph, NodeId nodeId)
     assert(graph);
 
     auto const makeError = [](Graph const& graph){
-        return utils::logId(graph) + QChar{' '} +
-               utils::logId<GraphExecutionModel>() + QChar{' '} +
+        return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+               utils::logPath(graph) + QChar{' '} +
                tr("Node deleted - cannot update execution model") + ',';
     };
 
@@ -1041,8 +1049,8 @@ GraphExecutionModel::onNodePortInserted(NodeId nodeId, PortType type, PortIndex 
     assert(idx  != invalid<PortIndex>());
 
     auto const makeError = [](Graph const& graph){
-        return utils::logId(graph) + QChar{' '} +
-               utils::logId<GraphExecutionModel>() + QChar{' '} +
+        return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+               utils::logPath(graph) + QChar{' '} +
                tr("Port inserted: cannot update execution model") + ',';
     };
 
@@ -1068,8 +1076,8 @@ GraphExecutionModel::onNodePortAboutToBeDeleted(NodeId nodeId, PortType type, Po
     assert(idx  != invalid<PortIndex>());
 
     auto const makeError = [](Graph const& graph){
-        return utils::logId(graph) + QChar{' '} +
-               utils::logId<GraphExecutionModel>() + QChar{' '} +
+        return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+               utils::logPath(graph) + QChar{' '} +
                tr("Port deleted: cannot update execution model") + ',';
     };
 
@@ -1091,8 +1099,8 @@ GraphExecutionModel::onConnectionAppended(ConnectionUuid conUuid)
     assert(conUuid.isValid());
 
     auto const makeError = [](Graph const& graph){
-        return utils::logId(graph) + QChar{' '} +
-               utils::logId<GraphExecutionModel>() + QChar{' '} +
+        return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+               utils::logPath(graph) + QChar{' '} +
                tr("Connection appended: cannot update execution model") + ',';
     };
 
@@ -1124,8 +1132,8 @@ GraphExecutionModel::onConnectionDeleted(ConnectionUuid conUuid)
     assert(conUuid.isValid());
 
     auto const makeError = [](Graph const& graph){
-        return utils::logId(graph) + QChar{' '} +
-               utils::logId<GraphExecutionModel>() + QChar{' '} +
+        return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+               utils::logPath(graph) + QChar{' '} +
                tr("Connection deleted: cannot update execution model") + ',';
     };
 
@@ -1153,8 +1161,8 @@ GraphExecutionModel::onGraphDeleted()
     if (!graph)
     {
         gtError()
-            << utils::logId(this->graph())
-            << utils::logId(*this)
+            << utils::logScope<GraphExecutionModel>()
+            << utils::logPath(this->graph())
             << tr("A graph node has been delted, "
                   "but its object was not found!");
         return;

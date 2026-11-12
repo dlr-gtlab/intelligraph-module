@@ -51,7 +51,9 @@ inline QString makeIndentation(int indent)
 
 // helper macros for more legible output
 #define INTELLI_LOG_IMPL(MODEL, INDENT) \
-    utils::logIds((MODEL).graph(), MODEL) << makeIndentation(INDENT)
+    utils::logScope<GraphExecutionModel>() << \
+    utils::logPath((MODEL).graph()) << \
+    makeIndentation(INDENT)
 #define INTELLI_LOG_SCOPE(MODEL) \
     auto undo_indentation__ = gt::finally([&](){ getIndentation((MODEL))--; }); \
     gtTrace().verbose() << INTELLI_LOG_IMPL(MODEL, getIndentation((MODEL))++)
@@ -76,31 +78,36 @@ using MakeErrorFunction = QString(*)(Graph const&);
 
 inline QString setNodeDataError(Graph const& graph)
 {
-    return utils::logId(graph) + utils::logId<GraphExecutionModel>();
+    return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+           utils::logPath(graph) + QChar{' '} +
            QObject::tr("failed to set node data") + ',';
 }
 
 inline QString getNodeDataError(Graph const& graph)
 {
-    return utils::logId(graph) + utils::logId<GraphExecutionModel>();
+    return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+           utils::logPath(graph) + QChar{' '} +
            QObject::tr("failed to access node data") + ',';
 }
 
 inline QString evaluteNodeError(Graph const& graph)
 {
-    return utils::logId(graph) +utils::logId<GraphExecutionModel>();
+    return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+           utils::logPath(graph) + QChar{' '} +
            QObject::tr("failed to evaluate node") + ',';
 }
 
 inline QString autoEvaluteNodeError(Graph const& graph)
 {
-    return utils::logId(graph) + utils::logId<GraphExecutionModel>();
+    return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+           utils::logPath(graph) + QChar{' '} +
            QObject::tr("failed to auto evaluate node") + ',';
 }
 
 inline QString invalidateNodeError(Graph const& graph)
 {
-    return utils::logId(graph) + utils::logId<GraphExecutionModel>();
+    return utils::logScope<GraphExecutionModel>() + QChar{' '} +
+           utils::logPath(graph) + QChar{' '} +
            QObject::tr("failed to invalidate node") + ',';
 }
 

@@ -390,8 +390,9 @@ replace_port_ids_in_connections(QDomElement& graph,
         connectionGroup = connectionGroup.nextSiblingElement(gt::xml::S_OBJECT_TAG);
     }
 
-    auto connections = gt::xml::findObjectElementsByClassName(connectionGroup, "intelli::Connection");
-    for (auto connection : qAsConst(connections))
+    auto const connections
+        = gt::xml::findObjectElementsByClassName(connectionGroup, "intelli::Connection");
+    for (auto connection : connections)
     {
         if (!connection.attribute(gt::xml::S_NAME_TAG).contains("updatedIn") &&
             get_property_value<NodeId>(connection, "inNodeId") == nodeId &&
@@ -473,8 +474,9 @@ replace_node_ids_in_connections(QDomElement& graph,
         connectionGroup = connectionGroup.nextSiblingElement(gt::xml::S_OBJECT_TAG);
     }
 
-    auto connections = gt::xml::findObjectElementsByClassName(connectionGroup, "intelli::Connection");
-    for (auto connection : qAsConst(connections))
+    auto const connections
+        = gt::xml::findObjectElementsByClassName(connectionGroup, "intelli::Connection");
+    for (auto connection : connections)
     {
         if (get_property_value<NodeId>(connection, "inNodeId") == oldNodeId)
         {

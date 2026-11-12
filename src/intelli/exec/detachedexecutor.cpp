@@ -13,6 +13,7 @@
 #include "intelli/graphuservariables.h"
 #include "intelli/exec/dummynodedatamodel.h"
 #include "intelli/private/utils.h"
+#include "intelli/utilities.h"
 
 #include "gt_utilities.h"
 #include "gt_qtutilities.h"
@@ -49,7 +50,7 @@ int signal_offset(){
 
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
-            << utils::logId<DetachedExecutor>()
+            << utils::logScope<DetachedExecutor>()
             << QObject::tr("signal offset for derived nodes of '%1' is %2")
                    .arg(sourceMetaObject->className()).arg(offset);
 #endif
@@ -122,13 +123,13 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
                QPointer<QObject> executor)
 {
     // connect signals cloned object with original object
-    for (SignalSignature const& signal : qAsConst(signalsToConnect))
+    for (SignalSignature const& signal : asConst(signalsToConnect))
     {
         int signalIndex = sourceMetaObject->indexOfSignal(signal);
         if (signalIndex == -1)
         {
             gtWarning()
-                << utils::logId<DetachedExecutor>()
+                << utils::logScope<DetachedExecutor>()
                 << QObject::tr("Failed to forward signal from clone to source node!")
                 << gt::brackets(signal);
             return {};
@@ -137,7 +138,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
 
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
-            << utils::logId<DetachedExecutor>()
+            << utils::logScope<DetachedExecutor>()
             << QObject::tr("connecting custom signal '%1' of node '%2'")
                    .arg(signal, sourceMetaObject->className());
 #endif
@@ -147,7 +148,7 @@ connectSignals(QVector<SignalSignature> const& signalsToConnect,
                               Qt::QueuedConnection))
         {
             gtWarning()
-                << utils::logId<DetachedExecutor>()
+                << utils::logScope<DetachedExecutor>()
                 << QObject::tr("Failed to connect signal of clone with source node!")
                 << gt::brackets(signal);
             return {};
@@ -199,7 +200,7 @@ DetachedExecutor::onFinished()
 {
     if (!m_node)
     {
-        gtError() << utils::logId(this)
+        gtError() << utils::logScope<DetachedExecutor>()
                   << tr("Failed to finalize node data transfer! (Invalid node)");
 
         m_destroyed = true;
@@ -215,7 +216,7 @@ DetachedExecutor::onFinished()
 void
 DetachedExecutor::onCanceled()
 {
-    gtError() << utils::logId(this)
+    gtError() << utils::logScope<DetachedExecutor>()
               << tr("Execution of node '%1' failed!")
                      .arg(m_node ? m_node->objectName() :
                                    QStringLiteral("<null>"));
@@ -226,14 +227,14 @@ DetachedExecutor::onResultReady(int result)
 {
     if (!m_node)
     {
-        gtError() << utils::logId(this)
+        gtError() << utils::logScope<DetachedExecutor>()
                   << tr("Failed to transfer node data! (Invalid node)");
         return;
     }
 
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
     gtTrace().verbose()
-        << utils::logId(this)
+        << utils::logScope<DetachedExecutor>()
         << tr("collecting data from node '%1' (%2)...")
                .arg(relativeNodePath(*m_node))
                .arg(m_node->id());
@@ -256,7 +257,7 @@ DetachedExecutor::onResultReady(int result)
 
     if (!model->setNodeData(nodeUuid, PortType::Out, outData))
     {
-        gtError() << utils::logId(this)
+        gtError() << utils::logScope<DetachedExecutor>()
                   << tr("Failed to transfer node data!");
     }
 
@@ -273,7 +274,7 @@ DetachedExecutor::evaluateNode(Node& node)
 
     if (!canEvaluateNode())
     {
-        gtWarning() << utils::logId(this)
+        gtWarning() << utils::logScope<DetachedExecutor>()
                     << tr("Failed to evaluate node '%1'! (Node is already running)")
                            .arg(node.objectName());
         return false;
@@ -283,7 +284,7 @@ DetachedExecutor::evaluateNode(Node& node)
     if (!m_watcher.isFinished())
     {
         gtTrace().verbose()
-            << utils::logId(this)
+            << utils::logScope<DetachedExecutor>()
             << tr("reusing executor:") << (void*)this;
     }
 #endif
@@ -313,14 +314,15 @@ DetachedExecutor::evaluateNode(Node& node)
     {
 #ifdef GT_INTELLI_DEBUG_NODE_EXEC
         gtTrace().verbose()
-            << utils::logId<DetachedExecutor>()
+            << utils::logScope<DetachedExecutor>()
             << tr("beginning evaluation of node '%1' (%2)...")
                    .arg(memento.ident())
                    .arg(nodeUuid);
 #endif
 
-        auto const makeError = [nodeUuid](){
-            return tr("evaluating node %1 failed!").arg(nodeUuid);
+        auto const makeError = [&nodeUuid](gt::log::Stream& s) -> gt::log::Stream& {
+            return s << utils::logScope<DetachedExecutor>()
+                     << QObject::tr("evaluating node %1 failed!").arg(nodeUuid);
         };
 
         try{
@@ -331,7 +333,7 @@ DetachedExecutor::evaluateNode(Node& node)
             auto* node = clone.get();
             if (!node)
             {
-                gtError() << utils::logId<DetachedExecutor>() << makeError()
+                gtError() << makeError
                           << tr("(cloning node failed)").arg(memento.ident());
                 return {};
             }
@@ -361,7 +363,7 @@ DetachedExecutor::evaluateNode(Node& node)
 
             if (!success)
             {
-                gtError() << utils::logId<DetachedExecutor>() << makeError()
+                gtError() << makeError
                           << tr("(failed to copy source data)");
                 return {};
             }
@@ -373,14 +375,14 @@ DetachedExecutor::evaluateNode(Node& node)
         }
         catch (const std::exception& ex)
         {
-            gtError() << utils::logId<DetachedExecutor>() << makeError()
+            gtError() << makeError
                       << tr("(caught exception: %1)").arg(ex.what());
             return {};
         }
         catch(...)
         {
-            gtError() << utils::logId<DetachedExecutor>() << makeError()
-                      << tr("(caught unkown exception)");
+            gtError() << makeError
+                      << tr("(caught unknown exception)");
             return {};
         }
     };

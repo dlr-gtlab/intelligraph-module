@@ -44,7 +44,7 @@ struct Graph::Impl
     // the uuids of the default nodes here and update the graph on the fly
     QHash<Node*, NodeUuid> defaultNodes;
 
-    template <typename MakeError = QString(*)()>
+    template <typename MakeError = std::function<gt::log::Stream&(gt::log::Stream&)>>
     static inline bool
     canAppendConnection(Graph const& graph,
                         ConnectionId conId,
@@ -55,7 +55,7 @@ struct Graph::Impl
         {
             if (!silent)
             {
-                gtWarning() << makeError()
+                gtWarning() << makeError
                             << tr("(invalid connection)");
             }
             return false;
@@ -66,7 +66,7 @@ struct Graph::Impl
         {
             if (!silent)
             {
-                gtWarning() << makeError()
+                gtWarning() << makeError
                             << tr("(connection in-node and out-node are qeual)");
             }
             return false;
@@ -77,7 +77,7 @@ struct Graph::Impl
         {
             if (!silent)
             {
-                gtWarning() << makeError()
+                gtWarning() << makeError
                             << tr("(connection already exists)");
             }
             return false;
@@ -93,7 +93,7 @@ struct Graph::Impl
         {
             if (!silent)
             {
-                gtWarning() << makeError()
+                gtWarning() << makeError
                             << tr("(connection in-node %1, out-node %2)")
                                    .arg(target == conModel.end() ? "found" : "not found",
                                         source == conModel.end() ? "found" : "not found");
@@ -105,7 +105,7 @@ struct Graph::Impl
         {
             if (!silent)
             {
-                gtWarning() << makeError()
+                gtWarning() << makeError
                             << tr("(connection in-node %1, out-node %2)")
                                    .arg(target->node ? "valid" : "null",
                                         source->node ? "valid" : "null");
@@ -126,7 +126,7 @@ struct Graph::Impl
         {
             if (!silent)
             {
-                gtWarning() << makeError()
+                gtWarning() << makeError
                             << tr("(connection in-port of node '%3' %1, out-port of node '%4' %2)")
                                    .arg(inPort  ? "found" : "not found",
                                         outPort ? "found" : "not found",
@@ -142,7 +142,7 @@ struct Graph::Impl
         {
             if (!silent)
             {
-                gtWarning() << makeError()
+                gtWarning() << makeError
                             << tr("(cannot connect ports of same port side)");
             }
             return false;
@@ -157,7 +157,7 @@ struct Graph::Impl
         {
             if (!silent)
             {
-                gtWarning() << makeError()
+                gtWarning() << makeError
                             << tr("(cannot connect ports with incompatible types: %1 vs %2")
                                    .arg(outPort->typeId, inPort->typeId);
             }
@@ -170,7 +170,7 @@ struct Graph::Impl
         {
             if (!silent)
             {
-                gtWarning() << makeError()
+                gtWarning() << makeError
                             << tr("(in-port is already connected)");
             }
             return false;
@@ -183,8 +183,7 @@ struct Graph::Impl
     static inline bool
     canAppendNode(Graph const& graph,
                   Node& node,
-                  MakeError const& makeError,
-                  bool silent = false)
+                  MakeError const& makeError)
     {
         // check if node is unique
         if (!(node.nodeFlags() & NodeFlag::Unique)) return true;
@@ -195,11 +194,8 @@ struct Graph::Impl
             assert(entry.node);
             if (entry.node->modelName() == node.modelName())
             {
-                if (!silent)
-                {
-                    gtWarning() << makeError()
-                                << tr("(node is unique and already exists)");
-                }
+                gtWarning() << makeError
+                            << tr("(node is unique and already exists)");
                 return false;
             }
         }
@@ -319,7 +315,7 @@ struct Graph::Impl
             {
                 gtWarning() << tr("Failed to update connections of deleted "
                                   "port (id: '%1') (%2) of node '%3'!")
-                                   .arg(port).arg(toString(type)).arg(relativeNodePath(*node));
+                                   .arg(port).arg(toString(type), relativeNodePath(*node));
                 return;
             }
 
@@ -357,7 +353,7 @@ struct Graph::Impl
             PortInfo* port = node->port(portId);
             if (!port)
             {
-                gtWarning() << utils::logId(*graph)
+                gtWarning() << utils::logPath(*graph)
                             << tr("Failed to update connections of changed "
                                   "port (id: '%1') of node '%2'!")
                                    .arg(portId).arg(relativeNodePath(*node));
@@ -423,7 +419,7 @@ struct Graph::Impl
             auto localIter = graph->pimpl->local.find(nodeId);
             if (localIter == graph->pimpl->local.end())
             {
-                gtWarning() << utils::logId(*graph)
+                gtWarning() << utils::logPath(*graph)
                             << tr("Failed to delete node") << nodeId
                             << tr("(node was not found!)");
                 return;
@@ -437,7 +433,7 @@ struct Graph::Impl
             auto globalIter = graph->pimpl->global->find(nodeUuid);
             if (globalIter == graph->pimpl->global->end())
             {
-                gtWarning() << utils::logId(*graph)
+                gtWarning() << utils::logPath(*graph)
                             << tr("Failed to delete node") << nodeId
                             << tr("(node was not found in global model!)");
                 return;
@@ -507,7 +503,7 @@ struct Graph::Impl
                 // global connection may already be deleted, but this function
                 // may still be triggered causing a false alarm
                 gtWarning().verbose()
-                    << utils::logId(*graph)
+                    << utils::logPath(*graph)
                     << tr("Failed to delete connection %1")
                            .arg(toString(conId))
                     << tr("(in-node entry %1, out-node entry %2!)")
@@ -526,7 +522,7 @@ struct Graph::Impl
 
             if (inIdx < 0 || outIdx < 0)
             {
-                gtWarning() << utils::logId(*graph)
+                gtWarning() << utils::logPath(*graph)
                             << tr("Failed to delete connection %1")
                                    .arg(toString(conId))
                             << tr("(in-connection %1, out-connection %2!)")

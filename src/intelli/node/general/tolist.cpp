@@ -85,7 +85,7 @@ ToListNode::eval()
         NodeDataFactory::instance().makeListData(m_typeId);
     if (!outputData)
     {
-        gtError() << utils::logId(*this)
+        gtError() << utils::logPath(*this)
                   << tr("Failed to generate list type for '%1'!").arg(m_typeId);
         return evalFailed();
     }
@@ -95,7 +95,7 @@ ToListNode::eval()
         auto data = nodeData(port.id());
         if (!data)
         {
-            gtError() << utils::logId(*this)
+            gtError() << utils::logPath(*this)
                       << tr("Data at input port %1 is null!").arg(port.id());
             return evalFailed();
         }
@@ -104,7 +104,7 @@ ToListNode::eval()
 
     if (outputData->size() != ports(PortType::In).size())
     {
-        gtError() << utils::logId(*this)
+        gtError() << utils::logPath(*this)
                   << tr("Failed to append data!");
         return evalFailed();
     }

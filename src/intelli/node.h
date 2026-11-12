@@ -177,6 +177,22 @@ class GT_INTELLI_EXPORT Node : public GtObject
 
 public:
 
+    struct PortLocation
+    {
+        PortIndex idx{};
+        PortType type{PortType::NoType};
+
+        constexpr bool isValid() const noexcept
+        {
+            return idx.isValid() && type != PortType::NoType;
+        }
+
+        constexpr operator bool() const noexcept
+        {
+            return isValid();
+        }
+    };
+
     using NodeId        = intelli::NodeId;
     using NodeFlag      = intelli::NodeFlag;
     using NodeFlags     = intelli::NodeFlags;
@@ -387,9 +403,17 @@ public:
      * @brief Returns the port index of the port id and its port type.
      * @param type Port type (input or output)
      * @param id Port id
-     * @return Port index. May be invalid, check using `invalid<PortIndex>()`
+     * @return Port index. May be invalid.
      */
     PortIndex portIndex(PortType type, PortId id) const noexcept(false);
+
+    /**
+     * @brief Returns the port index and port type of the port id.
+     * @param type Port type (input or output)
+     * @param id Port id
+     * @return Port index and port type. May be invalid.
+     */
+    PortLocation portIndex(PortId id) const noexcept(false);
 
     /**
      * @brief Returns the port type of the given port
@@ -403,7 +427,7 @@ public:
      * @brief Attempts to find the port id by port index and the port type.
      * @param type Port type (input or output)
      * @param idx Port index
-     * @return Port id. May be invalid, check using `invalid<PortId>()`
+     * @return Port id. May be invalid.
      */
     PortId portId(PortType type, PortIndex idx) const noexcept(false);
 
@@ -743,6 +767,12 @@ relativeNodePath(Node const& node)
     if (!root) return node.caption();
 
     return root->caption() + (node.objectPath().remove(root->objectPath())).replace(';', '/');
+}
+
+inline QString
+relativeNodePath(Node const* node)
+{
+    return node ? relativeNodePath(*node) : QStringLiteral("NULL");
 }
 
 } // namespace intelli

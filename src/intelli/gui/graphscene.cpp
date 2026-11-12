@@ -202,16 +202,20 @@ highlightCompatibleNodes(GraphScene& scene,
 
     // all nodes downstream are incompatible
     QSet<NodeId> dependencies;
-    auto const accumulate = [&conModel](QSet<NodeId>& storage, auto const& range, PortType type, auto const& lambda) -> void {
+    auto const accumulate = [&conModel](QSet<NodeId>& storage,
+                                        auto const& range,
+                                        PortType type,
+                                        auto const& lambda) -> void {
         for (NodeId nodeId : range)
         {
             if (storage.contains(nodeId)) continue;
             storage.insert(nodeId);
-            lambda(storage, conModel.iterateNodes(nodeId, type), type, lambda);
+            lambda(storage, conModel.iterateNodeIds(nodeId, type), type, lambda);
         }
     };
 
-    accumulate(dependencies, conModel.iterateNodes(sourceNodeId, targetType), targetType, accumulate);
+    accumulate(dependencies, conModel.iterateNodeIds(sourceNodeId, targetType),
+               targetType, accumulate);
     dependencies.insert(sourceNodeId);
 
     // for all other nodes check if a connection can be created
@@ -517,7 +521,7 @@ struct CutOperation
         Q_UNUSED(cmd);
 
         // delete cut objects
-        for (auto& item : qAsConst(Impl::CutOperation::instance().objects))
+        for (auto& item : asConst(Impl::CutOperation::instance().objects))
         {
             if (item) item->deleteObject();
         }
@@ -530,7 +534,7 @@ struct CutOperation
     /// clears a cut operation
     void clear()
     {
-        for (auto& item : qAsConst(objects))
+        for (auto& item : asConst(objects))
         {
             if(item) item->setOpacity(1);
         }
@@ -743,9 +747,9 @@ GraphScene::createSceneMenu(QPointF scenePos)
 
     auto const& factory = NodeFactory::instance();
 
-    auto cats = factory.registeredCategories();
+    QStringList const cats = factory.registeredCategories();
 
-    for (QString const& cat : qAsConst(cats))
+    for (QString const& cat : cats)
     {
         if (cat.isEmpty()) continue;
 
@@ -754,9 +758,9 @@ GraphScene::createSceneMenu(QPointF scenePos)
         item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
     }
 
-    auto nodes = factory.registeredNodes();
+    QStringList const nodes = factory.registeredNodes();
 
-    for (QString const& node : qAsConst(nodes))
+    for (QString const& node : nodes)
     {
         auto parents = treeView->findItems(factory.nodeCategory(node), Qt::MatchExactly);
 
@@ -862,7 +866,7 @@ GraphScene::alignObjectsToGrid()
     auto cmd = gtApp->makeCommand(m_graph, tr("Align selection to grid"));
     Q_UNUSED(cmd);
 
-    for (QGraphicsItem* item : qAsConst(items))
+    for (QGraphicsItem* item : asConst(items))
     {
         if (auto* object = graphics_cast<InteractableGraphicsObject*>(item))
         {
@@ -1433,7 +1437,7 @@ GraphScene::onConnectionDeleted(ConnectionId conId)
                              Impl::findObjectById(conId));
     if (iter == m_connections.end())
     {
-        gtError() << utils::logId(this)
+        gtError() << utils::logScope<GraphScene>()
                   << tr("Failed to remove connection:") << conId;
         return;
     }
@@ -1518,7 +1522,7 @@ GraphScene::onCommentDeleted(CommentData* comment)
                              Impl::findObjectById(comment));
     if (iter == m_comments.end())
     {
-        gtError() << utils::logId(this)
+        gtError() << utils::logScope<GraphScene>()
                   << tr("Failed to remove comment:") << (void*)comment;
         return;
     }
