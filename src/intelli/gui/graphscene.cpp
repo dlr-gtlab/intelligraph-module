@@ -28,6 +28,7 @@
 #include <intelli/gui/graphics/connectionobject.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/popupitem.h>
+#include <intelli/gui/widgets/graphscenemenu.h>
 #include <intelli/private/utils.h>
 #include <intelli/private/gui_utils.h>
 
@@ -51,12 +52,6 @@
 #include <QClipboard>
 #include <QApplication>
 #include <QKeyEvent>
-#include <QTimer>
-#include <QWidgetAction>
-#include <QMenuBar>
-#include <QLineEdit>
-#include <QTreeWidget>
-#include <QHeaderView>
 
 using namespace intelli;
 
@@ -702,137 +697,18 @@ GraphScene::createSceneMenu(QPointF scenePos)
 {
     Impl::CutOperation::instance().clear();
 
-// (adapted)
-// SPDX-SnippetBegin
-// SPDX-License-Identifier: LicenseRef-BSD-3-Clause-Dimitri
-// SPDX-SnippetCopyrightText: 2022 Dimitri Pinaev
-    auto menuPtr = std::make_unique<QMenu>();
-    auto* menu = menuPtr.get();
-
-    // Add filterbox to the context menu
-    auto* txtBox = new QLineEdit(menu);
-    txtBox->setPlaceholderText(QStringLiteral(" Filter"));
-    txtBox->setClearButtonEnabled(true);
-
-    // set the focus to allow text inputs
-    QTimer::singleShot(0, txtBox, SIGNAL(setFocus()));
-
-    auto* txtBoxAction = new QWidgetAction(menu);
-    txtBoxAction->setDefaultWidget(txtBox);
-
-    txtBox->setMinimumHeight(txtBox->sizeHint().height());
-
-    auto* buttonAction = new QAction(menu);
-    buttonAction->setText(tr("Add Comment"));
-    buttonAction->setIcon(gt::gui::icon::comment());
-
-    // 1.
-    menu->addAction(txtBoxAction);
-    menu->addAction(buttonAction);
-
-    // Add result treeview to the context menu
-    QTreeWidget* treeView = new QTreeWidget(menu);
-    treeView->header()->close();
-    treeView->setFrameShape(QFrame::NoFrame);
-
-    auto* treeViewAction = new QWidgetAction(menu);
-    treeViewAction->setDefaultWidget(treeView);
-
-    // 2.
-    menu->addAction(treeViewAction);
-
-    auto const& factory = NodeFactory::instance();
-
-    auto cats = factory.registeredCategories();
-
-    for (QString const& cat : qAsConst(cats))
-    {
-        if (cat.isEmpty()) continue;
-
-        auto item = new QTreeWidgetItem(treeView);
-        item->setText(0, cat);
-        item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
-    }
-
-    auto nodes = factory.registeredNodes();
-
-    for (QString const& node : qAsConst(nodes))
-    {
-        auto parents = treeView->findItems(factory.nodeCategory(node), Qt::MatchExactly);
-
-        if (parents.empty()) continue;
-
-        auto item = new QTreeWidgetItem(parents.first());
-        item->setText(0, factory.nodeModelName(node));
-        item->setWhatsThis(0, node); // store class name of node
-    }
-
-    treeView->expandAll();
-
-    auto onClicked = [this, &factory, menu, scenePos](QTreeWidgetItem* item, int) {
-        item->setExpanded(true);
-
-        if (!(item->flags() & (Qt::ItemIsSelectable))) return;
-
-        auto node = factory.makeNode(item->whatsThis(0));
-        if (!node)
-        {
-            gtWarning() << tr("Failed to create new node of type %1")
-                               .arg(item->text(0));
-            return;
-        }
-        node->setPos(scenePos);
-
-        auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'")
-                                                   .arg(node->caption()));
-        Q_UNUSED(cmd);
-
-        m_graph->appendNode(std::move(node));
-
-        menu->close();
-    };
-
-    // `itemActivated` may also fire for a single click depending on the Qt
-    // platform style (notably on some Linux / remote desktop setups). Using
-    // `itemClicked` alone keeps node creation single-shot.
-    connect(treeView, &QTreeWidget::itemClicked, menu, onClicked);
-
-    //Setup filtering
-    connect(txtBox, &QLineEdit::textChanged, treeView, [treeView](QString const& text) {
-        QTreeWidgetItemIterator categoryIt(treeView, QTreeWidgetItemIterator::HasChildren);
-
-        while (*categoryIt) (*categoryIt++)->setHidden(true);
-
-        QTreeWidgetItemIterator it(treeView, QTreeWidgetItemIterator::NoChildren);
-        while (*it)
-        {
-            QString const& modelName = (*it)->text(0);
-            bool match = (modelName.contains(text, Qt::CaseInsensitive));
-            (*it)->setHidden(!match);
-            if (match) {
-                auto* parent = (*it)->parent();
-                while (parent)
-                {
-                    parent->setHidden(false);
-                    parent = parent->parent();
-                }
-            }
-            ++it;
-        }
-    });
-// SPDX-SnippetEnd
-
-    connect(buttonAction, &QAction::triggered, menu, [this, menu, scenePos]() {
+    // helper functor to add a comment at the given position
+    auto addComment = [this, scenePos]() {
         auto* commentGroup = GuiData::accessCommentGroup(graph());
         if (!commentGroup) return;
-        
+
         auto commentPtr = std::make_unique<CommentData>();
         commentPtr->setPos(scenePos);
 
         auto cmd = gtApp->makeCommand(m_graph, tr("Append comment '%1'")
                                                    .arg(commentPtr->objectName()));
         Q_UNUSED(cmd);
-        
+
         CommentData* comment = commentGroup->appendComment(std::move(commentPtr));
         if (!comment) return;
 
@@ -843,10 +719,28 @@ GraphScene::createSceneMenu(QPointF scenePos)
         if (iter == m_comments.end()) return;
 
         iter->object->startEditing();
-        menu->close();
-    });
+    };
 
-    return menuPtr;
+    // helper functor to add a node at the given position
+    auto addNode = [this, scenePos](QString className) {
+        auto node = NodeFactory::instance().makeNode(className);
+        if (!node) return;
+
+        node->setPos(scenePos);
+
+        auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'")
+                                                   .arg(node->caption()));
+        Q_UNUSED(cmd);
+
+        m_graph->appendNode(std::move(node));
+    };
+
+    auto menu = std::make_unique<GraphSceneMenu>();
+
+    connect(menu.get(), &GraphSceneMenu::createCommentRequested, this, addComment);
+    connect(menu.get(), &GraphSceneMenu::createNodeRequested, this, addNode);
+
+    return menu;
 }
 
 void

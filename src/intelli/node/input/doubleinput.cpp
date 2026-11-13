@@ -16,7 +16,7 @@
 using namespace intelli;
 
 DoubleInputNode::DoubleInputNode() :
-    Node(tr("Double Input")),
+    Node(tr("Number Input")),
     m_value("value", tr("Value"), tr("Current value"), GtUnit::None, 0),
     m_min("min", tr("Min."), tr("Minimum value"), GtUnit::None, 0),
     m_max("max", tr("Max."), tr("Maxiumum value"), GtUnit::None, 100),

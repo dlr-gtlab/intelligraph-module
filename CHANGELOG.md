@@ -9,8 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed icons not being licensed under Apache 2.0.
 - Fixed memory leak in the `GraphUserVariablesDialog`.
+- Fixed the scene menu not creating nodes when using the keyboard. - #365
+- Fixed volatile sorting of nodes in the scene menu. - #318
+
+### Changed
+- Scene menu now also filters by category. The first filtered item is default selected. - #318, 335
+- Nodes may now be registered with multiple categories - #318
+- The "Double Input" Node is now named "Number Input"
 
 ### Added
+- Scene menu for adding nodes can
 - Selected nodes can now be "cut" using the corresponding shortcut (usually `Ctrl+X`). Cut-nodes are "greyed-out", similar to how cutting works for files and folders. Once the selection is pasted, the cut-objects are deleted. - #283
 - The style of comments can be customized using a dedicated dialog that can be opened using the context menu of comments. This dialog allows changing the background color and text color, frame visibility, and text alignment. - #326
 - The Graph User Variables Dialog can now be opened on any "User Constants" (`GraphUserVariablesInputNode`) Node - #360

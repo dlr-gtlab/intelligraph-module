@@ -12,6 +12,8 @@
 
 #include <type_traits>
 #include <array>
+#include <cassert>
+#include <stddef.h>
 
 namespace intelli
 {
@@ -85,23 +87,28 @@ public:
      * @param data Data pointer
      * @param size Size of pointer. Size must not exceed actual size of data
      */
-    Span(T* data, size_type size) :
+    Span(T* data, size_type size) noexcept :
         m_data(data),
         m_size(size)
     {}
+    Span(Span const& other) noexcept = default;
+    Span(Span&& other) noexcept = default;
+    Span& operator=(Span const& other) noexcept = default;
+    Span& operator=(Span&& other) noexcept = default;
+    ~Span() noexcept = default;
 
     template<template<class...> class Container,
              typename... U,
              typename = std::enable_if_t<
                      std::is_convertible<typename Container<U...>::value_type,
                                          T>::value>>
-    Span(Container<U...>& vector) :
+    Span(Container<U...>& vector) noexcept :
         Span(detail::container_data<T>::get(vector),
              detail::container_size<size_type>::get(vector))
     {}
 
     template <size_t N>
-    Span(std::array<T, N>& array) : Span(array.data(), N) {}
+    Span(std::array<T, N>& array) noexcept : Span(array.data(), N) {}
 
     /// disabled for const l- and r-values
     template<template<class...> class Container, typename... U>
@@ -111,57 +118,57 @@ public:
      * @brief Whether the span is valid
      * @return is null
      */
-    bool null() const { return m_data == nullptr; }
+    bool null() const noexcept { return m_data == nullptr; }
 
     /**
      * @brief Whether the span is empty
      * @return is empty
      */
-    bool empty() const { return size() == 0; }
+    bool empty() const noexcept { return size() == 0; }
 
     /**
      * @brief size
      * @return size of span
      */
-    size_type size() const { return m_size; }
+    size_type size() const noexcept { return m_size; }
 
     /* index operators */
     reference operator[](size_type i) { return m_data[i]; }
     const_reference operator[](size_type i) const { return m_data[i]; }
 
     /* at */
-    reference at(size_type idx)
+    reference at(size_type idx) noexcept
     {
         assert(idx < size());
         return operator[](idx);
     }
-    const_reference at(size_type idx) const
+    const_reference at(size_type idx) const noexcept
     {
         assert(idx < size());
         return operator[](idx);
     }
 
     /* begin-iterators */
-    iterator begin() { return m_data; }
+    iterator begin() noexcept { return m_data; }
     const_iterator begin() const noexcept { return m_data; }
     const_iterator cbegin() const noexcept { return begin(); }
 
     /* end-iterators */
-    iterator end() { return m_data + m_size; }
+    iterator end() noexcept { return m_data + m_size; }
     const_iterator end() const noexcept { return m_data + m_size; }
     const_iterator cend() const noexcept { return end(); }
 
     /*  getter for data ptr */
-    value_type* data() { return m_data; }
-    value_type const* data() const { return m_data; }
-    value_type const* constData() const { return data(); }
+    value_type* data() noexcept { return m_data; }
+    value_type const* data() const noexcept { return m_data; }
+    value_type const* constData() const noexcept { return data(); }
 
     /**
      * @brief front
      * @return front
      */
-    reference front() { return at(0); }
-    const_reference front() const { return at(0); }
+    reference front() noexcept { return at(0); }
+    const_reference front() const noexcept { return at(0); }
 
     /**
      * @brief back
@@ -172,8 +179,8 @@ public:
 
 private:
 
-    T* m_data;
-    size_type const m_size;
+    T* m_data{};
+    size_type m_size{};
 };
 
 } // namespace intelli

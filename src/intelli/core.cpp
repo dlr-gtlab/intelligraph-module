@@ -113,62 +113,74 @@ intelli::registerDefaultNodes()
     static auto _ = [](){
         gtTrace().verbose() << QObject::tr("Registering default nodes...");
 
-        char const* hidden = "";
-        QString catOther   = QObject::tr("Other");
-        QString catNumber  = QObject::tr("Number");
-        QString catLogic   = QObject::tr("Logic");
-        QString catObject  = QObject::tr("Object");
-        QString catString  = QObject::tr("String");
         QString catInput   = QObject::tr("Input");
+        QString catNumber  = QObject::tr("Number");
+        QString catDisplay = QObject::tr("Display");
+        QString catString  = QObject::tr("String");
+        QString catObject  = QObject::tr("Object");
+        QString catGeneral = QObject::tr("General");
         QString catProcess = QObject::tr("Process");
         QString catFile    = QObject::tr("File");
-        QString catDisplay = QObject::tr("Display");
-        QString catGeneral = QObject::tr("General");
+        QString catLogic   = QObject::tr("Logic");
+        QString catOther   = QObject::tr("Other");
+        View<QString> hidden{};
 
-        GT_INTELLI_REGISTER_NODE(DummyNode, hidden);
+        auto& factory = NodeFactory::instance();
+        factory.setCategoryOrderPriority(catInput, -100);
+        factory.setCategoryOrderPriority(catDisplay, -80);
+        factory.setCategoryOrderPriority(catNumber, -60);
+        factory.setCategoryOrderPriority(catString, -40);
+        factory.setCategoryOrderPriority(catObject, -20);
+        factory.setCategoryOrderPriority(catGeneral, -10);
+        factory.setCategoryOrderPriority(catProcess, 20);
+        factory.setCategoryOrderPriority(catFile,  40);
+        factory.setCategoryOrderPriority(catLogic, CategoryOrderPriority::Last);
+        factory.setCategoryOrderPriority(catOther, CategoryOrderPriority::Last);
 
-        GT_INTELLI_REGISTER_NODE(Graph, catOther);
-        GT_INTELLI_REGISTER_NODE(GroupInputProvider, hidden);
-        GT_INTELLI_REGISTER_NODE(GroupOutputProvider, hidden);
+        factory.registerNode<DummyNode>(hidden);
 
-        GT_INTELLI_REGISTER_NODE(NumberDisplayNode, catDisplay);
-        GT_INTELLI_REGISTER_NODE(NumberMathNode, catNumber);
-        GT_INTELLI_REGISTER_NODE(SleepyNode, (gtApp && gtApp->devMode()) ? catOther : hidden);
-        GT_INTELLI_REGISTER_NODE(BoolDisplayNode, catDisplay);
+        factory.registerNode<Graph>(hidden);
+        factory.registerNode<GroupInputProvider>(hidden);
+        factory.registerNode<GroupOutputProvider>(hidden);
 
-        GT_INTELLI_REGISTER_NODE(LogicNode, catLogic);
+        factory.registerNode<SleepyNode>((gtApp && gtApp->devMode()) ?
+                                             catOther : QString{});
 
-        GT_INTELLI_REGISTER_NODE(TextDisplayNode, catDisplay);
+        factory.registerNode<IntInputNode>({catNumber, catInput});
+        factory.registerNode<DoubleInputNode>({catNumber, catInput});
+        factory.registerNode<NumberDisplayNode>({catNumber, catDisplay});
+        factory.registerNode<NumberMathNode>({catNumber});
 
-        GT_INTELLI_REGISTER_NODE(ObjectMementoNode, catObject);
-        GT_INTELLI_REGISTER_NODE(FindDirectChildNode, catObject);
-        GT_INTELLI_REGISTER_NODE(ObjectSink, catObject);
+        factory.registerNode<BoolInputNode>({catLogic, catInput});
+        factory.registerNode<BoolDisplayNode>({catLogic, catDisplay});
+        factory.registerNode<LogicNode>({catLogic});
 
-        GT_INTELLI_REGISTER_NODE(FileInputNode, catInput);
-        GT_INTELLI_REGISTER_NODE(FileReaderNode, catFile);
-        GT_INTELLI_REGISTER_NODE(FileWriterNode, catFile);
+        factory.registerNode<StringInputNode>({catString, catInput});
+        factory.registerNode<TextDisplayNode>({catString, catDisplay});
+        factory.registerNode<StringBuilderNode>({catString});
+        factory.registerNode<StringSelectionNode>({catString});
 
-        GT_INTELLI_REGISTER_NODE(ProjectInfoNode, catInput);
+        factory.registerNode<ObjectInputNode>({catObject, catInput});
+        factory.registerNode<ObjectMementoNode>({catObject});
+        factory.registerNode<FindDirectChildNode>({catObject});
+        factory.registerNode<ObjectSink>({catObject});
 
-        GT_INTELLI_REGISTER_NODE(ExistingDirectorySourceNode, catInput);
-        GT_INTELLI_REGISTER_NODE(BoolInputNode, catInput);
-        GT_INTELLI_REGISTER_NODE(DoubleInputNode, catInput);
-        GT_INTELLI_REGISTER_NODE(StringInputNode, catInput);
-        GT_INTELLI_REGISTER_NODE(ObjectInputNode, catInput);
-        GT_INTELLI_REGISTER_NODE(IntInputNode, catInput);
-        GT_INTELLI_REGISTER_NODE(GraphUserVariablesInputNode, catInput);
+        factory.registerNode<FileInputNode>({catInput, catFile});
+        factory.registerNode<FileReaderNode>({catFile});
+        factory.registerNode<FileWriterNode>({catFile});
+        factory.registerNode<ExistingDirectorySourceNode>({catInput, catFile});
 
-        GT_INTELLI_REGISTER_NODE(StringBuilderNode, catString);
-        GT_INTELLI_REGISTER_NODE(StringSelectionNode, catString);
+        factory.registerNode<ProjectInfoNode>({catInput});
+        factory.registerNode<GraphUserVariablesInputNode>({catInput});
 
-        GT_INTELLI_REGISTER_NODE(GenericCalculatorExecNode, catProcess);
+        factory.registerNode<GenericCalculatorExecNode>({catProcess});
 
-        GT_INTELLI_REGISTER_NODE(ToListNode, catGeneral);
-        GT_INTELLI_REGISTER_NODE(ListGetItemNode, catGeneral);
-        GT_INTELLI_REGISTER_NODE(ListGetSizeNode, catGeneral);
+        factory.registerNode<ToListNode>({catGeneral});
+        factory.registerNode<ListGetItemNode>({catGeneral});
+        factory.registerNode<ListGetSizeNode>({catGeneral});
 
 #ifdef GT_INTELLI_EXPERIMENTAL_NODES
-        GT_INTELLI_REGISTER_NODE(BinaryDisplayNode, catDisplay);
+        factory.registerNode<BinaryDisplayNode>({catLogic, catDisplay});
 #endif
         return true;
     }();

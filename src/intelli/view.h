@@ -47,11 +47,11 @@ public:
 
     using base_class::operator[];
 
-    View(T const* data, size_type size) :
+    View(T const* data, size_type size) noexcept :
         base_class(data, size)
     {}
 
-    View(std::initializer_list<T> list) :
+    View(std::initializer_list<T> list) noexcept :
         base_class(list.begin(), std::distance(list.begin(), list.end()))
     {}
 
@@ -60,13 +60,13 @@ public:
              typename = std::enable_if_t<
                      std::is_convertible<typename Container<U...>::value_type,
                                          T const>::value>>
-    View(Container<U...> const& vector) :
+    View(Container<U...> const& vector) noexcept :
         base_class(detail::container_data<T const>::get(vector),
                    detail::container_size<size_type>::get(vector))
     {}
 
     template <size_t N>
-    View(std::array<T, N> const& array) : View(array.data(), N) {}
+    View(std::array<T, N> const& array) noexcept : View(array.data(), N) {}
 
     /// disabled for r-values
     template<template<class...> class Container, typename... U>

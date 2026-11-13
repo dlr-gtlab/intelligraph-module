@@ -100,7 +100,7 @@ NodeDataFactory::NodeDataFactory() :
 NodeDataFactory::~NodeDataFactory() = default;
 
 NodeDataFactory&
-NodeDataFactory::instance()
+NodeDataFactory::instance() noexcept
 {
     static NodeDataFactory self;
     return self;
