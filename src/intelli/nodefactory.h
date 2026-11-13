@@ -73,7 +73,7 @@ public:
     /**
      * @brief Returns all associated categories of the given node
      * @param className Node's class name
-     * @return Categories, sorted.
+     * @return Categories.
      */
     View<QString> nodeCategories(QString const& className) const;
     [[deprecated("use `nodeCategories` instead")]]

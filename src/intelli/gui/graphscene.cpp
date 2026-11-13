@@ -855,8 +855,12 @@ GraphScene::createSceneMenu(QPointF scenePos)
     connect(txtBox, &QLineEdit::textChanged,
             treeView, [treeView](QString const& filterText) {
 
+        int count = 0;
+        QTreeWidgetItem* lastNodeItem = nullptr;
+
         auto const filterItem =
-            [ &filterText](auto filterFunc, QTreeWidgetItem* item, bool force) -> bool {
+            [&count, &filterText, &lastNodeItem]
+            (auto filter, QTreeWidgetItem* item, bool force) -> bool {
 
             // filter should include category too
             bool const selfMatch
@@ -867,12 +871,18 @@ GraphScene::createSceneMenu(QPointF scenePos)
             for (int i : gt::range(0, item->childCount()))
             {
                 // apply filter first
-                childMatch = filterFunc(filterFunc, item->child(i), selfMatch) || childMatch;
+                childMatch = filter(filter, item->child(i), selfMatch) || childMatch;
             }
 
             // apply filter
             bool const visible = selfMatch || childMatch;
             item->setHidden(!visible);
+
+            if (visible)
+            {
+                count++;
+                if (item->parent()) lastNodeItem = item; // save node item for later
+            }
 
             return visible;
         };
@@ -882,7 +892,13 @@ GraphScene::createSceneMenu(QPointF scenePos)
             filterItem(filterItem, treeView->topLevelItem(i), filterText.isEmpty());
         }
 
-        // TODO: select last item if only one is visible
+        // if exactly 1 category and 1 node is visible -> select last node
+        treeView->clearSelection();
+        if (count == 2)
+        {
+            assert(lastNodeItem && !lastNodeItem->isHidden());
+            lastNodeItem->setSelected(true);
+        }
     });
 // SPDX-SnippetEnd
 

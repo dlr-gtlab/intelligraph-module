@@ -180,8 +180,7 @@ NodeFactory::registerNode(QMetaObject const& meta,
                                        entry.categories.end()),
                            entry.categories.end());
 
-    auto inserted = pimpl()->data.emplace(className, std::move(entry));
-
+    pimpl()->data.emplace(className, std::move(entry));
     return true;
 }
 
