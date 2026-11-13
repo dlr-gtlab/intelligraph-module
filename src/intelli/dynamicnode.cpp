@@ -13,7 +13,6 @@
 #include "intelli/property/stringselection.h"
 #include "intelli/property/uint.h"
 #include "intelli/private/utils.h"
-#include "intelli/data/invalid.h"
 
 #include "gt_propertystructcontainer.h"
 #include "gt_structproperty.h"
@@ -52,7 +51,7 @@ struct DynamicNode::Impl
     int unsyncedInPorts  = 0;
     int unsyncedOutPorts = 0;
 
-    auto beginInsertPort(PortType type)
+    auto beginInsertPort(PortType type) noexcept
     {
         type == PortType::In ? unsyncedInPorts++ : unsyncedOutPorts++;
         return gt::finally([this, type]{
@@ -91,6 +90,7 @@ DynamicNode::DynamicNode(QString const& modelName,
         auto getListType = std::bind(
             &NodeDataFactory::listType, &factory, std::placeholders::_1);
 
+        // TODO: refactor so one must generate list types?
         if (!options.testFlag(NoDefaultListTypes))
         {
             inputTypes.reserve(inputTypes.size() * 2);
@@ -102,6 +102,7 @@ DynamicNode::DynamicNode(QString const& modelName,
             utils::transform_if(outputTypes, hasListType,
                                 std::back_inserter(outputTypes), getListType);
         }
+        // TODO: what if types are lsit types already?
         if (options.testFlag(ListTypesOnly))
         {
             inputTypes.erase(std::remove_if(inputTypes.begin(),
@@ -119,7 +120,7 @@ DynamicNode::DynamicNode(QString const& modelName,
 
         pimpl->inputWhitelist  = inputTypes;
         pimpl->outputWhitelist = outputTypes;
-      
+
         GtPropertyStructDefinition portInfoIn{S_PORT_INFO_IN};
         portInfoIn.defineMember(S_PORT_TYPE, makeStringSelectionProperty(std::move(inputTypes)));
         portInfoIn.defineMember(S_PORT_CAPTION, gt::makeStringProperty());
@@ -137,22 +138,30 @@ DynamicNode::DynamicNode(QString const& modelName,
         pimpl->inPorts.registerAllowedType(portInfoIn);
         pimpl->outPorts.registerAllowedType(portInfoOut);
 
-        if (pimpl->option & DynamicInput  || pimpl->option & NoUserDynamicInput)
+        if (pimpl->option & DynamicInput)
         {
 #if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
-            if (pimpl->option & NoUserDynamicInput)
+            if (pimpl->option & NoUserManagedInput)
             {
                 pimpl->inPorts.setFlags(GtPropertyStructContainer::Hidden);
+            }
+            if (pimpl->option & NoUserEditableInput)
+            {
+                pimpl->inPorts.setFlags(GtPropertyStructContainer::ReadOnly);
             }
 #endif
             registerPropertyStructContainer(pimpl->inPorts);
         }
-        if (pimpl->option & DynamicOutput || pimpl->option & NoUserDynamicOutput)
+        if (pimpl->option & DynamicOutput)
         {
 #if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
-            if (pimpl->option & NoUserDynamicOutput)
+            if (pimpl->option & NoUserManagedOutput)
             {
                 pimpl->outPorts.setFlags(GtPropertyStructContainer::Hidden);
+            }
+            if (pimpl->option & NoUserEditableOutput)
+            {
+                pimpl->outPorts.setFlags(GtPropertyStructContainer::ReadOnly);
             }
 #endif
             registerPropertyStructContainer(pimpl->outPorts);
@@ -175,22 +184,22 @@ DynamicNode::DynamicNode(QString const& modelName,
     }
 }
 
-DynamicNode::~DynamicNode() = default;
+DynamicNode::~DynamicNode() noexcept = default;
 
 QStringList const&
-DynamicNode::inputWhitelist() const
+DynamicNode::inputWhitelist() const noexcept
 {
     return pimpl->inputWhitelist;
 }
 
 QStringList const&
-DynamicNode::outputWhitelist() const
+DynamicNode::outputWhitelist() const noexcept
 {
     return pimpl->outputWhitelist;
 }
 
 DynamicNode::DynamicNodeOptions
-DynamicNode::dynamicNodeOptions() const
+DynamicNode::dynamicNodeOptions() const noexcept
 {
     return pimpl->option;
 }
@@ -566,7 +575,7 @@ DynamicNode::onPortEntryRemoved(int idx)
 }
 
 PortType
-DynamicNode::toPortType(GtPropertyStructContainer const& container) const
+DynamicNode::toPortType(GtPropertyStructContainer const& container) const noexcept
 {
     if (&container == &pimpl->inPorts) return PortType::In;
     if (&container == &pimpl->outPorts) return PortType::Out;
@@ -598,7 +607,7 @@ DynamicNode::dynamicPorts(PortType type) const noexcept(false)
 }
 
 GtPropertyStructContainer*
-DynamicNode::toDynamicPorts(QObject* obj)
+DynamicNode::toDynamicPorts(QObject* obj) noexcept
 {
     if (obj == &pimpl->inPorts)  return &pimpl->inPorts;
     if (obj == &pimpl->outPorts) return &pimpl->outPorts;
@@ -606,7 +615,7 @@ DynamicNode::toDynamicPorts(QObject* obj)
 }
 
 GtPropertyStructInstance*
-DynamicNode::propertyAt(GtPropertyStructContainer* container, int idx)
+DynamicNode::propertyAt(GtPropertyStructContainer* container, int idx) noexcept
 {
     if (!container) return nullptr;
 

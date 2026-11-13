@@ -62,7 +62,7 @@ NodeDataPtr variantToNodeData(QVariant value)
 } // namespace
 
 GraphUserVariablesInputNode::GraphUserVariablesInputNode() :
-    DynamicNode("User Constants", NoUserDynamicOutput)
+    DynamicNode("User Constants", NoUserEditableInputAndOutput)
 {
     setNodeEvalMode(NodeEvalMode::Blocking);
 }
