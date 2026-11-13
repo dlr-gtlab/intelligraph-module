@@ -701,6 +701,13 @@ GraphScene::connectionObject(ConnectionId conId) const
 std::unique_ptr<QMenu>
 GraphScene::createSceneMenu(QPointF scenePos)
 {
+    // local helper struct
+    struct NodeDetail
+    {
+        QString className;
+        QString displayName;
+    };
+
     Impl::CutOperation::instance().clear();
 
     // helper functor to add a comment
@@ -729,7 +736,7 @@ GraphScene::createSceneMenu(QPointF scenePos)
 
     // helper functor to add a node
     auto addNode = [this, scenePos](QTreeWidgetItem& item) {
-        auto node = NodeFactory::instance().makeNode(item.whatsThis(0));
+        auto node = NodeFactory::instance().makeNode(item.whatsThis(0)); // here: stores class name
         if (!node) return;
 
         node->setPos(scenePos);
@@ -782,9 +789,9 @@ GraphScene::createSceneMenu(QPointF scenePos)
 
     auto const& factory = NodeFactory::instance();
 
-    QStringList cats = factory.registeredCategories();
+    QStringList const cats = factory.sortedCategories();
 
-    for (QString const& cat : qAsConst(cats))
+    for (QString const& cat : cats)
     {
         if (cat.isEmpty()) continue;
 
@@ -793,18 +800,31 @@ GraphScene::createSceneMenu(QPointF scenePos)
         item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
     }
 
-    QStringList nodes = factory.registeredNodes();
-
-    for (QString const& node : qAsConst(nodes))
+    QVector<NodeDetail> nodeModelNames;
     {
-        for (QString const& cat : factory.nodeCategories(node))
+        QStringList const nodes = factory.registeredNodes();
+        std::transform(nodes.begin(), nodes.end(), std::back_inserter(nodeModelNames),
+                       [&factory](QString const& className){
+                           return NodeDetail{className, factory.nodeModelName(className)};
+                       });
+    }
+
+    // sort by display name
+    std::sort(nodeModelNames.begin(), nodeModelNames.end(), [](NodeDetail const& a,
+                                                               NodeDetail const& b){
+        return a.displayName < b.displayName;
+    });
+
+    for (NodeDetail const& entry : nodeModelNames)
+    {
+        for (QString const& cat : factory.nodeCategories(entry.className))
         {
             auto parents = treeView->findItems(cat, Qt::MatchExactly);
             if (parents.empty()) continue;
 
             auto item = new QTreeWidgetItem(parents.first());
-            item->setText(0, factory.nodeModelName(node));
-            item->setWhatsThis(0, node); // store class name of node
+            item->setText(0, entry.displayName);
+            item->setWhatsThis(0, entry.className); // here: store class name of node
         }
     }
 
@@ -832,27 +852,37 @@ GraphScene::createSceneMenu(QPointF scenePos)
     connect(treeView, &QTreeWidget::itemActivated, menu, onClicked);
 
     //Setup filtering
-    connect(txtBox, &QLineEdit::textChanged, treeView, [treeView](QString const& text) {
-        QTreeWidgetItemIterator categoryIt(treeView, QTreeWidgetItemIterator::HasChildren);
+    connect(txtBox, &QLineEdit::textChanged,
+            treeView, [treeView](QString const& filterText) {
 
-        while (*categoryIt) (*categoryIt++)->setHidden(true);
+        auto const filterItem =
+            [ &filterText](auto filterFunc, QTreeWidgetItem* item, bool force) -> bool {
 
-        QTreeWidgetItemIterator it(treeView, QTreeWidgetItemIterator::NoChildren);
-        while (*it)
-        {
-            QString const& modelName = (*it)->text(0);
-            bool match = (modelName.contains(text, Qt::CaseInsensitive));
-            (*it)->setHidden(!match);
-            if (match) {
-                auto* parent = (*it)->parent();
-                while (parent)
-                {
-                    parent->setHidden(false);
-                    parent = parent->parent();
-                }
+            // filter should include category too
+            bool const selfMatch
+                = force || item->text(0).contains(filterText, Qt::CaseInsensitive);
+
+            // filter children
+            bool childMatch = false;
+            for (int i : gt::range(0, item->childCount()))
+            {
+                // apply filter first
+                childMatch = filterFunc(filterFunc, item->child(i), selfMatch) || childMatch;
             }
-            ++it;
+
+            // apply filter
+            bool const visible = selfMatch || childMatch;
+            item->setHidden(!visible);
+
+            return visible;
+        };
+
+        for (int i : gt::range(0, treeView->topLevelItemCount()))
+        {
+            filterItem(filterItem, treeView->topLevelItem(i), filterText.isEmpty());
         }
+
+        // TODO: select last item if only one is visible
     });
 // SPDX-SnippetEnd
 

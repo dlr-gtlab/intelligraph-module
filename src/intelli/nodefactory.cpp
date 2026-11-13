@@ -61,9 +61,7 @@ NodeFactory::pimpl() const noexcept { return impl.get(); }
 QStringList
 NodeFactory::registeredNodes() const
 {
-    auto classes = knownClasses();
-    classes.sort();
-    return classes;
+    return knownClasses();
 }
 
 QStringList
@@ -81,10 +79,18 @@ NodeFactory::registeredCategories() const
         });
     }
 
+    return categories;
+}
+
+QStringList
+NodeFactory::sortedCategories() const
+{
+    QStringList categories = registeredCategories();
+
     std::sort(categories.begin(), categories.end(),
               [this](QString const& a, QString const& b){
-        return categoryOrderPriority(a) < categoryOrderPriority(b);
-    });
+                  return categoryOrderPriority(a) < categoryOrderPriority(b);
+              });
 
     return categories;
 }

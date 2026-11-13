@@ -52,19 +52,23 @@ public:
     static NodeFactory& instance() noexcept;
 
     /**
-     * @brief Returns sorted list of registered nodes
-     * @return Sorted list of nodes
+     * @brief Returns list of registered nodes
+     * @return list of nodes
      */
     QStringList registeredNodes() const;
 
     /**
-     * @brief Returns sorted list of categories
-     * @return Sorted list of categories
+     * @brief Returns unsorted list of categories
+     * @return Unsorted list of categories
      */
     QStringList registeredCategories() const;
 
-    [[deprecated("use `nodeCategories` instead")]]
-    QString nodeCategory(QString const& className) const;
+    /**
+     * @brief Returns sorted list of categories
+     * @return Sorted list of categories, according to the registered category
+     * order priorities
+     */
+    QStringList sortedCategories() const;
 
     /**
      * @brief Returns all associated categories of the given node
@@ -72,6 +76,8 @@ public:
      * @return Categories, sorted.
      */
     View<QString> nodeCategories(QString const& className) const;
+    [[deprecated("use `nodeCategories` instead")]]
+    QString nodeCategory(QString const& className) const;
 
     /**
      * @brief Returns the model name (= display name) of the given node

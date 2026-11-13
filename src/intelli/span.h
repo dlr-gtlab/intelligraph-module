@@ -13,6 +13,7 @@
 #include <type_traits>
 #include <array>
 #include <cassert>
+#include <stddef.h>
 
 namespace intelli
 {
