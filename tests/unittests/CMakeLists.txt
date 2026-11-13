@@ -37,6 +37,10 @@ add_executable(IntelliGraphUnitTests
     node/test_node.h node/test_node.cpp
 )
 
+target_compile_definitions(IntelliGraphUnitTests
+    PRIVATE GT_MODULE_ID="IntelliGraph"
+)
+
 target_link_libraries(IntelliGraphUnitTests PRIVATE
     gtest
     GTlabIntelliGraph

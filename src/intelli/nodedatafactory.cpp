@@ -167,13 +167,16 @@ NodeDataFactory::registerData(QMetaObject const& meta, QString const& moduleId)
 
     removeOnFailure.clear();
 
-    // register conversion for invalid data type
-    registerConversion(className, typeId<InvalidData>(), [](NodeDataPtr const&){
-        return nullptr;
-    });
-    registerConversion(typeId<InvalidData>(), className, [](NodeDataPtr const&){
-        return nullptr;
-    });
+    if (className != typeId<InvalidData>())
+    {
+        // register conversion for invalid data type
+        registerConversion(className, typeId<InvalidData>(), [](NodeDataPtr const&){
+            return nullptr;
+        });
+        registerConversion(typeId<InvalidData>(), className, [](NodeDataPtr const&){
+            return nullptr;
+        });
+    }
 
     return true;
 }
@@ -265,6 +268,13 @@ NodeDataFactory::registerConversion(TypeId const& from,
             << QObject::tr("Failed to register conversion from '%1' to '%2'! "
                            "(Unknown type '%2')")
                    .arg(from, to);
+        return false;
+    }
+    if (to == from)
+    {
+        gtError()
+            << QObject::tr("Cannot register conversion between the same type '%1'!")
+                   .arg(from);
         return false;
     }
     if (!conversion)

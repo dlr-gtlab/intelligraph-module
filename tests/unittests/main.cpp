@@ -42,7 +42,11 @@ main(int argc, char** argv)
         TestSleepyNode::registerOnce();
         TestNumberInputNode::registerOnce();
         TestNodeData::registerOnce();
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
+        gtObjectFactory->registerClass(intelli::Connection::staticMetaObject, GT_MODULENAME());
+#else
         gtObjectFactory->registerClass(intelli::Connection::staticMetaObject);
+#endif
     }();
 
     QCoreApplication a(argc, argv);

@@ -625,6 +625,18 @@ TEST(NodeData, specialized_list_type)
     EXPECT_DOUBLE_EQ(item->myDouble(), 42.0);
 }
 
+/// check that registering conversions twice fails
+TEST(NodeDataFactory, register_conversion_same_type_fails)
+{
+    auto& factory = NodeDataFactory::instance();
+
+    factory.unregisterConversion(typeId<IntData>(), typeId<IntData>());
+    EXPECT_TRUE(factory.canConvert(typeId<IntData>(), typeId<IntData>()));
+    EXPECT_FALSE(factory.registerConversion(typeId<IntData>(), typeId<IntData>(),
+                                            [](NodeDataPtr const& d){ return d; }));
+    EXPECT_TRUE(factory.canConvert(typeId<IntData>(), typeId<IntData>()));
+}
+
 /// check that registering multiple conversions for the same type pair fails
 TEST(NodeDataFactory, register_conversion_duplicate_fails)
 {
