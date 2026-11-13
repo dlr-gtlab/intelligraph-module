@@ -56,11 +56,18 @@ using DeleteAction = std::pair<NodeUI::CustomDeleteFunctor,
                                NodeUI::EnableCustomDeleteFunctor>;
 
 // allows to use variadic arguments
-auto const hasInputPorts = [](GtObject* obj, auto ...){
-    return (static_cast<DynamicNode*>(obj)->dynamicNodeOption() & DynamicNode::DynamicInput);
+auto const canEditInputPorts = [](GtObject* obj, auto ...){
+    return static_cast<DynamicNode*>(obj)->dynamicNodeOptions().testFlag(DynamicNode::NoUserEditableInput);
 };
-auto const hasOutputPorts = [](GtObject* obj, auto ...){
-    return (static_cast<DynamicNode*>(obj)->dynamicNodeOption() & DynamicNode::DynamicOutput);
+auto const canEditOutputPorts = [](GtObject* obj, auto ...){
+    return static_cast<DynamicNode*>(obj)->dynamicNodeOptions().testFlag(DynamicNode::NoUserEditableOutput);
+};
+// allows to use variadic arguments
+auto const canManageInputPorts = [](GtObject* obj, auto ...){
+    return static_cast<DynamicNode*>(obj)->dynamicNodeOptions().testFlag(DynamicNode::NoUserManagedInput);
+};
+auto const canManageOutputPorts = [](GtObject* obj, auto ...){
+    return static_cast<DynamicNode*>(obj)->dynamicNodeOptions().testFlag(DynamicNode::NoUserManagedOutput);
 };
 
 DummyNode*
@@ -183,12 +190,12 @@ NodeUI::NodeUI(Options options) :
         {
             addSingleAction(tr("Add In Port"), addDynamicInPort)
                 .setIcon(gt::gui::icon::add())
-                .setVisibilityMethod(isDynamicNode && !isDummyNode && hasInputPorts)
+                .setVisibilityMethod(isDynamicNode && !isDummyNode && canManageInputPorts)
                 SET_ORDER_PRIORITY(OrderPriority::PortAction);
 
             addSingleAction(tr("Add Out Port"), addDynamicOutPort)
                 .setIcon(gt::gui::icon::add())
-                .setVisibilityMethod(isDynamicNode && !isDummyNode && hasOutputPorts)
+                .setVisibilityMethod(isDynamicNode && !isDummyNode && canManageOutputPorts)
                 SET_ORDER_PRIORITY(OrderPriority::PortAction);
 
             addSeparator(ORDER_PRIORITY(OrderPriority::AfterPortActions));
@@ -270,11 +277,16 @@ NodeUI::NodeUI(Options options) :
     {
         addPortAction(tr("Edit Port"), editDynamicPort)
             .setIcon(gt::gui::icon::rename())
-            .setVisibilityMethod(isDynamicPort && (isInputPort || isOutputPort) && hasInputPorts);
-
+            .setVisibilityMethod(isDynamicPort && (
+                                     (isInputPort && canEditInputPorts) ||
+                                     (isOutputPort && canEditOutputPorts))
+                                 );
         addPortAction(tr("Delete Port"), deleteDynamicPort)
             .setIcon(gt::gui::icon::delete_())
-            .setVisibilityMethod(isDynamicPort && (isInputPort || isOutputPort)  && hasInputPorts);
+            .setVisibilityMethod(isDynamicPort && (
+                                     (isInputPort && canEditInputPorts) ||
+                                     (isOutputPort && canEditOutputPorts))
+                                 );
     }
 }
 
@@ -553,6 +565,10 @@ namespace
 void
 addPort(DynamicNode& node, PortType type)
 {
+    if (type == PortType::In  && !canManageInputPorts(&node)) return;
+    if (type == PortType::Out && !canManageOutputPorts(&node)) return;
+
+    // TODO: update
     PortEditDialog::Option option{PortEditDialog::AllowListTypes};
 
     auto dynOptions = node.dynamicNodeOptions();
@@ -600,6 +616,10 @@ addPort(DynamicNode& node, PortType type)
 void
 editPort(DynamicNode& node, PortType type, NodePort& srcPort)
 {
+    if (type == PortType::In  && !canEditInputPorts(&node)) return;
+    if (type == PortType::Out && !canEditOutputPorts(&node)) return;
+
+    // TODO: update
     PortEditDialog::Option option{PortEditDialog::AllowListTypes};
 
     auto dynOptions = node.dynamicNodeOptions();
