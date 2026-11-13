@@ -60,7 +60,7 @@ public:
      * @brief instance
      * @return
      */
-    static NodeDataFactory& instance();
+    static NodeDataFactory& instance() noexcept;
 
     /**
      * @brief Registers the data type `T` in the factory. `T` must be derived
