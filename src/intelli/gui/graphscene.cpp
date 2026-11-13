@@ -28,6 +28,7 @@
 #include <intelli/gui/graphics/connectionobject.h>
 #include <intelli/gui/graphics/nodeobject.h>
 #include <intelli/gui/graphics/popupitem.h>
+#include <intelli/gui/widgets/menutreewidget.h>
 #include <intelli/private/utils.h>
 #include <intelli/private/gui_utils.h>
 
@@ -700,7 +701,52 @@ GraphScene::connectionObject(ConnectionId conId) const
 std::unique_ptr<QMenu>
 GraphScene::createSceneMenu(QPointF scenePos)
 {
+    // local helper struct
+    struct NodeDetail
+    {
+        QString className;
+        QString displayName;
+    };
+
     Impl::CutOperation::instance().clear();
+
+    // helper functor to add a comment
+    auto addComment = [this, scenePos]() {
+        auto* commentGroup = GuiData::accessCommentGroup(graph());
+        if (!commentGroup) return;
+
+        auto commentPtr = std::make_unique<CommentData>();
+        commentPtr->setPos(scenePos);
+
+        auto cmd = gtApp->makeCommand(m_graph, tr("Append comment '%1'")
+                                                   .arg(commentPtr->objectName()));
+        Q_UNUSED(cmd);
+
+        CommentData* comment = commentGroup->appendComment(std::move(commentPtr));
+        if (!comment) return;
+
+        // start editing comment
+        auto iter = std::find_if(m_comments.begin(),
+                                 m_comments.end(),
+                                 Impl::findObjectById(comment));
+        if (iter == m_comments.end()) return;
+
+        iter->object->startEditing();
+    };
+
+    // helper functor to add a node
+    auto addNode = [this, scenePos](QTreeWidgetItem& item) {
+        auto node = NodeFactory::instance().makeNode(item.whatsThis(0)); // here: stores class name
+        if (!node) return;
+
+        node->setPos(scenePos);
+
+        auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'")
+                                                   .arg(node->caption()));
+        Q_UNUSED(cmd);
+
+        m_graph->appendNode(std::move(node));
+    };
 
 // (adapted)
 // SPDX-SnippetBegin
@@ -722,18 +768,14 @@ GraphScene::createSceneMenu(QPointF scenePos)
 
     txtBox->setMinimumHeight(txtBox->sizeHint().height());
 
-    auto* buttonAction = new QAction(menu);
-    buttonAction->setText(tr("Add Comment"));
-    buttonAction->setIcon(gt::gui::icon::comment());
-
     // 1.
     menu->addAction(txtBoxAction);
-    menu->addAction(buttonAction);
 
     // Add result treeview to the context menu
-    QTreeWidget* treeView = new QTreeWidget(menu);
+    auto* treeView = new MenuTreeWidget(menu);
     treeView->header()->close();
     treeView->setFrameShape(QFrame::NoFrame);
+    treeView->setMinimumHeight(treeView->sizeHint().height() * 1.5);
 
     auto* treeViewAction = new QWidgetAction(menu);
     treeViewAction->setDefaultWidget(treeView);
@@ -741,11 +783,15 @@ GraphScene::createSceneMenu(QPointF scenePos)
     // 2.
     menu->addAction(treeViewAction);
 
+    auto commentItem = new QTreeWidgetItem(treeView);
+    commentItem->setText(0, QObject::tr("Add Comment"));
+    commentItem->setIcon(0, gt::gui::icon::comment());
+
     auto const& factory = NodeFactory::instance();
 
-    auto cats = factory.registeredCategories();
+    QStringList const cats = factory.sortedCategories();
 
-    for (QString const& cat : qAsConst(cats))
+    for (QString const& cat : cats)
     {
         if (cat.isEmpty()) continue;
 
@@ -754,97 +800,107 @@ GraphScene::createSceneMenu(QPointF scenePos)
         item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
     }
 
-    auto nodes = factory.registeredNodes();
-
-    for (QString const& node : qAsConst(nodes))
+    QVector<NodeDetail> nodeModelNames;
     {
-        auto parents = treeView->findItems(factory.nodeCategory(node), Qt::MatchExactly);
+        QStringList const nodes = factory.registeredNodes();
+        std::transform(nodes.begin(), nodes.end(), std::back_inserter(nodeModelNames),
+                       [&factory](QString const& className){
+                           return NodeDetail{className, factory.nodeModelName(className)};
+                       });
+    }
 
-        if (parents.empty()) continue;
+    // sort by display name
+    std::sort(nodeModelNames.begin(), nodeModelNames.end(), [](NodeDetail const& a,
+                                                               NodeDetail const& b){
+        return a.displayName < b.displayName;
+    });
 
-        auto item = new QTreeWidgetItem(parents.first());
-        item->setText(0, factory.nodeModelName(node));
-        item->setWhatsThis(0, node); // store class name of node
+    for (NodeDetail const& entry : nodeModelNames)
+    {
+        for (QString const& cat : factory.nodeCategories(entry.className))
+        {
+            auto parents = treeView->findItems(cat, Qt::MatchExactly);
+            if (parents.empty()) continue;
+
+            auto item = new QTreeWidgetItem(parents.first());
+            item->setText(0, entry.displayName);
+            item->setWhatsThis(0, entry.className); // here: store class name of node
+        }
     }
 
     treeView->expandAll();
 
-    auto onClicked = [this, &factory, menu, scenePos](QTreeWidgetItem* item, int) {
-        item->setExpanded(true);
+    auto onClicked =
+        [this, addComment, addNode, menu, commentItem, isTriggered = std::make_shared<bool>(false)]
+        (QTreeWidgetItem* item, int) mutable {
+            assert(item);
+            item->setExpanded(true);
+            if (!(item->flags() & (Qt::ItemIsSelectable))) return;
 
-        if (!(item->flags() & (Qt::ItemIsSelectable))) return;
+            // guard to allow only one invocation (see issue #350 and #365)
+            if (*isTriggered) return;
+            *isTriggered = true;
 
-        auto node = factory.makeNode(item->whatsThis(0));
-        if (!node)
-        {
-            gtWarning() << tr("Failed to create new node of type %1")
-                               .arg(item->text(0));
-            return;
-        }
-        node->setPos(scenePos);
+            (item == commentItem) ? addComment() : addNode(*item);
 
-        auto cmd = gtApp->makeCommand(m_graph, tr("Append node '%1'")
-                                                   .arg(node->caption()));
-        Q_UNUSED(cmd);
+            menu->close();
+        };
 
-        m_graph->appendNode(std::move(node));
-
-        menu->close();
-    };
-
-    // `itemActivated` may also fire for a single click depending on the Qt
-    // platform style (notably on some Linux / remote desktop setups). Using
-    // `itemClicked` alone keeps node creation single-shot.
+    // does not react to on key pressed
     connect(treeView, &QTreeWidget::itemClicked, menu, onClicked);
+    // may trigger multiple times on certaian platforms
+    connect(treeView, &QTreeWidget::itemActivated, menu, onClicked);
 
     //Setup filtering
-    connect(txtBox, &QLineEdit::textChanged, treeView, [treeView](QString const& text) {
-        QTreeWidgetItemIterator categoryIt(treeView, QTreeWidgetItemIterator::HasChildren);
+    connect(txtBox, &QLineEdit::textChanged,
+            treeView, [treeView](QString const& filterText) {
 
-        while (*categoryIt) (*categoryIt++)->setHidden(true);
+        int count = 0;
+        QTreeWidgetItem* lastNodeItem = nullptr;
 
-        QTreeWidgetItemIterator it(treeView, QTreeWidgetItemIterator::NoChildren);
-        while (*it)
-        {
-            QString const& modelName = (*it)->text(0);
-            bool match = (modelName.contains(text, Qt::CaseInsensitive));
-            (*it)->setHidden(!match);
-            if (match) {
-                auto* parent = (*it)->parent();
-                while (parent)
-                {
-                    parent->setHidden(false);
-                    parent = parent->parent();
-                }
+        auto const filterItem =
+            [&count, &filterText, &lastNodeItem]
+            (auto filter, QTreeWidgetItem* item, bool force) -> bool {
+
+            // filter should include category too
+            bool const selfMatch
+                = force || item->text(0).contains(filterText, Qt::CaseInsensitive);
+
+            // filter children
+            bool childMatch = false;
+            for (int i : gt::range(0, item->childCount()))
+            {
+                // apply filter first
+                childMatch = filter(filter, item->child(i), selfMatch) || childMatch;
             }
-            ++it;
+
+            // apply filter
+            bool const visible = selfMatch || childMatch;
+            item->setHidden(!visible);
+
+            if (visible)
+            {
+                count++;
+                if (item->parent()) lastNodeItem = item; // save node item for later
+            }
+
+            return visible;
+        };
+
+        for (int i : gt::range(0, treeView->topLevelItemCount()))
+        {
+            filterItem(filterItem, treeView->topLevelItem(i), filterText.isEmpty());
+        }
+
+        // if exactly 1 category and 1 node is visible -> select last node
+        treeView->clearSelection();
+        if (count == 2)
+        {
+            assert(lastNodeItem && !lastNodeItem->isHidden());
+            lastNodeItem->setSelected(true);
         }
     });
 // SPDX-SnippetEnd
-
-    connect(buttonAction, &QAction::triggered, menu, [this, menu, scenePos]() {
-        auto* commentGroup = GuiData::accessCommentGroup(graph());
-        if (!commentGroup) return;
-        
-        auto commentPtr = std::make_unique<CommentData>();
-        commentPtr->setPos(scenePos);
-
-        auto cmd = gtApp->makeCommand(m_graph, tr("Append comment '%1'")
-                                                   .arg(commentPtr->objectName()));
-        Q_UNUSED(cmd);
-        
-        CommentData* comment = commentGroup->appendComment(std::move(commentPtr));
-        if (!comment) return;
-
-        // start editing comment
-        auto iter = std::find_if(m_comments.begin(),
-                                 m_comments.end(),
-                                 Impl::findObjectById(comment));
-        if (iter == m_comments.end()) return;
-
-        iter->object->startEditing();
-        menu->close();
-    });
 
     return menuPtr;
 }

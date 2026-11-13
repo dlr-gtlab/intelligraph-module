@@ -12,6 +12,8 @@
 
 #include <type_traits>
 #include <array>
+#include <cassert>
+#include <stddef.h>
 
 namespace intelli
 {
@@ -172,8 +174,8 @@ public:
 
 private:
 
-    T* m_data;
-    size_type const m_size;
+    T* m_data{};
+    size_type const m_size{};
 };
 
 } // namespace intelli
