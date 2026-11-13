@@ -88,12 +88,12 @@ struct NodeDataFactory::Impl
 };
 
 NodeDataFactory::NodeDataFactory() :
-    pimpl(std::make_unique<Impl>())
+    impl(std::make_unique<Impl>())
 {
     registerData(GT_METADATA(InvalidData), GT_MODULENAME());
 
     // for seamless backwards compatibility
-    pimpl->listTypes.insert(GT_CLASSNAME(StringListData),
+    pimpl()->listTypes.insert(GT_CLASSNAME(StringListData),
                             ListEntry{&StringListData::staticMetaObject, typeId<StringData>()});
 }
 
@@ -105,6 +105,12 @@ NodeDataFactory::instance()
     static NodeDataFactory self;
     return self;
 }
+
+NodeDataFactory::Impl*
+NodeDataFactory::pimpl() noexcept { return impl.get(); }
+
+NodeDataFactory::Impl const*
+NodeDataFactory::pimpl() const noexcept { return impl.get(); }
 
 bool
 NodeDataFactory::registerData(QMetaObject const& meta, QString const& moduleId)
@@ -123,7 +129,7 @@ NodeDataFactory::registerData(QMetaObject const& meta, QString const& moduleId)
         return false;
     }
 
-    if (pimpl->types.contains(className))
+    if (pimpl()->types.contains(className))
     {
         gtError()
             << QObject::tr("Failed to register node data '%1'! "
@@ -132,10 +138,10 @@ NodeDataFactory::registerData(QMetaObject const& meta, QString const& moduleId)
         return false;
     }
 
-    auto iter = pimpl->types.insert(className, Entry{&meta, moduleId, TypeId{}});
+    auto iter = pimpl()->types.insert(className, Entry{&meta, moduleId, TypeId{}});
 
     auto removeOnFailure = gt::finally([&className, this](){
-        bool success = pimpl->types.remove(className);
+        bool success = pimpl()->types.remove(className);
         assert(success);
     });
 
@@ -190,7 +196,7 @@ NodeDataFactory::registerListType(TypeId typeId, QMetaObject const& meta)
     }
 
     QString listTypeId = generateListType(typeId);
-    if (pimpl->listTypes.contains(listTypeId))
+    if (pimpl()->listTypes.contains(listTypeId))
     {
         gtError()
             << QObject::tr("Failed to register data list type '%1'! "
@@ -199,7 +205,7 @@ NodeDataFactory::registerListType(TypeId typeId, QMetaObject const& meta)
         return false;
     }
 
-    pimpl->listTypes.insert(listTypeId, ListEntry{&meta, typeId});
+    pimpl()->listTypes.insert(listTypeId, ListEntry{&meta, typeId});
 
     // register conversion for invalid data type
     registerConversion(listTypeId, intelli::typeId<InvalidData>(), [](NodeDataPtr const&){
@@ -217,22 +223,22 @@ NodeDataFactory::unregisterData(QMetaObject const& meta)
 {
     QString className = meta.className();
 
-    auto entry = pimpl->types.constFind(className);
-    if (entry == pimpl->types.cend()) return;
+    auto entry = pimpl()->types.constFind(className);
+    if (entry == pimpl()->types.cend()) return;
 
     gtTrace().verbose().nospace()
         << "### Unregistering Data '" << className << ")...";
 
-    pimpl->types.erase(entry);
+    pimpl()->types.erase(entry);
 
     unregisterConversions(className);
 
     QString listTypeId = generateListType(className);
 
-    auto listEntry = pimpl->listTypes.constFind(listTypeId);
-    if (listEntry == pimpl->listTypes.cend()) return;
+    auto listEntry = pimpl()->listTypes.constFind(listTypeId);
+    if (listEntry == pimpl()->listTypes.cend()) return;
 
-    pimpl->listTypes.erase(listEntry);
+    pimpl()->listTypes.erase(listEntry);
 
     unregisterConversions(listTypeId);
 }
@@ -270,7 +276,7 @@ NodeDataFactory::registerConversion(TypeId const& from,
         return false;
     }
 
-    if (findConversion(pimpl->conversions, from, to) != pimpl->conversions.cend())
+    if (findConversion(pimpl()->conversions, from, to) != pimpl()->conversions.cend())
     {
         gtError()
             << QObject::tr("Failed to register conversion from '%1' to '%2'! "
@@ -279,21 +285,21 @@ NodeDataFactory::registerConversion(TypeId const& from,
         return false;
     }
 
-    pimpl->conversions.insert(from, {to, conversion});
+    pimpl()->conversions.insert(from, {to, conversion});
     return true;
 }
 
 void
 NodeDataFactory::unregisterConversions(TypeId const& type)
 {
-    auto entry = pimpl->conversions.constFind(type);
-    while (entry != pimpl->conversions.cend())
+    auto entry = pimpl()->conversions.constFind(type);
+    while (entry != pimpl()->conversions.cend())
     {
-        pimpl->conversions.erase(entry);
-        entry = pimpl->conversions.constFind(type);
+        pimpl()->conversions.erase(entry);
+        entry = pimpl()->conversions.constFind(type);
     }
 
-    for (TypeId const& from : pimpl->conversions.uniqueKeys())
+    for (TypeId const& from : pimpl()->conversions.uniqueKeys())
     {
         assert(from != type); // we have removed this one
         unregisterConversion(from, type);
@@ -303,24 +309,24 @@ NodeDataFactory::unregisterConversions(TypeId const& type)
 void
 NodeDataFactory::unregisterConversion(TypeId const& from, TypeId const& to)
 {
-    auto conv = findConversion(pimpl->conversions, from, to);
-    if (conv != pimpl->conversions.cend())
+    auto conv = findConversion(pimpl()->conversions, from, to);
+    if (conv != pimpl()->conversions.cend())
     {
-        pimpl->conversions.erase(conv);
+        pimpl()->conversions.erase(conv);
     }
 }
 
 QMetaObject const*
 NodeDataFactory::findMetaObject(TypeId const& anyTypeId) const noexcept
 {
-    auto iter = pimpl->types.find(anyTypeId);
-    if (iter != pimpl->types.end())
+    auto iter = pimpl()->types.find(anyTypeId);
+    if (iter != pimpl()->types.end())
     {
         return iter->metaObject;
     }
 
-    auto listIter = pimpl->listTypes.find(anyTypeId);
-    if (listIter != pimpl->listTypes.end())
+    auto listIter = pimpl()->listTypes.find(anyTypeId);
+    if (listIter != pimpl()->listTypes.end())
     {
         return listIter->metaObject;
     }
@@ -330,14 +336,14 @@ NodeDataFactory::findMetaObject(TypeId const& anyTypeId) const noexcept
 bool
 NodeDataFactory::isKnownType(TypeId const& typeId) const
 {
-    return (pimpl->types.contains(typeId) || isListType(typeId));
+    return (pimpl()->types.contains(typeId) || isListType(typeId));
 }
 
 TypeIdList
 intelli::NodeDataFactory::registeredTypeIds() const
 {
     TypeIdList types;
-    std::copy(pimpl->types.keyBegin(), pimpl->types.keyEnd(), std::back_inserter(types));
+    std::copy(pimpl()->types.keyBegin(), pimpl()->types.keyEnd(), std::back_inserter(types));
     types.removeOne(typeId<InvalidData>());
     return types;
 }
@@ -356,8 +362,8 @@ NodeDataFactory::typeName(TypeId const& typeId) const
         return QStringLiteral("%1_list").arg(typeName(innerType(typeId)));
     }
 
-    auto iter = pimpl->types.constFind(typeId);
-    if (iter == pimpl->types.cend()) return {};
+    auto iter = pimpl()->types.constFind(typeId);
+    if (iter == pimpl()->types.cend()) return {};
     return iter->typeName;
 }
 
@@ -370,7 +376,7 @@ NodeDataFactory::isListType(TypeId const& typeId) const
         gtLogOnce(Warning)
             << QObject::tr("use intelli::typeId<T>() instead of GT_CLASSNAME(T)!");
     }
-    return pimpl->listTypes.contains(typeId);
+    return pimpl()->listTypes.contains(typeId);
 }
 
 bool
@@ -379,14 +385,14 @@ NodeDataFactory::hasListType(TypeId const& typeId) const
     if (isListType(typeId)) return false;
     if (typeId == intelli::typeId<InvalidData>()) return false;
 
-    return pimpl->listTypes.contains(generateListType(typeId));
+    return pimpl()->listTypes.contains(generateListType(typeId));
 }
 
 TypeId
 NodeDataFactory::innerType(TypeId const& typeId) const
 {
-    auto iter = pimpl->listTypes.constFind(typeId);
-    if (iter == pimpl->listTypes.cend()) return {};
+    auto iter = pimpl()->listTypes.constFind(typeId);
+    if (iter == pimpl()->listTypes.cend()) return {};
     return iter->scalar;
 }
 
@@ -402,7 +408,7 @@ bool
 NodeDataFactory::canConvert(TypeId const& from, TypeId const& to) const
 {
     return from == to ||
-           findConversion(pimpl->conversions, from, to) != pimpl->conversions.cend();
+           findConversion(pimpl()->conversions, from, to) != pimpl()->conversions.cend();
 }
 
 bool
@@ -419,8 +425,8 @@ NodeDataFactory::convert(NodeDataPtr const& data, TypeId const& to) const
     TypeId from = data->typeId();
     if (from == to) return data; // no conversion necessary
 
-    auto iter = findConversion(pimpl->conversions, from, to);
-    if (iter == pimpl->conversions.cend()) return nullptr;
+    auto iter = findConversion(pimpl()->conversions, from, to);
+    if (iter == pimpl()->conversions.cend()) return nullptr;
 
     gtTrace().verbose()
         << QObject::tr("converting data from '%1' to '%2'...").arg(from, to);
@@ -433,8 +439,8 @@ NodeDataFactory::makeData(TypeId const& typeId) const
 {
     if (isListType(typeId)) return makeListData(typeId);
 
-    auto iter = pimpl->types.constFind(typeId);
-    if (iter == pimpl->types.cend())
+    auto iter = pimpl()->types.constFind(typeId);
+    if (iter == pimpl()->types.cend())
     {
         gtError() << QObject::tr("Failed to instantiate NodeData '%1'! "
                                  "(unknown type)").arg(typeId);
@@ -457,8 +463,8 @@ NodeDataFactory::makeListData(TypeId const& typeId) const
 {
     auto listTypeId  = isListType(typeId) ? typeId : listType(typeId);
     auto innerTypeId = innerType(listTypeId);
-    auto entry = pimpl->listTypes.constFind(listTypeId);
-    if (entry == pimpl->listTypes.cend())
+    auto entry = pimpl()->listTypes.constFind(listTypeId);
+    if (entry == pimpl()->listTypes.cend())
     {
         return nullptr;
     }

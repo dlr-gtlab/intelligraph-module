@@ -26,7 +26,7 @@ namespace intelli
 {
 
 class Node;
-class GT_INTELLI_EXPORT NodeFactory : public GtAbstractObjectFactory
+class GT_INTELLI_EXPORT NodeFactory : private GtAbstractObjectFactory
 {
 
 public:
@@ -52,9 +52,10 @@ public:
      * @param meta Metaobject of the node
      * @param category Category to list node in. Use an empty string to "hide"
      * the node in the viewer.
+     * @param moduleId Module Id of the associated node. Must not be empty.
      * @return Success
      */
-    bool registerNode(QMetaObject const& meta, QString category, QString moduleId = {}) noexcept;
+    bool registerNode(QMetaObject const& meta, QString category, QString moduleId) noexcept;
 
     template <typename T>
     static inline bool registerNode(QString const& category)
@@ -73,11 +74,12 @@ public:
 private:
 
     struct Impl;
-    std::unique_ptr<Impl> pimpl;
+    std::unique_ptr<Impl> impl;
 
-    // hide some functions
-    using GtAbstractObjectFactory::newObject;
-    using GtAbstractObjectFactory::registerClass;
+    /// impl-getter for const correctness
+    Impl* pimpl() noexcept;
+    /// impl-getter for const correctness
+    Impl const* pimpl() const noexcept;
 
     NodeFactory();
 };

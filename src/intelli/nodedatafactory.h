@@ -226,7 +226,12 @@ public:
 private:
 
     struct Impl;
-    std::unique_ptr<Impl> pimpl;
+    std::unique_ptr<Impl> impl;
+
+    /// impl-getter for const correctness
+    Impl* pimpl() noexcept;
+    /// impl-getter for const correctness
+    Impl const* pimpl() const noexcept;
 
     /// private constructor
     NodeDataFactory();

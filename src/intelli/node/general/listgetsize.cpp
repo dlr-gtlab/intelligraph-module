@@ -53,5 +53,5 @@ ListGetSizeNode::eval()
     Ptr<ListData> listData = nodeData<ListData>(m_in);
     if (!listData) return evalFailed();
 
-    setNodeData(m_out, makeNodeData<IntData>(listData->size()));
+    setNodeData(m_out, makeNodeData<IntData>(static_cast<int>(listData->size())));
 }

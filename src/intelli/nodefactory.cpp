@@ -36,7 +36,7 @@ struct NodeFactory::Impl
 };
 
 NodeFactory::NodeFactory() :
-    pimpl(std::make_unique<Impl>())
+    impl(std::make_unique<Impl>())
 {
 
 }
@@ -50,6 +50,12 @@ NodeFactory::instance()
     return self;
 }
 
+NodeFactory::Impl*
+NodeFactory::pimpl() noexcept { return impl.get(); }
+
+NodeFactory::Impl const*
+NodeFactory::pimpl() const noexcept { return impl.get(); }
+
 QStringList
 NodeFactory::registeredNodes() const
 {
@@ -61,7 +67,7 @@ NodeFactory::registeredCategories() const
 {
     QStringList categories;
 
-    for (Impl::NodeMetaData const& data : pimpl->data)
+    for (Impl::NodeMetaData const& data : pimpl()->data)
     {
         if (data.category == S_DEPRECATED) continue;
         if (!categories.contains(data.category)) categories << data.category;
@@ -77,13 +83,13 @@ NodeFactory::registeredCategories() const
 QString
 NodeFactory::nodeCategory(const QString& className) const noexcept
 {
-    return pimpl->data.value(className).category;
+    return pimpl()->data.value(className).category;
 }
 
 QString
 NodeFactory::nodeModelName(const QString& className) const noexcept
 {
-    return pimpl->data.value(className).modelName;
+    return pimpl()->data.value(className).modelName;
 }
 
 bool
@@ -103,7 +109,11 @@ NodeFactory::registerNode(QMetaObject const& meta, QString category, QString mod
 
     // add node to object factory
     if (!gtObjectFactory->knownClass(className) &&
+#if GT_VERSION >= GT_VERSION_CHECK(2, 1, 0)
+        !gtObjectFactory->registerClass(meta, moduleId))
+#else
         !gtObjectFactory->registerClass(meta))
+#endif
     {
         gtError() << QObject::tr("Failed to register node '%1' in object factory!")
                          .arg(className);
@@ -125,7 +135,7 @@ NodeFactory::registerNode(QMetaObject const& meta, QString category, QString mod
         category = S_DEPRECATED;
     }
 
-    pimpl->data.insert(className, { std::move(category), tmp->modelName() });
+    pimpl()->data.insert(className, { std::move(category), tmp->modelName() });
     return true;
 }
 
