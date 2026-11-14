@@ -9,6 +9,7 @@
 #include "objectsink.h"
 
 #include <intelli/data/object.h>
+#include "intelli/nodeevent.h"
 #include <intelli/nodedatainterface.h>
 
 #include "gt_application.h"
@@ -27,7 +28,7 @@ ObjectSink::ObjectSink() :
 
     setNodeEvalMode(NodeEvalMode::Blocking);
 
-    connect(this, &Node::inputDataRecieved,
+    connect(this, &Node::inputDataUpdated,
             this, [this](PortId portId){
         if (portId != m_in) return;
         updateExportEnabled();
@@ -37,12 +38,12 @@ ObjectSink::ObjectSink() :
 void
 ObjectSink::nodeEvent(NodeEvent const* e)
 {
-    Node::nodeEvent(e);
-
-    if (e->type() == NodeEventType::DataInterfaceAvailableEvent)
+    if (e->cast<DataInterfaceAvailableEvent>())
     {
         updateExportEnabled();
     }
+
+    return Node::nodeEvent(e);
 }
 
 void

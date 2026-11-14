@@ -8,15 +8,18 @@
  */
 
 #include "intelli/graph.h"
+#include "intelli/graphexecmodel.h"
 #include "intelli/graphuservariables.h"
+#include "intelli/utilities.h"
 #include "intelli/private/graph_impl.h"
+#include "intelli/nodeevent.h"
 
 #include "intelli/connection.h"
 #include "intelli/connectiongroup.h"
 #include "intelli/data/invalid.h"
 #include "intelli/node/dummy.h"
-#include "intelli/node/groupinputprovider.h"
-#include "intelli/node/groupoutputprovider.h"
+#include "intelli/node/graphinputprovider.h"
+#include "intelli/node/graphoutputprovider.h"
 #include "intelli/gui/guidata.h"
 
 #include <gt_qtutilities.h>
@@ -26,8 +29,9 @@
 
 using namespace intelli;
 
-Graph::Graph() :
-    Node("Graph"),
+
+Graph::Graph(QString const& modelName, bool initProviders) :
+    DynamicNode(modelName),
     pimpl(std::make_unique<Impl>())
 {
     auto* db = new GraphUserVariables(this);
@@ -47,7 +51,116 @@ Graph::Graph() :
     connect(connectionGroup, &ConnectionGroup::mergeConnections, this, [this](){
         restoreConnections();
     });
+
+    if (initProviders)
+    {
+        setNodeEvalMode(NodeEvalMode::Custom);
+
+        NodeId nextId{0};
+
+        auto input = std::make_unique<GraphInputProvider>();
+        input->setDefault(true);
+        input->setUserHidden(!gtApp || !gtApp->devMode());
+        input->setUserHidden(true);
+        input->setId(nextId++);
+        utils::synchronizePorts(*this, *input);
+        auto inputProvider = appendNode(std::move(input), NodeIdPolicy::Keep);
+        
+        auto output = std::make_unique<GraphOutputProvider>();
+        output->setDefault(true);
+        output->setUserHidden(!gtApp || !gtApp->devMode());
+        output->setUserHidden(true);
+        output->setId(nextId++);
+        utils::synchronizePorts(*this, *output);
+        auto outputProvider = appendNode(std::move(output), NodeIdPolicy::Keep);
+
+        // forward input data of graph to input provider
+        connect(this, &Node::inputDataUpdated,
+                inputProvider, [this, inputProvider](PortId portId){
+            assert(portType(portId) != PortType::Out);
+
+            Graph* parent = parentGraph();
+            if (!parent) return;
+
+            auto* dataInterface = exec::nodeDataInterface(*this);
+            if (!dataInterface) return;
+
+            auto* subDataInterface = exec::nodeDataInterface(*inputProvider);
+            if (!subDataInterface) return;
+
+            if (!portId.isValid())
+            {
+                for (auto const& port : ports(PortType::In))
+                {
+                    assert(port.visible);
+                    assert(inputProvider->port(port.id()));
+
+                    subDataInterface->setNodeData(
+                        inputProvider->uuid(), port.id(),
+                        dataInterface->nodeData(uuid(), port.id())
+                    );
+                }
+                return;
+            }
+
+            subDataInterface->setNodeData(
+                inputProvider->uuid(), portId,
+                dataInterface->nodeData(uuid(), portId)
+            );
+        });
+
+        // forward data of output provider to graph
+        connect(outputProvider, &Node::inputDataUpdated,
+                this, [this, outputProvider](PortId portId){
+            assert(portType(portId) != PortType::In);
+
+            auto* dataInterface = exec::nodeDataInterface(*this);
+            if (!dataInterface) return;
+
+            auto* subDataInterface = exec::nodeDataInterface(*outputProvider);
+            if (!subDataInterface) return;
+
+            if (!portId.isValid())
+            {
+                for (auto const& port : ports(PortType::Out))
+                {
+                    assert(port.visible);
+                    assert(outputProvider->port(port.id()));
+
+                    dataInterface->setNodeData(
+                        uuid(), port.id(),
+                        subDataInterface->nodeData(outputProvider->uuid(), port.id())
+                    );
+                }
+                return;
+            }
+
+            dataInterface->setNodeData(
+                uuid(), portId,
+                subDataInterface->nodeData(outputProvider->uuid(), portId)
+            );
+        });
+
+        // forward invalidation of oputput provider to graph
+        connect(outputProvider, &GraphOutputProvider::nodeInvalidated,
+                this, [this](){
+            auto* dataInterface = exec::nodeDataInterface(*this);
+            if (!dataInterface) return;
+
+            NodeEvalState evalState = dataInterface->nodeEvalState(uuid());
+            bool areadyInvalidated = evalState == NodeEvalState::Evaluating ||
+                                     evalState == NodeEvalState::Outdated;
+            if (!areadyInvalidated)
+            {
+                emit invalidateNode();
+            }
+        });
+    }
 }
+
+Graph::Graph() :
+    Graph(QStringLiteral("Graph"), true)
+{ }
 
 Graph::~Graph()
 {
@@ -95,6 +208,11 @@ Graph::rootGraph() const
     return const_cast<Graph*>(this)->rootGraph();
 }
 
+bool
+Graph::isRootGraph() const
+{
+    return rootGraph() == this;
+}
 
 QList<Node*>
 Graph::nodes()
@@ -172,49 +290,49 @@ Graph::connectionGroup() const
     return const_cast<Graph*>(this)->connectionGroup();
 }
 
-GroupInputProvider*
+GraphInputProvider*
 Graph::inputProvider()
 {
-    return findDirectChild<GroupInputProvider*>();
+    return findDirectChild<GraphInputProvider*>();
 }
 
-GroupInputProvider const*
+GraphInputProvider const*
 Graph::inputProvider() const
 {
     return const_cast<Graph*>(this)->inputProvider();
 }
 
-DynamicNode*
+Node*
 Graph::inputNode()
 {
     return inputProvider();
 }
 
-DynamicNode const*
+Node const*
 Graph::inputNode() const
 {
     return inputProvider();
 }
 
-GroupOutputProvider*
+GraphOutputProvider*
 Graph::outputProvider()
 {
-    return this->findDirectChild<GroupOutputProvider*>();
+    return this->findDirectChild<GraphOutputProvider*>();
 }
 
-GroupOutputProvider const*
+GraphOutputProvider const*
 Graph::outputProvider() const
 {
     return const_cast<Graph*>(this)->outputProvider();
 }
 
-DynamicNode*
+Node*
 Graph::outputNode()
 {
     return outputProvider();
 }
 
-DynamicNode const*
+Node const*
 Graph::outputNode() const
 {
     return outputProvider();
@@ -248,9 +366,38 @@ Graph::findNode(NodeId nodeId)
     auto iter = pimpl->local.find(nodeId);
     if (iter == pimpl->local.end()) return {};
 
-    assert(iter->node &&
-           iter->node->id() == nodeId &&
-           iter->node->parent() == this);
+    if (!iter->node)
+    {
+        if (gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Everything)
+        {
+            gtWarning().nospace()
+                << "Graph(" << relativeNodePath(*this) << ")::findNode(" << nodeId << ")\n"
+                << "-> node not found";
+        }
+        return nullptr;
+    }
+    if (iter->node->id() != nodeId)
+    {
+        if (gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Everything)
+        {
+            gtError().nospace()
+                << "Graph(" << relativeNodePath(*this) << ")::findNode(" << nodeId << ")\n"
+                << "-> found node: " << gt::squoted(relativeNodePath(*iter->node)) << "\n"
+                << "-> invalid node id: '" << iter->node->id() << "'";
+        }
+        return nullptr;
+    }
+    if (iter->node->parent() != this)
+    {
+        if (gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Everything)
+        {
+            gtError().nospace()
+                << "Graph(" << relativeNodePath(*this) << ")::findNode(" << nodeId << ")\n"
+                << "-> found node: " << gt::squoted(relativeNodePath(*iter->node)) << "\n"
+                << "-> invalid parent: " << gt::squoted(relativeNodePath(accessGraph(*iter->node)));
+        }
+        return nullptr;
+    }
 
     return iter->node;
 }
@@ -379,29 +526,44 @@ Graph::clearGraph()
     auto* guiData = findDirectChild<GuiData*>();
     if (guiData) guiData->clearData();
 
-    // connections should be removed automatically
-    qDeleteAll(nodes());
+    // remove all but the providers
+    // -> connections should be removed automatically
+    auto nodes = this->nodes();
+    nodes.removeOne(inputProvider());
+    nodes.removeOne(outputProvider());
+    qDeleteAll(nodes);
+
+    // remove all input and output ports
+    auto inPorts = ports(PortType::In);
+    auto outPorts = ports(PortType::Out);
+
+    auto remove = [this](NodePort const& port){
+        if (isDynamicPort(port.id())) removePort(port.id());
+    };
+
+    std::for_each(inPorts.cbegin(), inPorts.cend(), remove);
+    std::for_each(outPorts.cbegin(), outPorts.cend(), remove);
 }
 
 PortId
 Graph::portId(NodeId nodeId, PortType type, PortIndex portIdx) const
 {
-    auto const makeError = [nodeId](){
-        return tr("Failed to get port id for node %1!").arg(nodeId);
+    auto const makeError = [this, nodeId](gt::log::Stream& s) -> gt::log::Stream& {
+        return s << utils::logPath(*this)
+                 << tr("Failed to get port id for node %1!").arg(nodeId);
     };
 
     auto* node = findNode(nodeId);
     if (!node)
     {
-        gtWarning() << utils::logId(*this) << makeError()
-                    << tr("(node not found)");
+        gtWarning() << makeError << tr("(node not found)");
         return invalid<PortId>();
     }
 
     PortId portId = node->portId(type, portIdx);
-    if (portId == invalid<PortId>())
+    if (!portId.isValid())
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << makeError
                     << tr("(port idx %1 of type %2 out of bounds)")
                            .arg(portIdx).arg(toString(type));
         return invalid<PortId>();
@@ -419,11 +581,21 @@ Graph::nodeId(NodeUuid const& nodeUuid) const
     return node->id();
 }
 
+NodeUuid
+Graph::nodeUuid(NodeId nodeId) const
+{
+    Node const* node = connectionModel().node(nodeId);
+    if (!node || Graph::accessGraph(*node) != this) return NodeUuid{};
+
+    return node->uuid();
+}
+
 ConnectionId
 Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, PortIndex inPortIdx) const
 {
-    auto const makeError = [](){
-        return tr("Failed to create connection id!");
+    auto const makeError = [this](gt::log::Stream& s) -> gt::log::Stream& {
+        return s << utils::logPath(*this)
+                 << tr("Failed to create connection id!");
     };
     auto const nodeNotFound = [](NodeId id){
         return tr("(node '%1' not found)").arg(id);
@@ -436,7 +608,7 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
     auto* inNode  = findNode(inNodeId);
     if (!outNode || !inNode)
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << makeError
                     << (!outNode ? nodeNotFound(outNodeId) :
                                    nodeNotFound(inNodeId));
         return invalid<ConnectionId>();
@@ -446,8 +618,8 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
     auto inPort  = inNode->portId(PortType::In, inPortIdx);
     if (outPort == invalid<PortId>() || inPort == invalid<PortId>())
     {
-        gtWarning() << utils::logId(*this) << makeError()
-                    << (outPort == invalid<PortId>() ?
+        gtWarning() << makeError
+                    << (!outPort.isValid() ?
                                    portOutOfBounds(outNodeId, outPortIdx) :
                                    portOutOfBounds(inNodeId, inPortIdx));
         return invalid<ConnectionId>();
@@ -459,11 +631,11 @@ Graph::connectionId(NodeId outNodeId, PortIndex outPortIdx, NodeId inNodeId, Por
 ConnectionId
 Graph::connectionId(ConnectionUuid const& conUuid) const
 {
-    auto const makeError = [&conUuid](){
-        return tr("Failed to convert connection uuid (%1)!")
-                   .arg(toString(conUuid));
+    auto const makeError = [this](gt::log::Stream& s) -> gt::log::Stream& {
+        return s << utils::logPath(*this)
+                 << tr("Failed to convert connection uuid (%1)!");
     };
-    auto const nodeNotFound = [](NodeUuid uuid){
+    auto const nodeNotFound = [](NodeUuid const& uuid){
         return tr("(node '%1' not found)").arg(uuid);
     };
 
@@ -471,14 +643,14 @@ Graph::connectionId(ConnectionUuid const& conUuid) const
     auto* inNode  = findNodeByUuid(conUuid.inNodeId);
     if (!outNode || !inNode)
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << makeError
                     << (!outNode ? nodeNotFound(conUuid.outNodeId) :
                                    nodeNotFound(conUuid.inNodeId));
         return invalid<ConnectionId>();
     }
     if (outNode->parent() != this || inNode->parent() != this)
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning() << makeError
                     << tr("(nodes do not belong to this graph '%3')")
                            .arg(relativeNodePath(*this));
         return invalid<ConnectionId>();
@@ -490,9 +662,9 @@ Graph::connectionId(ConnectionUuid const& conUuid) const
 ConnectionUuid
 Graph::connectionUuid(ConnectionId conId) const
 {
-    auto const makeError = [conId](){
-        return tr("Failed to convert connection id (%1)!")
-                   .arg(toString(conId));
+    auto const makeError = [this, conId](gt::log::Stream& s) -> gt::log::Stream& {
+        return s << utils::logPath(*this)
+                 << tr("Failed to convert connection id (%1)!").arg(toString(conId));
     };
     auto const nodeNotFound = [](NodeId id){
         return tr("(node %1 not found)").arg(id);
@@ -502,7 +674,7 @@ Graph::connectionUuid(ConnectionId conId) const
     auto* inNode  = findNode(conId.inNodeId);
     if (!outNode || !inNode)
     {
-        gtWarning() << utils::logId(*this) << makeError()
+        gtWarning( )<< makeError
                     << (!outNode ? nodeNotFound(conId.outNodeId) :
                                    nodeNotFound(conId.inNodeId));
         return invalid<ConnectionUuid>();
@@ -526,26 +698,20 @@ Graph::appendNode(std::unique_ptr<Node> node, NodeIdPolicy policy)
 }
 
 bool
-Graph::appendConnection(ConnectionId conId)
-{
-    return appendConnection(std::make_unique<Connection>(conId));
-}
-
-bool
 Graph::appendNode(Node* node, NodeIdPolicy policy)
 {
     if (!node) return false;
 
-    auto makeError = [n = node, this](){
-        return utils::logId(*this) + QChar{' '} +
-               tr("Failed to append node '%1' to intelli graph '%2'!")
-                   .arg(n->objectName(), objectName());
+    auto makeError = [n = node, this](gt::log::Stream& s) -> gt::log::Stream& {
+        return s << utils::logPath(*this)
+                 << tr("Failed to append node '%1' to intelli graph '%2'!")
+                        .arg(n->objectName(), objectName());
     };
 
     // check if node exists and update node id if necessary
     if (!Impl::updateNodeId(*this, *node, policy))
     {
-        gtWarning() << makeError()
+        gtWarning() << makeError
                     << tr("(node already exists)");
         return false;
     }
@@ -556,17 +722,25 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
     // append node to hierarchy
     if (!appendChild(node))
     {
-        gtWarning() << makeError();
+        gtWarning() << makeError;
         return false;
     }
 
     node->updateObjectName();
+
+#ifdef GT_INTELLI_DEBUG_NODE_EXEC
+    gtInfo().verbose()
+        << utils::logPath(*this)
+        << tr("Appending node (%1):").arg(node->id())
+        << node->objectName() << gt::brackets(node->uuid());
+#endif
 
     // deprecation notice
     if (node->nodeFlags() & NodeFlag::Deprecated &&
         gt::log::Logger::instance().verbosity() >= gt::log::Verbosity::Medium)
     {
         gtLogOnce(Warning)
+            << utils::logPath(*this)
             << tr("Node '%1' is deprecated and may be removed in "
                   "a future release of the associated module!")
                    .arg(node->metaObject()->className());
@@ -583,11 +757,18 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
         mergeUserVariables(*graph);
     }
 
+    NodeUuid const& nodeUuid = node->uuid();
+
+    if (node->isDefault())
+    {
+        assert(!pimpl->defaultNodes.contains(node));
+        pimpl->defaultNodes[node] = nodeUuid;
+    }
+
     // register node in local model
     pimpl->local.insert(node->id(), node);
 
     // register node in global model if not present already (avoid overwrite)
-    NodeUuid const& nodeUuid = node->uuid();
     if (!pimpl->global->contains(nodeUuid)) pimpl->global->insert(nodeUuid, node);
 
     // setup connections
@@ -619,6 +800,12 @@ Graph::appendNode(Node* node, NodeIdPolicy policy)
     return true;
 }
 
+bool
+Graph::appendConnection(ConnectionId conId)
+{
+    return appendConnection(std::make_unique<Connection>(conId));
+}
+
 Connection*
 Graph::appendConnection(std::unique_ptr<Connection> connection)
 {
@@ -634,10 +821,9 @@ Graph::appendConnection(Connection* connection)
 
     auto conId = connection->connectionId();
 
-    auto makeError = [conId, this](){
-        return utils::logId(*this) + QChar{' '} +
-               tr("Failed to append connection '%1' to intelli graph '%2'!")
-                   .arg(toString(conId), objectName());
+    auto makeError = [conId, this](gt::log::Stream& s) -> gt::log::Stream& {
+        return s << utils::logPath(*this)
+                 << tr("Failed to append connection '%1'!").arg(toString(conId));
     };
 
     // check if connection can be appended
@@ -647,7 +833,7 @@ Graph::appendConnection(Connection* connection)
     // append connection to hierarchy
     if (!connectionGroup().appendChild(connection))
     {
-        gtWarning() << makeError();
+        gtWarning() << makeError;
         return false;
     }
 
@@ -694,38 +880,6 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionId conId, Node& targe
     assert(conUuid.isValid());
 
     appendGlobalConnection(guard, conUuid);
-
-    // forwards inputs of graph node to subgraph
-    if (auto* graph = qobject_cast<Graph*>(&targetNode))
-    {
-        auto* inputProvider = graph->inputProvider();
-        assert(inputProvider);
-
-        conUuid.inNodeId = inputProvider->uuid();
-        conUuid.inPort   = GroupInputProvider::virtualPortId(conId.inPort);
-
-        appendGlobalConnection(guard, conUuid);
-    }
-
-    // forwards outputs of subgraph to graph node
-    if (auto* output = qobject_cast<GroupOutputProvider*>(&targetNode))
-    {
-        NodeUuid const& graphUuid = uuid();
-
-        // graph is being restored (memento diff)
-        if (!pimpl->global->contains(graphUuid))
-        {
-            assert(isBeingModified());
-            pimpl->global->insert(graphUuid, this);
-        }
-
-        conUuid.outNodeId = output->uuid();
-        conUuid.outPort   = GroupOutputProvider::virtualPortId(conUuid.inPort);
-        conUuid.inNodeId  = graphUuid;
-        conUuid.inPort    = conUuid.outPort;
-
-        appendGlobalConnection(nullptr, std::move(conUuid));
-    }
 }
 
 void
@@ -735,8 +889,21 @@ Graph::appendGlobalConnection(Connection* guard, ConnectionUuid conUuid)
 
     auto globalTargetNode = pimpl->global->find(conUuid.inNodeId);
     auto globalSourceNode = pimpl->global->find(conUuid.outNodeId);
-    assert(globalTargetNode != pimpl->global->end());
-    assert(globalSourceNode != pimpl->global->end());
+
+    if (globalTargetNode == pimpl->global->end())
+    {
+        gtError() << utils::logPath(*this)
+                  <<tr("Failed to append connection, target node not found! "
+                        "(In node: %1)").arg(conUuid.inNodeId);
+        return;
+    }
+    if (globalSourceNode == pimpl->global->end())
+    {
+        gtError() << utils::logPath(*this)
+                  << tr("Failed to append connection, source node not found! "
+                        "(Out node: %1)").arg(conUuid.outNodeId);
+        return;
+    }
 
     auto inConnection  = ConnectionDetail<NodeUuid>::fromConnection(conUuid.reversed());
     auto outConnection = ConnectionDetail<NodeUuid>::fromConnection(conUuid);
@@ -808,7 +975,7 @@ Graph::deleteNode(NodeId nodeId)
     if (auto* node = findNode(nodeId))
     {
         gtInfo().verbose()
-            << utils::logId(*this)
+            << utils::logPath(*this)
             << tr("Deleting node:") << node->objectName();
         delete node;
         return true;
@@ -822,7 +989,7 @@ Graph::deleteConnection(ConnectionId connectionId)
     if (auto* connection = findConnection(connectionId))
     {
         gtInfo().verbose()
-            << utils::logId(*this)
+            << utils::logPath(*this)
             << tr("Deleting connection:") << connectionId;
         delete connection;
         return true;
@@ -982,16 +1149,10 @@ Graph::moveNodes(QList<Node const*> const& nodes,
     return ::moveNodesAndConnectionsHelper(*this, nodes, targetGraph, policy);
 }
 
-bool
-Graph::isBeingModified() const
-{
-    return pimpl->modificationCount > 0;
-}
-
 void
 Graph::onObjectDataMerged()
 {
-    Node::onObjectDataMerged();
+    DynamicNode::onObjectDataMerged();
 
     restoreNodesAndConnections();
 }
@@ -999,6 +1160,7 @@ Graph::onObjectDataMerged()
 void
 Graph::restoreNode(Node* node)
 {
+    assert(node);
     if (findNode(node->id()))
     {
 #ifndef NDEBUG
@@ -1007,6 +1169,45 @@ Graph::restoreNode(Node* node)
             assert(subgraph->pimpl->global == pimpl->global);
         }
 #endif
+        // TODO: this should be fixed with #1370 (GTlab Core)
+        // issue arises because provider nodes are added in the constructor, their
+        // uuid changes once the initial memento is applied. Thus, the connection
+        // model is outdated
+        if (pimpl->global->node(node->uuid()) != node)
+        {
+            assert(pimpl->defaultNodes.contains(node));
+            assert(pimpl->global->node(node->uuid()) == nullptr);
+
+            if (!pimpl->defaultNodes.contains(node))
+            {
+                gtError().verbose()
+                    << utils::logPath(*this)
+                    << tr("Node '%1' changed uuid but node was not found in cache! (uuid: %2)")
+                           .arg(relativeNodePath(*node), node->uuid());
+                return;
+            }
+
+            NodeUuid const& oldUuid = pimpl->defaultNodes[node];
+
+            auto iter = pimpl->global->find(oldUuid);
+            if (iter == pimpl->global->end())
+            {
+                gtError().verbose()
+                    << utils::logPath(*this)
+                    << tr("Node '%1' changed uuid, cannot find entry for old uuid (old: %2, now: %3")
+                           .arg(relativeNodePath(*node), oldUuid, node->uuid());
+                return;
+            }
+
+            gtTrace().verbose()
+                << utils::logPath(*this)
+                << tr("Updated connection model for node '%1', uuid changed (old: %2, now: %3)")
+                       .arg(relativeNodePath(*node), oldUuid, node->uuid());
+
+            ConnectionData<NodeUuid> copy = *iter;
+            pimpl->global->erase(iter);
+            pimpl->global->insert(node->uuid(), copy);
+        }
         return;
     }
 
@@ -1131,14 +1332,29 @@ Graph::restoreNodesAndConnections()
 void
 Graph::initInputOutputProviders()
 {
-    auto* exstInput = inputProvider();
-    auto input = exstInput ? nullptr : std::make_unique<GroupInputProvider>();
-    
-    auto* exstOutput = outputProvider();
-    auto output = exstOutput ? nullptr : std::make_unique<GroupOutputProvider>();
+    auto* input = inputProvider();
+    auto* output = outputProvider();
+    assert(input);
+    assert(output);
 
-    if (input) appendNode(std::move(input));
-    if (output) appendNode(std::move(output));
+    input->setUserHidden(false);
+    output->setUserHidden(false);
+}
+
+void
+Graph::initInputData()
+{
+    auto* inputProvider = this->inputProvider();
+    if (!inputProvider) return;
+
+    auto* dataInterface = exec::nodeDataInterface(*inputProvider);
+    if (!dataInterface) return;
+
+    for (auto const& port : ports(PortType::In))
+    {
+        dataInterface->setNodeData(inputProvider->uuid(), port.id(),
+                                   dataInterface->nodeData(uuid(), port.id()));
+    }
 }
 
 void
@@ -1154,13 +1370,107 @@ Graph::resetGlobalConnectionModel()
 void
 Graph::eval()
 {
-    for (auto& port : ports(PortType::Out))
+    NodeDataInterface* parentDataModel = exec::nodeDataInterface(*this);
+    assert(parentDataModel);
+
+    auto evaluation = std::make_shared<NodeDataInterface::ScopedEvaluation>(parentDataModel->nodeEvaluation(uuid()));
+
+    auto makeError = [this](gt::log::Stream& s) -> gt::log::Stream& {
+        return s << utils::logPath(*this) << tr("evaluation failed!");
+    };
+
+    // setup
+    GraphInputProvider* inputNode = inputProvider();
+    GraphOutputProvider* outputNode = outputProvider();
+
+    if (!inputNode || !outputNode)
     {
-        if (port.visible)
+        gtError() << makeError << tr("input/ouput providers not found!");
+        return evalFailed();
+    }
+
+    // evaluate branch
+    auto* executor = GraphExecutionModel::make(*this);
+    executor->reset();
+
+    NodeDataInterface* dataModel = executor;
+    if (!dataModel)
+    {
+        gtError() << makeError << tr("data model not found!");
+        return evalFailed();
+    }
+
+    // set input data
+    for (NodePort const& port : ports(PortType::In))
+    {
+        assert(port.visible);
+
+        if (!inputNode->port(port.id()))
         {
-            setNodeData(port.id(), nodeData(port.id() + PortId(2)));
+            gtError() << makeError
+                      << tr("port '%1' in input provider not found!")
+                             .arg(toString(port));
+            return evalFailed();
+        }
+
+        if (!dataModel->setNodeData(inputNode->uuid(), port.id(), nodeData(port.id())))
+        {
+            gtError() << makeError
+                      << tr("failed to set input data for port '%1'!")
+                             .arg(toString(port));
+            return evalFailed();
         }
     }
+
+    auto future = executor->evaluateNode(outputNode->uuid());
+
+    future.then([this,
+                 evaluation = std::move(evaluation),
+                 self = QPointer<Graph>{this},
+                 outputNode = QPointer<GraphOutputProvider>{outputNode}](bool success) mutable {
+        assert(self);
+        assert(outputNode);
+
+        if (!success)
+        {
+            return evalFailed();
+        }
+
+//        NodeDataInterface* dataModel = GraphExecutionModel::accessExecModel(*this);
+
+//        // set output data
+//        for (NodePort const& port : ports(PortType::Out))
+//        {
+//            assert(port.visible);
+
+//            if (!outputNode->port(port.id()))
+//            {
+//                gtError() << makeError()
+//                          << tr("port '%1' in output provider not found!")
+//                                 .arg(toString(port));
+//                return evalFailed();
+//            }
+
+//            if (!setNodeData(port.id(), dataModel->nodeData(outputNode->uuid(), port.id())))
+//            {
+//                gtError() << makeError()
+//                          << tr("failed to set output data for port '%1'!")
+//                                 .arg(toString(port));
+//                return evalFailed();
+//            }
+//        }
+    }, std::chrono::seconds{60});
+}
+
+void
+Graph::nodeEvent(NodeEvent const* e)
+{
+    if (e->cast<NodeInvalidatedEvent>())
+    {
+        auto* input = inputProvider();
+        if (input) emit input->invalidateNode();
+    }
+    return Node::nodeEvent(e);
 }
 
 Graph::Modification
@@ -1168,6 +1478,12 @@ Graph::modify()
 {
     emitBeginModification();
     return gt::finally(EndModificationFunctor{this});
+}
+
+bool
+Graph::isBeingModified() const
+{
+    return pimpl->modificationCount > 0;
 }
 
 void
@@ -1334,11 +1650,11 @@ printableCaption(Node const* node, NodeId_t id)
     idStr.remove('}');
     idStr.remove('-');
 
-    if (qobject_cast<GroupInputProvider const*>(node))
+    if (qobject_cast<GraphInputProvider const*>(node))
     {
         return QStringLiteral("id_%1((I))").arg(idStr);
     }
-    if (qobject_cast<GroupOutputProvider const*>(node))
+    if (qobject_cast<GraphOutputProvider const*>(node))
     {
         return QStringLiteral("id_%1((O))").arg(idStr);
     }

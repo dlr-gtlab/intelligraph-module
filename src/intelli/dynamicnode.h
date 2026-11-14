@@ -28,59 +28,105 @@ class GT_INTELLI_EXPORT DynamicNode : public Node
 
 public:
 
-    ~DynamicNode();
+    ~DynamicNode() noexcept override;
 
     /// Option for the node creation.
-    enum Option : size_t
+    enum DynamicNodeOption : unsigned
     {
         /// no ports can be added dynamically. Ports are not saved persistently.
         NoDynamicPorts = 0,
-        /// input ports may be added dynamically
+        /// input ports may be added dynamically and are saved persistently.
         DynamicInput = 1 << 0,
-        DynamicInputOnly [[deprecated("Use `DynamicInput` or `NoUserDynamicInput` instead")]] = DynamicInput,
-        /// output ports may be added dynamically
+        /// output ports may be added dynamically and are saved persistently.
         DynamicOutput = 1 << 1,
-        DynamicOutputOnly [[deprecated("Use `DynamicOutput` or `NoUserDynamicOutput` instead")]] = DynamicOutput,
-        /// both inputs and ouput ports can be added dynamically
+        /// both inputs and ouput ports can be added dynamically and are saved
+        /// persistently.
         DynamicInputAndOutput = DynamicInput | DynamicOutput,
-        /// input ports can only be added programmatically
-        /// (no UI action for adding/deleting port is added by default)
-        NoUserDynamicInput  = 1 << 2,
-        /// output ports can only be added programmatically
-        /// (no UI action for adding/deleting port is added by default)
-        NoUserDynamicOutput = 1 << 3,
-        /// input and output ports may only be added programmatically
-        /// (no UI action for adding/deleting port is added by default)
-        NoUserDynamicInputAndOutput = NoUserDynamicInput | NoUserDynamicOutput,
-        NoDefaultListTypes = 1 << 5
+
+        /// same as `DynamicInput` but users cannot edit type-id,
+        /// caption, and other properties
+        NoUserEditableInput  = DynamicInput  | 1 << 2,
+        /// same as `DynamicInput` but for output ports.
+        NoUserEditableOutput = DynamicOutput | 1 << 3,
+        /// same as `DynamicInput` but for input and output ports.
+        NoUserEditableInputAndOutput = NoUserEditableInput |
+                                       NoUserEditableOutput,
+        /// same as `DynamicInput` but users cannot add or delete ports, but may
+        /// edit type-id, caption, and other properties.
+        NoUserManagedInput  = DynamicInput  | 1 << 4,
+        /// same as `NoUserManagedInput` but for output ports.
+        NoUserManagedOutput = DynamicOutput | 1 << 5,
+        /// same as `NoUserManagedInput` but for input and output ports.
+        NoUserManagedInputAndOutput = NoUserManagedInput |
+                                      NoUserManagedOutput,
+
+        NoDefaultListTypes = 1 << 6,
+
+        ListTypesOnly = 1 << 7,
+
+        DynamicInputOnly
+            [[deprecated("Use `DynamicInput` instead")]]
+            = DynamicInput,
+        DynamicOutputOnly
+            [[deprecated("Use `DynamicOutput` instead")]]
+            = DynamicOutput,
+
+        NoUserDynamicInput
+            [[deprecated("Use `NoUserEditableInput`"
+                         " or `NoUserManagedInput` instead")]]
+            = NoUserEditableInput | NoUserManagedInput,
+        NoUserDynamicOutput
+            [[deprecated("Use `NoUserEditableOutput`"
+                         " or `NoUserManagedOutput` instead")]]
+            = NoUserEditableOutput | NoUserManagedOutput,
+        NoUserDynamicInputAndOutput
+            [[deprecated("Use `NoUserEditableInputAndOutput`"
+                         " or `NoUserManagedInputAndOutput` instead")]]
+            = NoUserEditableInput | NoUserEditableOutput,
     };
+
+    using Option [[deprecated("Use `DynamicNodeOption` instead")]] = DynamicNodeOption;
+    using DynamicNodeOptions = UFlags<DynamicNodeOption>;
 
     /**
      * @brief Returns the whitelist used for the input ports
      * @return Whitelist for the input ports.
      */
-    QStringList const& inputWhitelist() const;
+    QStringList const& inputWhitelist() const noexcept;
 
     /**
      * @brief Returns the whitelist used for the output ports
      * @return Whitelist for the output ports.
      */
-    QStringList const& outputWhitelist() const;
+    QStringList const& outputWhitelist() const noexcept;
 
     /**
-     * @brief Getter for the node option used
+     * @brief Getter for the dynamic node options used
      * @return
      */
-    size_t dynamicNodeOption() const;
+    DynamicNodeOptions dynamicNodeOptions() const noexcept;
+    [[deprecated("Use `dynamicNodeOptions()` instead")]]
+    DynamicNodeOptions dynamicNodeOption() const noexcept
+    {
+        return dynamicNodeOptions();
+    }
 
     /**
-     * @brief Retruns true if a port is considered dynamic (i.e. was added at
-     * runtime and may be deleted by the user)
+     * @brief Retruns true if the port is considered dynamic (i.e. was added at
+     * runtime and may be deleted programmatically)
      * @param type Port type
      * @param idx Port Index to check
      * @return Is port dynamic
      */
     bool isDynamicPort(PortType type, PortIndex idx) const;
+
+    /**
+     * @brief Retruns true if the port is considered dynamic (i.e. was added at
+     * runtime and may be deleted programmatically)
+     * @param portId Port id
+     * @return Is port dynamic
+     */
+    bool isDynamicPort(PortId portId) const;
 
     /**
      * @brief Appends a dynamic/user input port. User ports are saved
@@ -126,7 +172,7 @@ public:
 
 protected:
 
-    enum PortOption
+    enum PortOption : uint8_t
     {
         StaticPort = 0,
         DynamicPort,
@@ -140,13 +186,13 @@ protected:
      * @param parent Parent object
      */
     DynamicNode(QString const& modelName,
-                size_t option = DynamicInputAndOutput,
+                DynamicNodeOptions options = DynamicInputAndOutput,
                 GtObject* parent = nullptr);
 
     DynamicNode(QString const& modelName,
                 QStringList inputWhiteList,
                 QStringList outputWhiteList,
-                size_t option = DynamicInputAndOutput,
+                DynamicNodeOptions options = DynamicInputAndOutput,
                 GtObject* parent = nullptr);
 
     /**
@@ -246,7 +292,7 @@ private:
      * @param container Container to get port type from
      * @return Port Type (NoType if the container does not match any member)
      */
-    PortType toPortType(GtPropertyStructContainer const& container) const;
+    PortType toPortType(GtPropertyStructContainer const& container) const noexcept;
 
     /**
      * @brief Access the property container that belonges to the speicifed port
@@ -265,7 +311,7 @@ private:
      * @return Property container matched by obj. Null if the pointer does not
      * match any property containers
      */
-    GtPropertyStructContainer* toDynamicPorts(QObject* obj);
+    GtPropertyStructContainer* toDynamicPorts(QObject* obj) noexcept;
 
     /**
      * @brief Exception safe helper method for accessing the property entry
@@ -274,7 +320,8 @@ private:
      * @param idx Index to access
      * @return Pointer to entry (may be null if index does not match a valid entry)
      */
-    static GtPropertyStructInstance* propertyAt(GtPropertyStructContainer* container, int idx);
+    static GtPropertyStructInstance* propertyAt(GtPropertyStructContainer* container,
+                                                int idx) noexcept;
 };
 
 } // namespace intelli

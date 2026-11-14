@@ -230,7 +230,7 @@ NodeDataFactory::unregisterData(QMetaObject const& meta)
     if (entry == pimpl()->types.cend()) return;
 
     gtTrace().verbose().nospace()
-        << "### Unregistering Data '" << className << ")...";
+        << "### Unregistering Data '" << className << "'...";
 
     pimpl()->types.erase(entry);
 
@@ -385,6 +385,7 @@ NodeDataFactory::isListType(TypeId const& typeId) const
     {
         gtLogOnce(Warning)
             << QObject::tr("use intelli::typeId<T>() instead of GT_CLASSNAME(T)!");
+        assert(pimpl->listTypes.contains(typeId));
     }
     return pimpl()->listTypes.contains(typeId);
 }

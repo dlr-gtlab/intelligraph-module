@@ -18,8 +18,8 @@
 
 #include <exception>
 
-#include <intelli/node/groupinputprovider.h>
-#include <intelli/node/groupoutputprovider.h>
+#include <intelli/node/graphinputprovider.h>
+#include <intelli/node/graphoutputprovider.h>
 
 using namespace intelli;
 
@@ -54,14 +54,10 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
     auto graph = std::make_unique<Graph>();
     if (!graphUuid.isEmpty()) graph->setUuid(graphUuid);
 
-    // custom uuids for input and utput provider
-    auto inputPtr  = std::make_unique<GroupInputProvider>();
-    auto outputPtr = std::make_unique<GroupOutputProvider>();
-    if (!inNodeUuid.isEmpty()) inputPtr->setUuid(inNodeUuid);
-    if (!outNodeUuid.isEmpty()) outputPtr->setUuid(outNodeUuid);
+    graph->initInputOutputProviders();
 
-    GroupInputProvider* input   = graph->appendNode(std::move(inputPtr));
-    GroupOutputProvider* output = graph->appendNode(std::move(outputPtr));
+    GraphInputProvider* input   = graph->inputProvider();
+    GraphOutputProvider* output = graph->outputProvider();
 
     if (!input || !output)
     {
@@ -73,14 +69,20 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
         };
     }
 
+    // custom uuids for input and output provider
+    if (!inNodeUuid.isEmpty()) input->setUuid(inNodeUuid);
+    if (!outNodeUuid.isEmpty()) output->setUuid(outNodeUuid);
+
+    if (!inNodeUuid.isEmpty() && !outNodeUuid.isEmpty()) graph->resetGlobalConnectionModel();
+
     auto success = true;
     for (auto& port : inPorts)
     {
-        success &= input->insertPort(std::move(port)).isValid();
+        success &= graph->addInPort(std::move(port)).isValid();
     }
     for (auto& port : outPorts)
     {
-        success &= output->insertPort(std::move(port)).isValid();
+        success &= graph->addOutPort(std::move(port)).isValid();
     }
 
     if (!success)
@@ -158,9 +160,10 @@ GraphBuilder::connect(Node& from, PortIndex outIdx, Node& to, PortIndex inIdx) n
     if (&from != pimpl->graph->findNode(from.id()) ||
         &to   != pimpl->graph->findNode(to.id()))
     {
+        Node& errNode = (&from != pimpl->graph->findNode(from.id())) ? from : to;
         throw std::logic_error{
             buildError() +
-            ", nodes have not been added to the graph before! " +
+            ", node '" + errNode.caption().toStdString() + "' has not been added to the graph before! " +
             gt::brackets(pimpl->graph->caption().toStdString())
         };
     }

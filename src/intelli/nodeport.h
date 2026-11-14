@@ -23,12 +23,12 @@ class NodePort
 public:
 
     // cppcheck-suppress noExplicitConstructor
-    NodePort(QString _typeId) : NodePort(std::move(_typeId), {}) {}
+    NodePort(QString _typeId) noexcept : NodePort(std::move(_typeId), {}) {}
 
     NodePort(QString _typeId,
              QString _caption,
              bool _captionVisible = true,
-             bool _optional = true) :
+             bool _optional = true) noexcept :
         typeId(std::move(_typeId)),
         caption(std::move(_caption) ),
         captionVisible(_captionVisible),
@@ -36,9 +36,9 @@ public:
     {}
 
     NodePort(NodePort const& other) = default;
-    NodePort(NodePort&& other) = default;
+    NodePort(NodePort&& other) noexcept = default;
     NodePort& operator=(NodePort const& other) = delete;
-    NodePort& operator=(NodePort&& other) = default;
+    NodePort& operator=(NodePort&& other) noexcept = default;
     ~NodePort() = default;
 
     /// creates a NodePort struct with a custom port id
@@ -80,11 +80,11 @@ public:
     }
 
     // setters to allow function chaining
-    NodePort& setCaption(QString v) { caption = std::move(v); return *this; }
-    NodePort& setToolTip(QString v) { toolTip = std::move(v); return *this; }
-    NodePort& setCaptionVisible(bool v) { captionVisible = v; return *this; }
-    NodePort& setVisible(bool v) { visible = v; return *this; }
-    NodePort& setOptional(bool v) { optional = v; return *this; }
+    NodePort& setCaption(QString v) noexcept { caption = std::move(v); return *this; }
+    NodePort& setToolTip(QString v) noexcept { toolTip = std::move(v); return *this; }
+    NodePort& setCaptionVisible(bool v) noexcept { captionVisible = v; return *this; }
+    NodePort& setVisible(bool v) noexcept { visible = v; return *this; }
+    NodePort& setOptional(bool v) noexcept { optional = v; return *this; }
 
     /// type id for port data (classname)
     TypeId typeId;
@@ -103,13 +103,15 @@ public:
          * @brief Returns the port id
          * @return port id
          */
-    inline PortId id() const { return m_id; }
+    inline PortId id() const noexcept { return m_id; }
 
     /**
          * @brief Whether port is connected
          * @return Whether port is connected
          */
-    inline bool isConnected() const { return m_isConnected; }
+    inline bool isConnected() const noexcept { return m_isConnected; }
+
+    friend void swap(NodePort& a, NodePort& b) noexcept { a.swap(b); }
 
 private:
     /// whether port is connected

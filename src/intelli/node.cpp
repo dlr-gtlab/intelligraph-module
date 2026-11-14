@@ -9,6 +9,7 @@
 
 #include "intelli/node.h"
 
+#include "intelli/nodeevent.h"
 #include "intelli/nodedatainterface.h"
 #include "intelli/graphuservariables.h"
 #include "intelli/exec/detachedexecutor.h"
@@ -74,25 +75,28 @@ Node::Node(QString const& modelName, GtObject* parent) :
     connect(this, &QObject::objectNameChanged,
             this, &Node::nodeChanged);
 
+    connect(this, &Node::inputDataUpdated, this, &Node::inputDataRecieved);
+    connect(this, &Node::invalidateNode, this, &Node::triggerNodeEvaluation);
+
     connect(&pimpl->isActive, &GtAbstractProperty::changed, this, [this](){
-        emit isActiveChanged();
-        if (pimpl->isActive) emit triggerNodeEvaluation();
+        emit isActiveChanged(QPrivateSignal());
+        if (pimpl->isActive) emit invalidateNode();
     });
 
     // must subscribe to both properties incase only one changes
     connect(&pimpl->posX, &GtAbstractProperty::changed, this, [this](){
-        emit nodePositionChanged();
+        emit nodePositionChanged(QPrivateSignal());
     });
     connect(&pimpl->posY, &GtAbstractProperty::changed, this, [this](){
-        emit nodePositionChanged();
+        emit nodePositionChanged(QPrivateSignal());
     });
 
     // must subscribe to both properties incase only one changes
     connect(&pimpl->sizeWidth, &GtAbstractProperty::changed, this, [this](){
-        emit nodeSizeChanged();
+        emit nodeSizeChanged(QPrivateSignal());
     });
     connect(&pimpl->sizeHeight, &GtAbstractProperty::changed, this, [this](){
-        emit nodeSizeChanged();
+        emit nodeSizeChanged(QPrivateSignal());
     });
 
     connect(this, &Node::portConnected, this, [this](PortId portId){
@@ -108,7 +112,7 @@ Node::Node(QString const& modelName, GtObject* parent) :
 
 Node::~Node()
 {
-    emit nodeAboutToBeDeleted(id());
+    emit nodeAboutToBeDeleted(id(), QPrivateSignal());
 }
 
 void
@@ -131,7 +135,7 @@ Node::setId(NodeId id)
 }
 
 NodeId
-Node::id() const
+Node::id() const noexcept
 {
     return NodeId{pimpl->id};
 }
@@ -149,7 +153,7 @@ Node::setPos(Position pos)
 }
 
 Position
-Node::pos() const
+Node::pos() const noexcept
 {
     return { pimpl->posX, pimpl->posY };
 }
@@ -168,7 +172,7 @@ Node::setSize(QSize size)
 }
 
 QSize
-Node::size() const
+Node::size() const noexcept
 {
     if (nodeFlags() & ResizableHOnly) return { pimpl->sizeWidth, 0 };
 
@@ -176,7 +180,7 @@ Node::size() const
 }
 
 QSize
-Node::size(QSize fallback) const
+Node::size(QSize fallback) const noexcept
 {
     auto size = this->size();
 
@@ -192,30 +196,29 @@ Node::updateObjectName()
     gt::setUniqueName(*this, baseObjectName());
 }
 
-bool
-Node::isValid() const
-{
-    return id() != invalid<NodeId>();
-}
-
 void
 Node::setNodeFlag(NodeFlag flag, bool enable)
 {
-    switch (flag)
+    if (flag & Deprecated && toolTip().isEmpty())
     {
-    case Deprecated:
-        if (toolTip().isEmpty())
-        {
-            setToolTip(tr("This node is deprecated and will "
-                          "be removed in a future relase."));
-        }
-        break;
-    default:
-        break;
+        setToolTip(tr("This node is deprecated and will "
+                      "be removed in a future relase."));
     }
 
     enable ? pimpl->flags |= flag :
              pimpl->flags &= ~flag;
+}
+
+void
+Node::setNodeFlags(NodeFlags flags)
+{
+    if (flags.testFlag(Deprecated) && toolTip().isEmpty())
+    {
+        setToolTip(tr("This node is deprecated and will "
+                      "be removed in a future relase."));
+    }
+
+    pimpl->flags = flags;
 }
 
 void
@@ -225,13 +228,13 @@ Node::setNodeEvalMode(NodeEvalMode mode)
 }
 
 NodeFlags
-Node::nodeFlags() const
+Node::nodeFlags() const noexcept
 {
     return pimpl->flags;
 }
 
 NodeEvalMode
-Node::nodeEvalMode() const
+Node::nodeEvalMode() const noexcept
 {
     return pimpl->evalMode;
 }
@@ -243,13 +246,7 @@ Node::setToolTip(QString const& tooltip)
 }
 
 QString const&
-Node::tooltip() const
-{
-    return pimpl->toolTip;
-}
-
-QString const&
-Node::toolTip() const
+Node::toolTip() const noexcept
 {
     return pimpl->toolTip;
 }
@@ -279,53 +276,65 @@ Node::baseObjectName() const
 }
 
 QString const&
-Node::modelName() const
+Node::modelName() const noexcept
 {
     return pimpl->modelName;
 }
 
-std::vector<Node::PortInfo> const&
+std::vector<NodePort> const&
 Node::ports(PortType type) const noexcept(false)
 {
     return pimpl->ports(type);
 }
 
+View<NodePort>
+Node::getPorts(PortType type) const noexcept(false)
+{
+    return View<NodePort>{pimpl->ports(type)};
+}
+
+Span<NodePort>
+Node::getPorts(PortType type) noexcept(false)
+{
+    return Span<NodePort>{pimpl->ports(type)};
+}
+
 PortId
-Node::addInPort(PortInfo port, PortPolicy policy) noexcept(false)
+Node::addInPort(NodePort port, PortPolicy policy) noexcept(false)
 {
     return insertInPort(std::move(port), -1, policy);
 }
 
 PortId
-Node::addOutPort(PortInfo port) noexcept(false)
+Node::addOutPort(NodePort port) noexcept(false)
 {
     return insertOutPort(std::move(port), -1);
 }
 
 PortId
-Node::insertInPort(PortInfo port, int idx, PortPolicy policy) noexcept(false)
+Node::insertInPort(NodePort port, int idx, PortPolicy policy) noexcept(false)
 {
     port.optional = policy == PortPolicy::Optional;
     return insertPort(PortType::In, std::move(port), idx);
 }
 
 PortId
-Node::insertOutPort(PortInfo port, int idx) noexcept(false)
+Node::insertOutPort(NodePort port, int idx) noexcept(false)
 {
     return insertPort(PortType::Out, std::move(port), idx);
 }
 
 PortId
-Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
+Node::insertPort(PortType type, NodePort port, int idx) noexcept(false)
 {
-    auto const makeError = [this, type, idx](){
-        return objectName() + QStringLiteral(": ") +
-               tr("Failed to insert port at idx %1 (%2)").arg(idx).arg(toString(type));
+    auto const makeError = [this, type, idx](gt::log::Stream& s) -> gt::log::Stream& {
+        return s << utils::logPath(*this)
+                 << tr("Failed to insert port at idx %1 (%2)").arg(idx).arg(toString(type));
     };
 
     if (port.typeId.isEmpty())
     {
-        gtWarning() << makeError() << tr("(Invalid typeId specified)");
+        gtWarning() << makeError << tr("(Invalid typeId specified)");
         return PortId{};
     }
 
@@ -341,10 +350,10 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
     }
 
     // update port id if necessary
-    PortId id = pimpl->incNextPortId(port.m_id);
+    PortId id = pimpl->incrNextPortId(port.m_id);
     if (id == invalid<PortId>())
     {
-        gtWarning() << makeError() << tr("(Port id %1 already exists)").arg(port.m_id);
+        gtWarning() << makeError << tr("(Port id %1 already exists)").arg(port.m_id);
         return PortId{};
     }
 
@@ -352,8 +361,11 @@ Node::insertPort(PortType type, PortInfo port, int idx) noexcept(false)
 
     // notify model
     PortIndex pidx = PortIndex::fromValue(std::distance(ports.begin(), iter));
-    emit portAboutToBeInserted(type, pidx);
-    auto finally = gt::finally([=](){ emit portInserted(type, pidx); });
+    emit portAboutToBeInserted(type, pidx, QPrivateSignal());
+    auto finally = gt::finally([=](){
+        emit portInserted(type, pidx, QPrivateSignal());
+    });
+    Q_UNUSED(finally);
 
     // do the insertion
     ports.insert(iter, std::move(port));
@@ -368,10 +380,11 @@ Node::removePort(PortId id)
     if (!port) return false;
 
     // notify model
-    emit portAboutToBeDeleted(port.type, port.idx);
+    emit portAboutToBeDeleted(port.type, port.idx, QPrivateSignal());
     auto finally = gt::finally([type = port.type, idx = port.idx, this](){
-        emit portDeleted(type, idx);
+        emit portDeleted(type, idx, QPrivateSignal());
     });
+    Q_UNUSED(finally);
 
     port.ports->erase(std::next(port.ports->begin(), port.idx));
 
@@ -396,7 +409,7 @@ Node::nodeData(PortId id) const
     if (!model)
     {
         gtWarning()
-            << utils::logId(*this)
+            << utils::logPath(*this)
             << tr("Failed to access node data, data interface not found!");
         return {};
     }
@@ -411,7 +424,7 @@ Node::setNodeData(PortId id, NodeDataPtr data)
     if (!model)
     {
         gtWarning()
-            << utils::logId(*this)
+            << utils::logPath(*this)
             << tr("Failed to set node data, data interface not found!");
         return false;
     }
@@ -419,7 +432,7 @@ Node::setNodeData(PortId id, NodeDataPtr data)
     return model->setNodeData(this->uuid(), id, std::move(data));
 }
 
-Node::PortInfo*
+NodePort*
 Node::port(PortId id) noexcept
 {
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
@@ -432,7 +445,7 @@ Node::port(PortId id) noexcept
     return nullptr;
 }
 
-Node::PortInfo const*
+NodePort const*
 Node::port(PortId id) const noexcept
 {
     return const_cast<Node*>(this)->port(id);
@@ -451,6 +464,15 @@ Node::portIndex(PortType type, PortId id) const noexcept(false)
     }
 
     return PortIndex{};
+}
+
+Node::PortLocation
+Node::portIndex(PortId id) const noexcept(false)
+{
+    auto entry = pimpl->findPort(id);
+    if (!entry) return {};
+
+    return {entry.idx, entry.type};
 }
 
 Node::PortType
@@ -492,9 +514,8 @@ Node::userVariables() const
 }
 
 void
-Node::nodeEvent(NodeEvent const* event)
+Node::nodeEvent(NodeEvent const*)
 {
-    Q_UNUSED(event);
     // nothing to do here
 }
 
@@ -511,7 +532,7 @@ Node::evalFailed()
     if (!model)
     {
         gtWarning()
-            << utils::logId(*this)
+            << utils::logPath(*this)
             << tr("Failed to set node evaluation status, data interface not found!");
         return;
     }
@@ -546,6 +567,12 @@ class intelli::INode
 public:
 
     inline static void
+    postEvent(Node& node, NodeEvent const& event)
+    {
+        node.nodeEvent(&event);
+    }
+
+    inline static void
     evaluateNode(Node& node)
     {
         node.eval();
@@ -559,10 +586,8 @@ public:
 
         if (!hadValue)
         {
-            Node::NodeEvent e{
-                DataInterfaceAvailableEvent
-            };
-            node.nodeEvent(&e);
+            DataInterfaceAvailableEvent event;
+            postEvent(node, event);
         }
     }
 
@@ -582,6 +607,11 @@ public:
         if (evalMode == NodeEvalMode::NoEvaluationRequired) return true;
 
         size_t evalFlag = (size_t)node.nodeEvalMode();
+        if (evalFlag == (size_t)NodeEvalMode::Custom)
+        {
+            evaluateNode(node);
+            return true;
+        }
         if (evalFlag & IsDetachedMask)
         {
             return exec::detachedEvaluation(node);
@@ -591,7 +621,7 @@ public:
             return exec::blockingEvaluation(node);
         }
 
-        gtError() << utils::logId(node)
+        gtError() << utils::logPath(node)
                   << QObject::tr("Unhandled eval mode! (%1)").arg((size_t)evalFlag);
 
         return false;
@@ -616,7 +646,7 @@ updateNodeDataInterface(Node& node, NodeDataInterface* model)
     model = INode::nodeDataInterface(node);
     if (!model)
     {
-        gtError() << utils::logId(node)
+        gtError() << utils::logPath(node)
                   << QObject::tr("Failed to evaluate node! (Missing data interface)");
         return nullptr;
     }
@@ -633,7 +663,7 @@ intelli::exec::detachedEvaluation(Node& node, NodeDataInterface* model)
     auto executor = node.findChild<DetachedExecutor*>();
     if (executor && !executor->canEvaluateNode())
     {
-        gtError() << utils::logId(node)
+        gtError() << utils::logPath(node)
                   << QObject::tr("Failed to evaluate node! (Node is already executing)");
         return false;
     }
@@ -658,14 +688,6 @@ intelli::exec::blockingEvaluation(Node& node, NodeDataInterface* model)
     auto cmd = model->nodeEvaluation(node.uuid());
     Q_UNUSED(cmd);
 
-    // cleanup routine
-    auto finally = gt::finally([&node](){
-        emit node.computingFinished();
-    });
-    Q_UNUSED(finally);
-
-    emit node.computingStarted();
-
     INode::evaluateNode(node);
 
     return true;
@@ -689,4 +711,10 @@ NodeDataInterface*
 intelli::exec::nodeDataInterface(Node& node)
 {
     return INode::nodeDataInterface(node);
+}
+
+void
+intelli::postNodeEvent(Node& node, const NodeEvent& event)
+{
+    return INode::postEvent(node, event);
 }

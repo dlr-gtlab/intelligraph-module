@@ -11,7 +11,7 @@
 #define GT_INTELLI_GRAPHBUILDER_H
 
 #include <intelli/node.h>
-#include <intelli/dynamicnode.h>
+#include <intelli/node/abstractgroupprovider.h>
 
 #include <gt_typetraits.h>
 
@@ -53,8 +53,8 @@ public:
     struct GraphData
     {
         Graph& graph;
-        DynamicNode& inNode;
-        DynamicNode& outNode;
+        AbstractGraphProvider& inNode;
+        AbstractGraphProvider& outNode;
     };
 
     /**

@@ -58,15 +58,15 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
         bool wasVisible = m_view->isGridVisible();
         m_view->showGrid(!wasVisible);
         m_snapToGridBtn->setVisible(!wasVisible);
-
-        auto* scene = m_view->nodeScene();
+        
+        auto* scene = m_view->graphScene();
         if (!scene) return;
 
         scene->setSnapToGrid(!wasVisible && m_snapToGridBtn->isChecked());
     };
 
     auto changeConnectionShape = [this](auto){
-        if (auto* scene = m_view->nodeScene())
+        if (auto* scene = m_view->graphScene())
         {
             auto shape = nextConnectionShape(scene->connectionShape());
             scene->setConnectionShape(shape);
@@ -74,14 +74,14 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
     };
 
     auto changeSnapToGrid = [this](){
-        if (auto* scene = m_view->nodeScene())
+        if (auto* scene = m_view->graphScene())
         {
             scene->setSnapToGrid(m_snapToGridBtn->isChecked());
         }
     };
 
     auto updateAutoEvaluation = [this](bool autoEvaluate) {
-        GraphScene* scene = m_view->nodeScene();
+        GraphScene* scene = m_view->graphScene();
         if (!scene) return;
 
         auto* model = GraphExecutionModel::accessExecModel(scene->graph());
@@ -132,7 +132,7 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
     auto editUserVarsAction =
         gt::gui::makeAction(tr("Edit User Variables..."),
                             [this](auto){
-                GraphScene* scene = m_view->nodeScene();
+                                GraphScene* scene = m_view->graphScene();
                 if (scene) NodeUI::editUserVariables(scene->graph().rootGraph());
             })
             .setIcon(gt::gui::icon::variable());
@@ -199,8 +199,8 @@ GraphViewOverlay::GraphViewOverlay(GraphView& view) :
 
     connect(m_view, &GraphView::sceneChanged,
             this, &GraphViewOverlay::onSceneChanged);
-
-    if (GraphScene* scene = m_view->nodeScene())
+    
+    if (GraphScene* scene = m_view->graphScene())
     {
         onSceneChanged(scene);
     }
@@ -243,7 +243,7 @@ GraphViewOverlay::onSceneChanged(GraphScene* scene)
 
     auto onSnapToGridChanged = [this](){
         if (!m_snapToGridBtn->isVisible()) return;
-        if (auto* scene = m_view->nodeScene())
+        if (auto* scene = m_view->graphScene())
         {
             m_snapToGridBtn->setChecked(scene->snapToGrid());
         }
@@ -253,7 +253,7 @@ GraphViewOverlay::onSceneChanged(GraphScene* scene)
     if (!model) return;
 
     auto onAutoEvaluationChanged = [this, model](){
-        GraphScene* scene = m_view->nodeScene();
+        GraphScene* scene = m_view->graphScene();
         if (!scene) return;
 
         bool autoEvaluate = model->isAutoEvaluatingGraph(scene->graph());

@@ -16,7 +16,7 @@ BinaryDisplayNode::BinaryDisplayNode() :
     DynamicNode(tr("Binary Display"),
                 QStringList{typeId<BoolData>()},
                 QStringList{},
-                DynamicNode::DynamicInput)
+                DynamicNode::NoUserEditableInput)
 {
     setNodeEvalMode(NodeEvalMode::Blocking);
     setNodeFlag(Resizable);
