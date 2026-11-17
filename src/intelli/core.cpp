@@ -139,7 +139,7 @@ intelli::registerDefaultNodes()
 
         factory.registerNode<DummyNode>(hidden);
 
-        factory.registerNode<Graph>(hidden);
+        factory.registerNode<Graph>(catOther);
         factory.registerNode<GroupInputProvider>(hidden);
         factory.registerNode<GroupOutputProvider>(hidden);
 

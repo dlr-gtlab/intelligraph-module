@@ -53,6 +53,8 @@
 #include <QApplication>
 #include <QKeyEvent>
 
+#include <tuple>
+
 using namespace intelli;
 
 struct GraphScene::Impl
@@ -723,7 +725,7 @@ GraphScene::createSceneMenu(QPointF scenePos)
 
     // helper functor to add a node at the given position
     auto addNode = [this, scenePos](QString className) {
-        auto node = NodeFactory::instance().makeNode(className);
+        auto node = NodeFactory::instance().tryMakeNode(className);
         if (!node) return;
 
         node->setPos(scenePos);

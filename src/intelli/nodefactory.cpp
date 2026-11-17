@@ -10,11 +10,13 @@
 #include "intelli/nodefactory.h"
 
 #include "intelli/node.h"
-//#include "intelli/adapter/objectmodel.h"
 
 #include "gt_objectfactory.h"
 #include "gt_utilities.h"
 #include "gt_qtutilities.h"
+
+#include <tuple>
+#include <algorithm>
 
 using namespace intelli;
 
@@ -39,7 +41,7 @@ struct NodeFactory::Impl
 NodeFactory::NodeFactory() :
     impl(std::make_unique<Impl>())
 {
-    // deprected category should be placed last
+    // deprecated category should be placed last
     pimpl()->orderPriorities[S_DEPRECATED] = CategoryOrderPriority::Last + 1;
 }
 
@@ -87,11 +89,13 @@ NodeFactory::sortedCategories() const
 {
     QStringList categories = registeredCategories();
 
-    std::sort(categories.begin(), categories.end());
     std::sort(categories.begin(), categories.end(),
               [this](QString const& a, QString const& b){
-                  return categoryOrderPriority(a) < categoryOrderPriority(b);
-              });
+        // sort by order prio and then by name
+        int oa = categoryOrderPriority(a);
+        int ob = categoryOrderPriority(b);
+        return std::tie(oa, a) < std::tie(ob, b);
+    });
 
     return categories;
 }
@@ -106,8 +110,9 @@ NodeFactory::nodeCategory(QString const& className) const
 View<QString>
 NodeFactory::nodeCategories(QString const& className) const
 {
-    auto const& entry = pimpl()->data.value(className);
-    return entry.categories;
+    auto const entry = pimpl()->data.find(className);
+    if (entry == pimpl()->data.end()) return {};
+    return entry->categories;
 }
 
 QString
@@ -124,7 +129,7 @@ NodeFactory::isKnownNode(QString const& className) const
 
 bool
 NodeFactory::registerNode(QMetaObject const& meta,
-                          QString category,
+                          QString const& category,
                           QString moduleId)
 {
     return registerNode(meta, View<QString>{category}, moduleId);
@@ -135,7 +140,7 @@ NodeFactory::registerNode(QMetaObject const& meta,
                           View<QString> categories,
                           QString moduleId)
 {
-    QString className = meta.className();
+    QString const className = meta.className();
 
     gtTrace().verbose().nospace()
         << "### Registering Node '" << className
@@ -175,19 +180,17 @@ NodeFactory::registerNode(QMetaObject const& meta,
         QVector<QString>{categories.begin(), categories.end()}, tmp->modelName()
     };
 
-    if (tmp->nodeFlags() & NodeFlag::Deprecated)
-    {
-        entry.categories.append(S_DEPRECATED);
-    }
-
     // remove duplicates
     std::sort(entry.categories.begin(), entry.categories.end());
     entry.categories.erase(std::unique(entry.categories.begin(),
                                        entry.categories.end()),
                            entry.categories.end());
-    entry.categories.erase(std::find(entry.categories.begin(),
-                                     entry.categories.end(), QString{}),
-                           entry.categories.end());
+    entry.categories.removeAll(QString{});
+
+    if (tmp->nodeFlags() & NodeFlag::Deprecated && !entry.categories.empty())
+    {
+        entry.categories = {S_DEPRECATED};
+    }
 
     pimpl()->data.insert(className, std::move(entry));
     return true;
@@ -206,17 +209,35 @@ NodeFactory::makeNode(QString const& className) const noexcept(false)
         std::logic_error e{
             std::string{
                 "Failed to create node for classname: " +
-                gt::squoted(className.toStdString())
+                gt::squoted(className.toStdString()) +
+                " (object may not be invokable)"
             }
         };
         gtError() << e.what();
-        gtError() << QObject::tr("Object may not be invokable. Known classes:")
-                  << knownClasses();
         throw e;
     }
 
     node->setActive(true);
+    return node;
+}
 
+std::unique_ptr<Node>
+NodeFactory::tryMakeNode(const QString& className) const
+{
+    std::unique_ptr<GtObject> obj{
+        const_cast<NodeFactory*>(this)->newObject(className)
+    };
+
+    auto node = gt::unique_qobject_cast<Node>(std::move(obj));
+    if (!node)
+    {
+        gtError() << QObject::tr("Failed to create node for class name '%1' "
+                                 "(object may not be invokable)")
+                         .arg(className);
+        return nullptr;
+    }
+
+    node->setActive(true);
     return node;
 }
 

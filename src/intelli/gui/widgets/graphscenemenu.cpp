@@ -21,6 +21,8 @@
 #include <QTimer>
 #include <QWidgetAction>
 
+#include <algorithm>
+
 using namespace intelli;
 
 namespace
@@ -81,7 +83,6 @@ GraphSceneMenu::GraphSceneMenu(QWidget* parent) :
     filterEdit->setPlaceholderText(
         QStringLiteral(" Filter (%1)").arg(
             gtApp->getShortCutSequence(QStringLiteral("search")).toString()));
-
     filterEdit->setClearButtonEnabled(true);
     filterEdit->setMinimumHeight(filterEdit->sizeHint().height());
     m_filterEdit = filterEdit;
@@ -123,16 +124,18 @@ GraphSceneMenu::GraphSceneMenu(QWidget* parent) :
     QVector<NodeDetail> nodeModelNames;
     {
         QStringList const nodes = factory.registeredNodes();
-        std::transform(nodes.begin(), nodes.end(), std::back_inserter(nodeModelNames),
-                       [&factory](QString const& className){
-                           return NodeDetail{className, factory.nodeModelName(className)};
-                       });
+        std::transform(nodes.begin(), nodes.end(),
+                       std::back_inserter(nodeModelNames),
+                       [&factory, &nodeModelNames](QString const& className){
+            return NodeDetail{className, factory.nodeModelName(className)};
+        });
     }
 
     // sort by display name
     std::sort(nodeModelNames.begin(), nodeModelNames.end(), [](NodeDetail const& a,
                                                                NodeDetail const& b){
-        return a.displayName < b.displayName;
+        return std::tie(a.displayName, a.className) <
+               std::tie(b.displayName, b.className);
     });
 
     for (NodeDetail const& entry : nodeModelNames)
@@ -150,29 +153,27 @@ GraphSceneMenu::GraphSceneMenu(QWidget* parent) :
 
     treeView->expandAll();
 
-    auto onClicked =
-        [this, commentItem]
-        (QTreeWidgetItem* item, int = 0){
-            assert(item);
-            if (item->childCount() > 0)
-            {
-                item->setExpanded(true);
-                return;
-            }
+    auto onClicked = [this, commentItem](QTreeWidgetItem* item, int = 0){
+        assert(item);
+        if (item->childCount() > 0)
+        {
+            item->setExpanded(true);
+            return;
+        }
 
-            if (m_guard) return;
-            m_guard = true;
+        if (m_guard) return;
+        m_guard = true;
 
-            (item == commentItem) ?
-                emit createCommentRequested() :
-                emit createNodeRequested(item->whatsThis(0));
+        (item == commentItem) ?
+            emit createCommentRequested() :
+            emit createNodeRequested(item->whatsThis(0));
 
-            this->close();
-        };
+        this->close();
+    };
 
     // does not react to on key pressed
     connect(treeView, &QTreeWidget::itemClicked, this, onClicked);
-    // may trigger multiple times on certaian platforms
+    // may trigger multiple times on certain platforms
     connect(treeView, &QTreeWidget::itemActivated, this, onClicked);
     // trigger creation when comitting text
     connect(filterEdit, &QLineEdit::returnPressed, this, [onClicked, treeView](){
@@ -216,12 +217,19 @@ GraphSceneMenu::GraphSceneMenu(QWidget* parent) :
         treeView->clearSelection();
         if (filterText.isEmpty()) return;
 
-        // select first visible node entry
+        // select first visible entry
         for (int p : gt::range(0, treeView->topLevelItemCount()))
         {
             QTreeWidgetItem* parent = treeView->topLevelItem(p);
             if (parent->isHidden()) continue;
 
+            // highlight top level item
+            if (parent->childCount() == 0)
+            {
+                parent->setSelected(true);
+                return;
+            }
+            // else highlight first visible child
             for (int c : gt::range(0, parent->childCount()))
             {
                 QTreeWidgetItem* child = parent->child(c);
@@ -250,6 +258,11 @@ GraphSceneMenu::keyPressEvent(QKeyEvent* event)
     switch (event->key())
     {
     case Qt::Key_Up:
+        if (m_filterEdit->hasFocus())
+        {
+            event->accept();
+            return;
+        }
         if (m_treeView->hasFocus())
         {
             event->accept();
@@ -257,6 +270,7 @@ GraphSceneMenu::keyPressEvent(QKeyEvent* event)
             m_filterEdit->setFocus();
             return;
         }
+        break;
     case Qt::Key_Down:
         if (m_filterEdit->hasFocus())
         {
@@ -264,11 +278,16 @@ GraphSceneMenu::keyPressEvent(QKeyEvent* event)
             m_treeView->setFocus();
             auto const selection = m_treeView->selectedItems();
             QTreeWidgetItem* item = !selection.empty() ?
-                                        item = selection.front() :
+                                        selection.front() :
                                         m_treeView->topLevelItem(0);
             m_treeView->clearSelection();
             m_treeView->setCurrentItem(item);
             item->setSelected(true);
+            return;
+        }
+        if (m_treeView->hasFocus())
+        {
+            event->accept();
             return;
         }
         break;

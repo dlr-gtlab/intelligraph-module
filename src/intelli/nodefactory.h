@@ -16,6 +16,7 @@
 #include <gt_abstractobjectfactory.h>
 #include <gt_object.h>
 #include <gt_globals.h>
+#include <gt_platform.h>
 
 /// Helper macro for registering a node class. The node class does should not be
 /// listed as a "data" object of your module. Use an empty string to "hide"
@@ -55,12 +56,14 @@ public:
      * @brief Returns list of registered nodes
      * @return list of nodes
      */
+    GT_NO_DISCARD
     QStringList registeredNodes() const;
 
     /**
      * @brief Returns unsorted list of categories
      * @return Unsorted list of categories
      */
+    GT_NO_DISCARD
     QStringList registeredCategories() const;
 
     /**
@@ -68,15 +71,19 @@ public:
      * priorities or alphabetic ordering. Ascending.
      * @return Sorted list of categories
      */
+    GT_NO_DISCARD
     QStringList sortedCategories() const;
 
     /**
-     * @brief Returns all associated categories of the given node
+     * @brief Returns all associated categories of the given node. View is
+     * invalidated when registering a new node
      * @param className Node's class name
      * @return Categories.
      */
+    GT_NO_DISCARD
     View<QString> nodeCategories(QString const& className) const;
     [[deprecated("use `nodeCategories` instead")]]
+    GT_NO_DISCARD
     QString nodeCategory(QString const& className) const;
 
     /**
@@ -84,6 +91,7 @@ public:
      * @param className Node's class name
      * @return Model name
      */
+    GT_NO_DISCARD
     QString nodeModelName(QString const& className) const;
 
     /**
@@ -91,6 +99,7 @@ public:
      * @param className Class name
      * @return Whether class is known
      */
+    GT_NO_DISCARD
     bool isKnownNode(QString const& className) const;
 
     /**
@@ -101,7 +110,7 @@ public:
      * @param moduleId Module Id of the associated node. Must not be empty.
      * @return Whether registration was successful
      */
-    bool registerNode(QMetaObject const& meta, QString category, QString moduleId);
+    bool registerNode(QMetaObject const& meta, QString const& category, QString moduleId);
 
     /**
      * @brief View-based overload. Registers the node so that it can be used by
@@ -121,7 +130,8 @@ public:
      * @return Whether registration was successful
      */
     template <typename T,
-             typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
+              typename = std::enable_if_t<std::is_base_of<Node, T>::value>,
+              typename = std::enable_if_t<std::is_constructible<T>::value>>
     inline bool registerNode(QString const& category)
     {
         return registerNode(T::staticMetaObject, category, GT_MODULENAME());
@@ -134,19 +144,32 @@ public:
      * @return Whether registration was successful
      */
     template <typename T,
-              typename = std::enable_if_t<std::is_base_of<Node, T>::value>>
+              typename = std::enable_if_t<std::is_base_of<Node, T>::value>,
+              typename = std::enable_if_t<std::is_constructible<T>::value>>
     inline bool registerNode(View<QString> categories)
     {
         return registerNode(T::staticMetaObject, categories, GT_MODULENAME());
     }
 
     /**
-     * @brief Instantiates a new node of type className. May throw a
-     * `logic_error` if the function fails.
+     * @brief Instantiates a new node of type className. May throw
+     * `std::logic_error` if operation fails.
      * @param className Class to instantiate
      * @return Object pointer (never null)
      */
+    GT_NO_DISCARD
+    [[deprecated("use `tryMakeNode` instead, which returns null "
+                 "instead of throwing if creation fails!")]]
     std::unique_ptr<Node> makeNode(QString const& className) const noexcept(false);
+
+    /**
+     * @brief Instantiates a new node of type className. Does not throw an
+     * exception but has still no noexcept guarantee.
+     * @param className Class to instantiate
+     * @return Object pointer (may be null)
+     */
+    GT_NO_DISCARD
+    std::unique_ptr<Node> tryMakeNode(QString const& className) const;
 
     /**
      * @brief Sets the order priority of a category. Succeeds even if category

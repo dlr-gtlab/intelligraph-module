@@ -18,7 +18,7 @@ class QTreeWidget;
 namespace intelli
 {
 
-/// Menu for adding nodes and comments in a graoh scene
+/// Menu for adding nodes and comments in a graph scene
 class GraphSceneMenu : public QMenu
 {
     Q_OBJECT

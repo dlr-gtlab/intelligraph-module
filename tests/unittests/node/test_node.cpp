@@ -21,7 +21,13 @@ TestNode::registerOnce()
 }
 
 TestNode::TestNode() :
-    intelli::Node("MyNode")
+    TestNode("MyNode")
+{
+
+}
+
+TestNode::TestNode(QString modelName) :
+    intelli::Node(std::move(modelName))
 {
 
 }
@@ -59,4 +65,16 @@ TestNumberInputNode::TestNumberInputNode() :
     intelli::DoubleInputNode()
 {
     setNodeEvalMode(NodeEvalMode::Detached); // for unittesting
+}
+
+TestUnregisteredNode::TestUnregisteredNode() :
+    TestNode("Unregistered Node")
+{
+
+}
+
+TestDeprecatedNode::TestDeprecatedNode() :
+    TestNode("Deprecated Node")
+{
+    setNodeFlag(intelli::Deprecated);
 }

@@ -8,6 +8,7 @@
  */
 
 #include "test_helper.h"
+#include "node/test_node.h"
 #include "intelli/nodefactory.h"
 
 #include "intelli/node/input/boolinput.h"
@@ -19,6 +20,8 @@
 #include <gt_objectfactory.h>
 
 #include <gtest/gtest.h>
+
+#include <stdexcept>
 
 namespace
 {
@@ -38,6 +41,13 @@ TEST(NodeFactory, initialization)
     EXPECT_EQ(factory.registeredNodes().size(), 0);
     EXPECT_EQ(factory.registeredCategories().size(), 0);
     EXPECT_EQ(factory.sortedCategories().size(), 0);
+
+    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(intelli::BoolInputNode)));
+    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(intelli::IntInputNode)));
+    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(intelli::DoubleInputNode)));
+    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(intelli::StringInputNode)));
+    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(TestUnregisteredNode)));
+    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(TestDeprecatedNode)));
 }
 
 TEST(NodeFactory, category_order_priority)
@@ -95,19 +105,26 @@ TEST(NodeFactory, category_sorting)
     factory.setCategoryOrderPriority("CAT_A", 10);
     EXPECT_EQ(factory.sortedCategories(),
               (QStringList{"CAT_C", "CAT_B", "CAT_A"}));
+
+    EXPECT_TRUE(factory.registerNode<TestDeprecatedNode>("CAT_D"));
+    EXPECT_EQ(factory.registeredCategories().size(), 4);
+    EXPECT_EQ(factory.sortedCategories().size(), 4);
+    EXPECT_EQ(factory.sortedCategories(),
+              (QStringList{"CAT_C", "CAT_B", "CAT_A", "[DEPRECATED]"}));
 }
 
 TEST(NodeFactory, node_categories)
 {
     TestNodeFactory factory;
+    TestNodeFactory factory2;
+    TestNodeFactory factory3;
 
-    EXPECT_TRUE(factory.registerNode<intelli::BoolInputNode>({"CAT_A", "CAT_B"}));
+    EXPECT_TRUE(factory.registerNode<intelli::BoolInputNode>({"CAT_B", "CAT_A"}));
     EXPECT_TRUE(factory.registerNode<intelli::IntInputNode>(intelli::View<QString>{"CAT_B"}));
     EXPECT_TRUE(factory.registerNode<intelli::DoubleInputNode>(QString{"CAT_C"}));
-
-    EXPECT_EQ(factory.nodeCategory(GT_CLASSNAME(intelli::BoolInputNode)), "CAT_A");
-    EXPECT_EQ(factory.nodeCategory(GT_CLASSNAME(intelli::IntInputNode)), "CAT_B");
-    EXPECT_EQ(factory.nodeCategory(GT_CLASSNAME(intelli::DoubleInputNode)), "CAT_C");
+    EXPECT_TRUE(factory.registerNode<TestDeprecatedNode>(QString{"CAT_D"}));
+    EXPECT_TRUE(factory2.registerNode<TestDeprecatedNode>(intelli::View<QString>{}));
+    EXPECT_TRUE(factory3.registerNode<TestDeprecatedNode>(QString{}));
 
     auto categories = factory.nodeCategories(GT_CLASSNAME(intelli::BoolInputNode));
     ASSERT_EQ(categories.size(), 2);
@@ -119,9 +136,38 @@ TEST(NodeFactory, node_categories)
     categories = factory.nodeCategories(GT_CLASSNAME(intelli::DoubleInputNode));
     ASSERT_EQ(categories.size(), 1);
     EXPECT_EQ(categories.at(0), "CAT_C");
+    categories = factory.nodeCategories(GT_CLASSNAME(TestDeprecatedNode));
+    ASSERT_EQ(categories.size(), 1);
+    EXPECT_EQ(categories.at(0), "[DEPRECATED]");
+    categories = factory2.nodeCategories(GT_CLASSNAME(TestDeprecatedNode));
+    ASSERT_EQ(categories.size(), 0);
+    categories = factory3.nodeCategories(GT_CLASSNAME(TestDeprecatedNode));
+    ASSERT_EQ(categories.size(), 0);
+    categories = factory3.nodeCategories("UNKNOWN NODE");
+    ASSERT_EQ(categories.size(), 0);
 }
 
-TEST(NodeFactory, module_iId)
+TEST(NodeFactory, node_categories_with_duplicates)
+{
+    TestNodeFactory factory;
+
+    EXPECT_TRUE(factory.registerNode<intelli::BoolInputNode>({"CAT_A", "CAT_B", "CAT_A"}));
+    EXPECT_TRUE(factory.registerNode<intelli::DoubleInputNode>({"", "CAT_C"}));
+    EXPECT_TRUE(factory.registerNode<TestDeprecatedNode>({"CAT_B", "CAT_C"}));
+
+    auto categories = factory.nodeCategories(GT_CLASSNAME(intelli::BoolInputNode));
+    ASSERT_EQ(categories.size(), 2);
+    EXPECT_EQ(categories.at(0), "CAT_A");
+    EXPECT_EQ(categories.at(1), "CAT_B");
+    categories = factory.nodeCategories(GT_CLASSNAME(intelli::DoubleInputNode));
+    ASSERT_EQ(categories.size(), 1);
+    EXPECT_EQ(categories.at(0), "CAT_C");
+    categories = factory.nodeCategories(GT_CLASSNAME(TestDeprecatedNode));
+    ASSERT_EQ(categories.size(), 1);
+    EXPECT_EQ(categories.at(0), "[DEPRECATED]");
+}
+
+TEST(NodeFactory, module_id)
 {
     ASSERT_NE(QString{GT_MODULENAME()}.size(), 0);
 
@@ -135,17 +181,13 @@ TEST(NodeFactory, module_iId)
     EXPECT_EQ(factory.moduleId(GT_CLASSNAME(intelli::BoolInputNode)), GT_MODULENAME());
     EXPECT_EQ(factory.moduleId(GT_CLASSNAME(intelli::IntInputNode)), GT_MODULENAME());
     EXPECT_EQ(factory.moduleId(GT_CLASSNAME(intelli::StringInputNode)), "TEST");
+    EXPECT_TRUE(factory.moduleId("UNKNOWN NODE").isEmpty());
 #endif
 }
 
-TEST(NodeFactory, registered_nodes)
+TEST(NodeFactory, register_node)
 {
     TestNodeFactory factory;
-
-    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(intelli::BoolInputNode)));
-    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(intelli::IntInputNode)));
-    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(intelli::DoubleInputNode)));
-    EXPECT_FALSE(factory.isKnownNode(GT_CLASSNAME(intelli::StringInputNode)));
 
     EXPECT_TRUE(factory.registerNode<intelli::BoolInputNode>({"CAT_A", "CAT_B"}));
     EXPECT_TRUE(factory.registerNode<intelli::IntInputNode>(intelli::View<QString>{"CAT_B"}));
@@ -170,9 +212,43 @@ TEST(NodeFactory, make_node)
 {
     TestNodeFactory factory;
 
-    EXPECT_TRUE(factory.registerNode<intelli::BoolInputNode>(QString{}));
-    auto node = factory.makeNode(GT_CLASSNAME(intelli::BoolInputNode));
+    EXPECT_TRUE(factory.registerNode<TestUnregisteredNode>(QString{}));
+    auto node = factory.tryMakeNode(GT_CLASSNAME(TestUnregisteredNode));
     ASSERT_TRUE(node);
+    EXPECT_STREQ(node->metaObject()->className(), GT_CLASSNAME(TestUnregisteredNode));
+    EXPECT_EQ(node->modelName(), factory.nodeModelName(GT_CLASSNAME(TestUnregisteredNode)));
 
-    EXPECT_STREQ(node->metaObject()->className(), GT_CLASSNAME(intelli::BoolInputNode));
+    EXPECT_TRUE(factory.registerNode<TestDeprecatedNode>(QString{}));
+    node = factory.tryMakeNode(GT_CLASSNAME(TestDeprecatedNode));
+    ASSERT_TRUE(node);
+    EXPECT_STREQ(node->metaObject()->className(), GT_CLASSNAME(TestDeprecatedNode));
+    EXPECT_EQ(node->modelName(), factory.nodeModelName(GT_CLASSNAME(TestDeprecatedNode)));
+}
+
+TEST(NodeFactory, make_node_invalid)
+{
+    TestNodeFactory factory;
+
+    auto node = factory.tryMakeNode("UNKNOWN NODE");
+    ASSERT_FALSE(node);
+    EXPECT_TRUE(factory.nodeModelName("UNKNOWN NODE").isEmpty());
+}
+
+// tests the deprecated API
+TEST(NodeFactory, deprecated_api)
+{
+    TestNodeFactory factory;
+
+    EXPECT_TRUE(factory.registerNode<intelli::BoolInputNode>({"CAT_B", "CAT_A"}));
+    EXPECT_TRUE(factory.registerNode<TestDeprecatedNode>(QString{"CAT_D"}));
+
+    EXPECT_EQ(factory.nodeCategory(GT_CLASSNAME(intelli::BoolInputNode)), "CAT_A");
+    EXPECT_EQ(factory.nodeCategory(GT_CLASSNAME(TestDeprecatedNode)), "[DEPRECATED]");
+    EXPECT_TRUE(factory.nodeCategory("UNKNOWN NODE").isEmpty());
+
+    EXPECT_NO_THROW(
+        auto node = factory.makeNode(GT_CLASSNAME(intelli::BoolInputNode));
+        ASSERT_TRUE(node);
+    );
+    EXPECT_THROW((void) factory.makeNode("UNKNOWN NODE"), std::logic_error);
 }
