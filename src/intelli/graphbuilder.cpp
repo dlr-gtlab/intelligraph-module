@@ -103,15 +103,23 @@ GraphBuilder::addGraph(std::vector<PortInfo> const& inPorts,
 Node&
 GraphBuilder::addNode(QString const& className, Position pos) noexcept(false)
 {
-    auto node = NodeFactory::instance().makeNode(className);
-
-    return addNodeHelper(std::move(node), pos);
+    return addNode(className, NodeUuid{}, pos);
 }
 
 Node&
 GraphBuilder::addNode(QString const& className, NodeUuid const& nodeUuid, Position pos) noexcept(false)
 {
-    auto node = NodeFactory::instance().makeNode(className);
+    auto node = NodeFactory::instance().tryMakeNode(className);
+    if (!node)
+    {
+        throw std::logic_error{
+            std::string{
+                "Failed to create node for classname: " +
+                gt::squoted(className.toStdString()) +
+                " (object may not be invokable)"
+            }
+        };
+    }
 
     return addNodeHelper(std::move(node), pos, nodeUuid);
 }
@@ -119,11 +127,11 @@ GraphBuilder::addNode(QString const& className, NodeUuid const& nodeUuid, Positi
 Node&
 GraphBuilder::addNodeHelper(std::unique_ptr<Node> node, Position pos, NodeUuid const& nodeUuid)
 {
-    if (node && !pos.isNull()) node->setPos(pos);
-    if (node && !nodeUuid.isEmpty()) node->setUuid(nodeUuid);
+    assert(node);
+    if (!pos.isNull()) node->setPos(pos);
+    if (!nodeUuid.isEmpty()) node->setUuid(nodeUuid);
 
     auto* ptr = pimpl->graph->appendNode(std::move(node));
-
     if (!ptr)
     {
         throw std::logic_error{

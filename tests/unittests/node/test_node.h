@@ -39,6 +39,8 @@ public:
 
 protected:
 
+    TestNode(QString modelName);
+
     void eval();
 };
 
@@ -72,6 +74,32 @@ public:
     static void registerOnce();
 
     Q_INVOKABLE TestNumberInputNode();
+};
+
+/**
+ * @brief The TestUnregisteredNode class. This node is not registered by default
+ * and can be used to test registration
+ */
+class TestUnregisteredNode : public TestNode
+{
+    Q_OBJECT
+
+public:
+
+    Q_INVOKABLE TestUnregisteredNode();
+};
+
+/**
+ * @brief The TestDeprecatedNode class. This node is not registered by default
+ * and is marked as deprecated
+ */
+class TestDeprecatedNode : public TestNode
+{
+    Q_OBJECT
+
+public:
+
+    Q_INVOKABLE TestDeprecatedNode();
 };
 
 #endif // TESTNODE_H

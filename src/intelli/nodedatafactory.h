@@ -16,6 +16,7 @@
 #include <intelli/data/list.h>
 
 #include <gt_globals.h>
+#include <gt_platform.h>
 
 /// Helper macro for registering a node class. The node class does should not be
 /// registered additionally as a "data" object of your module
@@ -60,7 +61,7 @@ public:
      * @brief instance
      * @return
      */
-    static NodeDataFactory& instance();
+    static NodeDataFactory& instance() noexcept;
 
     /**
      * @brief Registers the data type `T` in the factory. `T` must be derived
@@ -126,18 +127,21 @@ public:
      * @param typeId Tpye id to check
      * @return Is known type id
      */
+    GT_NO_DISCARD
     bool isKnownType(TypeId const& typeId) const;
 
     /**
      * @brief Returns a list of all registered type ids
      * @return List of registered type ids
      */
+    GT_NO_DISCARD
     TypeIdList registeredTypeIds() const;
 
     /**
      * @brief Returns a list of all registered and valid type ids
      * @return List of registered and valid type ids
      */
+    GT_NO_DISCARD
     TypeIdList validTypeIds() const;
 
     /**
@@ -145,6 +149,7 @@ public:
      * @param typeId Type id to retrieve the type name from
      * @return Type name. Empty if type id was not found
      */
+    GT_NO_DISCARD
     TypeName typeName(TypeId const& typeId) const;
 
     /**
@@ -167,6 +172,7 @@ public:
      * @return Returns inner type. Returns empty string if the given type has
      * no inner type
      */
+    GT_NO_DISCARD
     TypeId innerType(TypeId const& typeId) const;
 
     /**
@@ -175,6 +181,7 @@ public:
      * @return Returns the corresponding list type. Returns empty string if
      * the type id has no valid list type
      */
+    GT_NO_DISCARD
     TypeId listType(TypeId const& typeId) const;
 
     /**
@@ -184,6 +191,7 @@ public:
      * @param to Target type
      * @return Whether there is an conversion function from type a to type b.
      */
+    GT_NO_DISCARD
     bool canConvert(TypeId const& from, TypeId const& to) const;
 
     /**
@@ -195,6 +203,7 @@ public:
      * b to a will be checked, else from a to b
      * @return success
      */
+    GT_NO_DISCARD
     bool canConvert(TypeId const& a, TypeId const& b, PortType direction) const;
 
     /**
@@ -206,6 +215,7 @@ public:
      * @return Shared pointer to the converted data type. Will be null if data
      * is null, no conversion exists or the conversion fails.
      */
+    GT_NO_DISCARD
     NodeDataPtr convert(NodeDataPtr const& data, TypeId const& to) const;
 
     /**
@@ -213,6 +223,7 @@ public:
      * @param typeId Type to instantiate
      * @return New type (may be null)
      */
+    GT_NO_DISCARD
     std::unique_ptr<NodeData> makeData(TypeId const& typeId) const;
 
     /**
@@ -221,6 +232,7 @@ public:
      * already.
      * @return New list type (may be null)
      */
+    GT_NO_DISCARD
     std::unique_ptr<ListData> makeListData(TypeId const& typeId) const;
 
 private:

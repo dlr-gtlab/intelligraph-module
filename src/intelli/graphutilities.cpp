@@ -135,8 +135,8 @@ copyCommentToGraph(CommentData const& comment,
 
 bool
 copyObjectsToGraph(Graph const& source,
-                   View<Node const*> nodes,
-                   View<CommentData const*> comments,
+                   Span<Node const*> nodes,
+                   Span<CommentData const*> comments,
                    Graph& target)
 {
     auto const makeError = [&source, &target](gt::log::Stream& s) -> gt::log::Stream& {

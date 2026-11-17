@@ -20,8 +20,6 @@ namespace intelli
  * Can be used to "view" (iterate over, access but NOT modify data of a
  * vector-like type.
  *
- * Note: Does not work with temporary containers!
- *
  * Usage:
  *
  * int myFunction(View<int> myInts) {
@@ -37,41 +35,7 @@ namespace intelli
  * }
  */
 template <typename T>
-class View : public Span<T const>
-{
-    using base_class = Span<T const>;
-public:
-
-    using value_type      = typename base_class::value_type;
-    using size_type       = typename base_class::size_type;
-
-    using base_class::operator[];
-
-    View(T const* data, size_type size) :
-        base_class(data, size)
-    {}
-
-    View(std::initializer_list<T> list) :
-        base_class(list.begin(), std::distance(list.begin(), list.end()))
-    {}
-
-    template<template<class...> class Container,
-             typename... U,
-             typename = std::enable_if_t<
-                     std::is_convertible<typename Container<U...>::value_type,
-                                         T const>::value>>
-    View(Container<U...> const& vector) :
-        base_class(detail::container_data<T const>::get(vector),
-                   detail::container_size<size_type>::get(vector))
-    {}
-
-    template <size_t N>
-    View(std::array<T, N> const& array) : View(array.data(), N) {}
-
-    /// disabled for r-values
-    template<template<class...> class Container, typename... U>
-    View(Container<U...>&& vector) = delete;
-};
+using View = Span<T const>;
 
 } // namespace intelli
 

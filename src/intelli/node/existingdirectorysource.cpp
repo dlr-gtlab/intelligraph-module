@@ -13,6 +13,8 @@
 
 #include <gt_abstractproperty.h>
 
+#include <QDir>
+
 using namespace intelli;
 
 ExistingDirectorySourceNode::ExistingDirectorySourceNode():
@@ -21,17 +23,17 @@ ExistingDirectorySourceNode::ExistingDirectorySourceNode():
 {
     registerProperty(m_value);
 
-    setFlag(GtObject::UserRenamable);
-    setNodeFlag(Resizable);
+    setFlag(UserRenamable);
+    setNodeFlag(ResizableHOnly);
+    setNodeEvalMode(NodeEvalMode::Blocking);
 
     m_out = addOutPort(makePort(typeId<StringData>()).setCaptionVisible(false));
 
     connect(&m_value, &GtAbstractProperty::changed,
-            this, &Node::triggerNodeEvaluation);
-    connect(&m_value, &GtAbstractProperty::changed,
-            this, [this]() { emit directoryChanged(m_value.get()); });
-
-    emit directoryChanged(m_value.get());
+            this, [this](){
+                emit directoryChanged(m_value.get());
+                emit triggerNodeEvaluation();
+            });
 }
 
 QString
@@ -50,5 +52,7 @@ ExistingDirectorySourceNode::setDirectory(QString const& path)
 void
 ExistingDirectorySourceNode::eval()
 {
+    if (!QDir().exists(m_value)) return evalFailed();
+
     setNodeData(m_out, std::make_shared<StringData>(m_value));
 }
