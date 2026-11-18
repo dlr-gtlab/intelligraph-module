@@ -14,8 +14,54 @@
 #include <gt_propertyobjectlinkeditor.h>
 
 #include <QGraphicsWidget>
+#include <QVBoxLayout>
 
 using namespace intelli;
+
+ObjectInputNodeWidget::ObjectInputNodeWidget(ObjectInputNode& node, QWidget* parent) :
+    QWidget(parent)
+{
+    m_node = &node;
+
+    auto* lay = new QVBoxLayout(this);
+    lay->setContentsMargins(0, 0, 0, 0);
+
+    m_editor = new GtPropertyObjectLinkEditor(this);
+    lay->addWidget(m_editor);
+
+    m_editor->setObjectLinkProperty(&m_node->objectProperty());
+
+    QObject::connect(m_node, &Node::evaluated,
+                     this, &ObjectInputNodeWidget::updateScope);
+    QObject::connect(m_node, &Node::evaluated,
+                     this, &ObjectInputNodeWidget::updateText);
+
+    updateScope();
+    updateText();
+}
+
+NodeUI::QGraphicsWidgetPtr
+ObjectInputNodeWidget::create(Node& source, NodeGraphicsObject& object)
+{
+    auto* node = qobject_cast<ObjectInputNode*>(&source);
+    if (!node) return nullptr;
+
+    auto w = std::make_unique<ObjectInputNodeWidget>(*node);
+    return NodeUI::convertToGraphicsWidget(std::move(w), object);
+}
+
+void
+ObjectInputNodeWidget::updateScope()
+{
+    auto* model = exec::nodeDataInterface(*m_node);
+    m_editor->setScope(model ? model->scope() : m_node->objectProperty().object());
+}
+
+void
+ObjectInputNodeWidget::updateText()
+{
+    m_editor->updateText();
+}
 
 ObjectInputNodeUI::ObjectInputNodeUI() = default;
 
@@ -24,27 +70,5 @@ ObjectInputNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<ObjectInputNode const*>(&n)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
-        auto* node = qobject_cast<ObjectInputNode*>(&source);
-        if (!node) return nullptr;
-
-        auto w = std::make_unique<GtPropertyObjectLinkEditor>();
-        w->setObjectLinkProperty(&node->objectProperty());
-
-        auto updateScope = [node, w_ = w.get()]() {
-            auto* model = exec::nodeDataInterface(*node);
-            w_->setScope(model ? model->scope() : node->objectProperty().object());
-        };
-        auto updateText = [w_ = w.get()]() {
-            w_->updateText();
-        };
-
-        QObject::connect(node, &Node::evaluated, w.get(), updateScope);
-        QObject::connect(node, &Node::evaluated, w.get(), updateText);
-
-        updateScope();
-        updateText();
-
-        return convertToGraphicsWidget(std::move(w), object);
-    };
+    return &ObjectInputNodeWidget::create;
 }

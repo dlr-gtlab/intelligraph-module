@@ -12,8 +12,50 @@
 
 #include <QGraphicsWidget>
 #include <QPushButton>
+#include <QVBoxLayout>
 
 using namespace intelli;
+
+ObjectSinkNodeWidget::ObjectSinkNodeWidget(ObjectSink& node, QWidget* parent) :
+    QWidget(parent)
+{
+    m_node = &node;
+
+    auto* lay = new QVBoxLayout(this);
+    lay->setContentsMargins(0, 0, 0, 0);
+
+    m_button = new QPushButton(QObject::tr("Export"), this);
+    lay->addWidget(m_button);
+
+    m_button->setEnabled(m_node->canExport());
+
+    QObject::connect(m_node, &ObjectSink::exportEnabledChanged,
+                     this, &ObjectSinkNodeWidget::updateExportEnabled);
+    QObject::connect(m_button, &QPushButton::clicked,
+                     this, &ObjectSinkNodeWidget::exportObject);
+}
+
+NodeUI::QGraphicsWidgetPtr
+ObjectSinkNodeWidget::create(Node& source, NodeGraphicsObject& object)
+{
+    auto* node = qobject_cast<ObjectSink*>(&source);
+    if (!node) return nullptr;
+
+    auto w = std::make_unique<ObjectSinkNodeWidget>(*node);
+    return NodeUI::convertToGraphicsWidget(std::move(w), object);
+}
+
+void
+ObjectSinkNodeWidget::updateExportEnabled(bool enabled)
+{
+    m_button->setEnabled(enabled);
+}
+
+void
+ObjectSinkNodeWidget::exportObject()
+{
+    m_node->exportObject();
+}
 
 ObjectSinkNodeUI::ObjectSinkNodeUI() = default;
 
@@ -22,21 +64,5 @@ ObjectSinkNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<ObjectSink const*>(&n)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
-        auto* node = qobject_cast<ObjectSink*>(&source);
-        if (!node) return nullptr;
-
-        auto w = std::make_unique<QPushButton>(QObject::tr("Export"));
-        w->setEnabled(node->canExport());
-
-        QObject::connect(node, &ObjectSink::exportEnabledChanged,
-                         w.get(), [w_ = w.get()](bool enabled) {
-            w_->setEnabled(enabled);
-        });
-
-        QObject::connect(w.get(), &QPushButton::clicked,
-                         w.get(), [node]() { node->exportObject(); });
-
-        return convertToGraphicsWidget(std::move(w), object);
-    };
+    return &ObjectSinkNodeWidget::create;
 }

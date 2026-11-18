@@ -9,6 +9,9 @@
 
 #include <intelli/node/input/boolinput.h>
 #include <intelli/data/bool.h>
+#include <intelli/gui/widgets/booldisplaygraphicswidget.h>
+
+#include <cassert>
 
 using namespace intelli;
 
@@ -19,6 +22,11 @@ BoolInputNode::BoolInputNode() :
                   tr("Display Mode"),
                   tr("Display Mode"))
 {
+    using DisplayMode = BoolDisplayGraphicsWidget::DisplayMode;
+
+    bool success = m_displayMode.registerEnum<DisplayMode>();
+    assert(success);
+
     registerProperty(m_value);
     registerProperty(m_displayMode);
 
@@ -42,6 +50,7 @@ BoolInputNode::setValue(bool value)
 {
     m_value = value;
 }
+
 
 void
 BoolInputNode::eval()

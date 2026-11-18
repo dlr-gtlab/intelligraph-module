@@ -23,7 +23,7 @@ NumberDisplayNodeUI::centralWidgetFactory(Node const& n) const
 {
     if (!qobject_cast<NumberDisplayNode const*>(&n)) return {};
 
-    return [](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
+    return [this](Node& source, NodeGraphicsObject& object) -> QGraphicsWidgetPtr {
         auto* node = qobject_cast<NumberDisplayNode*>(&source);
         if (!node) return nullptr;
 

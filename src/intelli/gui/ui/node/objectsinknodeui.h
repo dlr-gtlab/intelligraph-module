@@ -9,9 +9,36 @@
 #define GT_INTELLI_OBJECTSINKNODEUI_H
 
 #include <intelli/gui/nodeui.h>
+#include <QWidget>
+
+class QPushButton;
 
 namespace intelli
 {
+
+class ObjectSink;
+class NodeGraphicsObject;
+
+class ObjectSinkNodeWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+
+    explicit ObjectSinkNodeWidget(ObjectSink& node, QWidget* parent = nullptr);
+
+    static NodeUI::QGraphicsWidgetPtr create(Node& source, NodeGraphicsObject& object);
+
+private slots:
+
+    void updateExportEnabled(bool enabled);
+    void exportObject();
+
+private:
+
+    ObjectSink* m_node{};
+    QPushButton* m_button{};
+};
 
 class ObjectSinkNodeUI : public NodeUI
 {

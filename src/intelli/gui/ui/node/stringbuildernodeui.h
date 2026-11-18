@@ -9,9 +9,36 @@
 #define GT_INTELLI_STRINGBUILDERNODEUI_H
 
 #include <intelli/gui/nodeui.h>
+#include <QWidget>
+
+class GtLineEdit;
 
 namespace intelli
 {
+
+class StringBuilderNode;
+class NodeGraphicsObject;
+
+class StringBuilderNodeWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+
+    explicit StringBuilderNodeWidget(StringBuilderNode& node, QWidget* parent = nullptr);
+
+    static NodeUI::QGraphicsWidgetPtr create(Node& source, NodeGraphicsObject& object);
+
+private slots:
+
+    void updatePatternFromNode();
+    void updateNodeFromPattern();
+
+private:
+
+    StringBuilderNode* m_node{};
+    GtLineEdit* m_edit{};
+};
 
 class StringBuilderNodeUI : public NodeUI
 {
