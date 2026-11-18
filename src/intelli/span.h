@@ -10,12 +10,12 @@
 #ifndef GT_INTELLI_SPAN_H
 #define GT_INTELLI_SPAN_H
 
+#include <intelli/utilities.h>
+
 #include <type_traits>
 #include <iterator>
 #include <cassert>
 #include <stddef.h>
-
-#include <QtGlobal>
 
 namespace intelli
 {
@@ -59,7 +59,7 @@ class Span
     template <typename C>
     static constexpr T* data_of(C& c) noexcept
     {
-        if constexpr (std::is_const<T>::value) return std::data(qAsConst(c));
+        if constexpr (std::is_const<T>::value) return std::data(asConst(c));
         else return std::data(c);
     }
 
