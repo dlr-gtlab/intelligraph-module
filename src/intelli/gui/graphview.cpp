@@ -61,7 +61,11 @@ static InteractableGraphicsObject* locateObject(QPointF scenePoint,
 GraphView::GraphView(QWidget* parent) :
     GtGraphicsView(nullptr, parent)
 {
-    setDragMode(QGraphicsView::ScrollHandDrag);
+    // NoDrag avoids QGraphicsView clearing the selection on release
+    // panning is handled in mouseMoveEvent().
+    setDragMode(QGraphicsView::NoDrag);
+    viewport()->setCursor(Qt::OpenHandCursor);
+
     setRenderHint(QPainter::Antialiasing);
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -477,7 +481,7 @@ GraphView::keyReleaseEvent(QKeyEvent* event)
     switch (event->key())
     {
     case Qt::Key_Shift:
-        setDragMode(QGraphicsView::ScrollHandDrag);
+        setDragMode(QGraphicsView::NoDrag);
         event->accept();
         break;
     default:
