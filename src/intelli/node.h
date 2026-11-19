@@ -365,7 +365,7 @@ public:
 
     /**
      * @brief Returns a list of the input or output ports depending on the port
-     * type
+     * type. Prefer `getPorts` for a light view on the ports.
      * @param type Port type (input or output)
      * @return Ports
      */
@@ -398,6 +398,15 @@ public:
      */
     NodePort* port(PortId id) noexcept;
     NodePort const* port(PortId id) const noexcept;
+
+    /**
+     * @brief Returns the port at the given location
+     * @param type Port type/side
+     * @param idx Port index
+     * @return Port. May be null
+     */
+    NodePort* port(PortType type, PortIndex idx) noexcept;
+    NodePort const* port(PortType type, PortIndex idx) const noexcept;
 
     /**
      * @brief Returns the port index of the port id and its port type.

@@ -31,7 +31,7 @@ using namespace intelli;
 
 
 Graph::Graph(QString const& modelName, bool initProviders) :
-    DynamicNode(modelName),
+    DynamicNode(modelName, DynamicInputAndOutput),
     pimpl(std::make_unique<Impl>())
 {
     auto* db = new GraphUserVariables(this);

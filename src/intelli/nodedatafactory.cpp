@@ -352,6 +352,18 @@ NodeDataFactory::isKnownType(TypeId const& typeId) const
 TypeIdList
 intelli::NodeDataFactory::registeredTypeIds() const
 {
+    return registeredScalarTypeIds() + registeredListTypeIds();
+}
+
+TypeIdList
+NodeDataFactory::validTypeIds() const
+{
+    return registeredScalarTypeIds() + registeredListTypeIds();
+}
+
+TypeIdList
+NodeDataFactory::registeredScalarTypeIds() const
+{
     TypeIdList types;
     std::copy(pimpl()->types.keyBegin(), pimpl()->types.keyEnd(), std::back_inserter(types));
     types.removeOne(typeId<InvalidData>());
@@ -359,9 +371,14 @@ intelli::NodeDataFactory::registeredTypeIds() const
 }
 
 TypeIdList
-NodeDataFactory::validTypeIds() const
+NodeDataFactory::registeredListTypeIds() const
 {
-    return registeredTypeIds();
+    TypeIdList types;
+    std::copy(pimpl()->listTypes.keyBegin(), pimpl()->listTypes.keyEnd(), std::back_inserter(types));
+    types.removeOne(GT_CLASSNAME(StringListData));
+    assert(!types.contains(typeId<InvalidData>()) &&
+           !types.contains(safeTypeId<list<InvalidData>>()));
+    return types;
 }
 
 TypeName
@@ -385,7 +402,7 @@ NodeDataFactory::isListType(TypeId const& typeId) const
     {
         gtLogOnce(Warning)
             << QObject::tr("use intelli::typeId<T>() instead of GT_CLASSNAME(T)!");
-        assert(pimpl->listTypes.contains(typeId));
+        assert(pimpl()->listTypes.contains(typeId));
     }
     return pimpl()->listTypes.contains(typeId);
 }

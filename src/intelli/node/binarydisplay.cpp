@@ -16,12 +16,28 @@ BinaryDisplayNode::BinaryDisplayNode() :
     DynamicNode(tr("Binary Display"),
                 QStringList{typeId<BoolData>()},
                 QStringList{},
-                DynamicNode::NoUserEditableInput)
+                NoUserEditableInput | HideAddPortDialog)
 {
     setNodeEvalMode(NodeEvalMode::Blocking);
     setNodeFlag(Resizable);
 
     addStaticInPort(makePort(typeId<BoolData>()).setCaption("in_0"));
+
+    auto updatePortCaptions =
+        [this](PortType type = PortType::In, PortIndex = PortIndex{}){
+        if (type != PortType::In) return;
+
+        PortIndex idx{0};
+        for (auto& port : getPorts(PortType::In))
+        {
+            port.setCaption(QStringLiteral("in_%1").arg(idx));
+            idx++;
+        }
+        emit nodeChanged();
+    };
+
+    connect(this, &Node::portInserted, this, updatePortCaptions);
+    connect(this, &Node::portDeleted,  this, updatePortCaptions);
 }
 
 unsigned int

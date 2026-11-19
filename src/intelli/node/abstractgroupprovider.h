@@ -38,7 +38,7 @@ public:
         setNodeEvalMode(NodeEvalMode::Blocking);
 
         Position offset{250, 0};
-        offset.rx() *=(type == PortType::In ? -1 : 1);
+        offset.rx()  *= (type == PortType::In ? -1 : 1);
         setPos(pos() += offset);
     }
 

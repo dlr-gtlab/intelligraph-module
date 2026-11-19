@@ -17,10 +17,10 @@
 using namespace intelli;
 
 ToListNode::ToListNode() :
-    DynamicNode("To List", DynamicInput | NoDefaultListTypes),
+    DynamicNode("To List", NoUserEditableInput | HideAddPortDialog),
     m_typeId("typeId",
              tr("Type Id"),
-             NodeDataFactory::instance().validTypeIds(),
+             NodeDataFactory::instance().registeredScalarTypeIds(),
              typeId<DoubleData>())
 {
     auto updatePort = [this](PortType type, PortIndex idx){

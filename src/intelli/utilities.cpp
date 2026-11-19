@@ -39,7 +39,6 @@ intelli::utils::synchronizePorts(Node& source,
         }
 
         NodePort const copy = makePort ? makePort(*srcPort) : *srcPort;
-
         PortId addedPortId = target.addPort(copy);
         if (!addedPortId.isValid())
         {
@@ -72,7 +71,7 @@ intelli::utils::synchronizePorts(Node& source,
             return;
         }
 
-        PortInfo* port = source.port(srcPort->id());
+        PortInfo* port = target.port(srcPort->id());
         if (!port)
         {
             gtError() << makeError()

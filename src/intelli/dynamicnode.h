@@ -46,9 +46,9 @@ public:
         /// same as `DynamicInput` but users cannot edit type-id,
         /// caption, and other properties
         NoUserEditableInput  = DynamicInput  | 1 << 2,
-        /// same as `DynamicInput` but for output ports.
+        /// same as `NoUserEditableInput` but for output ports.
         NoUserEditableOutput = DynamicOutput | 1 << 3,
-        /// same as `DynamicInput` but for input and output ports.
+        /// same as `NoUserEditableInput` but for input and output ports.
         NoUserEditableInputAndOutput = NoUserEditableInput |
                                        NoUserEditableOutput,
         /// same as `DynamicInput` but users cannot add or delete ports, but may
@@ -59,10 +59,13 @@ public:
         /// same as `NoUserManagedInput` but for input and output ports.
         NoUserManagedInputAndOutput = NoUserManagedInput |
                                       NoUserManagedOutput,
-
-        NoDefaultListTypes = 1 << 6,
-
-        ListTypesOnly = 1 << 7,
+        /// inidicates that the user is not prompted when adding input ports
+        HideAddPortDialogForInputs = 1 << 6,
+        /// inidicates that the user is not prompted when adding output ports
+        HideAddPortDialogForOutputs = 1 << 7,
+        /// inidicates that the user is not prompted when adding ports
+        HideAddPortDialog = HideAddPortDialogForInputs |
+                            HideAddPortDialogForOutputs,
 
         DynamicInputOnly
             [[deprecated("Use `DynamicInput` instead")]]

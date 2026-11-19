@@ -31,7 +31,8 @@ public:
 
     static void registerOnce();
 
-    Q_INVOKABLE TestDynamicWhiteListNode(QStringList inputWhiteList = {},
+    Q_INVOKABLE TestDynamicWhiteListNode(DynamicNodeOptions options = DynamicInputAndOutput,
+                                         QStringList inputWhiteList = {},
                                          QStringList outputWhiteList = {});
 };
 

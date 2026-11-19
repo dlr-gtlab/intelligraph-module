@@ -57,17 +57,25 @@ using DeleteAction = std::pair<NodeUI::CustomDeleteFunctor,
 
 // allows to use variadic arguments
 auto const canEditInputPorts = [](GtObject* obj, auto ...){
-    return static_cast<DynamicNode*>(obj)->dynamicNodeOptions().testFlag(DynamicNode::NoUserEditableInput);
+    auto const flags = static_cast<DynamicNode*>(obj)->dynamicNodeOptions();
+    return flags.testFlag(DynamicNode::DynamicInput) &&
+           !flags.testFlag(DynamicNode::NoUserEditableInput);
 };
 auto const canEditOutputPorts = [](GtObject* obj, auto ...){
-    return static_cast<DynamicNode*>(obj)->dynamicNodeOptions().testFlag(DynamicNode::NoUserEditableOutput);
+    auto const flags = static_cast<DynamicNode*>(obj)->dynamicNodeOptions();
+    return flags.testFlag(DynamicNode::DynamicOutput) &&
+           !flags.testFlag(DynamicNode::NoUserEditableOutput);
 };
 // allows to use variadic arguments
 auto const canManageInputPorts = [](GtObject* obj, auto ...){
-    return static_cast<DynamicNode*>(obj)->dynamicNodeOptions().testFlag(DynamicNode::NoUserManagedInput);
+    auto const flags = static_cast<DynamicNode*>(obj)->dynamicNodeOptions();
+    return flags.testFlag(DynamicNode::DynamicInput) &&
+           !flags.testFlag(DynamicNode::NoUserManagedInput);
 };
 auto const canManageOutputPorts = [](GtObject* obj, auto ...){
-    return static_cast<DynamicNode*>(obj)->dynamicNodeOptions().testFlag(DynamicNode::NoUserManagedOutput);
+    auto const flags = static_cast<DynamicNode*>(obj)->dynamicNodeOptions();
+    return flags.testFlag(DynamicNode::DynamicOutput) &&
+           !flags.testFlag(DynamicNode::NoUserManagedOutput);
 };
 
 DummyNode*
@@ -139,11 +147,11 @@ NodeUI::NodeUI(Options options) :
 
     addCustomDeleteAction(tr("Delete Dummy Node"), deleteDummyNode, toConstDummyNode);
 
-    if (!(options & NoDefaultNodeActions))
+    if (!options.testFlag(NoDefaultNodeActions))
     {
         static auto const& category =  QStringLiteral("GtProcessDock");
 
-        if (!(options & NoRenameOption))
+        if (!options.testFlag(NoRenameOption))
         {
             addSeparator(ORDER_PRIORITY(gt::gui::OrderPriority::BeforeRenameAction));
 
@@ -186,16 +194,16 @@ NodeUI::NodeUI(Options options) :
 
         addSeparator(ORDER_PRIORITY(OrderPriority::AfterCustomActions));
 
-        if (!(options & (NoDynamicPortActions) ))
+        if (!options.testFlag(NoDynamicPortActions))
         {
             addSingleAction(tr("Add In Port"), addDynamicInPort)
                 .setIcon(gt::gui::icon::add())
-                .setVisibilityMethod(isDynamicNode && !isDummyNode && canManageInputPorts)
+                .setVisibilityMethod(isDynamicNode && canManageInputPorts)
                 SET_ORDER_PRIORITY(OrderPriority::PortAction);
 
             addSingleAction(tr("Add Out Port"), addDynamicOutPort)
                 .setIcon(gt::gui::icon::add())
-                .setVisibilityMethod(isDynamicNode && !isDummyNode && canManageOutputPorts)
+                .setVisibilityMethod(isDynamicNode && canManageOutputPorts)
                 SET_ORDER_PRIORITY(OrderPriority::PortAction);
 
             addSeparator(ORDER_PRIORITY(OrderPriority::AfterPortActions));
@@ -273,7 +281,7 @@ NodeUI::NodeUI(Options options) :
         addPortSeparator();
     }
 
-    if (!(options & (NoDefaultPortActions | NoDynamicPortActions)))
+    if (!options.testFlag(NoDefaultPortActions) && !options.testFlag(NoDynamicPortActions))
     {
         addPortAction(tr("Edit Port"), editDynamicPort)
             .setIcon(gt::gui::icon::rename())
@@ -284,8 +292,8 @@ NodeUI::NodeUI(Options options) :
         addPortAction(tr("Delete Port"), deleteDynamicPort)
             .setIcon(gt::gui::icon::delete_())
             .setVisibilityMethod(isDynamicPort && (
-                                     (isInputPort && canEditInputPorts) ||
-                                     (isOutputPort && canEditOutputPorts))
+                                     (isInputPort && canManageInputPorts) ||
+                                     (isOutputPort && canManageOutputPorts))
                                  );
     }
 }
@@ -568,32 +576,36 @@ addPort(DynamicNode& node, PortType type)
     if (type == PortType::In  && !canManageInputPorts(&node)) return;
     if (type == PortType::Out && !canManageOutputPorts(&node)) return;
 
-    // TODO: update
-    PortEditDialog::Option option{PortEditDialog::AllowListTypes};
+    PortEditDialog::Options options{PortEditDialog::NoOption};
 
     auto dynOptions = node.dynamicNodeOptions();
-    if (dynOptions.testFlag(DynamicNode::NoDefaultListTypes) ||
-        dynOptions.testFlag(DynamicNode::ListTypesOnly))
+    if ((type == PortType::In && dynOptions.testFlag(intelli::DynamicNode::NoUserEditableInput)) ||
+        (type == PortType::Out && dynOptions.testFlag(intelli::DynamicNode::NoUserEditableOutput)))
     {
-        option = PortEditDialog::NoOption;
+        options = PortEditDialog::DisallowEditingCaption |
+                  PortEditDialog::DisallowEditingOptional;
     }
 
     PortEditDialog dialog{
         type,
-        option,
-        type == PortType::In ?
-            node.inputWhitelist() : node.outputWhitelist()
+        type == PortType::In ? node.inputWhitelist() : node.outputWhitelist(),
+        options
     };
-    if (!dialog.exec()) return;
 
-    Node::PortInfo newPort{dialog.typeId()};
+    if ((type == PortType::In && !dynOptions.testFlag(intelli::DynamicNode::HideAddPortDialogForInputs)) ||
+        (type == PortType::Out && !dynOptions.testFlag(intelli::DynamicNode::HideAddPortDialogForOutputs)))
+    {
+        if (!dialog.exec()) return;
+    }
+
+    NodePort newPort{dialog.typeId()};
     newPort.caption = dialog.caption();
     newPort.captionVisible = dialog.captionVisible();
     newPort.optional = dialog.optional();
 
     auto cmd = gtApp->makeCommand(
         &node,
-        QStringLiteral("Adding an %1put port to conditional node '%2'")
+        QStringLiteral("Adding an %1put port to node '%2'")
             .arg(type == PortType::In ? "in" : "out",
                  relativeNodePath(node)));
     Q_UNUSED(cmd);
@@ -619,21 +631,20 @@ editPort(DynamicNode& node, PortType type, NodePort& srcPort)
     if (type == PortType::In  && !canEditInputPorts(&node)) return;
     if (type == PortType::Out && !canEditOutputPorts(&node)) return;
 
-    // TODO: update
-    PortEditDialog::Option option{PortEditDialog::AllowListTypes};
+    PortEditDialog::Options options{PortEditDialog::NoOption};
 
     auto dynOptions = node.dynamicNodeOptions();
-    if (dynOptions.testFlag(DynamicNode::NoDefaultListTypes) ||
-        dynOptions.testFlag(DynamicNode::ListTypesOnly))
+    if ((type == PortType::In && dynOptions.testFlag(intelli::DynamicNode::NoUserEditableInput)) ||
+        (type == PortType::Out && dynOptions.testFlag(intelli::DynamicNode::NoUserEditableOutput)))
     {
-        option = PortEditDialog::NoOption;
+        options = PortEditDialog::DisallowEditingCaption |
+                  PortEditDialog::DisallowEditingOptional;
     }
 
     PortEditDialog dialog{
         type,
-        option,
-        type == PortType::In ?
-            node.inputWhitelist() : node.outputWhitelist()
+        type == PortType::In ? node.inputWhitelist() : node.outputWhitelist(),
+        options
     };
     dialog.setTypeId(srcPort.typeId);
     dialog.setCaption(srcPort.caption);
@@ -647,13 +658,13 @@ editPort(DynamicNode& node, PortType type, NodePort& srcPort)
             .arg(toString(srcPort), relativeNodePath(node)));
     Q_UNUSED(cmd);
 
-    auto port = srcPort;
+    NodePort port = srcPort;
     port.typeId = dialog.typeId();
     port.caption = dialog.caption();
     port.captionVisible = dialog.captionVisible();
     port.optional = dialog.optional();
+    assert(port.id() == srcPort.id());
     srcPort.assign(port);
-    assert(srcPort.id() == srcPort.id());
     emit node.portChanged(srcPort.id());
 }
 
@@ -698,6 +709,8 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
     auto* node = toDynamicNode(obj);
     if (!node) return;
 
+    if (!node->isDynamicPort(type, idx)) return;
+
     PortId portId = node->portId(type, idx);
     if (!portId.isValid()) return;
 
@@ -714,7 +727,6 @@ NodeUI::deleteDynamicPort(Node* obj, PortType type, PortIndex idx)
     node->removePort(portId);
 }
 
-
 void
 NodeUI::editUserVariables(GtObject* obj)
 {
@@ -728,7 +740,7 @@ NodeUI::editUserVariables(GtObject* obj)
         graph = graph->rootGraph();
         if (!graph) return;
     }
-    if (!isRootGraph.get()(graph)) return;
+    if (!isRootGraph(graph)) return;
 
     GraphUserVariablesDialog dialog{*graph};
     dialog.exec();

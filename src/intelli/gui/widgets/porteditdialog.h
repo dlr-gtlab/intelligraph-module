@@ -12,6 +12,7 @@
 
 #include <intelli/exports.h>
 #include <intelli/globals.h>
+#include <intelli/flags.h>
 
 #include <QDialog>
 
@@ -29,14 +30,14 @@ public:
     enum Option : uint8_t
     {
         NoOption = 0,
-        /// Hides list types and allows the use to toggle the list types using
-        /// a button instead
-        AllowListTypes
+        DisallowEditingCaption,
+        DisallowEditingOptional,
     };
+    using Options = UFlags<Option>;
 
     explicit PortEditDialog(PortType portType,
-                            Option option = NoOption,
-                            QStringList const& typeWhiteList = {});
+                            QStringList const& typeWhiteList,
+                            Options options = NoOption);
 
     ~PortEditDialog();
 

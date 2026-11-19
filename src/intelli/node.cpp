@@ -438,7 +438,6 @@ Node::port(PortId id) noexcept
     for (auto* ports : { &pimpl->inPorts, &pimpl->outPorts })
     {
         auto iter = Impl::find(*ports, id);
-
         if (iter != ports->end()) return &(*iter);
     }
 
@@ -451,11 +450,24 @@ Node::port(PortId id) const noexcept
     return const_cast<Node*>(this)->port(id);
 }
 
+Node::NodePort*
+Node::port(PortType type, PortIndex idx) noexcept
+{
+    auto ports = this->getPorts(type);
+    return (idx >= ports.size()) ? nullptr : &ports.at(idx);
+}
+
+Node::NodePort const*
+Node::port(PortType type, PortIndex idx) const noexcept
+{
+    auto ports = this->getPorts(type);
+    return (idx >= ports.size()) ? nullptr : &ports.at(idx);
+}
+
 PortIndex
 Node::portIndex(PortType type, PortId id) const noexcept(false)
 {
     auto& ports = this->ports(type);
-
     auto iter = Impl::find(ports, id);
 
     if (iter != ports.end())
@@ -479,19 +491,14 @@ Node::PortType
 Node::portType(PortId id) const noexcept(false)
 {
     auto port = pimpl->findPort(id);
-    if (!port) return PortType::NoType;
-
-    return port.type;
+    return (port) ? port.type : PortType::NoType;
 }
 
 PortId
 Node::portId(PortType type, PortIndex idx) const noexcept(false)
 {
-    auto& ports = this->ports(type);
-
-    if (idx >= ports.size()) return PortId{};
-
-    return ports.at(idx).m_id;
+    auto* p = port(type, idx);
+    return p ? p->id() : PortId{};
 }
 
 bool
