@@ -219,9 +219,9 @@ PortEditDialog::PortEditDialog(PortType portType,
             this, updateCaption);
     connect(pimpl->portCaptionVisibleBtn, &QPushButton::clicked,
             this, updateCaptionVisibility);
-    connect(pimpl->listTypeCheckBox, &QCheckBox::checkStateChanged,
+    connect(pimpl->listTypeCheckBox, &QCheckBox::stateChanged,
             this, updateListBtn);
-    connect(pimpl->portOptionalCheckBox, &QCheckBox::checkStateChanged,
+    connect(pimpl->portOptionalCheckBox, &QCheckBox::stateChanged,
             this, updatePortOptional);
 
     pimpl->portTypeComboBox->setCurrentText(pimpl->typeToName[intelli::typeId<DoubleData>()]);

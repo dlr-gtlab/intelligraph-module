@@ -81,8 +81,8 @@ DynamicNode::DynamicNode(QString const& modelName,
                                   NodeDataFactory::instance().registeredTypeIds() :
                                   std::move(outputWhiteList);
 
-    inputTypes.sort();
-    outputTypes.sort();
+    std::sort(inputTypes.begin(), inputTypes.end());
+    std::sort(outputTypes.begin(), outputTypes.end());
 
     pimpl->inputWhitelist  = inputTypes;
     pimpl->outputWhitelist = outputTypes;

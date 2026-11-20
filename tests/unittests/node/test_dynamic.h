@@ -34,6 +34,9 @@ public:
     Q_INVOKABLE TestDynamicWhiteListNode(DynamicNodeOptions options = DynamicInputAndOutput,
                                          QStringList inputWhiteList = {},
                                          QStringList outputWhiteList = {});
+
+    using intelli::DynamicNode::addStaticInPort;
+    using intelli::DynamicNode::addStaticOutPort;
 };
 
 #endif // TESTDYNAMICNODE_H

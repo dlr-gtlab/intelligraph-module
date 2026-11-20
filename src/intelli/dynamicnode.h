@@ -53,17 +53,19 @@ public:
                                        NoUserEditableOutput,
         /// same as `DynamicInput` but users cannot add or delete ports, but may
         /// edit type-id, caption, and other properties.
+        /// May be combined with `NoUserEditableInput` to disable editing too
         NoUserManagedInput  = DynamicInput  | 1 << 4,
-        /// same as `NoUserManagedInput` but for output ports.
+        /// Same as `NoUserManagedInput` but for output ports.
         NoUserManagedOutput = DynamicOutput | 1 << 5,
-        /// same as `NoUserManagedInput` but for input and output ports.
+        /// Same as `NoUserManagedInput` but for input and output ports.
         NoUserManagedInputAndOutput = NoUserManagedInput |
                                       NoUserManagedOutput,
-        /// inidicates that the user is not prompted when adding input ports
+        /// Inidicates that the user is not prompted when adding input ports
+        /// Only needed if ports may be managed by the user
         HideAddPortDialogForInputs = 1 << 6,
-        /// inidicates that the user is not prompted when adding output ports
+        /// Same as `HideAddPortDialogForInputs` for output ports
         HideAddPortDialogForOutputs = 1 << 7,
-        /// inidicates that the user is not prompted when adding ports
+        /// Same as `HideAddPortDialogForInputs` for input and output ports
         HideAddPortDialog = HideAddPortDialogForInputs |
                             HideAddPortDialogForOutputs,
 
@@ -92,14 +94,16 @@ public:
     using DynamicNodeOptions = UFlags<DynamicNodeOption>;
 
     /**
-     * @brief Returns the whitelist used for the input ports
-     * @return Whitelist for the input ports.
+     * @brief Returns the whitelist used for dynamic input ports.
+     * Static ports are not affected by the whitelist.
+     * @return Whitelist for dynamic input ports.
      */
     QStringList const& inputWhitelist() const noexcept;
 
     /**
-     * @brief Returns the whitelist used for the output ports
-     * @return Whitelist for the output ports.
+     * @brief Returns the whitelist used for dynamic output ports.
+     * Static ports are not affected by the whitelist.
+     * @return Whitelist for dynamic output ports.
      */
     QStringList const& outputWhitelist() const noexcept;
 
@@ -192,6 +196,14 @@ protected:
                 DynamicNodeOptions options = DynamicInputAndOutput,
                 GtObject* parent = nullptr);
 
+    /**
+     * @brief DynamicNode
+     * @param modelName
+     * @param inputWhiteList
+     * @param outputWhiteList
+     * @param options
+     * @param parent
+     */
     DynamicNode(QString const& modelName,
                 QStringList inputWhiteList,
                 QStringList outputWhiteList,
