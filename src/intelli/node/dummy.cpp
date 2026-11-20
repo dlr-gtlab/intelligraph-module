@@ -18,7 +18,7 @@ DummyNode::DummyNode() :
     DynamicNode("Dummy Node",
                 QStringList{typeId<InvalidData>()},
                 QStringList{typeId<InvalidData>()},
-                NoUserDynamicInputAndOutput),
+                NoUserEditableInputAndOutput | NoUserManagedInputAndOutput),
     m_object("target", tr("Target"), tr("Target Object"), this, QStringList{})
 {
     setFlag(UserRenamable, false);

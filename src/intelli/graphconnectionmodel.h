@@ -526,12 +526,17 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateNodes(PortType type) const
+    auto iterateNodeIds(PortType type) const
     {
         auto& p = ports(type);
         return proxy_iterable<base_iterator<IterateOneSide>, NodeIdProxy>{
             { this, p.begin(), p.end(), type }
         };
+    }
+    [[deprecated("use `iterateNodes` instead")]]
+    auto iterateNodes(PortType type) const
+    {
+        return iterateNodeIds(type);
     }
     /**
      * @brief Can be used to iterate over all connetced nodes. May contain
@@ -539,12 +544,17 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateNodes() const
+    auto iterateNodeIds() const
     {
         auto& p = ports(PortType::In);
         return proxy_iterable<base_iterator<IterateBothSides>, NodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In }
         };
+    }
+    [[deprecated("use `iterateNodes` instead")]]
+    auto iterateNodes() const
+    {
+        return iterateNodeIds();
     }
     /**
      * @brief Can be used to iterate over all nodes that are connected to the
@@ -556,12 +566,17 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateNodes(PortId portId, PortType type) const
+    auto iterateNodeIds(PortId portId, PortType type) const
     {
         auto& p = ports(PortType::In);
         return proxy_iterable<base_iterator<IterateByPortOneSide>, NodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In, { portId } }
         };
+    }
+    [[deprecated("use `iterateNodes` instead")]]
+    auto iterateNodes(PortId portId, PortType type) const
+    {
+        return iterateNodeIds(portId, type);
     }
     /**
      * @brief Can be used to iterate over all nodes that are connected to the
@@ -571,12 +586,17 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateNodes(PortId portId) const
+    auto iterateNodeIds(PortId portId) const
     {
         auto& p = ports(PortType::In);
         return proxy_iterable<base_iterator<IterateByPortBothSides>, NodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In, { portId } }
         };
+    }
+    [[deprecated("use `iterateNodes` instead")]]
+    auto iterateNodes(PortId portId) const
+    {
+        return iterateNodeIds(portId);
     }
 
     /**
@@ -618,12 +638,17 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateUniqueNodes(PortType type) const
+    auto iterateUniqueNodeIds(PortType type) const
     {
         auto& p = ports(type);
         return proxy_iterable<base_iterator<IterateOneSide>, UniqueNodeIdProxy>{
             { this, p.begin(), p.end(), type }
         };
+    }
+    [[deprecated("use `iterateUniqueNodeIds` instead")]]
+    auto iterateUniqueNodes(PortType type) const
+    {
+        return iterateUniqueNodeIds(type);
     }
     /**
      * @brief Can be used to iterate over all connetced nodes.
@@ -631,12 +656,17 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateUniqueNodes() const
+    auto iterateUniqueNodeIds() const
     {
         auto& p = ports(PortType::In);
         return proxy_iterable<base_iterator<IterateBothSides>, UniqueNodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In }
         };
+    }
+    [[deprecated("use `iterateUniqueNodeIds` instead")]]
+    auto iterateUniqueNodes() const
+    {
+        return iterateUniqueNodeIds();
     }
     /**
      * @brief Can be used to iterate over all nodes that are connected to the
@@ -649,12 +679,17 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateUniqueNodes(PortId portId, PortType type) const
+    auto iterateUniqueNodeIds(PortId portId, PortType type) const
     {
         auto& p = ports(type);
         return proxy_iterable<base_iterator<IterateByPortOneSide>, UniqueNodeIdProxy>{
             { this, p.begin(), p.end(), type, { portId } }
         };
+    }
+    [[deprecated("use `iterateUniqueNodeIds` instead")]]
+    auto iterateUniqueNodes(PortId portId, PortType type) const
+    {
+        return iterateUniqueNodeIds(portId, type);
     }
     /**
      * @brief Can be used to iterate over all nodes that are connected to the
@@ -664,12 +699,17 @@ struct ConnectionData
      * @return Helper object to call begin and end on. Can be used easily
      * with range-based for loops
      */
-    auto iterateUniqueNodes(PortId portId) const
+    auto iterateUniqueNodeIds(PortId portId) const
     {
         auto& p = ports(PortType::In);
         return proxy_iterable<base_iterator<IterateByPortBothSides>, UniqueNodeIdProxy>{
             { this, p.begin(), p.end(), PortType::In, { portId } }
         };
+    }
+    [[deprecated("use `iterateUniqueNodeIds` instead")]]
+    auto iterateUniqueNodes(PortId portId) const
+    {
+        return iterateUniqueNodeIds(portId);
     }
 
     bool hasConnections(PortType type = PortType::NoType) const
@@ -927,15 +967,21 @@ public:
      * @param args Forwarding arguments the desired `iterateNodes` call.
      */
     template <typename... Args>
-    auto iterateNodes(NodeId_t const& nodeId, Args&&... args) const
+    auto iterateNodeIds(NodeId_t const& nodeId, Args&&... args) const
     {
         auto iter = find(nodeId);
         if (iter == end())
         {
-            using R = decltype(iter->iterateNodes(std::forward<Args>(args)...));
+            using R = decltype(iter->iterateNodeIds(std::forward<Args>(args)...));
             return R{};
         }
-        return iter->iterateNodes(std::forward<Args>(args)...);
+        return iter->iterateNodeIds(std::forward<Args>(args)...);
+    }
+    template <typename... Args>
+    [[deprecated("use `iterateNodes` instead")]]
+    auto iterateNodes(NodeId_t const& nodeId, Args&&... args) const
+    {
+        return iterateNodeIds(nodeId, std::forward<Args>(args)...);
     }
 
     /**
@@ -946,15 +992,21 @@ public:
      * @param args Forwarding arguments the desired `iterateUniqueNodes` call.
      */
     template <typename... Args>
-    auto iterateUniqueNodes(NodeId_t const& nodeId, Args&&... args) const
+    auto iterateUniqueNodeIds(NodeId_t const& nodeId, Args&&... args) const
     {
         auto iter = find(nodeId);
         if (iter == end())
         {
-            using R = decltype(iter->iterateUniqueNodes(std::forward<Args>(args)...));
+            using R = decltype(iter->iterateUniqueNodeIds(std::forward<Args>(args)...));
             return R{};
         }
-        return iter->iterateUniqueNodes(std::forward<Args>(args)...);
+        return iter->iterateUniqueNodeIds(std::forward<Args>(args)...);
+    }
+    template <typename... Args>
+    [[deprecated("use `iterateUniqueNodeIds` instead")]]
+    auto iterateUniqueNodes(NodeId_t const& nodeId, Args&&... args) const
+    {
+        return iterateUniqueNodeIds(nodeId, std::forward<Args>(args)...);
     }
 
     //**** QHash ****//

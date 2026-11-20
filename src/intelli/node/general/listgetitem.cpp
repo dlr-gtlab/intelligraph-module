@@ -20,7 +20,7 @@ ListGetItemNode::ListGetItemNode() :
     Node(tr("Get Item")),
     m_typeId("typeId",
              tr("Type Id"),
-             NodeDataFactory::instance().validTypeIds(),
+             NodeDataFactory::instance().registeredScalarTypeIds(),
              typeId<DoubleData>())
 {
     registerProperty(m_typeId);

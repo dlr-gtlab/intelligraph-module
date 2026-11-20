@@ -61,7 +61,11 @@ static InteractableGraphicsObject* locateObject(QPointF scenePoint,
 GraphView::GraphView(QWidget* parent) :
     GtGraphicsView(nullptr, parent)
 {
-    setDragMode(QGraphicsView::ScrollHandDrag);
+    // NoDrag avoids QGraphicsView clearing the selection on release
+    // panning is handled in mouseMoveEvent().
+    setDragMode(QGraphicsView::NoDrag);
+    viewport()->setCursor(Qt::OpenHandCursor);
+
     setRenderHint(QPainter::Antialiasing);
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -73,7 +77,7 @@ GraphView::GraphView(QWidget* parent) :
     setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
 
     // disable scale range
-    setScaleRange(0, 0);
+    setScaleRange(0.1, 50);
 
     // Sets the scene rect to its maximum possible ranges to avoid auto scene range
     // re-calculation when expanding the all QGraphicsItems common rect.
@@ -87,6 +91,7 @@ GraphView::GraphView(QWidget* parent) :
     // controls minor and major lines
     grid->setGridHeight(s_major_grid_size);
     grid->setGridWidth(s_major_grid_size);
+    grid->setScaleGrid(false);
 
     showGrid(true);
 
@@ -98,7 +103,7 @@ GraphView::GraphView(QWidget* parent) :
         action->setShortcutContext(Qt::ShortcutContext::WidgetShortcut);
         // create slot function
         auto slot = [this, binding = std::bind(mfunc, std::placeholders::_1)](){
-            auto* scene = nodeScene();
+            auto* scene = graphScene();
             if (scene) binding(scene);
         };
         connect(action, &QAction::triggered, this, slot);
@@ -165,7 +170,7 @@ GraphView::~GraphView() = default;
 void
 GraphView::setScene(GraphScene& scene)
 {
-    if (nodeScene() == &scene) return;
+    if (graphScene() == &scene) return;
 
     QGraphicsView::setScene(&scene);
     centerScene();
@@ -356,7 +361,7 @@ GraphView::contextMenuEvent(QContextMenuEvent* event)
         return GtGraphicsView::contextMenuEvent(event);
     }
 
-    auto* scene = nodeScene();
+    auto* scene = graphScene();
     if (!scene) return GtGraphicsView::contextMenuEvent(event);
 
     event->accept();
@@ -476,7 +481,7 @@ GraphView::keyReleaseEvent(QKeyEvent* event)
     switch (event->key())
     {
     case Qt::Key_Shift:
-        setDragMode(QGraphicsView::ScrollHandDrag);
+        setDragMode(QGraphicsView::NoDrag);
         event->accept();
         break;
     default:
@@ -520,7 +525,7 @@ GraphView::mouseMoveEvent(QMouseEvent* event)
 }
 
 GraphScene*
-GraphView::nodeScene()
+GraphView::graphScene()
 {
     return qobject_cast<GraphScene*>(scene());
 }

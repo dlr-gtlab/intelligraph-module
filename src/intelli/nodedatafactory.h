@@ -131,7 +131,7 @@ public:
     bool isKnownType(TypeId const& typeId) const;
 
     /**
-     * @brief Returns a list of all registered type ids
+     * @brief Returns a list of all registered and valid type ids
      * @return List of registered type ids
      */
     GT_NO_DISCARD
@@ -142,7 +142,22 @@ public:
      * @return List of registered and valid type ids
      */
     GT_NO_DISCARD
+    [[deprecated("use `registeredTypeIds` instead")]]
     TypeIdList validTypeIds() const;
+
+    /**
+     * @brief Returns a list of all registered and valid scalar type ids
+     * @return List of registered and valid type ids
+     */
+    GT_NO_DISCARD
+    TypeIdList registeredScalarTypeIds() const;
+
+    /**
+     * @brief Returns a list of all registered and valid list type ids
+     * @return List of registered and valid list type ids
+     */
+    GT_NO_DISCARD
+    TypeIdList registeredListTypeIds() const;
 
     /**
      * @brief Returns the type name of the type given by type id.

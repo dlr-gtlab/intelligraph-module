@@ -30,7 +30,7 @@ namespace intelli
 
 /**
  * @generated 1.2.0
- * @brief The GtIgPackage class
+ * @brief The Package class
  */
 class Package : public GtPackage
 {

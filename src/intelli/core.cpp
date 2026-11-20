@@ -21,8 +21,8 @@
 #include "intelli/node/dummy.h"
 
 #include "intelli/graph.h"
-#include "intelli/node/groupinputprovider.h"
-#include "intelli/node/groupoutputprovider.h"
+#include "intelli/node/graphinputprovider.h"
+#include "intelli/node/graphoutputprovider.h"
 
 #include "intelli/node/numberdisplay.h"
 #include "intelli/node/numbermath.h"
@@ -138,10 +138,9 @@ intelli::registerDefaultNodes()
         factory.setCategoryOrderPriority(catOther, CategoryOrderPriority::Last);
 
         factory.registerNode<DummyNode>(hidden);
-
         factory.registerNode<Graph>(catOther);
-        factory.registerNode<GroupInputProvider>(hidden);
-        factory.registerNode<GroupOutputProvider>(hidden);
+        factory.registerNode<GraphInputProvider>(hidden);
+        factory.registerNode<GraphOutputProvider>(hidden);
 
         factory.registerNode<SleepyNode>((gtApp && gtApp->devMode()) ?
                                              catOther : QString{});

@@ -46,7 +46,7 @@ GraphScene*
 GraphSceneManager::currentScene()
 {
     assert(m_view);
-    return m_view->nodeScene();
+    return m_view->graphScene();
 }
 
 GraphScene const*
@@ -90,7 +90,7 @@ GraphSceneManager::createScene(Graph& graph)
             this, &GraphSceneManager::onSceneRemoved);
 
     // if view has no scene -> set scene
-    if (!m_view->nodeScene()) m_view->setScene(*scene);
+    if (!m_view->graphScene()) m_view->setScene(*scene);
 
     return scene;
 }

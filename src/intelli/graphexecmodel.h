@@ -147,6 +147,9 @@ public:
      * @brief Starts the auto evaluation of the given graph node.
      * Use this method to keep the nodes of the given graph up-to-date.
      * @return Whether the auto evaluation could be started successfully.
+     * @deprecated Retrieve the exec model of the target graph via
+     * `GraphExecutionModel::accessExecModel(graph)` and call the no-argument
+     * overload on it instead. Each graph is now managed by its own exec model.
      */
     bool autoEvaluateGraph(Graph& graph);
 
@@ -164,6 +167,9 @@ public:
      * Any inactive node is also evalauted. Use this method to evaluate the
      * nodes of the associated graph exactly once.
      * @return Future object
+     * @deprecated Retrieve the exec model of the target graph via
+     * `GraphExecutionModel::accessExecModel(graph)` and call the no-argument
+     * overload on it instead. Each graph is now managed by its own exec model.
      */
     GT_NO_DISCARD
     ExecFuture evaluateGraph(Graph& graph);
@@ -183,6 +189,9 @@ public:
     void stopAutoEvaluatingGraph();
     /**
      * @brief Stops the auto evaluation of the given graph.
+     * @deprecated Retrieve the exec model of the target graph via
+     * `GraphExecutionModel::accessExecModel(graph)` and call the no-argument
+     * overload on it instead. Each graph is now managed by its own exec model.
      */
     void stopAutoEvaluatingGraph(Graph& graph);
 
@@ -366,6 +375,9 @@ private:
     struct Impl;
     std::unique_ptr<Impl> pimpl;
     std::atomic_bool m_isShuttingDown{false};
+
+    Impl* impl();
+    Impl const* impl() const;
 
     void beginReset();
 

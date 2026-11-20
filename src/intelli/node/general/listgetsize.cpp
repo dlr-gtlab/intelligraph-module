@@ -20,7 +20,7 @@ ListGetSizeNode::ListGetSizeNode() :
     Node(tr("Get Size")),
     m_typeId("typeId",
              tr("Type Id"),
-             NodeDataFactory::instance().validTypeIds(),
+             NodeDataFactory::instance().registeredScalarTypeIds(),
              typeId<DoubleData>())
 {
     registerProperty(m_typeId);

@@ -22,6 +22,7 @@
 #include <gt_utilities.h>
 #include <gt_qtutilities.h>
 #include <gt_regexp.h>
+#include <gt_mpl.h>
 
 #include <gt_logstream.h>
 
@@ -33,6 +34,22 @@
 intelli::Profiler profiler__{__FUNCTION__}; (void)profiler__;
 #define GT_INTELLI_PROFILE_C(X) \
 intelli::Profiler profiler__{X}; (void)profiler__;
+
+// ability to log functors that operate on gt::log::Stream
+template<typename T>
+using has_gt_log_call_operator =
+    std::enable_if_t<
+        std::is_same<
+            decltype(std::declval<T const&>()
+                         .operator()(std::declval<gt::log::Stream&>())),
+            gt::log::Stream&>::value,
+        bool>;
+
+template <typename T, has_gt_log_call_operator<T> = true>
+inline gt::log::Stream& operator<<(gt::log::Stream& s, T const& f)
+{
+    return f(s);
+}
 
 // TODO: For debugging purposes only
 inline gt::log::Stream&
@@ -209,27 +226,19 @@ inline void transform_if(InputIterable iterable,
 
 /// Helper function that returns the path of the node as a formated string for
 /// logging
-inline QString
-logId(Node const& node)
+inline QString logPath(Node const& node)
 {
-    return gt::quoted(relativeNodePath(node), "[", "]");
+    return gt::quoted(relativeNodePath(node), "", ":");
 }
 
 /// Helper function that returns the class name of the template parameter as a
 /// formated string for logging
 template<typename T>
-inline QString logId()
+inline QString logScope()
 {
     static QString str = QString{T::staticMetaObject.className()}.remove("intelli::");
     return gt::quoted(str, "[", "]");
 }
-
-/// Helper function to deduce class name from argument and return a formated
-/// string for logging
-template<typename T,
-         typename U = std::remove_cv_t<std::remove_reference_t<std::remove_pointer_t<T>>>,
-         typename = std::enable_if_t<!std::is_base_of<Node, U>::value>>
-inline QString logId(T const&) { return logId<U>(); }
 
 /// helper struct to make state creation more explicit and ledgible
 template <typename GetValue>
@@ -338,13 +347,13 @@ inline void restrictRegExpWithSiblingsNames(GtObject& obj,
 
     if (!parent) return;
 
-    QList<T*> siblings = parent->findDirectChildren<T*>();
+    QList<T*> const siblings = parent->findDirectChildren<T*>();
 
     if (siblings.isEmpty()) return;
 
     QStringList names;
 
-    for (auto* s : qAsConst(siblings))
+    for (auto* s : siblings)
     {
         names.append(s->objectName());
     }

@@ -10,26 +10,53 @@
 #ifndef GT_INTELLI_NODEEVENT_H
 #define GT_INTELLI_NODEEVENT_H
 
+#include <intelli/globals.h>
+
+#define DECLARE_NODE_EVENT_TYPE(TYPE) \
+  static constexpr NodeEventType Type = NodeEventType::TYPE; \
+  NodeEventType type() const noexcept { return Type; }
+
 namespace intelli
 {
 
 /// Enums inidacting of node event
-enum NodeEventType
+enum class NodeEventType : unsigned
 {
-    UnkownEvent = 0,
+    Unknown = 0,
     /// Event is emitted once `nodeDataInterface` yields a valid pointer
-    /// (not emitted if `nodeDataInterface` chnages).
+    /// (not emitted if `nodeDataInterface` changes).
     /// Can be used to initialize a node.
-    DataInterfaceAvailableEvent
+    DataInterfaceAvailable,
+
+    NodeInvalidated
 };
 
 /// Base class for node specific events
 class NodeEvent
 {
-    NodeEventType m_type = UnkownEvent;
 public:
-    explicit NodeEvent(NodeEventType type) : m_type(type) {}
-    NodeEventType type() const { return m_type; }
+    virtual NodeEventType type() const noexcept = 0;
+
+    template <typename T>
+    std::remove_pointer_t<T> const* cast() const noexcept
+    {
+        return (type() == std::remove_pointer_t<T>::Type) ?
+                   static_cast<std::remove_pointer_t<T> const*>(this) : nullptr;
+    }
+};
+
+/// Emitted once a data interface becomes available
+class DataInterfaceAvailableEvent : public NodeEvent
+{
+public:
+    DECLARE_NODE_EVENT_TYPE(DataInterfaceAvailable);
+};
+
+/// Emitted once the node is invalidated
+class NodeInvalidatedEvent : public NodeEvent
+{
+public:
+    DECLARE_NODE_EVENT_TYPE(NodeInvalidated);
 };
 
 } // namespace intelli
